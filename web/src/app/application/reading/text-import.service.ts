@@ -18,6 +18,7 @@ import type { StorageError } from '../../domain/storage/storage-error';
 import { LanguageStore } from '../language/language.store';
 import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { CLOCK, HASHER, ID_GENERATOR, READING_REPOSITORY } from '../shared/repository-tokens';
+import { defined } from '../../domain/shared/invariant';
 
 /**
  * Sentences tokenized per worker call.
@@ -124,8 +125,9 @@ export class TextImportService {
           ),
         );
       }
-      for (let index = 0; index < batch.length; index += 1) {
-        analyses.set(batch[index].id, analyzed.value[index].tokens);
+      for (const [index, sentence] of batch.entries()) {
+        // Same length as `batch`, checked above.
+        analyses.set(sentence.id, defined(analyzed.value[index], 'sentence analysis').tokens);
       }
       onProgress?.({ completed: Math.min(start + batch.length, total), total });
     }

@@ -98,6 +98,10 @@ export default tseslint.config(
       ],
       '@angular-eslint/prefer-on-push-component-change-detection': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
+      // Already in strictTypeChecked; restated because `noUncheckedIndexedAccess`
+      // makes `!` tempting. Guard the absent case, or use `defined()` from
+      // domain/shared/invariant for an index the logic already proves.
+      '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
@@ -133,6 +137,8 @@ export default tseslint.config(
     files: ['**/*.spec.ts', 'src/testing/**/*.ts'],
     rules: {
       'import/no-restricted-paths': 'off',
+      // A spec may assert that a fixture element exists: if it does not, the
+      // test fails, which is the outcome a guard would only restate.
       '@typescript-eslint/no-non-null-assertion': 'off',
     },
   },

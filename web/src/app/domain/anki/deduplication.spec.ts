@@ -95,7 +95,7 @@ describe('mergeEntries', () => {
     );
 
     expect(result.items).toHaveLength(1);
-    expect(result.items[0].meaning).toBe('eat');
+    expect(result.items[0]!.meaning).toBe('eat');
     expect(result.duplicateOccurrences).toBe(1);
   });
 
@@ -120,8 +120,8 @@ describe('mergeEntries', () => {
     );
 
     expect(result.provenance.map((record) => [record.sourceId, record.vocabularyItemId])).toEqual([
-      [MAPPING_A, result.items[0].id],
-      [MAPPING_B, result.items[1].id],
+      [MAPPING_A, result.items[0]!.id],
+      [MAPPING_B, result.items[1]!.id],
     ]);
   });
 
@@ -180,7 +180,7 @@ describe('mergeEntries', () => {
       MAPPING_B,
     ]);
     expect(
-      result.provenance.every((record) => record.vocabularyItemId === result.items[0].id),
+      result.provenance.every((record) => record.vocabularyItemId === result.items[0]!.id),
     ).toBe(true);
   });
 
@@ -220,11 +220,11 @@ describe('mergeEntries', () => {
       idSequence(),
     );
 
-    expect(result.items[0].analyzedSequence).toEqual([{ surface: 'ねこ', lemma: 'ねこ' }]);
+    expect(result.items[0]!.analyzedSequence).toEqual([{ surface: 'ねこ', lemma: 'ねこ' }]);
   });
 
   it('stamps every item with the snapshot it belongs to', () => {
     const result = mergeEntries([entry()], SNAPSHOT, idSequence());
-    expect(result.items[0].snapshotId).toBe(SNAPSHOT);
+    expect(result.items[0]!.snapshotId).toBe(SNAPSHOT);
   });
 });

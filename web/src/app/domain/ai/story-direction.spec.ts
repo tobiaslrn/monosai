@@ -139,7 +139,7 @@ describe('rollPlotFrames', () => {
         expect(new Set(valuesOf(frames, axis)).size).toBe(PLOT_COUNT);
         for (const frame of frames) {
           expect(frame.values[axis]).toHaveLength(1);
-          expect(frame.values[axis][0].rolled).toBe(true);
+          expect(frame.values[axis][0]!.rolled).toBe(true);
         }
       }
       // Mood and format are left to the writer when nobody chose them.
@@ -153,16 +153,19 @@ describe('rollPlotFrames', () => {
   it('repeats a pinned axis on every card and still differs in the turning point', () => {
     let direction = EMPTY_STORY_DIRECTION;
     for (const axis of STORY_AXES) {
-      direction = toggleOption(direction, axis, STORY_DIRECTION_OPTIONS[axis][0]);
+      direction = toggleOption(direction, axis, STORY_DIRECTION_OPTIONS[axis][0]!);
     }
     direction = toggleOption(direction, 'genre', 'Comedy');
 
     const frames = rollPlotFrames(direction, seeded(3));
     for (const axis of STORY_AXES) {
       expect(new Set(valuesOf(frames, axis)).size).toBe(1);
-      expect(frames[0].values[axis].every((value) => !value.rolled)).toBe(true);
+      expect(frames[0]!.values[axis].every((value) => !value.rolled)).toBe(true);
     }
-    expect(frames[0].values.genre.map((value) => value.value)).toEqual(['Slice of life', 'Comedy']);
+    expect(frames[0]!.values.genre.map((value) => value.value)).toEqual([
+      'Slice of life',
+      'Comedy',
+    ]);
     expect(new Set(frames.map((frame) => frame.turningPoint.label)).size).toBe(PLOT_COUNT);
   });
 
@@ -178,7 +181,7 @@ describe('rollPlotFrames', () => {
   it('keeps a kept frame in its place and rolls the others clear of it', () => {
     const first = rollPlotFrames(EMPTY_STORY_DIRECTION, seeded(7));
     for (const seed of [1, 2, 3, 4, 5, 6]) {
-      const again = rollPlotFrames(EMPTY_STORY_DIRECTION, seeded(seed), [null, first[1], null]);
+      const again = rollPlotFrames(EMPTY_STORY_DIRECTION, seeded(seed), [null, first[1]!, null]);
       expect(again[1]).toBe(first[1]);
       for (const axis of ROLLED_STORY_AXES) {
         expect(new Set(valuesOf(again, axis)).size).toBe(PLOT_COUNT);
@@ -207,12 +210,12 @@ describe('reframePlot', () => {
     const [frame] = rollPlotFrames(pinned, seeded(5));
 
     const now = pick(EMPTY_STORY_DIRECTION, ['topic', 'Work']);
-    const reframed = reframePlot(frame, now);
+    const reframed = reframePlot(frame!, now);
 
     expect(reframed.values.topic).toEqual([{ value: 'Work', rolled: false }]);
     expect(reframed.values.mood).toEqual([]);
-    expect(reframed.values.setting).toEqual(frame.values.setting);
-    expect(reframed.turningPoint).toBe(frame.turningPoint);
+    expect(reframed.values.setting).toEqual(frame!.values.setting);
+    expect(reframed.turningPoint).toBe(frame!.turningPoint);
   });
 });
 
@@ -226,7 +229,7 @@ describe('storyDirectionRecord', () => {
     if (!added.ok) throw new Error('fixture');
     const [frame] = rollPlotFrames(added.value, seeded(9));
 
-    const record = storyDirectionRecord(added.value, frame, 'Edited plot.', 'Drafted plot.');
+    const record = storyDirectionRecord(added.value, frame!, 'Edited plot.', 'Drafted plot.');
 
     expect(record.selected).toEqual({
       genre: ['Mystery'],
@@ -235,16 +238,16 @@ describe('storyDirectionRecord', () => {
     });
     expect(record.customSelected).toEqual({ cast: ['My cat Mochi'] });
     expect(record.frame.genre).toEqual([{ value: 'Mystery', rolled: false }]);
-    expect(record.frame.setting?.[0].rolled).toBe(true);
+    expect(record.frame.setting?.[0]!.rolled).toBe(true);
     expect(record.frame.format).toBeUndefined();
-    expect(record.turningPoint).toBe(frame.turningPoint.label);
+    expect(record.turningPoint).toBe(frame!.turningPoint.label);
     expect(record.plotEn).toBe('Edited plot.');
     expect(record.draftedPlotEn).toBe('Drafted plot.');
   });
 
   it('leaves out what has nothing to say', () => {
     const [frame] = rollPlotFrames(EMPTY_STORY_DIRECTION, seeded(1));
-    const record = storyDirectionRecord(EMPTY_STORY_DIRECTION, frame, 'Plot.', 'Plot.');
+    const record = storyDirectionRecord(EMPTY_STORY_DIRECTION, frame!, 'Plot.', 'Plot.');
     expect(record.selected).toEqual({});
     expect('customSelected' in record).toBe(false);
     expect('draftedPlotEn' in record).toBe(false);

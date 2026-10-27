@@ -12,9 +12,9 @@ import { MAX_STORY_SEGMENT_SENTENCES, MAX_STORY_SENTENCES } from '../../domain/a
 /** The error envelope OpenAI-compatible endpoints use for 4xx and 5xx bodies. */
 export const providerErrorEnvelopeSchema = z.object({
   error: z.object({
-    message: z.string().optional(),
-    code: z.union([z.string(), z.number()]).optional(),
-    type: z.string().optional(),
+    message: z.string().exactOptional(),
+    code: z.union([z.string(), z.number()]).exactOptional(),
+    type: z.string().exactOptional(),
     param: z.string().nullish(),
   }),
 });
@@ -30,9 +30,9 @@ export const modelCatalogResponseSchema = z.object({
       context_length: z.number().int().nonnegative().nullable(),
       top_provider: z
         .object({
-          max_completion_tokens: z.number().int().nonnegative().nullable().optional(),
+          max_completion_tokens: z.number().int().nonnegative().nullable().exactOptional(),
         })
-        .optional(),
+        .exactOptional(),
       architecture: z.object({
         input_modalities: z.array(z.string()),
         output_modalities: z.array(z.string()),
@@ -41,13 +41,13 @@ export const modelCatalogResponseSchema = z.object({
       supported_voices: z.array(z.string()).nullable(),
       reasoning: z
         .object({
-          supported_efforts: z.array(z.string().nullable()).nullable().optional(),
-          default_effort: z.string().nullable().optional(),
-          default_enabled: z.boolean().optional(),
+          supported_efforts: z.array(z.string().nullable()).nullable().exactOptional(),
+          default_effort: z.string().nullable().exactOptional(),
+          default_enabled: z.boolean().exactOptional(),
           mandatory: z.boolean(),
-          supports_max_tokens: z.boolean().optional(),
+          supports_max_tokens: z.boolean().exactOptional(),
         })
-        .optional(),
+        .exactOptional(),
     }),
   ),
 });
@@ -67,7 +67,7 @@ export const chatCompletionSchema = z.object({
     )
     .min(1),
   /** OpenRouter may omit usage or add provider-specific fields to it. */
-  usage: z.unknown().optional(),
+  usage: z.unknown().exactOptional(),
 });
 
 export type ChatCompletion = z.infer<typeof chatCompletionSchema>;
@@ -426,7 +426,7 @@ export const grammarReviewSchema = z.object({
         explanationEn: z.string(),
         confidence: z.enum(['low', 'medium', 'high']),
         inProfile: z.boolean(),
-        spanJa: z.string().nullable().optional(),
+        spanJa: z.string().nullable().exactOptional(),
       }),
     )
     .max(128),

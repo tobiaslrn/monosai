@@ -26,9 +26,9 @@ export const PROTOCOL_COLLECTION: FixtureCollection = {
         deckName: card.deckName,
         reps: card.reps,
         queue: card.queue,
-        lapses: card.lapses ?? undefined,
-        factor: card.factor ?? undefined,
-        intervalDays: card.interval ?? undefined,
+        ...(card.lapses == null ? {} : { lapses: card.lapses }),
+        ...(card.factor == null ? {} : { factor: card.factor }),
+        ...(card.interval == null ? {} : { intervalDays: card.interval }),
       })),
   })),
 };

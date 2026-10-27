@@ -141,7 +141,7 @@ export class AppShellComponent {
     if (!url.startsWith('/reader/')) return false;
     // Not decoded: an id needs no escaping, so anything that carries some is
     // already not one.
-    const segment = url.slice('/reader/'.length).split(/[/?#]/)[0];
+    const [segment = ''] = url.slice('/reader/'.length).split(/[/?#]/);
     return classifyReadingLink(segment).kind === 'well-formed';
   });
 

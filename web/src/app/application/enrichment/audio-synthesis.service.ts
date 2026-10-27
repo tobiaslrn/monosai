@@ -38,7 +38,10 @@ export function speechContextFor(
   }
   const beforeJa = ordered[index - 1]?.japaneseText;
   const afterJa = ordered[index + 1]?.japaneseText;
-  return { beforeJa, afterJa };
+  return {
+    ...(beforeJa === undefined ? {} : { beforeJa }),
+    ...(afterJa === undefined ? {} : { afterJa }),
+  };
 }
 
 /** MP3 is what is requested and what the audio cache stores. */

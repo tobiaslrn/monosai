@@ -39,9 +39,8 @@ function hasTeForm(head: Token, attachedTokens: readonly Token[]): boolean {
     (token, index) =>
       token.partOfSpeech === 'particle' &&
       TE_PARTICLES.has(token.surface) &&
-      (index === 0
-        ? CONJUGATING_CLASSES.has(head.partOfSpeech ?? '')
-        : CONJUGATING_CLASSES.has(attachedTokens[index - 1].partOfSpeech ?? '')),
+      // The token before the first attached one is the head itself.
+      CONJUGATING_CLASSES.has((attachedTokens[index - 1] ?? head).partOfSpeech ?? ''),
   );
 }
 

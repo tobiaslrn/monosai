@@ -37,9 +37,11 @@ export class OpenReadingWatcher {
 
   /** True when this tab is on the reader route for that exact reading. */
   private isShowing(id: ReadingId): boolean {
-    const segments = this.router
-      .parseUrl(this.router.url)
-      .root.children[PRIMARY_OUTLET].segments.map((segment) => segment.path);
+    // The root URL has no primary outlet child at all.
+    const segments =
+      this.router
+        .parseUrl(this.router.url)
+        .root.children[PRIMARY_OUTLET]?.segments.map((segment) => segment.path) ?? [];
     return segments.length === 2 && segments[0] === 'reader' && segments[1] === id;
   }
 }

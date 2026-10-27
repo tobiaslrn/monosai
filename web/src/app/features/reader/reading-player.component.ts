@@ -19,6 +19,7 @@ import type { SentenceId } from '../../domain/shared/ids';
 import type { IconName } from '../../shared-ui/icon/icon-set';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
+import { defined } from '../../domain/shared/invariant';
 
 /** What the card has to say about generation, if anything. */
 export type GenerationRail = 'running' | 'stopped' | 'offer' | 'none';
@@ -1055,7 +1056,7 @@ export class ReadingPlayerComponent {
     const current = this.store.playbackRate();
     const index = PLAYBACK_RATES.indexOf(current);
     const next = PLAYBACK_RATES[(index + 1) % PLAYBACK_RATES.length];
-    this.store.setPlaybackRate(next);
+    this.store.setPlaybackRate(defined(next, 'cyclePlaybackRate'));
   }
 
   protected pressCentre(): void {

@@ -47,8 +47,8 @@ function bodyOf(request: { readonly body: Record<string, unknown> }): {
 } {
   const messages = request.body['messages'] as readonly { role: string; content: string }[];
   return {
-    system: messages[0].content,
-    user: messages[1].content,
+    system: messages[0]!.content,
+    user: messages[1]!.content,
     responseFormat: request.body['response_format'],
     maxTokens: request.body['max_tokens'],
     temperature: request.body['temperature'],
@@ -75,10 +75,10 @@ describe('OpenRouterStoryGenerator story generation', () => {
 
     await context.text.generateStory(REQUEST, NATIVE);
 
-    expect(bodyOf(context.server.requests[0]).responseFormat).toMatchObject({
+    expect(bodyOf(context.server.requests[0]!).responseFormat).toMatchObject({
       type: 'json_schema',
     });
-    expect(bodyOf(context.server.requests[0]).system).not.toContain('Include no other fields');
+    expect(bodyOf(context.server.requests[0]!).system).not.toContain('Include no other fields');
   });
 
   it('uses the configured story token budget for the request', async () => {
@@ -89,7 +89,7 @@ describe('OpenRouterStoryGenerator story generation', () => {
       storyTokenBudget: 24_576,
     });
 
-    expect(bodyOf(context.server.requests[0]).maxTokens).toBe(24_576);
+    expect(bodyOf(context.server.requests[0]!).maxTokens).toBe(24_576);
   });
 
   it('uses the larger default story budget when older callers omit the setting', async () => {
@@ -97,7 +97,7 @@ describe('OpenRouterStoryGenerator story generation', () => {
 
     await context.text.generateStory(REQUEST, NATIVE);
 
-    expect(bodyOf(context.server.requests[0]).maxTokens).toBe(16_384);
+    expect(bodyOf(context.server.requests[0]!).maxTokens).toBe(16_384);
   });
 
   it('opens in the strict JSON contract when that is the tested mode, with no probe first', async () => {
@@ -109,9 +109,11 @@ describe('OpenRouterStoryGenerator story generation', () => {
     // One request, and no `response_format`: the mode exists for providers that
     // refuse the parameter, so it never sends one.
     expect(context.server.callCount).toBe(1);
-    expect(bodyOf(context.server.requests[0]).responseFormat).toBeUndefined();
-    expect(bodyOf(context.server.requests[0]).system).toContain('one JSON object and nothing else');
-    expect(bodyOf(context.server.requests[0]).system).toContain('Include no other fields');
+    expect(bodyOf(context.server.requests[0]!).responseFormat).toBeUndefined();
+    expect(bodyOf(context.server.requests[0]!).system).toContain(
+      'one JSON object and nothing else',
+    );
+    expect(bodyOf(context.server.requests[0]!).system).toContain('Include no other fields');
   });
 
   it('carries the learner’s text as delimited data, and says instructions cannot override rules', async () => {
@@ -119,7 +121,7 @@ describe('OpenRouterStoryGenerator story generation', () => {
 
     await context.text.generateStory(REQUEST, NATIVE);
 
-    const body = bodyOf(context.server.requests[0]);
+    const body = bodyOf(context.server.requests[0]!);
     expect(body.user).toContain('<<<MONOSAI_DATA premise');
     // Style instructions are a setting the task honours within stated limits,
     // so they travel in the config envelope rather than the data one.
@@ -248,8 +250,8 @@ describe('OpenRouterStoryGenerator story generation', () => {
       NATIVE,
     );
 
-    expect(bodyOf(context.server.requests[0]).temperature).toBeLessThanOrEqual(0.2);
-    expect(bodyOf(context.server.requests[1]).temperature).toBeGreaterThan(0.5);
+    expect(bodyOf(context.server.requests[0]!).temperature).toBeLessThanOrEqual(0.2);
+    expect(bodyOf(context.server.requests[1]!).temperature).toBeGreaterThan(0.5);
   });
 
   it('accepts a short segment without spending a count repair', async () => {
@@ -354,7 +356,7 @@ describe('OpenRouterStoryGenerator story generation', () => {
 
     expect(result.ok).toBe(true);
     expect(context.server.callCount).toBe(2);
-    expect(bodyOf(context.server.requests[1]).responseFormat).toBeUndefined();
+    expect(bodyOf(context.server.requests[1]!).responseFormat).toBeUndefined();
   });
 });
 
@@ -387,7 +389,7 @@ describe('OpenRouterStoryGenerator repair', () => {
     const result = await context.text.repairStory(repair, NATIVE);
 
     expect(result.ok).toBe(true);
-    const body = bodyOf(context.server.requests[0]);
+    const body = bodyOf(context.server.requests[0]!);
     expect(body.user).toContain('図書館');
     expect(body.user).toContain('Sentence number 2 was missing');
     expect(body.user).not.toContain('Repair attempt');
@@ -409,7 +411,7 @@ describe('OpenRouterStoryGenerator repair', () => {
     ]);
     expect(result.value.titleJa).toBe('ねこの一日');
 
-    const body = bodyOf(context.server.requests[0]);
+    const body = bodyOf(context.server.requests[0]!);
     expect(body.responseFormat).toMatchObject({
       json_schema: { name: 'monosai_story_repair_patch' },
     });
@@ -427,7 +429,7 @@ describe('OpenRouterStoryGenerator repair', () => {
 
     await context.text.repairStory({ ...repair, structureIssues: [] }, NATIVE);
 
-    expect(bodyOf(context.server.requests[0]).temperature).toBeLessThanOrEqual(0.2);
+    expect(bodyOf(context.server.requests[0]!).temperature).toBeLessThanOrEqual(0.2);
   });
 
   it('keeps scoped repairs for long stories inside bounded segments', async () => {
@@ -462,8 +464,8 @@ describe('OpenRouterStoryGenerator repair', () => {
     if (!result.ok) {
       return;
     }
-    expect(result.value.sentences[1].textJa).toBe('ねこはにわへ行きます。');
-    expect(result.value.sentences[51].textJa).toBe('ねこはにわへ行きます。');
+    expect(result.value.sentences[1]!.textJa).toBe('ねこはにわへ行きます。');
+    expect(result.value.sentences[51]!.textJa).toBe('ねこはにわへ行きます。');
     expect(context.server.callCount).toBe(2);
     expect(context.server.requests.map((request) => request.body['session_id'])).toEqual([
       'repair-session',
@@ -521,7 +523,7 @@ describe('OpenRouterStoryGenerator exception review', () => {
 
     await context.text.reviewExceptions(review, NATIVE);
 
-    const body = bodyOf(context.server.requests[0]);
+    const body = bodyOf(context.server.requests[0]!);
     expect(body.user).toContain('<<<MONOSAI_CONFIG learner exception policy');
     // Candidates travel under ordinals; the caller's key is restored on the
     // way back.

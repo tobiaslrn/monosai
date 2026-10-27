@@ -93,7 +93,7 @@ async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
     if (groups.length < 2) {
       throw new Error(`expected at least two bunsetsu groups, found ${groups.length}`);
     }
-    const secondWidth = groups[1].getBoundingClientRect().width;
+    const secondWidth = groups[1]!.getBoundingClientRect().width;
     const width = Math.ceil(secondWidth + 4);
     element.style.width = `${String(width)}px`;
     element.style.maxWidth = 'none';
@@ -111,7 +111,7 @@ async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
       });
       return copy.textContent.replace(/\s+/g, '');
     };
-    const secondTokenTops = [...groups[1].querySelectorAll<HTMLElement>('mn-reader-token')].map(
+    const secondTokenTops = [...groups[1]!.querySelectorAll<HTMLElement>('mn-reader-token')].map(
       (token) => Math.round(token.getBoundingClientRect().top),
     );
     return {
@@ -127,7 +127,7 @@ async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
   });
 
   expect(layout.text, label).toEqual(['名前が', 'あります。']);
-  expect(layout.tops[1], label).toBeGreaterThan(layout.tops[0]);
+  expect(layout.tops[1], label).toBeGreaterThan(layout.tops[0]!);
   expect(new Set(layout.secondTokenTops), label).toEqual(new Set([layout.secondTokenTops[0]]));
   expect(layout.groupLefts[1], label).toBeCloseTo(layout.paragraphLeft, 0);
   expect(
@@ -1477,7 +1477,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
         return { left: bounds.left, right: bounds.right, cards };
       }),
     );
-    const firstGroup = groups[0];
+    const firstGroup = groups[0]!;
     for (const group of groups) {
       expect(group.left).toBeCloseTo(firstGroup.left, 0);
       expect(group.right).toBeCloseTo(firstGroup.right, 0);
@@ -1497,7 +1497,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
         });
         return { left: bounds.left, right: bounds.right, width: bounds.width, buttons };
       });
-    const firstFilter = filterGeometry.buttons[0];
+    const firstFilter = filterGeometry.buttons[0]!;
     const lastFilter = filterGeometry.buttons.at(-1);
     if (lastFilter === undefined) {
       throw new Error('The filter group must contain at least one button');

@@ -66,7 +66,7 @@ describe('RadioCardComponent', () => {
   it('writes the picked card back to the group, and mirrors nothing in a class', () => {
     const { fixture, host, element, radios } = render();
 
-    radios()[0].click();
+    radios()[0]!.click();
     fixture.detectChanges();
 
     expect(host.picked()).toBe('starter');

@@ -24,13 +24,13 @@ describe('normalizeCandidate', () => {
     });
 
     expect(normalized.titleJa).toBe('ねこ');
-    expect(normalized.sentences[0].textJa).toBe('ねこは　ここに いる。');
+    expect(normalized.sentences[0]!.textJa).toBe('ねこは　ここに いる。');
   });
 
   it('keeps surrogate pairs whole', () => {
     const normalized = normalizeCandidate(candidate([' \u{20B9F}の話。 ']));
 
-    expect(normalized.sentences[0].textJa).toBe('\u{20B9F}の話。');
+    expect(normalized.sentences[0]!.textJa).toBe('\u{20B9F}の話。');
   });
 });
 
@@ -69,7 +69,7 @@ describe('checkStoryStructure', () => {
     });
 
     expect(issues.map((issue) => issue.code)).toEqual(['duplicate-index', 'non-contiguous-index']);
-    expect(issues[1].index).toBe(2);
+    expect(issues[1]!.index).toBe(2);
   });
 
   it('reports indexes that do not start at zero', () => {
@@ -79,7 +79,7 @@ describe('checkStoryStructure', () => {
     });
 
     expect(issues.map((issue) => issue.code)).toEqual(['non-contiguous-index']);
-    expect(issues[0].index).toBe(0);
+    expect(issues[0]!.index).toBe(0);
   });
 
   it('stops after reporting that there are no sentences at all', () => {

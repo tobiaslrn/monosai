@@ -478,7 +478,7 @@ function buildWindow(
   englishByPosition: ReadonlyMap<number, string>,
 ): readonly TranslationWindowEntry[] {
   const targets = new Set<number>();
-  const included = new Set<number>();
+  const included = new Map<number, Sentence>();
   for (const sentence of batch) {
     const position = positionById.get(sentence.id);
     if (position === undefined) {
@@ -486,16 +486,16 @@ function buildWindow(
     }
     targets.add(position);
     for (const neighbour of [position - 1, position, position + 1]) {
-      if (neighbour >= 0 && neighbour < sentences.length) {
-        included.add(neighbour);
+      const neighbourSentence = sentences[neighbour];
+      if (neighbourSentence !== undefined) {
+        included.set(neighbour, neighbourSentence);
       }
     }
   }
 
   return [...included]
-    .sort((left, right) => left - right)
-    .map((position) => {
-      const sentence = sentences[position];
+    .sort(([left], [right]) => left - right)
+    .map(([position, sentence]) => {
       const textEn = englishByPosition.get(position);
       return {
         textJa: sentence.japaneseText,

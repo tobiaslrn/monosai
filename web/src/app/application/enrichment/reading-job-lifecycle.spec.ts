@@ -274,7 +274,7 @@ describe('ReadingJobLifecycle', () => {
     async function failThenPark(errorCode: string): Promise<void> {
       bed.work = async (job) => {
         await bed.jobs.recordFailure(job.id, {
-          sentenceId: bed.sentenceIds[0],
+          sentenceId: bed.sentenceIds[0]!,
           errorCode,
           failedAt: NOW,
         });
@@ -305,7 +305,7 @@ describe('ReadingJobLifecycle', () => {
     it('fails a resumed row with nothing left to request, without requesting it again', async () => {
       await failThenPark('not-a-code');
       const [, ...rest] = bed.sentenceIds;
-      const row = (await bed.db.assetJobs.toArray())[0];
+      const row = (await bed.db.assetJobs.toArray())[0]!;
       await bed.db.assetJobs.update(row.id, { completedSentenceIds: rest });
 
       await bed.lifecycle.resume(bed.reading);

@@ -43,7 +43,7 @@ export function readingLevelName(presetName: string | undefined): string | null 
   if (presetName === undefined || presetName.length === 0) {
     return null;
   }
-  return `${presetName[0].toLowerCase()}${presetName.slice(1)}`;
+  return `${presetName.charAt(0).toLowerCase()}${presetName.slice(1)}`;
 }
 
 /** The count on its own: `340 words`, `1 word`. */

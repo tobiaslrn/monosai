@@ -53,7 +53,7 @@ const axisValuesSchema = z.array(optionLabelSchema).min(1).max(2).readonly();
 
 const storyDirectionRecordSchema = z.object({
   selected: z.partialRecord(storyAxisSchema, axisValuesSchema),
-  customSelected: z.partialRecord(storyAxisSchema, axisValuesSchema).optional(),
+  customSelected: z.partialRecord(storyAxisSchema, axisValuesSchema).exactOptional(),
   frame: z.partialRecord(
     storyAxisSchema,
     z
@@ -64,7 +64,7 @@ const storyDirectionRecordSchema = z.object({
   ),
   turningPoint: nonEmptyString,
   plotEn: nonEmptyString,
-  draftedPlotEn: nonEmptyString.optional(),
+  draftedPlotEn: nonEmptyString.exactOptional(),
 });
 
 export const generationProvenanceRowSchema = z.object({
@@ -79,7 +79,7 @@ export const generationProvenanceRowSchema = z.object({
   modelId: nonEmptyString,
   promptVersions: z.record(z.string(), nonEmptyString),
   // Optional only for rows written before ADR 0046. Every new generation writes it.
-  requestedSentenceCount: z.number().int().positive().optional(),
+  requestedSentenceCount: z.number().int().positive().exactOptional(),
   repairAttempts: z.number().int().min(0).max(2),
   suggestedVocabularyItemIds: z.array(vocabularyItemIdSchema).readonly(),
   ankiWordPriorityMode: z.enum(['uniform', 'recent', 'difficult']).default('uniform'),
@@ -94,20 +94,20 @@ export const generationProvenanceRowSchema = z.object({
         .max(100)
         .readonly(),
     })
-    .optional(),
+    .exactOptional(),
   // Both optional only for rows written before generation stopped producing
   // aids. Every new generation writes them, and no Dexie version is needed
   // because an older row legitimately lacks them — the same precedent
   // `requestedSentenceCount` set above.
-  vocabularyStrictness: z.enum(['relaxed', 'standard', 'strict']).optional(),
+  vocabularyStrictness: z.enum(['relaxed', 'standard', 'strict']).exactOptional(),
   preparationTargets: z
     .array(z.enum(['english', 'grammar', 'audio']))
     .readonly()
-    .optional(),
+    .exactOptional(),
   // Optional for the same reason again: only stories whose premise was a plot
   // picked on the Plot step carry it (ADR 0080). The indexes are unchanged, so
   // no Dexie version is needed.
-  storyDirection: storyDirectionRecordSchema.optional(),
+  storyDirection: storyDirectionRecordSchema.exactOptional(),
   createdAt: timestampSchema,
 });
 

@@ -71,7 +71,7 @@ describe('GenerationStore strict pass', () => {
 
     expect(bed.provider.generationCalls.story).toBe(1);
     expect(bed.store.state().kind).toBe('saved');
-    const saved = bed.readings.readings[0];
+    const saved = bed.readings.readings[0]!;
     expect(saved.kind === 'generated' ? saved.premise : null).toBe('');
   });
 
@@ -87,7 +87,7 @@ describe('GenerationStore strict pass', () => {
     expect(bed.readings.frozenValidations).toHaveLength(5);
     expect(bed.readings.provenance).toHaveLength(1);
 
-    const provenance = bed.readings.provenance[0];
+    const provenance = bed.readings.provenance[0]!;
     expect(provenance.requestedSentenceCount).toBe(5);
     expect(provenance.repairAttempts).toBe(0);
     expect(provenance.modelId).toBe('vendor/text-model');
@@ -98,18 +98,18 @@ describe('GenerationStore strict pass', () => {
 
   it('writes from a picked plot: its direction reaches the writer and its record is kept', async () => {
     const direction = toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Funny');
-    const [frame] = rollPlotFrames(direction, { nextInt: () => 0 });
+    const frame = rollPlotFrames(direction, { nextInt: () => 0 })[0]!;
     const plot = 'Aiko loses her umbrella at the station and has to ask for help.';
     const record = storyDirectionRecord(direction, frame, plot, 'Aiko loses her umbrella.');
     bed.provider.storyQueue.push(ok(strictStory()));
 
     await bed.store.generate(5, { premise: plot, chosenPlot: { frame, record } });
 
-    expect(bed.provider.storyRequests[0].premise).toBe(plot);
-    expect(bed.provider.storyRequests[0].direction).toBe(frame);
-    const saved = bed.readings.readings[0];
+    expect(bed.provider.storyRequests[0]!.premise).toBe(plot);
+    expect(bed.provider.storyRequests[0]!.direction).toBe(frame);
+    const saved = bed.readings.readings[0]!;
     expect(saved.kind === 'generated' ? saved.premise : null).toBe(plot);
-    expect(bed.readings.provenance[0].storyDirection).toEqual(record);
+    expect(bed.readings.provenance[0]!.storyDirection).toEqual(record);
   });
 
   it('records no direction for a story written from a typed premise', async () => {
@@ -117,8 +117,8 @@ describe('GenerationStore strict pass', () => {
 
     await bed.store.generate(5, PREMISE);
 
-    expect(bed.provider.storyRequests[0].direction).toBeUndefined();
-    expect(bed.readings.provenance[0].storyDirection).toBeUndefined();
+    expect(bed.provider.storyRequests[0]!.direction).toBeUndefined();
+    expect(bed.readings.provenance[0]!.storyDirection).toBeUndefined();
   });
 
   it('captures the selected priority mode in generation provenance', async () => {
@@ -200,7 +200,7 @@ describe('GenerationStore strict pass', () => {
 
     await bed.store.generate(5, PREMISE);
 
-    const request = bed.provider.storyRequests[0];
+    const request = bed.provider.storyRequests[0]!;
     expect(request.allowedVocabulary).toContain('ねこ');
     expect(request.allowedVocabulary).toHaveLength(9);
     expect(request.suggestedVocabulary.length).toBeGreaterThan(0);
@@ -226,7 +226,7 @@ describe('GenerationStore strict pass', () => {
 
     await bed.store.generate(5, PREMISE);
 
-    expect(bed.provider.configs[0].storyTokenBudget).toBe(24_576);
+    expect(bed.provider.configs[0]!.storyTokenBudget).toBe(24_576);
   });
 });
 
@@ -263,7 +263,7 @@ describe('GenerationStore exception review', () => {
       .flatMap((validation) => validation.tokenStatuses)
       .filter((status) => status.validation.category === 'policy-exception');
     expect(exceptions).toHaveLength(1);
-    expect(exceptions[0].validation).toMatchObject({ explanationEn: APPROVAL.explanationEn });
+    expect(exceptions[0]!.validation).toMatchObject({ explanationEn: APPROVAL.explanationEn });
   });
 
   it('lets the writer see the exception policy', async () => {
@@ -272,7 +272,7 @@ describe('GenerationStore exception review', () => {
 
     await bed.store.generate(5, PREMISE);
 
-    expect(bed.provider.storyRequests[0].exceptionPolicy).toBe(POLICY);
+    expect(bed.provider.storyRequests[0]!.exceptionPolicy).toBe(POLICY);
   });
 
   it('sends no exception policy to the writer when none is configured', async () => {
@@ -361,7 +361,7 @@ describe('GenerationStore repair', () => {
       translate: 0,
     });
     expect(bed.store.state().kind).toBe('saved');
-    expect(bed.readings.provenance[0].repairAttempts).toBe(1);
+    expect(bed.readings.provenance[0]!.repairAttempts).toBe(1);
   });
 
   it('saves the story declaring the aid layers chosen when it started', async () => {
@@ -371,7 +371,7 @@ describe('GenerationStore repair', () => {
     await bed.store.generate(5, PREMISE);
 
     expect(bed.store.state().kind).toBe('saved');
-    expect(bed.readings.readings[0].preparationTargets).toEqual(['english', 'audio']);
+    expect(bed.readings.readings[0]!.preparationTargets).toEqual(['english', 'audio']);
   });
 
   it('does not ask the policy twice about a word it already refused', async () => {
@@ -427,10 +427,10 @@ describe('GenerationStore repair', () => {
     await bed.store.generate(5, PREMISE);
 
     // The reason is stated once by the repair prompt, not repeated per span.
-    expect(bed.provider.repairRequests[0].unknownSpans).toEqual([
+    expect(bed.provider.repairRequests[0]!.unknownSpans).toEqual([
       { sentenceIndex: 1, surface: '図書館' },
     ]);
-    expect(bed.provider.repairRequests[0].previouslyAttempted).toEqual([]);
+    expect(bed.provider.repairRequests[0]!.previouslyAttempted).toEqual([]);
   });
 
   it('names a surface an earlier repair already failed to remove', async () => {
@@ -440,8 +440,8 @@ describe('GenerationStore repair', () => {
 
     await bed.store.generate(5, PREMISE);
 
-    expect(bed.provider.repairRequests[0].previouslyAttempted).toEqual([]);
-    expect(bed.provider.repairRequests[1].previouslyAttempted).toEqual(['図書館']);
+    expect(bed.provider.repairRequests[0]!.previouslyAttempted).toEqual([]);
+    expect(bed.provider.repairRequests[1]!.previouslyAttempted).toEqual(['図書館']);
   });
 
   it('saves the story after two repairs, with the words they could not replace marked', async () => {
@@ -460,13 +460,13 @@ describe('GenerationStore repair', () => {
       translate: 0,
     });
     expect(bed.store.state().kind).toBe('saved');
-    expect(bed.readings.provenance[0].repairAttempts).toBe(2);
+    expect(bed.readings.provenance[0]!.repairAttempts).toBe(2);
 
     const unknown = bed.readings.frozenValidations
       .flatMap((validation) => validation.tokenStatuses)
       .filter((status) => status.validation.category === 'unknown');
     expect(unknown).not.toHaveLength(0);
-    expect(unknown[0].validation).toEqual({
+    expect(unknown[0]!.validation).toEqual({
       category: 'unknown',
       reason: 'unresolved-after-repair',
     });
@@ -480,7 +480,7 @@ describe('GenerationStore repair', () => {
 
     expect(bed.provider.generationCalls).toMatchObject({ story: 1, repair: 0 });
     expect(bed.store.state().kind).toBe('saved');
-    expect(bed.readings.provenance[0].repairAttempts).toBe(0);
+    expect(bed.readings.provenance[0]!.repairAttempts).toBe(0);
   });
 
   it('spends one repair in standard mode, then saves remaining unfamiliar words', async () => {
@@ -491,7 +491,7 @@ describe('GenerationStore repair', () => {
 
     expect(bed.provider.generationCalls).toMatchObject({ story: 1, repair: 1 });
     expect(bed.store.state().kind).toBe('saved');
-    expect(bed.readings.provenance[0].repairAttempts).toBe(1);
+    expect(bed.readings.provenance[0]!.repairAttempts).toBe(1);
   });
 });
 

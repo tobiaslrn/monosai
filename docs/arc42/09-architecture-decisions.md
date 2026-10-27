@@ -144,3 +144,4 @@ files are already linked from code comments and from other records.
 | [0043](../decisions/0043-voice-changes-hide-clips-and-say-so.md)                         | Changing the voice hides clips, and both screens say so                    |
 | [0082](../decisions/0082-interaction-states-have-equal-specificity-and-a-fixed-order.md) | Interaction states have equal specificity and a fixed order                |
 | [0083](../decisions/0083-floating-panels-are-native-popovers.md)                         | Floating panels that hang from a control are native popovers               |
+| [0084](../decisions/0084-unchecked-index-and-exact-optional-properties.md)               | Unchecked index access and exact optional properties                       |

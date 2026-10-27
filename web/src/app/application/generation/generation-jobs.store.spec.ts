@@ -147,7 +147,7 @@ describe('GenerationJobsStore', () => {
     jobs.job(id!)?.store.cancel();
     await settle();
 
-    const entry = jobs.libraryEntries()[0];
+    const entry = jobs.libraryEntries()[0]!;
     expect(entry.id).toBe(id);
     expect(entry.store.state().kind).toBe('cancelled');
     expect(entry.premise).toBe(PREMISE.premise);

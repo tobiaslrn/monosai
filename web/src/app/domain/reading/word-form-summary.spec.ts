@@ -16,9 +16,8 @@ function wordFrom(drafts: readonly TokenDraft[], headIndex = 0): WordGroup {
   return {
     span: { startTokenIndex: 0, endTokenIndex: tokens.length - 1 },
     tokens,
-    head: tokens[headIndex],
+    head: tokens[headIndex]!,
     surface: tokens.map((token) => token.surface).join(''),
-    readingHiragana: undefined,
   };
 }
 

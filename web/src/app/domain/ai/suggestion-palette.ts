@@ -6,6 +6,7 @@ import {
   FSRS_DIFFICULTY_MINIMUM,
   type AnkiSchedulingSignals,
 } from '../anki/scheduling-signals';
+import { defined } from '../shared/invariant';
 
 /**
  * How many reviewed items are sampled as inspiration for one story.
@@ -177,15 +178,15 @@ export function sampleWeightedPalette(
     ticket = Math.max(0, Math.min(total - 1, Math.trunc(ticket)));
     let cursor = 0;
     let selectedIndex = pool.length - 1;
-    for (let index = 0; index < pool.length; index += 1) {
-      cursor += pool[index].weight;
+    for (const [index, entry] of pool.entries()) {
+      cursor += entry.weight;
       if (ticket < cursor) {
         selectedIndex = index;
         break;
       }
     }
-    sampled.push(pool[selectedIndex].id);
-    pool.splice(selectedIndex, 1);
+    const [selected] = pool.splice(selectedIndex, 1);
+    sampled.push(defined(selected, 'weighted palette draw').id);
   }
   return sampled;
 }

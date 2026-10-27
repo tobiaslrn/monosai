@@ -294,8 +294,8 @@ describe('AudioJobStore', () => {
     expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT);
 
     const rows = await bed.db.assetJobs.toArray();
-    expect(new Set(rows[0].completedSentenceIds).size).toBe(SENTENCE_COUNT);
-    expect(rows[0].state).toBe('complete');
+    expect(new Set(rows[0]!.completedSentenceIds).size).toBe(SENTENCE_COUNT);
+    expect(rows[0]!.state).toBe('complete');
   });
 
   it('stores every clip and refreshes the reading summary', async () => {
@@ -364,8 +364,8 @@ describe('AudioJobStore', () => {
     expect(progress.counts).toMatchObject({ completed: SENTENCE_COUNT - 1, failed: 1 });
 
     const rows = await bed.db.assetJobs.toArray();
-    expect(rows[0].state).toBe('failed');
-    expect(rows[0].failedItems.map((item) => item.errorCode)).toEqual(['audio-invalid']);
+    expect(rows[0]!.state).toBe('failed');
+    expect(rows[0]!.failedItems.map((item) => item.errorCode)).toEqual(['audio-invalid']);
   });
 
   /**
@@ -599,8 +599,8 @@ describe('AudioJobStore', () => {
     expect(bed.provider.synthesized).toHaveLength(PREPARATION_CONCURRENCY);
 
     const rows = await bed.db.assetJobs.toArray();
-    expect(rows[0].state).toBe('cancelled');
-    expect(rows[0].completedSentenceIds).toHaveLength(stored);
+    expect(rows[0]!.state).toBe('cancelled');
+    expect(rows[0]!.completedSentenceIds).toHaveLength(stored);
   });
 
   /**
@@ -758,8 +758,8 @@ describe('AudioJobStore', () => {
     const progress = bed.store.progress();
     expect(progress.kind).toBe('cancelled');
     const rows = await bed.db.assetJobs.toArray();
-    expect(rows[0].state).toBe('cancelled');
-    expect(rows[0].failedItems).toEqual([]);
+    expect(rows[0]!.state).toBe('cancelled');
+    expect(rows[0]!.failedItems).toEqual([]);
   });
 
   /**
@@ -782,7 +782,7 @@ describe('AudioJobStore', () => {
 
     // The interruption: the row is left as it would have been found after a
     // reload, rather than as `cancel` tidied it.
-    const jobRow = (await bed.db.assetJobs.toArray())[0];
+    const jobRow = (await bed.db.assetJobs.toArray())[0]!;
     await bed.db.assetJobs.update(jobRow.id, { state: 'running' });
 
     bed.provider.synthesizeWith = () => ok(audioPayload());
@@ -834,7 +834,7 @@ describe('AudioJobStore', () => {
       return ok(audioPayload());
     };
     await bed.store.start(bed.draft.reading.id);
-    const firstJobId = (await bed.db.assetJobs.toArray())[0].id;
+    const firstJobId = (await bed.db.assetJobs.toArray())[0]!.id;
     const underFirstVoice = await bed.db.audioAssets.count();
 
     bed.settings.set({ ...bed.settings(), voiceId: 'voice-b' });

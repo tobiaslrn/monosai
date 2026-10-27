@@ -306,7 +306,7 @@ describe('ReaderSentenceComponent', () => {
     ).nativeElement as HTMLElement;
     const marked = spanned.querySelectorAll('mn-reader-token.has-grammar-concern');
     expect(marked).toHaveLength(1);
-    expect(marked[0].textContent).toContain('が');
+    expect(marked[0]!.textContent).toContain('が');
   });
 
   it('opens a gap between bunsetsu rather than between morphemes', () => {
@@ -316,7 +316,7 @@ describe('ReaderSentenceComponent', () => {
     const opening = [...element.querySelectorAll('.bunsetsu-group')];
 
     expect(opening).toHaveLength(1);
-    expect(opening[0].textContent).toContain('猫');
+    expect(opening[0]!.textContent).toContain('猫');
   });
 
   it('moves the spacing aid to group boundaries while leaving furigana optional', () => {
@@ -348,12 +348,12 @@ describe('ReaderSentenceComponent', () => {
     fixture.detectChanges();
 
     const buttons = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button.token')];
-    buttons[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    buttons[1]!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
     const [activation] = fixture.componentInstance.activations;
-    expect(activation.token.surface, 'the pressed morpheme is still reported').toBe('ます');
-    expect(activation.word.surface).toBe('あります');
-    expect(activation.word.head.lemma).toBe('ある');
+    expect(activation!.token.surface, 'the pressed morpheme is still reported').toBe('ます');
+    expect(activation!.word.surface).toBe('あります');
+    expect(activation!.word.head.lemma).toBe('ある');
   });
 
   it('tints every part of the open word', () => {

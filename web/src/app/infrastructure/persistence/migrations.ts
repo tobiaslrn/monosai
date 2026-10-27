@@ -1,5 +1,6 @@
 import type { Dexie, Transaction } from 'dexie';
 import { DEFAULT_PLAYBACK_RATE, DEFAULT_READER_PREFERENCES } from '../../domain/settings/settings';
+import { defined } from '../../domain/shared/invariant';
 
 interface SchemaVersion {
   readonly version: number;
@@ -457,7 +458,7 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   },
 ];
 
-export const CURRENT_SCHEMA_VERSION = SCHEMA_VERSIONS[SCHEMA_VERSIONS.length - 1].version;
+export const CURRENT_SCHEMA_VERSION = defined(SCHEMA_VERSIONS.at(-1), 'SCHEMA_VERSIONS').version;
 
 /** Declares every schema version on the database instance, in order. */
 export function applySchema(db: Dexie): void {

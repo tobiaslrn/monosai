@@ -30,7 +30,7 @@ describe('golden language corpus', () => {
     it(`assigns the reviewed features for ${testCase.name}`, async () => {
       const tokens = await analyzeSentence(testCase.text);
       for (const [index, expected] of Object.entries(testCase.tokens ?? {})) {
-        const token = tokens[Number(index)];
+        const token = tokens[Number(index)]!;
         expect(token, `token ${index} of ${testCase.name}`).toBeDefined();
         expect(token.surface).toBe(expected.surface);
         if (expected.lemma !== undefined) {
@@ -101,7 +101,7 @@ describe('golden language corpus', () => {
 
   it('offers ruby for kanji tokens whose reading differs from the surface', async () => {
     const tokens = await analyzeSentence('食べ物');
-    const first = tokens[0];
+    const first = tokens[0]!;
     expect(readingAddsInformation(first.surface, first.readingHiragana ?? '')).toBe(true);
   });
 

@@ -90,7 +90,7 @@ export class OpenRouterClient {
   private readonly random: () => number;
   private readonly newCorrelationId: () => string;
   private readonly defaultTimeoutMs: number;
-  private readonly logger?: Logger;
+  private readonly logger: Logger | undefined;
 
   constructor(private readonly options: OpenRouterClientOptions) {
     this.baseUrl = options.baseUrl ?? OPENROUTER_BASE_URL;
@@ -160,8 +160,11 @@ export class OpenRouterClient {
     const parsed = schema.safeParse(parsedJson);
     if (!parsed.success) {
       const [issue] = parsed.error.issues;
-      const path = issue.path.join('.');
-      const error = this.malformed(request.task, `${path === '' ? 'root' : path}:${issue.code}`);
+      const path = issue?.path.join('.') ?? '';
+      const error = this.malformed(
+        request.task,
+        `${path === '' ? 'root' : path}:${issue?.code ?? 'unknown'}`,
+      );
       this.logFailure(request, error);
       return err(error);
     }

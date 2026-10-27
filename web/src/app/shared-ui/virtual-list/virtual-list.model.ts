@@ -111,7 +111,8 @@ export class VariableHeightVirtualListModel<T extends VirtualListItem> {
 
   heightOf(key: string): number | null {
     const index = this.indexes.get(key);
-    return index === undefined ? null : this.itemHeight(index);
+    const item = index === undefined ? undefined : this.itemsValue[index];
+    return item === undefined ? null : this.itemHeight(item);
   }
 
   offsetOf(index: number): number {
@@ -163,15 +164,15 @@ export class VariableHeightVirtualListModel<T extends VirtualListItem> {
 
   private rebuildOffsets(): void {
     const nextOffsets = [0];
-    for (let index = 0; index < this.itemsValue.length; index += 1) {
-      const previousOffset = nextOffsets[nextOffsets.length - 1] ?? 0;
-      nextOffsets.push(previousOffset + this.itemHeight(index));
+    let offset = 0;
+    for (const item of this.itemsValue) {
+      offset += this.itemHeight(item);
+      nextOffsets.push(offset);
     }
     this.offsets = nextOffsets;
   }
 
-  private itemHeight(index: number): number {
-    const item = this.itemsValue[index];
+  private itemHeight(item: T): number {
     return this.heights.get(item.key) ?? this.safeEstimate(item);
   }
 

@@ -188,7 +188,7 @@ export function runProviderContract(
         );
         expect(resolution.resolved).toHaveLength(1);
         expect(resolution.stale).toHaveLength(1);
-        expect(resolution.stale[0].reason).toBe('field-missing');
+        expect(resolution.stale[0]!.reason).toBe('field-missing');
       });
     });
 

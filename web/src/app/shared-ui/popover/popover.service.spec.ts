@@ -47,8 +47,8 @@ class HostComponent {
       origin: this.anchor(),
       template: this.content(),
       viewContainerRef: this.viewContainerRef,
-      mobileSheet,
-      retargetSelector,
+      ...(mobileSheet === undefined ? {} : { mobileSheet }),
+      ...(retargetSelector === undefined ? {} : { retargetSelector }),
       returnFocusTo: this.anchor().nativeElement,
       onClosed: () => {
         this.closedCount += 1;

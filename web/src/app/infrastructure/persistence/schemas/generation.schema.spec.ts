@@ -27,7 +27,7 @@ function record() {
   const added = addCustomOption(EMPTY_STORY_DIRECTION, 'cast', 'My cat Mochi');
   if (!added.ok) throw new Error('fixture');
   const [frame] = rollPlotFrames(added.value, { nextInt: () => 0 });
-  return storyDirectionRecord(added.value, frame, 'Edited plot.', 'Drafted plot.');
+  return storyDirectionRecord(added.value, frame!, 'Edited plot.', 'Drafted plot.');
 }
 
 describe('generationProvenanceRowSchema story direction', () => {

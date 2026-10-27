@@ -302,7 +302,7 @@ export function snapshotFixture(seed: number, entryCount = 3): SnapshotCommit {
     createdAt: 1_700_000_100_000,
     status: 'complete',
     uniqueEntryCount: items.length,
-    sourceIds: [provenance[0].sourceId],
+    sourceIds: [provenance[0]!.sourceId],
     sourceKinds: ['anki-connect'],
     analyzerVersion: 'test-analyzer-1',
     normalizationVersion: 'test-normalizer-1',

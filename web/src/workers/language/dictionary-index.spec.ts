@@ -23,9 +23,9 @@ describe('bundled dictionary lookup', () => {
     });
 
     expect(result.matchedBy).toBe('lemma');
-    expect(result.entries[0].id).toBe('1577980');
-    expect(result.entries[0].writtenForms).toContain('居る');
-    expect(result.entries[0].senses[0].glossesEn).toContain('to exist');
+    expect(result.entries[0]!.id).toBe('1577980');
+    expect(result.entries[0]!.writtenForms).toContain('居る');
+    expect(result.entries[0]!.senses[0]!.glossesEn).toContain('to exist');
     expect(result.entries.map((entry) => entry.writtenForms[0])).not.toContain('炒る');
     expect(result.entries.map((entry) => entry.writtenForms[0])).not.toContain('入る');
   });
@@ -51,13 +51,13 @@ describe('bundled dictionary lookup', () => {
   it('finds a common beginner word by exact surface', () => {
     const result = index.lookup({ surface: '猫' });
     expect(result.matchedBy).toBe('surface');
-    expect(result.entries[0].senses[0].glossesEn[0].startsWith('cat')).toBe(true);
+    expect(result.entries[0]!.senses[0]!.glossesEn[0]!.startsWith('cat')).toBe(true);
   });
 
   it('falls back to the lemma when the surface is inflected', () => {
     const result = index.lookup({ surface: '食べまし', lemma: '食べる' });
     expect(result.matchedBy).toBe('lemma');
-    expect(result.entries[0].senses[0].glossesEn).toContain('to eat');
+    expect(result.entries[0]!.senses[0]!.glossesEn).toContain('to eat');
   });
 
   it('prefers the lemma when the surface is spelled like an unrelated word', () => {
@@ -107,7 +107,7 @@ describe('bundled dictionary lookup', () => {
   it('finds an orthographic variant grouped into the same entry', () => {
     const kanji = index.lookup({ surface: '珈琲' });
     const katakana = index.lookup({ surface: 'コーヒー' });
-    expect(kanji.entries[0].id).toBe(katakana.entries[0].id);
+    expect(kanji.entries[0]!.id).toBe(katakana.entries[0]!.id);
   });
 
   it('normalizes half-width katakana and full-width Latin', () => {

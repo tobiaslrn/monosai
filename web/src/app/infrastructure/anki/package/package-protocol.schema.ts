@@ -29,7 +29,7 @@ const requestSchema = z.discriminatedUnion('operation', [
       deckScope: z.enum(['deck-only', 'deck-and-subdecks']),
       noteTypeName: nonEmpty,
       expressionFieldName: nonEmpty,
-      meaningFieldName: nonEmpty.optional(),
+      meaningFieldName: nonEmpty.exactOptional(),
     }),
   }),
   z.object({ operation: z.literal('close'), payload: z.object({}) }),
@@ -56,7 +56,7 @@ export const ankiErrorSchema = z.object({
   domain: z.literal('anki'),
   code: z.enum(ALL_ANKI_ERROR_CODES),
   message: z.string(),
-  cause: z.string().optional(),
+  cause: z.string().exactOptional(),
 });
 
 /**
@@ -111,14 +111,14 @@ export const packageResultValueSchemas: {
     fields: z.array(
       z.object({
         sourceNoteId: nonEmpty,
-        rawFieldValue: z.string().optional(),
-        rawMeaning: z.string().optional(),
-        reps: z.number().optional(),
-        lapseRatio: z.number().optional(),
-        easeFactor: z.number().optional(),
-        firstReviewedAt: z.number().optional(),
-        intervalDays: z.number().optional(),
-        fsrsDifficulty: z.number().optional(),
+        rawFieldValue: z.string().exactOptional(),
+        rawMeaning: z.string().exactOptional(),
+        reps: z.number().exactOptional(),
+        lapseRatio: z.number().exactOptional(),
+        easeFactor: z.number().exactOptional(),
+        firstReviewedAt: z.number().exactOptional(),
+        intervalDays: z.number().exactOptional(),
+        fsrsDifficulty: z.number().exactOptional(),
       }),
     ),
   }),

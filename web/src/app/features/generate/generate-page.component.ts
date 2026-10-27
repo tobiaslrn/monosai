@@ -581,7 +581,7 @@ export class GeneratePageComponent {
     this.draft.storyStarted();
     await this.router.navigate(['/generate', started], {
       replaceUrl: true,
-      state: this.navigation.preservedOriginState('/library'),
+      ...this.navigation.preservedOrigin('/library'),
     });
   }
 
@@ -616,7 +616,7 @@ export class GeneratePageComponent {
     }
     await this.router.navigate(['/generate'], {
       replaceUrl: true,
-      state: this.navigation.preservedOriginState('/library'),
+      ...this.navigation.preservedOrigin('/library'),
     });
   }
 }

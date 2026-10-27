@@ -23,7 +23,7 @@ export const translationRowSchema = z.object({
 
 const translationCandidateSchema = z.object({
   surfaceJa: nonEmptyString.max(120),
-  readingHiragana: nonEmptyString.max(240).optional(),
+  readingHiragana: nonEmptyString.max(240).exactOptional(),
   kind: z.enum(['proper-noun', 'recurring-term']),
   examples: z
     .array(z.object({ sentenceId: sentenceIdSchema, textJa: nonEmptyString.max(240) }))
@@ -81,8 +81,8 @@ export const grammarAnalysisRowSchema = z.object({
         explanationEn: z.string(),
         confidence: z.enum(['low', 'medium', 'high']),
         inProfile: z.boolean(),
-        startUtf16: z.number().int().nonnegative().optional(),
-        endUtf16: z.number().int().nonnegative().optional(),
+        startUtf16: z.number().int().nonnegative().exactOptional(),
+        endUtf16: z.number().int().nonnegative().exactOptional(),
       }),
     )
     .readonly(),
@@ -99,7 +99,7 @@ export const audioAssetMetadataSchema = z.object({
   modelId: nonEmptyString,
   voiceId: nonEmptyString,
   optionsFingerprint: nonEmptyString,
-  pace: z.literal('playback').optional(),
+  pace: z.literal('playback').exactOptional(),
   mimeType: z.enum(['audio/mpeg', 'audio/pcm', 'audio/wav', 'audio/webm']),
   byteLength: z.number().int().positive(),
   createdAt: timestampSchema,

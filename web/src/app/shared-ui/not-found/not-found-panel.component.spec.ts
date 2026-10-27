@@ -35,8 +35,8 @@ describe('NotFoundPanelComponent', () => {
       'Start a new story',
     ]);
     // The library route is the primary one wherever the panel appears.
-    expect(actions[0].className).toContain('mn-button--primary');
-    expect(actions[0].getAttribute('href')).toBe('/library');
+    expect(actions[0]!.className).toContain('mn-button--primary');
+    expect(actions[0]!.getAttribute('href')).toBe('/library');
   });
 
   /**

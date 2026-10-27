@@ -28,7 +28,7 @@ describe('AlphaNoticeService', () => {
     await service.offer();
 
     expect(open).toHaveBeenCalledOnce();
-    const data = open.mock.calls[0][0];
+    const data = open.mock.calls[0]![0];
     expect(data.acknowledge).toBeTypeOf('function');
   });
 
@@ -44,7 +44,7 @@ describe('AlphaNoticeService', () => {
     const { service, open, settings } = configure();
 
     await service.offer();
-    const data = open.mock.calls[0][0];
+    const data = open.mock.calls[0]![0];
 
     expect(await data.acknowledge()).toBe(true);
     expect(settings.markAlphaNoticeSeen).toHaveBeenCalledOnce();

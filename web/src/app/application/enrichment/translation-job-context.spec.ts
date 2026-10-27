@@ -67,7 +67,7 @@ describe('the whole-reading translation job', () => {
     await TestBed.inject(TranslationJobStore).start(state.reading.id);
 
     expect(bed.provider.translationRequests).toHaveLength(1);
-    const request = bed.provider.translationRequests[0];
+    const request = bed.provider.translationRequests[0]!;
     expect(request.titleJa).toBe('ミケの一日');
     expect(request.premiseJa).toBe(PREMISE.premise);
     expect(request.registerPreference).toBe('either');
@@ -106,7 +106,7 @@ describe('the whole-reading translation job', () => {
     await TestBed.inject(TranslationJobStore).start(state.reading.id);
 
     expect(bed.provider.translationRequests).toHaveLength(3);
-    expect(bed.provider.translationRequests[0].establishedRenderings).toBeUndefined();
+    expect(bed.provider.translationRequests[0]!.establishedRenderings).toBeUndefined();
     const tail = bed.provider.translationRequests.slice(1);
     expect(tail.every((request) => request.establishedRenderings === undefined)).toBe(true);
     expect(tail.map((request) => request.frozenGlossary)).toEqual([[], []]);

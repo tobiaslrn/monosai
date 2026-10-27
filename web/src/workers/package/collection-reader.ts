@@ -59,9 +59,14 @@ function integer(value: SqliteValue): number {
   return typeof value === 'number' ? value : Number(value ?? 0);
 }
 
+/** One column of a result row. Every query names its columns, so a missing one reads as NULL. */
+function cell(row: SqliteRow, index: number): SqliteValue {
+  return row[index] ?? null;
+}
+
 function tableNames(database: CollectionDatabase): ReadonlySet<string> {
   const rows = database.query("select name from sqlite_master where type = 'table'");
-  return new Set(rows.map((row) => text(row[0])));
+  return new Set(rows.map((row) => text(cell(row, 0))));
 }
 
 /**
@@ -97,7 +102,7 @@ function optionalDifficulty(value: SqliteValue): { fsrsDifficulty?: number } {
 
 function columnNames(database: CollectionDatabase, table: string): ReadonlySet<string> {
   const rows = database.query(`pragma table_info(${table})`);
-  return new Set(rows.map((row) => text(row[1])));
+  return new Set(rows.map((row) => text(cell(row, 1))));
 }
 
 function normalizeDeckName(name: string): string {
@@ -131,21 +136,21 @@ function readLegacyCatalog(database: CollectionDatabase): {
   decks: CollectionDeck[];
   noteTypes: CollectionNoteType[];
 } {
-  const rows = database.query('select decks, models from col limit 1');
+  const [row] = database.query('select decks, models from col limit 1');
   const decks: CollectionDeck[] = [];
   const noteTypes: CollectionNoteType[] = [];
-  if (rows.length === 0) {
+  if (row === undefined) {
     return { decks, noteTypes };
   }
 
-  for (const [id, value] of Object.entries(parseJsonObject(text(rows[0][0])))) {
+  for (const [id, value] of Object.entries(parseJsonObject(text(cell(row, 0))))) {
     const deck = value as { name?: unknown };
     if (typeof deck.name === 'string') {
       decks.push({ id: Number(id), name: normalizeDeckName(deck.name), hasCards: false });
     }
   }
 
-  for (const [id, value] of Object.entries(parseJsonObject(text(rows[0][1])))) {
+  for (const [id, value] of Object.entries(parseJsonObject(text(cell(row, 1))))) {
     const model = value as { name?: unknown; flds?: unknown };
     if (typeof model.name !== 'string' || !Array.isArray(model.flds)) {
       continue;
@@ -169,25 +174,25 @@ function readNormalizedCatalog(database: CollectionDatabase): {
   noteTypes: CollectionNoteType[];
 } {
   const decks = database.query('select id, name from decks').map((row) => ({
-    id: integer(row[0]),
-    name: normalizeDeckName(text(row[1])),
+    id: integer(cell(row, 0)),
+    name: normalizeDeckName(text(cell(row, 1))),
     hasCards: false,
   }));
 
   const fieldsByNoteType = new Map<number, { ord: number; name: string }[]>();
   for (const row of database.query('select ntid, ord, name from fields')) {
-    const ntid = integer(row[0]);
+    const ntid = integer(cell(row, 0));
     const list = fieldsByNoteType.get(ntid) ?? [];
-    list.push({ ord: integer(row[1]), name: text(row[2]) });
+    list.push({ ord: integer(cell(row, 1)), name: text(cell(row, 2)) });
     fieldsByNoteType.set(ntid, list);
   }
 
   const noteTypes = database.query('select id, name from notetypes').map((row) => {
-    const id = integer(row[0]);
+    const id = integer(cell(row, 0));
     const fields = [...(fieldsByNoteType.get(id) ?? [])].sort(
       (left, right) => left.ord - right.ord,
     );
-    return { id, name: text(row[1]), fieldNames: fields.map((field) => field.name) };
+    return { id, name: text(cell(row, 1)), fieldNames: fields.map((field) => field.name) };
   });
 
   return { decks, noteTypes };
@@ -208,8 +213,8 @@ export function openCollectionReader(
   let schemaVersion: number;
   try {
     tables = tableNames(database);
-    const versionRows = database.query('select ver from col limit 1');
-    schemaVersion = versionRows.length > 0 ? integer(versionRows[0][0]) : 0;
+    const [versionRow] = database.query('select ver from col limit 1');
+    schemaVersion = versionRow === undefined ? 0 : integer(cell(versionRow, 0));
   } catch (thrown) {
     return err(
       ankiError(
@@ -282,7 +287,7 @@ export function openCollectionReader(
   const deckIdsWithCards = new Set<number>(
     database
       .query('select distinct case when odid != 0 then odid else did end from cards')
-      .map((row) => integer(row[0])),
+      .map((row) => integer(cell(row, 0))),
   );
   const decks = catalog.decks.map((deck) => ({
     ...deck,
@@ -346,14 +351,14 @@ export function openCollectionReader(
 
       const schedulingByNote = new Map<string, AnkiSchedulingSignals>();
       for (const row of cardRows) {
-        const noteId = text(row[0]);
+        const noteId = text(cell(row, 0));
         const signals = schedulingSignalsFromCard({
-          reps: integer(row[1]),
-          ...(row[2] === null ? {} : { lapses: integer(row[2]) }),
-          ...(row[3] === null ? {} : { factor: integer(row[3]) }),
-          ...(row[4] === null ? {} : { intervalDays: integer(row[4]) }),
-          ...(row[6] === null ? {} : { firstReviewedAt: integer(row[6]) }),
-          ...optionalDifficulty(row[5]),
+          reps: integer(cell(row, 1)),
+          ...(cell(row, 2) === null ? {} : { lapses: integer(cell(row, 2)) }),
+          ...(cell(row, 3) === null ? {} : { factor: integer(cell(row, 3)) }),
+          ...(cell(row, 4) === null ? {} : { intervalDays: integer(cell(row, 4)) }),
+          ...(cell(row, 6) === null ? {} : { firstReviewedAt: integer(cell(row, 6)) }),
+          ...optionalDifficulty(cell(row, 5)),
         });
         schedulingByNote.set(noteId, mergeSchedulingSignals(schedulingByNote.get(noteId), signals));
       }
@@ -369,10 +374,10 @@ export function openCollectionReader(
       );
 
       return noteRows.map((row) => {
-        const noteId = text(row[0]);
+        const noteId = text(cell(row, 0));
         return {
           noteId,
-          fieldValues: text(row[1]).split(FIELD_SEPARATOR),
+          fieldValues: text(cell(row, 1)).split(FIELD_SEPARATOR),
           ...schedulingByNote.get(noteId),
         };
       });

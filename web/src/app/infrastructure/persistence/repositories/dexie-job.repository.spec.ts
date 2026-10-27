@@ -48,10 +48,10 @@ describe('DexieJobRepository', () => {
   });
 
   it('records completions idempotently', async () => {
-    await repository.recordCompletion(job.id, draft.sentences[0].id);
-    const second = await repository.recordCompletion(job.id, draft.sentences[0].id);
+    await repository.recordCompletion(job.id, draft.sentences[0]!.id);
+    const second = await repository.recordCompletion(job.id, draft.sentences[0]!.id);
 
-    expect(second.ok && second.value.completedSentenceIds).toEqual([draft.sentences[0].id]);
+    expect(second.ok && second.value.completedSentenceIds).toEqual([draft.sentences[0]!.id]);
   });
 
   it('completes the job when every sentence succeeds', async () => {
@@ -65,7 +65,7 @@ describe('DexieJobRepository', () => {
 
   it('records a failure and keeps the job open for retry', async () => {
     const failed = await repository.recordFailure(job.id, {
-      sentenceId: draft.sentences[1].id,
+      sentenceId: draft.sentences[1]!.id,
       errorCode: 'provider-unavailable',
       failedAt: 1_700_600_100_000,
     });
@@ -77,25 +77,25 @@ describe('DexieJobRepository', () => {
     expect(failed.value.failedItems).toHaveLength(1);
     expect(failed.value.state).toBe('running');
     expect(remainingSentenceIds(failed.value)).toEqual([
-      draft.sentences[0].id,
-      draft.sentences[2].id,
+      draft.sentences[0]!.id,
+      draft.sentences[2]!.id,
     ]);
   });
 
   it('clears a previous failure when the sentence later succeeds', async () => {
     await repository.recordFailure(job.id, {
-      sentenceId: draft.sentences[1].id,
+      sentenceId: draft.sentences[1]!.id,
       errorCode: 'timeout',
       failedAt: 1_700_600_100_000,
     });
 
-    const completed = await repository.recordCompletion(job.id, draft.sentences[1].id);
+    const completed = await repository.recordCompletion(job.id, draft.sentences[1]!.id);
 
     expect(completed.ok && completed.value.failedItems).toEqual([]);
   });
 
   it('keeps completed work when the job is cancelled', async () => {
-    await repository.recordCompletion(job.id, draft.sentences[0].id);
+    await repository.recordCompletion(job.id, draft.sentences[0]!.id);
     const cancelled = await repository.setState(job.id, 'cancelled');
 
     expect(cancelled.ok).toBe(true);
@@ -103,13 +103,13 @@ describe('DexieJobRepository', () => {
       return;
     }
     expect(cancelled.value.state).toBe('cancelled');
-    expect(cancelled.value.completedSentenceIds).toEqual([draft.sentences[0].id]);
+    expect(cancelled.value.completedSentenceIds).toEqual([draft.sentences[0]!.id]);
   });
 
   it('reconciles progress from stored cache records after a reload', async () => {
     const reconciled = await repository.reconcile(job.id, [
-      draft.sentences[0].id,
-      draft.sentences[1].id,
+      draft.sentences[0]!.id,
+      draft.sentences[1]!.id,
     ]);
 
     expect(reconciled.ok).toBe(true);
@@ -209,7 +209,7 @@ describe('DexieJobRepository', () => {
       );
 
       expect(reclaimed.ok).toBe(true);
-      expect(reclaimed.ok && reclaimed.value[0].claim?.ownerId).toBe('lane-b');
+      expect(reclaimed.ok && reclaimed.value[0]!.claim?.ownerId).toBe('lane-b');
     });
 
     it('keeps a claim alive through a heartbeat and drops it on release', async () => {
@@ -238,7 +238,7 @@ describe('DexieJobRepository', () => {
       await repository.releaseReading(draft.reading.id, 'lane-b');
 
       const active = await repository.listActive();
-      expect(active.ok && active.value[0].claim?.ownerId).toBe('lane-a');
+      expect(active.ok && active.value[0]!.claim?.ownerId).toBe('lane-a');
     });
   });
 });

@@ -11,6 +11,7 @@ import {
   type StoryAxis,
   type TurningPoint,
 } from './story-direction-options';
+import { defined } from '../shared/invariant';
 
 /** How many plots one draft offers. */
 export const PLOT_COUNT = 3;
@@ -241,7 +242,7 @@ export function rollPlotFrames(
         const rolled = rolledValues[axis].at(index);
         return rolled === undefined ? [] : [{ value: rolled, rolled: true }];
       }),
-      turningPoint: turningPoints[index],
+      turningPoint: defined(turningPoints[index], 'rollPlotFrames turning point'),
     };
   });
 }

@@ -115,7 +115,7 @@ describe('learner exception policy in writing prompts', () => {
       buildSegmentPrompt({
         original,
         blueprint,
-        segment: blueprint.segments[0],
+        segment: blueprint.segments[0]!,
         continuitySummaryEn: '',
         precedingSentencesJa: [],
       }).user,
@@ -271,7 +271,7 @@ describe('prompt assembly contracts', () => {
     direction = toggleOption(direction, 'format', 'Diary');
     const added = addCustomOption(direction, 'setting', 'Grandma’s kitchen');
     if (!added.ok) throw new Error('fixture');
-    const [frame] = rollPlotFrames(added.value, { nextInt: () => 0 });
+    const frame = rollPlotFrames(added.value, { nextInt: () => 0 })[0]!;
     const plot = 'Aiko loses her umbrella at the station and has to ask a stranger for help.';
 
     for (const prompt of [

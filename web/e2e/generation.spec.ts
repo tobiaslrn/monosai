@@ -223,7 +223,7 @@ test.describe('steering a story', () => {
     await expect(page.getByTestId('plot-option')).toHaveCount(3);
 
     expect(recorded.plotRequests).toHaveLength(1);
-    const plotRequest = recorded.plotRequests[0].user;
+    const plotRequest = recorded.plotRequests[0]!.user;
     expect(plotRequest.match(/^Genre: Mystery$/gm)).toHaveLength(3);
     expect(plotRequest.match(/^Mood: Heartwarming$/gm)).toHaveLength(3);
     const turns = [...plotRequest.matchAll(/^Turning point: (.+) \(/gm)].map((match) => match[1]);
@@ -254,7 +254,7 @@ test.describe('steering a story', () => {
     });
 
     expect(recorded.storyRequests).toHaveLength(1);
-    const storyRequest = recorded.storyRequests[0].user;
+    const storyRequest = recorded.storyRequests[0]!.user;
     const premise = storyRequest.slice(storyRequest.indexOf('<<<MONOSAI_DATA premise'));
     expect(premise).toContain(`# Premise\n\n${edited}`);
     expect(premise).toContain('## Story direction');
@@ -280,11 +280,11 @@ test.describe('steering a story', () => {
     await page.getByTestId('regenerate-plots').click();
 
     await expect(texts.first()).toHaveText('My own plot about a lost glove.');
-    await expect(texts.nth(1)).not.toHaveText(firstDraft[1]);
-    await expect(texts.nth(2)).not.toHaveText(firstDraft[2]);
+    await expect(texts.nth(1)).not.toHaveText(firstDraft[1]!);
+    await expect(texts.nth(2)).not.toHaveText(firstDraft[2]!);
     expect(calls.plotRequests).toHaveLength(2);
-    expect(calls.plotRequests[1].user).toContain('My own plot about a lost glove.');
-    expect(calls.plotRequests[1].user.match(/^## Frame \d$/gm)).toHaveLength(2);
+    expect(calls.plotRequests[1]!.user).toContain('My own plot about a lost glove.');
+    expect(calls.plotRequests[1]!.user.match(/^## Frame \d$/gm)).toHaveLength(2);
 
     // Back goes up one step; the plots were paid for and are still there.
     await page.getByRole('button', { name: 'Back to direction' }).click();

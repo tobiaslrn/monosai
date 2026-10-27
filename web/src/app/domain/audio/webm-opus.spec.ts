@@ -66,10 +66,10 @@ describe('muxOpusWebm', () => {
     // CodecDelay is 0x56aa followed by its size and big-endian value.
     const at = indexOfId(file, [0x56, 0xaa]);
     expect(at).toBeGreaterThan(0);
-    const size = file[at + 2] & 0x7f;
+    const size = file[at + 2]! & 0x7f;
     let value = 0;
     for (let offset = 0; offset < size; offset += 1) {
-      value = value * 256 + file[at + 3 + offset];
+      value = value * 256 + file[at + 3 + offset]!;
     }
     expect(value).toBe(expected);
   });

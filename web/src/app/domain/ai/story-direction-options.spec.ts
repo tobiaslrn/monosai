@@ -43,7 +43,7 @@ describe('story direction options', () => {
     }
     for (const label of everyLabel) {
       expect(label.length).toBeLessThanOrEqual(MAX_CUSTOM_OPTION_LENGTH);
-      expect(label[0]).toBe(label[0].toUpperCase());
+      expect(label[0]).toBe(label[0]!.toUpperCase());
       // No all-caps labels anywhere in the application.
       expect(label).not.toMatch(/\b[A-Z]{2,}\b/);
     }

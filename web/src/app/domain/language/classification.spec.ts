@@ -57,24 +57,24 @@ async function classify(text: string, entries: readonly string[], mode: 'importe
   });
   return tokens.map((token, index) => ({
     surface: token.surface,
-    validation: statuses[index].validation,
+    validation: statuses[index]!.validation,
   }));
 }
 
 describe('classification precedence', () => {
   it('marks punctuation before anything else', async () => {
     const result = await classify('猫。', [], 'imported');
-    expect(result[1].validation.category).toBe('punctuation');
+    expect(result[1]!.validation.category).toBe('punctuation');
   });
 
   it('matches an exact reviewed single-token form', async () => {
     const result = await classify('猫が好き', ['猫'], 'imported');
-    expect(result[0].validation.category).toBe('anki-exact');
+    expect(result[0]!.validation.category).toBe('anki-exact');
   });
 
   it('matches a reviewed dictionary form used in an inflected surface', async () => {
     const result = await classify('食べました', ['食べる'], 'imported');
-    const eat = result[0].validation;
+    const eat = result[0]!.validation;
     expect(eat.category).toBe('anki-normalized');
     if (eat.category === 'anki-normalized') {
       expect(eat.basis).toBe('lemma');
@@ -88,7 +88,7 @@ describe('classification precedence', () => {
       'anki-phrase',
       'anki-phrase',
     ]);
-    const first = result[0].validation;
+    const first = result[0]!.validation;
     if (first.category === 'anki-phrase') {
       expect(first.tokenSpan).toEqual({ startTokenIndex: 0, endTokenIndex: 2 });
     }
@@ -97,12 +97,12 @@ describe('classification precedence', () => {
   it('leaves a semantic synonym unknown', async () => {
     // 車 is reviewed; 自動車 means the same thing and must not be accepted.
     const result = await classify('自動車を買う', ['車'], 'generated');
-    expect(result[0].validation.category).toBe('unknown');
+    expect(result[0]!.validation.category).toBe('unknown');
   });
 
   it('does not accept a word merely because it shares a kanji', async () => {
     const result = await classify('食堂へ行く', ['食べる'], 'generated');
-    expect(result[0].validation.category).toBe('unknown');
+    expect(result[0]!.validation.category).toBe('unknown');
   });
 
   it('accepts particles and auxiliaries from the structural baseline', async () => {
@@ -120,14 +120,14 @@ describe('classification precedence', () => {
     // the entity recognizer claims.
     const date = await classify('3月14日', [], 'imported');
     expect(date.every((token) => token.validation.category !== 'not-in-snapshot')).toBe(true);
-    const dateEntity = date[0].validation;
+    const dateEntity = date[0]!.validation;
     expect(dateEntity.category).toBe('entity');
     if (dateEntity.category === 'entity') {
       expect(dateEntity.entityKind).toBe('date');
     }
 
     const time = await classify('午後7時', [], 'imported');
-    const timeEntity = time[1].validation;
+    const timeEntity = time[1]!.validation;
     expect(timeEntity.category).toBe('entity');
     if (timeEntity.category === 'entity') {
       expect(timeEntity.entityKind).toBe('time');
@@ -145,7 +145,7 @@ describe('classification precedence', () => {
 
   it('recognizes a Japanese name as an entity', async () => {
     const result = await classify('田中さん', [], 'imported');
-    const name = result[0].validation;
+    const name = result[0]!.validation;
     expect(name.category).toBe('entity');
     if (name.category === 'entity') {
       expect(name.entityKind).toBe('name');
@@ -154,12 +154,12 @@ describe('classification precedence', () => {
 
   it('leaves a katakana word outside the snapshot as a candidate', async () => {
     const result = await classify('テーブル', [], 'generated');
-    expect(result[0].validation.category).toBe('unknown');
+    expect(result[0]!.validation.category).toBe('unknown');
   });
 
   it('reports imported non-matches as not-in-snapshot rather than unknown', async () => {
     const result = await classify('自動車', ['車'], 'imported');
-    expect(result[0].validation.category).toBe('not-in-snapshot');
+    expect(result[0]!.validation.category).toBe('not-in-snapshot');
   });
 
   it('records every supporting vocabulary id when a form is ambiguous', async () => {
@@ -170,7 +170,7 @@ describe('classification precedence', () => {
       vocabulary: compileVocabularyMatcher(items),
       baseline: shippedBaseline(),
     });
-    const validation = statuses[0].validation;
+    const validation = statuses[0]!.validation;
     expect(validation.category).toBe('anki-normalized');
     if (validation.category === 'anki-normalized') {
       expect(validation.vocabularyItemIds).toHaveLength(2);
@@ -193,7 +193,7 @@ describe('classifyAgainstSnapshot', () => {
     });
     expect(outcome.kind).toBe('classified');
     if (outcome.kind === 'classified') {
-      expect(outcome.statuses[0].validation.category).toBe('anki-exact');
+      expect(outcome.statuses[0]!.validation.category).toBe('anki-exact');
     }
   });
 });

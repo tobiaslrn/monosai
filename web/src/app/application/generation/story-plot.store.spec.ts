@@ -33,7 +33,7 @@ describe('StoryPlotStore', () => {
     await plots.prepare(EMPTY_STORY_DIRECTION, '  Keep it gentle. ');
 
     expect(bed.provider.generationCalls.plots).toBe(1);
-    const request = bed.provider.plotRequests[0];
+    const request = bed.provider.plotRequests[0]!;
     expect(request.frames).toHaveLength(3);
     expect(request.keptPlots).toEqual([]);
     expect(request.learnerNotes).toBe('Keep it gentle.');
@@ -50,7 +50,7 @@ describe('StoryPlotStore', () => {
 
     await plots.prepare(EMPTY_STORY_DIRECTION, '');
 
-    const frames = bed.provider.plotRequests[0].frames;
+    const frames = bed.provider.plotRequests[0]!.frames;
     for (const axis of ROLLED_STORY_AXES) {
       expect(new Set(frames.map((frame) => frame.values[axis][0]?.value)).size).toBe(3);
     }
@@ -71,9 +71,9 @@ describe('StoryPlotStore', () => {
 
     await plots.prepare(EMPTY_STORY_DIRECTION, '');
 
-    const recent = bed.provider.plotRequests[0].recentStories;
+    const recent = bed.provider.plotRequests[0]!.recentStories;
     expect(recent).toHaveLength(RECENT_STORY_COUNT);
-    expect(recent[0].titleJa).toBe(`話${String(RECENT_STORY_COUNT + 1)}`);
+    expect(recent[0]!.titleJa).toBe(`話${String(RECENT_STORY_COUNT + 1)}`);
   });
 
   it('does not pay again for the same direction, and drafts again for a changed one', async () => {
@@ -86,7 +86,7 @@ describe('StoryPlotStore', () => {
     await plots.prepare(toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Cozy'), '');
     expect(bed.provider.generationCalls.plots).toBe(2);
     expect(
-      bed.provider.plotRequests[1].frames.every(
+      bed.provider.plotRequests[1]!.frames.every(
         (frame) => frame.values.mood[0]?.value === 'Cozy' && !frame.values.mood[0].rolled,
       ),
     ).toBe(true);
@@ -96,11 +96,11 @@ describe('StoryPlotStore', () => {
     bed.provider.plotQueue.push(ok(PLOTS), ok(['A new plot.', 'Another new plot.']));
     await plots.prepare(EMPTY_STORY_DIRECTION, '');
     plots.edit(1, 'My own plot about my cat.');
-    const keptFrame = plots.cards()[1].frame;
+    const keptFrame = plots.cards()[1]!.frame;
 
     await plots.regenerate(EMPTY_STORY_DIRECTION, '');
 
-    const request = bed.provider.plotRequests[1];
+    const request = bed.provider.plotRequests[1]!;
     expect(request.frames).toHaveLength(2);
     expect(request.keptPlots).toEqual(['My own plot about my cat.']);
     expect(plots.cards().map((card) => card.text)).toEqual([
@@ -108,7 +108,7 @@ describe('StoryPlotStore', () => {
       'My own plot about my cat.',
       'Another new plot.',
     ]);
-    expect(plots.cards()[1].frame).toBe(keptFrame);
+    expect(plots.cards()[1]!.frame).toBe(keptFrame);
     expect(request.frames.map((frame) => frame.turningPoint.label)).not.toContain(
       keptFrame.turningPoint.label,
     );
@@ -121,7 +121,7 @@ describe('StoryPlotStore', () => {
 
     await plots.prepare(toggleOption(EMPTY_STORY_DIRECTION, 'genre', 'Mystery'), '');
 
-    expect(bed.provider.plotRequests[1].frames).toHaveLength(2);
+    expect(bed.provider.plotRequests[1]!.frames).toHaveLength(2);
     expect(plots.cards().map((card) => card.text)).toEqual(['Mine.', 'One.', 'Two.']);
   });
 
@@ -162,7 +162,7 @@ describe('StoryPlotStore', () => {
     const chosen = plots.chosenPlot(direction);
 
     expect(chosen?.premise).toBe(`${PLOTS[2]} It is raining.`);
-    expect(chosen?.plot.frame).toBe(plots.cards()[2].frame);
+    expect(chosen?.plot.frame).toBe(plots.cards()[2]!.frame);
     expect(chosen?.plot.record).toMatchObject({
       selected: { mood: ['Funny'] },
       plotEn: `${PLOTS[2]} It is raining.`,
@@ -235,7 +235,7 @@ describe('StoryPlotStore', () => {
 
     expect(bed.provider.generationCalls.plots).toBe(1);
     expect(plots.status()).toBe('ready');
-    expect(plots.cards()[0].frame.values.mood).toEqual([{ value: 'Sad', rolled: false }]);
+    expect(plots.cards()[0]!.frame.values.mood).toEqual([{ value: 'Sad', rolled: false }]);
     expect(plots.chosenPlot(sad)?.plot.record.frame.mood).toEqual([
       { value: 'Sad', rolled: false },
     ]);
@@ -259,6 +259,6 @@ describe('StoryPlotStore', () => {
 
     await plots.regenerate(EMPTY_STORY_DIRECTION, '');
 
-    expect(bed.provider.plotRequests[1].frames).toHaveLength(3);
+    expect(bed.provider.plotRequests[1]!.frames).toHaveLength(3);
   });
 });

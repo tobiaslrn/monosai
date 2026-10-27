@@ -13,7 +13,7 @@ const speechEncodeErrorSchema = z.object({
     'unknown',
   ]),
   message: z.string(),
-  cause: z.string().optional(),
+  cause: z.string().exactOptional(),
 });
 
 export const speechEncoderRequestMessageSchema = z.object({

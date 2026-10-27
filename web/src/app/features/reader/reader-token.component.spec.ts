@@ -6,6 +6,11 @@ import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import { PointerModalityService } from '../../core/platform/pointer-modality.service';
 import { ReaderTokenComponent, type TokenActivationSource } from './reader-token.component';
 
+/** The token without a reading, as the analyzer leaves one it could not read. */
+function unread({ readingHiragana: _reading, ...rest }: Token): Token {
+  return rest;
+}
+
 function token(overrides: Partial<Token> = {}): Token {
   return {
     id: 't1',
@@ -72,8 +77,8 @@ describe('ReaderTokenComponent', () => {
     element.querySelector('button')?.click();
     const [activation] = fixture.componentInstance.activations;
     expect(fixture.componentInstance.activations).toHaveLength(1);
-    expect(activation.token.surface).toBe('猫');
-    expect(activation.origin).toBe(element.querySelector('button'));
+    expect(activation!.token.surface).toBe('猫');
+    expect(activation!.origin).toBe(element.querySelector('button'));
   });
 
   it('activates on Enter and Space, because it is a native button', () => {
@@ -140,8 +145,8 @@ describe('ReaderTokenComponent', () => {
     // which is what separates it from a keyboard activation.
     button?.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
     expect(fixture.componentInstance.activations).toHaveLength(1);
-    expect(fixture.componentInstance.activations[0].clickCount).toBe(1);
-    expect(fixture.componentInstance.activations[0].modality).toBe('touch');
+    expect(fixture.componentInstance.activations[0]!.clickCount).toBe(1);
+    expect(fixture.componentInstance.activations[0]!.modality).toBe('touch');
   });
 
   /**
@@ -158,7 +163,7 @@ describe('ReaderTokenComponent', () => {
 
     button?.click();
 
-    expect(fixture.componentInstance.activations[0].modality).toBe('keyboard');
+    expect(fixture.componentInstance.activations[0]!.modality).toBe('keyboard');
   });
 
   it('renders ruby only for a reading that adds information', () => {
@@ -196,7 +201,7 @@ describe('ReaderTokenComponent', () => {
   it('renders punctuation as plain text with no focus stop', () => {
     const fixture = render();
     fixture.componentInstance.current.set(
-      token({ id: 'p1', surface: '。', isPunctuation: true, readingHiragana: undefined }),
+      unread(token({ id: 'p1', surface: '。', isPunctuation: true })),
     );
     fixture.detectChanges();
 

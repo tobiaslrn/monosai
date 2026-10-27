@@ -59,9 +59,8 @@ export function classifyTokens(
   const statuses: TokenStatusAssignment[] = [];
   let index = 0;
 
-  while (index < tokens.length) {
-    const token = tokens[index];
-
+  // The update re-reads `index`, which each branch advances past what it consumed.
+  for (let token = tokens[index]; token !== undefined; token = tokens[index]) {
     if (token.isPunctuation) {
       statuses.push({ tokenId: token.id, validation: { category: 'punctuation' } });
       index += 1;
@@ -70,9 +69,9 @@ export function classifyTokens(
 
     const phrase = context.vocabulary.findPhraseAt(tokens, index);
     if (phrase !== null) {
-      for (let cursor = phrase.startTokenIndex; cursor <= phrase.endTokenIndex; cursor += 1) {
+      for (const covered of tokens.slice(phrase.startTokenIndex, phrase.endTokenIndex + 1)) {
         statuses.push({
-          tokenId: tokens[cursor].id,
+          tokenId: covered.id,
           validation: {
             category: 'anki-phrase',
             vocabularyItemId: phrase.vocabularyItemId,

@@ -64,7 +64,7 @@ describe('StepperComponent', () => {
       (node) => node.getAttribute('aria-current') === 'step',
     );
     expect(current).toHaveLength(1);
-    expect(current[0].textContent).toContain('Second');
+    expect(current[0]!.textContent).toContain('Second');
   });
 
   it('shows a stage detail beside its status when one is supplied', () => {

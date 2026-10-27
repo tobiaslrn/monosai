@@ -79,13 +79,13 @@ describe('LanguageWorkerClient', () => {
     const second = client.segment('二。');
     const [firstId, secondId] = channel.sent.map((message) => message.requestId);
 
-    channel.deliver(segmentResponse(secondId, '二。'));
-    channel.deliver(segmentResponse(firstId, '一。'));
+    channel.deliver(segmentResponse(secondId!, '二。'));
+    channel.deliver(segmentResponse(firstId!, '一。'));
 
     const firstResult = await first;
     const secondResult = await second;
-    expect(firstResult.ok && firstResult.value[0].text).toBe('一。');
-    expect(secondResult.ok && secondResult.value[0].text).toBe('二。');
+    expect(firstResult.ok && firstResult.value[0]!.text).toBe('一。');
+    expect(secondResult.ok && secondResult.value[0]!.text).toBe('二。');
   });
 
   it('cancels through the worker and ignores the late answer', async () => {

@@ -99,8 +99,8 @@ describe('collection reader scheduling signals', () => {
         card({ id: 11, nid: 1, did: DECK_ID, reps: 3 }),
       ]);
 
-      expect(notes[0].firstReviewedAt).toBeUndefined();
-      expect(notes[0].reps).toBe(3);
+      expect(notes[0]!.firstReviewedAt).toBeUndefined();
+      expect(notes[0]!.reps).toBe(3);
     });
 
     it('omits the signal when the review log is empty', async () => {
@@ -110,7 +110,7 @@ describe('collection reader scheduling signals', () => {
         card({ id: 11, nid: 1, did: DECK_ID, reps: 3 }),
       ]);
 
-      expect(notes[0].firstReviewedAt).toBeUndefined();
+      expect(notes[0]!.firstReviewedAt).toBeUndefined();
     });
 
     it('does not count reviews of a suspended card toward its note', async () => {
@@ -160,7 +160,7 @@ describe('collection reader scheduling signals', () => {
         card({ id: 11, nid: 1, did: DECK_ID, reps: 3 }),
       ]);
 
-      expect(notes[0].intervalDays).toBeUndefined();
+      expect(notes[0]!.intervalDays).toBeUndefined();
     });
   });
 
@@ -200,7 +200,7 @@ describe('collection reader scheduling signals', () => {
           card({ id: 11, nid: 1, did: DECK_ID, reps: 3, data }),
         ]);
 
-        expect(notes[0].fsrsDifficulty, `data: ${String(data)}`).toBeUndefined();
+        expect(notes[0]!.fsrsDifficulty, `data: ${String(data)}`).toBeUndefined();
       }
     });
 
@@ -211,7 +211,7 @@ describe('collection reader scheduling signals', () => {
         card({ id: 11, nid: 1, did: DECK_ID, reps: 3 }),
       ]);
 
-      expect(notes[0].fsrsDifficulty).toBeUndefined();
+      expect(notes[0]!.fsrsDifficulty).toBeUndefined();
     });
   });
 

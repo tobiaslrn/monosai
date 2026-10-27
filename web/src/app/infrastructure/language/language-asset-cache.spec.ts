@@ -14,8 +14,8 @@ const BASE_URL = 'https://monosai.test/assets/language/1/';
 function fileOf(path: 'structural-baseline.json' | 'grammar-presets.json'): LanguageAssetFile {
   const manifest = readBundleManifest();
   return path === 'structural-baseline.json'
-    ? manifest.components.structuralBaseline.files[0]
-    : manifest.components.grammarPresets.files[0];
+    ? manifest.components.structuralBaseline.files[0]!
+    : manifest.components.grammarPresets.files[0]!;
 }
 
 function bodyFor(bytes: Uint8Array): ArrayBuffer {

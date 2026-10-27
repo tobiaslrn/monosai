@@ -18,15 +18,19 @@ function toEntry(raw: RawDictionaryEntry): DictionaryEntry {
   };
 }
 
-function addKey(index: Map<string, number[]>, key: string, entryIndex: number): void {
+function addKey(
+  index: Map<string, RawDictionaryEntry[]>,
+  key: string,
+  entry: RawDictionaryEntry,
+): void {
   if (key.length === 0) {
     return;
   }
   const bucket = index.get(key);
   if (bucket === undefined) {
-    index.set(key, [entryIndex]);
-  } else if (!bucket.includes(entryIndex)) {
-    bucket.push(entryIndex);
+    index.set(key, [entry]);
+  } else if (!bucket.includes(entry)) {
+    bucket.push(entry);
   }
 }
 
@@ -40,19 +44,19 @@ function addKey(index: Map<string, number[]>, key: string, entryIndex: number): 
 export class DictionaryIndex {
   private constructor(
     private readonly entries: readonly RawDictionaryEntry[],
-    private readonly exact: Map<string, number[]>,
-    private readonly normalized: Map<string, number[]>,
+    private readonly exact: Map<string, RawDictionaryEntry[]>,
+    private readonly normalized: Map<string, RawDictionaryEntry[]>,
   ) {}
 
   static build(entries: readonly RawDictionaryEntry[]): DictionaryIndex {
-    const exact = new Map<string, number[]>();
-    const normalized = new Map<string, number[]>();
-    entries.forEach((entry, entryIndex) => {
+    const exact = new Map<string, RawDictionaryEntry[]>();
+    const normalized = new Map<string, RawDictionaryEntry[]>();
+    for (const entry of entries) {
       for (const form of [...entry.w, ...entry.k]) {
-        addKey(exact, form, entryIndex);
-        addKey(normalized, normalizeLookupKey(form), entryIndex);
+        addKey(exact, form, entry);
+        addKey(normalized, normalizeLookupKey(form), entry);
       }
-    });
+    }
     return new DictionaryIndex(entries, exact, normalized);
   }
 
@@ -60,23 +64,27 @@ export class DictionaryIndex {
     return this.entries.length;
   }
 
-  private resolve(indexes: readonly number[], limit: number): readonly DictionaryEntry[] {
-    return indexes.slice(0, limit).map((entryIndex) => toEntry(this.entries[entryIndex]));
+  private resolve(
+    matches: readonly RawDictionaryEntry[],
+    limit: number,
+  ): readonly DictionaryEntry[] {
+    return matches.slice(0, limit).map(toEntry);
   }
 
-  private compatible(indexes: readonly number[], partOfSpeech: PartOfSpeech): readonly number[] {
-    return indexes.filter((entryIndex) =>
-      this.entries[entryIndex].s.some((sense) => sense.p.includes(partOfSpeech)),
-    );
+  private compatible(
+    matches: readonly RawDictionaryEntry[],
+    partOfSpeech: PartOfSpeech,
+  ): readonly RawDictionaryEntry[] {
+    return matches.filter((entry) => entry.s.some((sense) => sense.p.includes(partOfSpeech)));
   }
 
   private compatibleWithVerbFamily(
-    indexes: readonly number[],
+    matches: readonly RawDictionaryEntry[],
     family: VerbConjugationFamily,
     partOfSpeech?: PartOfSpeech,
-  ): readonly number[] {
-    return indexes.filter((entryIndex) =>
-      this.entries[entryIndex].s.some(
+  ): readonly RawDictionaryEntry[] {
+    return matches.filter((entry) =>
+      entry.s.some(
         (sense) =>
           sense.c?.includes(family) === true &&
           (partOfSpeech === undefined || sense.p.includes(partOfSpeech)),
@@ -86,22 +94,22 @@ export class DictionaryIndex {
 
   /** Stable tie-breaker for a kana spelling JMdict explicitly says is usual. */
   private rankKanaPreferred(
-    indexes: readonly number[],
+    matches: readonly RawDictionaryEntry[],
     lookupKey: string,
     partOfSpeech?: PartOfSpeech,
     family?: VerbConjugationFamily,
-  ): readonly number[] {
+  ): readonly RawDictionaryEntry[] {
     if (!isKanaOnly(lookupKey)) {
-      return indexes;
+      return matches;
     }
-    const preferred = (entryIndex: number): boolean =>
-      this.entries[entryIndex].s.some(
+    const preferred = (entry: RawDictionaryEntry): boolean =>
+      entry.s.some(
         (sense) =>
           sense.u === true &&
           (partOfSpeech === undefined || sense.p.includes(partOfSpeech)) &&
           (family === undefined || sense.c?.includes(family) === true),
       );
-    return [...indexes].sort((left, right) => Number(preferred(right)) - Number(preferred(left)));
+    return [...matches].sort((left, right) => Number(preferred(right)) - Number(preferred(left)));
   }
 
   /**
@@ -112,8 +120,8 @@ export class DictionaryIndex {
    */
   private exactCandidates(
     query: DictionaryQuery,
-  ): readonly [DictionaryMatchBasis, string, number[]][] {
-    const candidates: [DictionaryMatchBasis, string, number[]][] = [];
+  ): readonly [DictionaryMatchBasis, string, RawDictionaryEntry[]][] {
+    const candidates: [DictionaryMatchBasis, string, RawDictionaryEntry[]][] = [];
     const bySurface = this.exact.get(query.surface);
     if (bySurface !== undefined) {
       candidates.push(['surface', query.surface, [...bySurface]]);
@@ -147,9 +155,9 @@ export class DictionaryIndex {
     // into the unrelated word あんな.
     const guessesAllowed = query.partOfSpeech !== 'proper-noun';
 
-    for (const [basis, lookupKey, indexes] of candidates) {
+    for (const [basis, lookupKey, matches] of candidates) {
       const narrowed =
-        query.partOfSpeech === undefined ? indexes : this.compatible(indexes, query.partOfSpeech);
+        query.partOfSpeech === undefined ? matches : this.compatible(matches, query.partOfSpeech);
       if (query.verbConjugationFamily !== undefined) {
         const byFamily = this.compatibleWithVerbFamily(
           narrowed,

@@ -79,8 +79,11 @@ function rubySegmentsForToken(token: Token): readonly WordRubySegment[] {
 
 function matchingPrefixLength(surface: readonly string[], reading: readonly string[]): number {
   let length = 0;
-  while (length < surface.length && isKana(surface[length])) {
-    if (reading[length] !== katakanaToHiragana(surface[length])) {
+  for (const character of surface) {
+    if (!isKana(character)) {
+      break;
+    }
+    if (reading[length] !== katakanaToHiragana(character)) {
       return 0;
     }
     length += 1;
@@ -90,12 +93,12 @@ function matchingPrefixLength(surface: readonly string[], reading: readonly stri
 
 function matchingSuffixLength(surface: readonly string[], reading: readonly string[]): number {
   let length = 0;
-  while (length < surface.length && isKana(surface[surface.length - 1 - length])) {
+  for (const character of [...surface].reverse()) {
+    if (!isKana(character)) {
+      break;
+    }
     const readingIndex = reading.length - 1 - length;
-    if (
-      readingIndex < 0 ||
-      reading[readingIndex] !== katakanaToHiragana(surface[surface.length - 1 - length])
-    ) {
+    if (readingIndex < 0 || reading[readingIndex] !== katakanaToHiragana(character)) {
       return 0;
     }
     length += 1;

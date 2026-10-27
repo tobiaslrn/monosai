@@ -12,7 +12,8 @@ export function chooseAnalysis<T extends { readonly cacheKey: string; readonly c
   records: readonly T[],
   currentKey: string,
 ): { readonly record: T; readonly stale: boolean } | null {
-  if (records.length === 0) {
+  const [first] = records;
+  if (first === undefined) {
     return null;
   }
 
@@ -21,7 +22,7 @@ export function chooseAnalysis<T extends { readonly cacheKey: string; readonly c
     return { record: current, stale: false };
   }
 
-  let [newest] = records;
+  let newest = first;
   for (const record of records) {
     if (record.createdAt >= newest.createdAt) {
       newest = record;

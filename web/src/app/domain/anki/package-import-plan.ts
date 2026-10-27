@@ -57,7 +57,8 @@ export function planPackageImport(
   storedPackageSources: readonly SourceMapping[],
 ): Result<PackageImportPlan, AnkiError> {
   const decks = rootDecks(catalog);
-  if (decks.length === 0) {
+  const [firstDeck] = decks;
+  if (firstDeck === undefined) {
     return err(
       ankiError(
         'deck-discovery-failed',
@@ -70,7 +71,7 @@ export function planPackageImport(
       ankiError('note-type-discovery-failed', 'This package has no note types Monosai can read.'),
     );
   }
-  return derive(catalog, storedPackageSources, decks, { deckName: decks[0].name });
+  return derive(catalog, storedPackageSources, decks, { deckName: firstDeck.name });
 }
 
 /** The same plan with one deck chosen; everything below it is derived again. */
@@ -157,8 +158,14 @@ function derive(
   const noteType =
     findNoteType(catalog, choices.noteTypeName) ??
     findNoteType(catalog, reused?.noteTypeName) ??
-    catalog.noteTypes[0];
-  if (noteType.fieldNames.length === 0) {
+    catalog.noteTypes.at(0);
+  if (noteType === undefined) {
+    return err(
+      ankiError('note-type-discovery-failed', 'This package has no note types Monosai can read.'),
+    );
+  }
+  const [firstField] = noteType.fieldNames;
+  if (firstField === undefined) {
     return err(
       ankiError(
         'field-discovery-failed',
@@ -176,7 +183,7 @@ function derive(
     pickField(noteType, choices.expressionFieldName) ??
     pickField(noteType, reusedField) ??
     inferredField ??
-    noteType.fieldNames[0];
+    firstField;
 
   const deckScope: DeckScope =
     replaces !== null && replaces.deckName === deck.name
@@ -219,7 +226,7 @@ function rootDecks(catalog: AnkiCatalog): readonly AnkiDeck[] {
   const roots: AnkiDeck[] = [];
   const seen = new Set<string>();
   for (const deck of catalog.decks) {
-    const rootName = deck.name.split(DECK_SEPARATOR)[0];
+    const [rootName = deck.name] = deck.name.split(DECK_SEPARATOR);
     if (seen.has(rootName)) {
       continue;
     }
@@ -255,12 +262,14 @@ function reusableFrom(
 }
 
 function mostRecent(sources: readonly SourceMapping[]): SourceMapping | null {
-  return sources.length === 0
-    ? null
-    : [...sources].sort(
+  return (
+    [...sources]
+      .sort(
         (left, right) =>
           (right.lastSyncedAt ?? right.updatedAt) - (left.lastSyncedAt ?? left.updatedAt),
-      )[0];
+      )
+      .at(0) ?? null
+  );
 }
 
 function findNoteType(catalog: AnkiCatalog, name: string | undefined): AnkiNoteType | null {
@@ -278,11 +287,13 @@ function pickField(noteType: AnkiNoteType, name: string | undefined): string | n
  * it has one field, or exactly one field with a name that means "the word".
  */
 function inferExpressionField(noteType: AnkiNoteType): string | null {
-  if (noteType.fieldNames.length === 1) {
-    return noteType.fieldNames[0];
-  }
   const named = noteType.fieldNames.filter((field) =>
     EXPRESSION_FIELD_NAMES.includes(field.trim().toLowerCase()),
   );
-  return named.length === 1 ? named[0] : null;
+  return soleElement(noteType.fieldNames) ?? soleElement(named);
+}
+
+function soleElement<T>(items: readonly T[]): T | null {
+  const [first] = items;
+  return items.length === 1 && first !== undefined ? first : null;
 }

@@ -22,7 +22,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: IS_CI,
   retries: IS_CI ? 2 : 0,
-  workers: IS_CI ? 4 : undefined,
+  // Locally Playwright picks the worker count from the machine.
+  ...(IS_CI ? { workers: 4 } : {}),
   reporter: IS_CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   use: {
     ...CHROMIUM_EXECUTABLE_OVERRIDE,

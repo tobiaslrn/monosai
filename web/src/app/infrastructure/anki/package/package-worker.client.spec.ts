@@ -65,7 +65,7 @@ describe('PackageWorkerClient', () => {
     expect(recorded.transfers[0]).toEqual([archive]);
 
     recorded.respond(
-      success(recorded.posted[0].requestId, 'open', {
+      success(recorded.posted[0]!.requestId, 'open', {
         memberName: 'collection.anki21b',
         compression: 'zstd',
         packageVersion: 3,
@@ -93,9 +93,11 @@ describe('PackageWorkerClient', () => {
     });
 
     // Answered out of order on purpose.
-    recorded.respond(success(recorded.posted[1].requestId, 'extract', { examined: 1, fields: [] }));
     recorded.respond(
-      success(recorded.posted[0].requestId, 'discover', { decks: [], noteTypes: [] }),
+      success(recorded.posted[1]!.requestId, 'extract', { examined: 1, fields: [] }),
+    );
+    recorded.respond(
+      success(recorded.posted[0]!.requestId, 'discover', { decks: [], noteTypes: [] }),
     );
 
     const extracted = await second;
@@ -109,7 +111,9 @@ describe('PackageWorkerClient', () => {
     const client = new PackageWorkerClient(recorded.channel);
 
     const pending = client.discover();
-    recorded.respond(success(recorded.posted[0].requestId, 'extract', { examined: 0, fields: [] }));
+    recorded.respond(
+      success(recorded.posted[0]!.requestId, 'extract', { examined: 0, fields: [] }),
+    );
 
     const result = await pending;
     expect(result.ok).toBe(false);
@@ -123,7 +127,7 @@ describe('PackageWorkerClient', () => {
 
     const pending = client.discover();
     recorded.respond({
-      ...success(recorded.posted[0].requestId, 'discover', {}),
+      ...success(recorded.posted[0]!.requestId, 'discover', {}),
       protocolVersion: PACKAGE_PROTOCOL_VERSION + 1,
     });
 
@@ -149,7 +153,7 @@ describe('PackageWorkerClient', () => {
     const cancel = recorded.posted.find((message) => message.request.operation === 'cancel');
     expect(cancel?.request).toEqual({
       operation: 'cancel',
-      payload: { targetRequestId: recorded.posted[0].requestId },
+      payload: { targetRequestId: recorded.posted[0]!.requestId },
     });
   });
 
@@ -164,7 +168,7 @@ describe('PackageWorkerClient', () => {
 
     // The answer arrives after the fact; nothing must be resolved by it.
     expect(() => {
-      recorded.respond(success(recorded.posted[0].requestId, 'discover', {}));
+      recorded.respond(success(recorded.posted[0]!.requestId, 'discover', {}));
     }).not.toThrow();
   });
 
@@ -236,7 +240,7 @@ describe('PackageWorkerClient', () => {
 
     const pending = client.discover();
     recorded.respond(
-      success(recorded.posted[0].requestId, 'discover', { decks: [{ name: 7 }], noteTypes: [] }),
+      success(recorded.posted[0]!.requestId, 'discover', { decks: [{ name: 7 }], noteTypes: [] }),
     );
 
     const result = await pending;
@@ -260,7 +264,7 @@ describe('PackageWorkerClient', () => {
     const pending = client.discover();
     recorded.respond({
       protocolVersion: PACKAGE_PROTOCOL_VERSION,
-      requestId: recorded.posted[0].requestId,
+      requestId: recorded.posted[0]!.requestId,
       outcome: {
         ok: false,
         error: { domain: 'anki', code: 'made-up', message: 'nope' },

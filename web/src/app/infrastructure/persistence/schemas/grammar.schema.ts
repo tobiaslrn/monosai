@@ -16,7 +16,7 @@ export const grammarProfileRowSchema = z.object({
   key: z.literal('profile'),
   presetId: presetIdSchema,
   registerPreference: registerPreferenceSchema,
-  customGuidance: guidanceSchema.optional(),
+  customGuidance: guidanceSchema.exactOptional(),
   updatedAt: timestampSchema,
 });
 

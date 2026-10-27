@@ -45,11 +45,8 @@ describe('presentStatus', () => {
   });
 
   it('omits the example when the entry ships none', () => {
-    const withoutExample = entry();
-    const presentation = presentStatus(BASELINE_STATUS, {
-      ...withoutExample,
-      exampleJa: undefined,
-    });
+    const { exampleJa: _example, ...withoutExample } = entry();
+    const presentation = presentStatus(BASELINE_STATUS, withoutExample);
 
     expect(presentation.structuralForm).toEqual({
       nameEn: withoutExample.nameEn,

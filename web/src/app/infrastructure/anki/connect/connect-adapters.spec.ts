@@ -240,7 +240,7 @@ describe('DesktopConnectAdapter', () => {
     // The note type is still listed, so a mapping pointing at it reads as
     // stale rather than silently disappearing from the editor.
     expect(discovered.value.noteTypes.map((noteType) => noteType.name)).toContain('Basic');
-    expect(discovered.value.noteTypes[0].fieldNames).toEqual([]);
+    expect(discovered.value.noteTypes[0]!.fieldNames).toEqual([]);
   });
 
   it('reports a failed deck discovery rather than an empty catalog', async () => {

@@ -171,8 +171,12 @@ export class ReaderMenuComponent {
    */
   protected readonly sharedSetup = computed(() => {
     const waiting = this.rows().filter((row) => row.setup);
-    const first = waiting[0];
-    if (waiting.length < 2 || waiting.some((row) => row.status !== first.status)) {
+    const [first] = waiting;
+    if (
+      first === undefined ||
+      waiting.length < 2 ||
+      waiting.some((row) => row.status !== first.status)
+    ) {
       return null;
     }
     const text = waiting.find((row) => row.layer !== 'audio') ?? first;

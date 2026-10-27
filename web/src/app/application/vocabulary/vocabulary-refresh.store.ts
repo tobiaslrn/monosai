@@ -285,7 +285,7 @@ export class VocabularyRefreshStore {
     for (const entry of entries) {
       const practice = normalizePracticeEvidence(entry.practice);
       entriesBySource.get(entry.sourceMappingId)?.push({
-        rawValue: entry.rawFieldValue,
+        ...(entry.rawFieldValue === undefined ? {} : { rawValue: entry.rawFieldValue }),
         ...(entry.rawMeaning === undefined ? {} : { rawMeaning: entry.rawMeaning }),
         ...(entry.sourceNoteId === undefined ? {} : { sourceRecordId: entry.sourceNoteId }),
         ...normalizeSchedulingSignals(entry),
@@ -302,7 +302,7 @@ export class VocabularyRefreshStore {
     }));
 
     const built = await this.sync.prepare(
-      { caches, sources: pendingSources },
+      { caches, ...(pendingSources === undefined ? {} : { sources: pendingSources }) },
       (progress) => {
         this.stateSignal.set({
           kind: 'analyzing',

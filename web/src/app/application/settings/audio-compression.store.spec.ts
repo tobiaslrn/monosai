@@ -113,7 +113,7 @@ describe('AudioCompressionStore', () => {
     const store = build({ encoder: 'unsupported' });
     await store.run();
 
-    expect(repository.audio[0].mimeType).toBe('audio/wav');
+    expect(repository.audio[0]!.mimeType).toBe('audio/wav');
     const state = store.state();
     expect(state.kind === 'finished' && state.compressed).toBe(0);
   });
@@ -125,8 +125,8 @@ describe('AudioCompressionStore', () => {
     await store.run();
 
     // The guard that stops a bad encode becoming the library.
-    expect(repository.audio[0].mimeType).toBe('audio/wav');
-    expect(repository.audio[0].byteLength).toBe(clip(0).byteLength);
+    expect(repository.audio[0]!.mimeType).toBe('audio/wav');
+    expect(repository.audio[0]!.byteLength).toBe(clip(0).byteLength);
   });
 
   it('keeps the original when an encode fails, and carries on with the rest', async () => {
@@ -135,7 +135,7 @@ describe('AudioCompressionStore', () => {
     const store = build({ encoder: 'fails' });
     await store.run();
 
-    expect(repository.audio[0].mimeType).toBe('audio/wav');
+    expect(repository.audio[0]!.mimeType).toBe('audio/wav');
     const state = store.state();
     expect(state.kind === 'finished' && state.skipped).toBe(1);
   });
@@ -159,7 +159,7 @@ describe('AudioCompressionStore', () => {
     const store = build();
     await store.run();
 
-    expect(repository.audio[0].mimeType).toBe('audio/wav');
+    expect(repository.audio[0]!.mimeType).toBe('audio/wav');
   });
 
   it('does nothing when there is nothing stored', async () => {

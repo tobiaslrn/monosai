@@ -107,7 +107,7 @@ describe('ManualSourceSyncStore', () => {
   it('refuses a read that would empty a source that had words', async () => {
     const source = configureSource();
     await store.syncNow(source);
-    const before = beds.vocabulary.snapshots[0].uniqueEntryCount;
+    const before = beds.vocabulary.snapshots[0]!.uniqueEntryCount;
     expect(before).toBeGreaterThan(0);
 
     providerFactory = () =>
@@ -117,7 +117,7 @@ describe('ManualSourceSyncStore', () => {
 
     expect(store.state().kind).toBe('failed');
     expect(store.failureFor(source.id)?.message).toContain('no vocabulary');
-    expect(beds.vocabulary.snapshots[0].uniqueEntryCount).toBe(before);
+    expect(beds.vocabulary.snapshots[0]!.uniqueEntryCount).toBe(before);
   });
 
   it('reports a cancellation as saving nothing', async () => {

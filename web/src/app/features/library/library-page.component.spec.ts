@@ -315,7 +315,7 @@ describe('LibraryPageComponent', () => {
     repository.readings = manyReadings(24);
     const fixture = await render();
 
-    element(fixture).querySelectorAll<HTMLButtonElement>('button[aria-pressed]')[1].click();
+    element(fixture).querySelectorAll<HTMLButtonElement>('button[aria-pressed]')[1]!.click();
     await settle(fixture);
 
     expect(TestBed.inject(LibraryStore).filter()).toBe('imported');
@@ -434,7 +434,7 @@ describe('LibraryPageComponent', () => {
       'false',
     ]);
 
-    filters[1].click();
+    filters[1]!.click();
     await settle(fixture);
 
     expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(4);
@@ -449,7 +449,7 @@ describe('LibraryPageComponent', () => {
     repository.readings = shelf();
     const fixture = await render();
 
-    element(fixture).querySelectorAll<HTMLButtonElement>('button[aria-pressed]')[1].click();
+    element(fixture).querySelectorAll<HTMLButtonElement>('button[aria-pressed]')[1]!.click();
     await settle(fixture);
 
     const live = element(fixture).querySelector('[aria-live="polite"]');
@@ -519,7 +519,7 @@ describe('LibraryPageComponent', () => {
     await settle(fixture);
 
     const field = document.querySelector<HTMLInputElement>('#mn-rename-input');
-    expect(field?.value).toBe(repository.readings[0].title);
+    expect(field?.value).toBe(repository.readings[0]!.title);
     field!.value = '  猫の一日  ';
     field?.dispatchEvent(new Event('input'));
     await settle(fixture);

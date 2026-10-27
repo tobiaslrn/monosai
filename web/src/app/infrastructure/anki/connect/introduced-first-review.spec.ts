@@ -24,7 +24,7 @@ class IntroducedSearchFake {
     const matched = new Set<number>();
     for (const clause of query.matchAll(/\(cid:([0-9,]+) introduced:([0-9]+)\)/gu)) {
       const days = Number(clause[2]);
-      for (const cardId of clause[1].split(',').map(Number)) {
+      for (const cardId of clause[1]!.split(',').map(Number)) {
         const first = this.firstMatchAt.get(cardId);
         if (first !== undefined && days >= first) matched.add(cardId);
       }
@@ -37,9 +37,9 @@ describe('AnkiDroid introduced-day first reviews', () => {
   it('resolves several first-review days in parallel', async () => {
     const cardIds = [NOW - 20 * DAY_MS, NOW - 200 * DAY_MS, NOW - 2_000 * DAY_MS];
     const firstMatchAt = new Map([
-      [cardIds[0], 1],
-      [cardIds[1], 8],
-      [cardIds[2], 365],
+      [cardIds[0]!, 1],
+      [cardIds[1]!, 8],
+      [cardIds[2]!, 365],
     ]);
     const fake = new IntroducedSearchFake(firstMatchAt);
 

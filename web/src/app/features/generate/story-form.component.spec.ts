@@ -123,7 +123,7 @@ describe('StoryFormComponent', () => {
       '2 Direction',
       '3 Plot',
     ]);
-    expect(steps[0].getAttribute('aria-current')).toBe('step');
+    expect(steps[0]!.getAttribute('aria-current')).toBe('step');
     expect(
       element.querySelector('[data-testid="wizard-steps"] button, [data-testid="wizard-steps"] a'),
     ).toBeNull();
@@ -140,7 +140,7 @@ describe('StoryFormComponent', () => {
       atStep(fixture, step);
       const primaries = element.querySelectorAll('.mn-button--primary');
       expect(primaries).toHaveLength(1);
-      expect(primaries[0].textContent.trim()).toBe(step === 3 ? 'Generate story' : 'Next');
+      expect(primaries[0]!.textContent.trim()).toBe(step === 3 ? 'Generate story' : 'Next');
     }
   });
 
@@ -342,7 +342,7 @@ describe('StoryFormComponent', () => {
     const before = genre().map((chip) => chip.textContent.trim());
     expect(before[0]).toBe('Any');
     expect(before.at(-1)).toBe('Custom');
-    expect(genre()[0].getAttribute('aria-pressed')).toBe('true');
+    expect(genre()[0]!.getAttribute('aria-pressed')).toBe('true');
 
     genre()
       .find((chip) => chip.textContent.trim() === 'Mystery')
@@ -364,7 +364,7 @@ describe('StoryFormComponent', () => {
     // Selected is the soft tint a pressed toggle wears, not the filled primary.
     expect(element.querySelectorAll('.axes .mn-button--primary')).toHaveLength(0);
 
-    genre()[0].click();
+    genre()[0]!.click();
     fixture.detectChanges();
     expect(draft.direction().selected.genre).toEqual([]);
   });
@@ -430,12 +430,12 @@ describe('StoryFormComponent', () => {
 
     const options = element.querySelectorAll('[data-testid="plot-option"]');
     expect(options).toHaveLength(3);
-    const first = options[0];
+    const first = options[0]!;
     expect(first.querySelectorAll('.mn-status-pill--dashed').length).toBe(4);
     expect(first.querySelector('.mn-status-pill--accent')?.textContent).toContain('Turning point');
     expect(first.textContent).toContain('(random)');
     expect(first.querySelector('[data-testid="edit-plot"]')).not.toBeNull();
-    expect(options[1].querySelector('[data-testid="edit-plot"]')).toBeNull();
+    expect(options[1]!.querySelector('[data-testid="edit-plot"]')).toBeNull();
   });
 
   it('locks the fields while a run is in flight', () => {

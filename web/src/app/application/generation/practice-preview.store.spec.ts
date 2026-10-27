@@ -269,7 +269,7 @@ describe('PracticePreviewStore', () => {
     });
 
     it('takes the slot away with a removed word rather than refilling it', () => {
-      const removed = store.targets()[0].canonicalExpression;
+      const removed = store.targets()[0]!.canonicalExpression;
 
       store.remove(removed);
 
@@ -278,7 +278,7 @@ describe('PracticePreviewStore', () => {
     });
 
     it('keeps a removal through a shuffle, or it would not be a removal', () => {
-      const removed = store.targets()[0].canonicalExpression;
+      const removed = store.targets()[0]!.canonicalExpression;
       store.remove(removed);
 
       store.shuffle();
@@ -305,7 +305,7 @@ describe('PracticePreviewStore', () => {
 
       await store.refresh();
 
-      expect(store.sources()[0].standing).toBe('measured');
+      expect(store.sources()[0]!.standing).toBe('measured');
       expect(store.hasMeasuredPractice()).toBe(true);
     });
 

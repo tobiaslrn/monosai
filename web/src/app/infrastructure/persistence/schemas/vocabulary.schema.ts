@@ -19,14 +19,14 @@ export const sourceKindSchema = z.enum(['anki-connect', 'anki-package', 'text-li
  * a signal missing from this shape would be silently dropped on read.
  */
 const schedulingSignalsShape = {
-  reps: z.number().int().positive().optional(),
-  lapseRatio: z.number().min(0).max(1).optional(),
-  easeFactor: z.number().positive().optional(),
-  firstReviewedAt: z.number().int().positive().optional(),
-  firstReviewedPrecision: z.enum(['exact', 'anki-day']).optional(),
-  intervalDays: z.number().positive().optional(),
-  fsrsDifficulty: z.number().min(1).max(10).optional(),
-  lastReviewedAt: z.number().int().positive().optional(),
+  reps: z.number().int().positive().exactOptional(),
+  lapseRatio: z.number().min(0).max(1).exactOptional(),
+  easeFactor: z.number().positive().exactOptional(),
+  firstReviewedAt: z.number().int().positive().exactOptional(),
+  firstReviewedPrecision: z.enum(['exact', 'anki-day']).exactOptional(),
+  intervalDays: z.number().positive().exactOptional(),
+  fsrsDifficulty: z.number().min(1).max(10).exactOptional(),
+  lastReviewedAt: z.number().int().positive().exactOptional(),
 };
 
 /**
@@ -37,11 +37,11 @@ const schedulingSignalsShape = {
  * by the capture's basis, not by the row.
  */
 const practiceEvidenceSchema = z.object({
-  answeredWithinDays: z.union([z.literal(1), z.literal(3), z.literal(7)]).optional(),
-  answeredAgain: z.literal(true).optional(),
-  answeredHard: z.literal(true).optional(),
-  recentlyAnsweredWhileLearning: z.literal(true).optional(),
-  recentlyAnsweredWithShortInterval: z.literal(true).optional(),
+  answeredWithinDays: z.union([z.literal(1), z.literal(3), z.literal(7)]).exactOptional(),
+  answeredAgain: z.literal(true).exactOptional(),
+  answeredHard: z.literal(true).exactOptional(),
+  recentlyAnsweredWhileLearning: z.literal(true).exactOptional(),
+  recentlyAnsweredWithShortInterval: z.literal(true).exactOptional(),
 });
 
 const evidenceAvailabilitySchema = z.enum(['available', 'unsupported', 'unavailable']);
@@ -90,32 +90,32 @@ export const vocabularyItemRowSchema = z.object({
   visibleExpression: nonEmptyString,
   canonicalExpression: nonEmptyString,
   expressionHash: nonEmptyString,
-  meaning: nonEmptyString.optional(),
+  meaning: nonEmptyString.exactOptional(),
   ...schedulingSignalsShape,
-  practice: practiceEvidenceSchema.optional(),
+  practice: practiceEvidenceSchema.exactOptional(),
   analyzedSequence: z
     .array(
       z.object({
         surface: z.string(),
-        lemma: z.string().optional(),
-        readingHiragana: z.string().optional(),
+        lemma: z.string().exactOptional(),
+        readingHiragana: z.string().exactOptional(),
       }),
     )
     .readonly(),
 });
 
 export const vocabularyProvenanceRowSchema = z.object({
-  id: z.number().int().optional(),
+  id: z.number().int().exactOptional(),
   v: rowVersionSchema,
   vocabularyItemId: vocabularyItemIdSchema,
   sourceId: vocabularySourceIdSchema,
   sourceKind: sourceKindSchema,
   sourceLabel: nonEmptyString,
-  deckName: nonEmptyString.optional(),
-  noteTypeName: nonEmptyString.optional(),
-  fieldName: nonEmptyString.optional(),
-  meaningFieldName: nonEmptyString.optional(),
-  sourceRecordId: z.string().optional(),
+  deckName: nonEmptyString.exactOptional(),
+  noteTypeName: nonEmptyString.exactOptional(),
+  fieldName: nonEmptyString.exactOptional(),
+  meaningFieldName: nonEmptyString.exactOptional(),
+  sourceRecordId: z.string().exactOptional(),
 });
 
 const sourceBase = {
@@ -137,7 +137,7 @@ export const vocabularySourceRowSchema = z.discriminatedUnion('kind', [
     deckScope: z.enum(['deck-only', 'deck-and-subdecks']),
     noteTypeName: nonEmptyString,
     expressionFieldName: nonEmptyString,
-    meaningFieldName: nonEmptyString.optional(),
+    meaningFieldName: nonEmptyString.exactOptional(),
     automaticSync: z.boolean(),
   }),
   z.object({
@@ -148,7 +148,7 @@ export const vocabularySourceRowSchema = z.discriminatedUnion('kind', [
     deckScope: z.enum(['deck-only', 'deck-and-subdecks']),
     noteTypeName: nonEmptyString,
     expressionFieldName: nonEmptyString,
-    meaningFieldName: nonEmptyString.optional(),
+    meaningFieldName: nonEmptyString.exactOptional(),
     automaticSync: z.literal(false),
   }),
   z.object({
@@ -165,11 +165,11 @@ export const vocabularySourceCacheRowSchema = z.object({
   entries: z
     .array(
       z.object({
-        rawValue: z.string().optional(),
-        rawMeaning: z.string().optional(),
-        sourceRecordId: z.string().optional(),
+        rawValue: z.string().exactOptional(),
+        rawMeaning: z.string().exactOptional(),
+        sourceRecordId: z.string().exactOptional(),
         ...schedulingSignalsShape,
-        practice: practiceEvidenceSchema.optional(),
+        practice: practiceEvidenceSchema.exactOptional(),
       }),
     )
     .readonly(),

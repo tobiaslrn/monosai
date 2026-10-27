@@ -156,7 +156,7 @@ describe('language worker initialization', () => {
           ...manifest.components.structuralBaseline,
           files: [
             {
-              ...manifest.components.structuralBaseline.files[0],
+              ...manifest.components.structuralBaseline.files[0]!,
               sha256: '0'.repeat(64),
             },
           ],
@@ -194,7 +194,7 @@ describe('language worker request handling', () => {
     }
     const first = harness.responseFor('a');
     if (first?.outcome.ok === true && first.outcome.result.operation === 'analyze') {
-      expect(first.outcome.result.value.sentences[0].text).toBe('猫。');
+      expect(first.outcome.result.value.sentences[0]!.text).toBe('猫。');
     }
   });
 
@@ -265,7 +265,7 @@ describe('language worker request handling', () => {
     const analyzed = harness.responseFor('analyze');
     const tokens =
       analyzed?.outcome.ok === true && analyzed.outcome.result.operation === 'analyze'
-        ? analyzed.outcome.result.value.sentences[0].tokens
+        ? analyzed.outcome.result.value.sentences[0]!.tokens
         : [];
 
     await harness.send(
@@ -300,7 +300,7 @@ describe('language worker request handling', () => {
 
     const response = harness.responseFor('classify');
     if (response?.outcome.ok === true && response.outcome.result.operation === 'classify') {
-      expect(response.outcome.result.value.sentences[0].statuses[0].validation.category).toBe(
+      expect(response.outcome.result.value.sentences[0]!.statuses[0]!.validation.category).toBe(
         'anki-exact',
       );
     } else {
@@ -317,7 +317,7 @@ describe('language worker request handling', () => {
     const response = harness.responseFor('lookup');
     if (response?.outcome.ok === true && response.outcome.result.operation === 'lookup') {
       expect(response.outcome.result.value.matchedBy).toBe('surface');
-      expect(response.outcome.result.value.entries[0].senses[0].glossesEn).toContain('to eat');
+      expect(response.outcome.result.value.entries[0]!.senses[0]!.glossesEn).toContain('to eat');
     } else {
       expect.fail('expected a dictionary result');
     }

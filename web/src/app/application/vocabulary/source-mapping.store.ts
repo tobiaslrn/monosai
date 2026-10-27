@@ -20,7 +20,10 @@ export interface NewMapping {
   readonly meaningFieldName?: string;
 }
 
-export type MappingEdit = Partial<NewMapping>;
+export type MappingEdit = Partial<Omit<NewMapping, 'meaningFieldName'>> & {
+  /** A field name maps meanings from that field; `undefined` clears it; absent keeps it. */
+  readonly meaningFieldName?: string | undefined;
+};
 
 /**
  * The learner's configured vocabulary sources.
@@ -116,9 +119,13 @@ export class SourceMappingStore {
     if (existing === undefined) {
       return null;
     }
+    const { meaningFieldName: currentMeaning, ...unchanged } = existing;
+    const { meaningFieldName: editedMeaning, ...changes } = edit;
+    const meaningFieldName = 'meaningFieldName' in edit ? editedMeaning : currentMeaning;
     const updated: SourceMapping = {
-      ...existing,
-      ...edit,
+      ...unchanged,
+      ...changes,
+      ...(meaningFieldName === undefined ? {} : { meaningFieldName }),
       label: `Anki · ${edit.deckName ?? existing.deckName} · ${edit.expressionFieldName ?? existing.expressionFieldName}`,
       updatedAt: this.clock.now(),
     };

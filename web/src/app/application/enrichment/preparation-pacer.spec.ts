@@ -101,7 +101,7 @@ describe('PreparationPacer', () => {
 
     expect(granted).toHaveLength(sentences * 3);
     for (let index = 1; index < granted.length; index += 1) {
-      expect(granted[index].position).toBeGreaterThanOrEqual(granted[index - 1].position);
+      expect(granted[index]!.position).toBeGreaterThanOrEqual(granted[index - 1]!.position);
     }
     // The first sentence is finished by all three layers before the last one is
     // touched by any.

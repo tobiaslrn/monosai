@@ -360,3 +360,23 @@ writes signals. A resource tied to a value, such as an object URL for a clip, li
 makes it and releases it in `onCleanup`, which runs on replacement and on destroy; the effect writes no
 signals. An effect that has to call a store method which reads state it then rewrites wraps the call in
 `untracked()`, or it becomes its own trigger.
+
+## 8.12 Compiler strictness
+
+Beyond `strict`, the TypeScript configuration enables `noUncheckedIndexedAccess` and
+`exactOptionalPropertyTypes` for the application, its workers, the specs, and the end-to-end suites
+([ADR 0084](../decisions/0084-unchecked-index-and-exact-optional-properties.md)).
+
+An indexed read may be absent, and the code says what happens then. Prefer a shape that makes the
+element present — `for…of`, `entries()`, destructuring, iterating the array rather than its indexes —
+then a guard whose absent branch is real behaviour. Where the logic already proves the index, such as
+parallel arrays whose lengths were checked, `defined(value, context)` from `domain/shared/invariant`
+narrows it and throws if that proof is ever broken. `!` is a lint error in application code; specs
+may assert, because a wrong assertion fails the test.
+
+An optional property is present with a value or absent, never present as `undefined`. Objects are
+built with conditional spreads. A property is typed `?: T | undefined` only where `undefined` is a
+value in its own right: a patch in which it clears a field, or raw input to a normalizer. Boundary
+schemas use Zod's `.exactOptional()`. A stored row that fails validation is validated once more
+after `withoutUndefinedProperties`, so a row written with an explicit `undefined` still reads, as
+absent, while a valid row costs one parse and no copy.

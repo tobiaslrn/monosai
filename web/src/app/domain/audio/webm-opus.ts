@@ -94,10 +94,11 @@ function vint(value: number): Uint8Array {
       const out = new Uint8Array(width);
       let remaining = value;
       for (let index = width - 1; index >= 0; index -= 1) {
-        out[index] = remaining & 0xff;
+        // The leading byte also carries the length marker bit.
+        const marker = index === 0 ? 1 << (8 - width) : 0;
+        out[index] = (remaining & 0xff) | marker;
         remaining = Math.floor(remaining / 256);
       }
-      out[0] |= 1 << (8 - width);
       return out;
     }
   }
@@ -164,7 +165,11 @@ function preSkipOf(codecPrivate: Uint8Array): number {
   if (codecPrivate.byteLength < 12) {
     return 0;
   }
-  return codecPrivate[10] | (codecPrivate[11] << 8);
+  return new DataView(
+    codecPrivate.buffer,
+    codecPrivate.byteOffset,
+    codecPrivate.byteLength,
+  ).getUint16(10, true);
 }
 
 /**

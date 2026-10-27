@@ -113,7 +113,7 @@ describe('recent practice', () => {
       candidates: [candidate('proven', { answeredWithinDays: 1 })],
     });
     expect(selection.targets).toHaveLength(1);
-    expect(selection.targets[0].reasons).toEqual(['recent-practice']);
+    expect(selection.targets[0]!.reasons).toEqual(['recent-practice']);
   });
 
   it('returns fewer targets rather than padding with unrelated words', () => {
@@ -294,7 +294,7 @@ describe('words the learner picked', () => {
       candidates: pool,
     });
     expect(selection.targets).toHaveLength(1);
-    expect(selection.targets[0].origin).toBe('manual');
+    expect(selection.targets[0]!.origin).toBe('manual');
   });
 
   it('never draws a picked word a second time automatically', () => {
@@ -350,8 +350,8 @@ describe('the draw itself', () => {
       random: lastAlways,
       candidates: pool,
     });
-    expect(first.targets[0].canonicalExpression).toBe('a');
-    expect(last.targets[0].canonicalExpression).toBe('c');
+    expect(first.targets[0]!.canonicalExpression).toBe('a');
+    expect(last.targets[0]!.canonicalExpression).toBe('c');
   });
 
   it('does not depend on the order the sources were read in', () => {
@@ -402,7 +402,7 @@ describe('the draw itself', () => {
         },
       ],
     });
-    expect(selection.targets[0].itemIds).toEqual([
+    expect(selection.targets[0]!.itemIds).toEqual([
       vocabularyItemId('one'),
       vocabularyItemId('two'),
     ]);

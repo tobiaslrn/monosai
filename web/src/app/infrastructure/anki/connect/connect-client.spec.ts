@@ -124,7 +124,7 @@ describe('AnkiConnectClient', () => {
 
       await client.version();
 
-      const [url, init] = spy.mock.calls[0];
+      const [url, init] = spy.mock.calls[0]!;
       expect(DESKTOP_ENDPOINTS).toContain(url);
       expect(init?.method).toBe('POST');
       expect(JSON.parse(typeof init?.body === 'string' ? init.body : '')).toEqual({
@@ -138,7 +138,7 @@ describe('AnkiConnectClient', () => {
       const server = new FakeAnkiConnectServer(CONTRACT_COLLECTION);
       const spy = vi.fn(server.fetch);
       await clientWith(spy).version();
-      expect(spy.mock.calls[0][1]?.credentials).toBe('omit');
+      expect(spy.mock.calls[0]![1]?.credentials).toBe('omit');
     });
 
     it('sticks to the endpoint that answered', async () => {

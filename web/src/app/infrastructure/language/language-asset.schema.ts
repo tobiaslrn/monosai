@@ -79,11 +79,11 @@ export const structuralBaselineEntrySchema = z.object({
   id: nonEmpty,
   category: z.enum(STRUCTURAL_BASELINE_CATEGORIES),
   forms: z.array(nonEmpty).min(1),
-  readings: z.array(nonEmpty).optional(),
+  readings: z.array(nonEmpty).exactOptional(),
   partsOfSpeech: z.array(partOfSpeechSchema).min(1),
   nameEn: nonEmpty,
   descriptionEn: nonEmpty,
-  exampleJa: nonEmpty.optional(),
+  exampleJa: nonEmpty.exactOptional(),
 });
 
 export const grammarPresetsAssetSchema = z.object({

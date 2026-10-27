@@ -51,10 +51,10 @@ export function installPopoverShim(): () => void {
     announce(element, 'toggle', 'open', 'closed');
     if (
       restoreFocus &&
-      entry.previousFocus instanceof HTMLElement &&
-      entry.previousFocus.isConnected
+      entry!.previousFocus instanceof HTMLElement &&
+      entry!.previousFocus.isConnected
     ) {
-      entry.previousFocus.focus();
+      entry!.previousFocus.focus();
     }
   }
 

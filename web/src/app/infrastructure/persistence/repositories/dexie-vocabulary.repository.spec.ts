@@ -67,9 +67,9 @@ describe('DexieVocabularyRepository', () => {
 
   it('reloads the practice evidence a refresh established, word by word', async () => {
     const commit = snapshotFixture(40);
-    const sourceId = commit.provenance[0].sourceId;
+    const sourceId = commit.provenance[0]!.sourceId;
     const practised = {
-      ...commit.items[0],
+      ...commit.items[0]!,
       practice: { answeredWithinDays: 1, answeredAgain: true },
     } as const;
     const observed = {
@@ -113,7 +113,7 @@ describe('DexieVocabularyRepository', () => {
   it('reloads Android first-review day precision with the timestamp', async () => {
     const commit = snapshotFixture(53);
     const first = {
-      ...commit.items[0],
+      ...commit.items[0]!,
       firstReviewedAt: 1_700_000_000_000,
       firstReviewedPrecision: 'anki-day' as const,
     };
@@ -132,7 +132,7 @@ describe('DexieVocabularyRepository', () => {
 
   it('captures the vocabulary, its revision, and what its sources proved together', async () => {
     const commit = snapshotFixture(41);
-    const sourceId = commit.provenance[0].sourceId;
+    const sourceId = commit.provenance[0]!.sourceId;
     const observed = {
       recentAnswers: 'available',
       recentDifficulty: 'available',
@@ -144,7 +144,7 @@ describe('DexieVocabularyRepository', () => {
     await repository.commitSnapshot({
       ...commit,
       items: [
-        { ...commit.items[0], practice: { answeredWithinDays: 1 }, fsrsDifficulty: 8 },
+        { ...commit.items[0]!, practice: { answeredWithinDays: 1 }, fsrsDifficulty: 8 },
         ...commit.items.slice(1),
       ],
       sources: [packageSourceFixture(sourceId)],
@@ -169,8 +169,8 @@ describe('DexieVocabularyRepository', () => {
     expect(captured.value.expressions).toHaveLength(commit.items.length);
     expect(captured.value.expressions).toContainEqual(
       expect.objectContaining({
-        canonicalExpression: commit.items[0].canonicalExpression,
-        itemIds: [commit.items[0].id],
+        canonicalExpression: commit.items[0]!.canonicalExpression,
+        itemIds: [commit.items[0]!.id],
         practice: { answeredWithinDays: 1 },
         fsrsDifficulty: 8,
       }),
@@ -193,7 +193,7 @@ describe('DexieVocabularyRepository', () => {
 
   it('says a source was never read rather than inventing an observation for it', async () => {
     const commit = snapshotFixture(42);
-    const sourceId = commit.provenance[0].sourceId;
+    const sourceId = commit.provenance[0]!.sourceId;
     await repository.commitSnapshot({ ...commit, sources: [packageSourceFixture(sourceId)] });
 
     const captured = await repository.captureVocabulary();
@@ -205,7 +205,7 @@ describe('DexieVocabularyRepository', () => {
 
   it('leaves an excluded source out of the capture that explains the words', async () => {
     const commit = snapshotFixture(43);
-    const sourceId = commit.provenance[0].sourceId;
+    const sourceId = commit.provenance[0]!.sourceId;
     await repository.commitSnapshot({
       ...commit,
       sources: [{ ...packageSourceFixture(sourceId), enabled: false }],
@@ -224,8 +224,8 @@ describe('DexieVocabularyRepository', () => {
 
   it('lists browser entries with readings, dates, meanings, and provenance at one revision', async () => {
     const commit = snapshotFixture(52);
-    const sourceId = commit.provenance[0].sourceId;
-    const first = commit.items[0];
+    const sourceId = commit.provenance[0]!.sourceId;
+    const first = commit.items[0]!;
     await repository.commitSnapshot({
       ...commit,
       items: [
@@ -337,7 +337,7 @@ describe('DexieVocabularyRepository', () => {
 
   it('stores the sources and caches the snapshot was built from', async () => {
     const commit = snapshotFixture(20);
-    const sourceId = commit.provenance[0].sourceId;
+    const sourceId = commit.provenance[0]!.sourceId;
 
     const committed = await repository.commitSnapshot({
       ...commit,
@@ -362,7 +362,7 @@ describe('DexieVocabularyRepository', () => {
 
   it('stores neither source nor cache when the commit is rejected', async () => {
     const commit = snapshotFixture(21);
-    const sourceId = commit.provenance[0].sourceId;
+    const sourceId = commit.provenance[0]!.sourceId;
 
     const failed = await repository.commitSnapshot({
       ...commit,
@@ -380,7 +380,7 @@ describe('DexieVocabularyRepository', () => {
 
   it('rejects a commit whose source cannot be stored, before writing anything', async () => {
     const commit = snapshotFixture(22);
-    const sourceId = commit.provenance[0].sourceId;
+    const sourceId = commit.provenance[0]!.sourceId;
 
     const failed = await repository.commitSnapshot({
       ...commit,
@@ -400,7 +400,7 @@ describe('DexieVocabularyRepository', () => {
       ...commit,
       provenance: [
         {
-          ...commit.provenance[0],
+          ...commit.provenance[0]!,
           vocabularyItemId: vocabularyItemId(uuid(31337)),
         },
       ],
@@ -416,7 +416,7 @@ describe('DexieVocabularyRepository', () => {
 
     const failed = await repository.commitSnapshot({
       ...commit,
-      items: [commit.items[0], { ...commit.items[1], id: commit.items[0].id }],
+      items: [commit.items[0]!, { ...commit.items[1]!, id: commit.items[0]!.id }],
       snapshot: { ...commit.snapshot, uniqueEntryCount: 2 },
       provenance: [],
     });
@@ -442,8 +442,8 @@ describe('DexieVocabularyRepository', () => {
       return;
     }
     expect(snapshots.value).toHaveLength(1);
-    expect(snapshots.value[0].id).toBe(older.snapshot.id);
-    expect(snapshots.value[0].createdAt).toBe(older.snapshot.createdAt + 5000);
+    expect(snapshots.value[0]!.id).toBe(older.snapshot.id);
+    expect(snapshots.value[0]!.createdAt).toBe(older.snapshot.createdAt + 5000);
     expect(await db.vocabularyItems.count()).toBe(newer.items.length);
     const items = await db.vocabularyItems.toArray();
     expect(items.every((item) => item.snapshotId === older.snapshot.id)).toBe(true);
@@ -494,7 +494,7 @@ describe('DexieVocabularyRepository', () => {
   it('retains provenance for deduplicated expressions', async () => {
     const commit = snapshotFixture(9, 2);
     const extraProvenance = {
-      ...commit.provenance[0],
+      ...commit.provenance[0]!,
       sourceId: vocabularySourceId(uuid(4711)),
       sourceLabel: 'Second deck',
       deckName: 'Second deck',
@@ -511,7 +511,7 @@ describe('DexieVocabularyRepository', () => {
       return;
     }
     const forFirstItem = provenance.value.filter(
-      (record) => record.vocabularyItemId === commit.items[0].id,
+      (record) => record.vocabularyItemId === commit.items[0]!.id,
     );
     expect(forFirstItem).toHaveLength(2);
     expect(forFirstItem.map((record) => record.deckName)).toContain('Second deck');

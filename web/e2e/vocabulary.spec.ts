@@ -214,7 +214,7 @@ test.describe('vocabulary', () => {
     await expect(
       page.getByRole('button', { name: 'Confirm vocabulary', exact: true }),
     ).toBeVisible();
-    expect((await readSnapshots(page))[0].uniqueEntryCount).toBe(3);
+    expect((await readSnapshots(page))[0]!.uniqueEntryCount).toBe(3);
     await expect(page.getByTestId('source-row')).toHaveCount(1);
     await expect(page.getByRole('region', { name: 'Review Anki source' })).toContainText('食べる');
     await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
@@ -229,7 +229,7 @@ test.describe('vocabulary', () => {
 
     const snapshots = await readSnapshots(page);
     expect(snapshots).toHaveLength(1);
-    expect(snapshots[0].sourceKinds).toEqual(['text-list', 'anki-connect']);
+    expect(snapshots[0]!.sourceKinds).toEqual(['text-list', 'anki-connect']);
     await expectNoSeriousAccessibilityViolations(page);
   });
 
@@ -324,7 +324,7 @@ test.describe('vocabulary', () => {
     await expect(page.getByTestId('confirm-refresh')).toHaveCount(0);
     const snapshots = await readSnapshots(page);
     expect(snapshots).toHaveLength(1);
-    expect(snapshots[0].uniqueEntryCount).toBe(4);
+    expect(snapshots[0]!.uniqueEntryCount).toBe(4);
     await expectNoSeriousAccessibilityViolations(page);
   });
 
@@ -450,7 +450,7 @@ test.describe('vocabulary', () => {
     await expect(page.getByTestId('include-source')).toBeChecked();
     await backToWords(page);
     await expect(page.getByTestId('words-standing')).toHaveText('2 words');
-    expect((await readSnapshots(page))[0].uniqueEntryCount).toBe(2);
+    expect((await readSnapshots(page))[0]!.uniqueEntryCount).toBe(2);
     await expectNoSeriousAccessibilityViolations(page);
   });
 
@@ -497,7 +497,7 @@ test.describe('vocabulary', () => {
     const failure = page.getByTestId('source-attention');
     await expect(failure).toBeVisible({ timeout: 60_000 });
     await expect(failure).toContainText('unchanged');
-    expect((await readSnapshots(page))[0].uniqueEntryCount).toBe(2);
+    expect((await readSnapshots(page))[0]!.uniqueEntryCount).toBe(2);
 
     // Retry is the same control, and it works once Anki answers again.
     await page.unrouteAll({ behavior: 'wait' });

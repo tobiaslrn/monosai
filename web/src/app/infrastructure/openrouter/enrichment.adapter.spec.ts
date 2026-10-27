@@ -184,10 +184,10 @@ describe('OpenRouterEnricher translation', () => {
 
     await context.text.translate(contextual, NATIVE);
 
-    const messages = context.server.requests[0].body['messages'] as readonly {
+    const messages = context.server.requests[0]!.body['messages'] as readonly {
       content: string;
     }[];
-    const user = messages[1].content;
+    const user = messages[1]!.content;
     // No generated ids on the wire, and each sentence appears exactly once.
     expect(user).not.toContain('s0');
     expect(user).toContain('[1] TARGET: ねこがいます。');

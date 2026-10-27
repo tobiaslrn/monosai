@@ -86,8 +86,8 @@ describe('translation plan', () => {
     }));
     const selected = selectTranslationCandidates(sentences, analyses);
     expect(selected.map((candidate) => candidate.surfaceJa)).toEqual(['優希', '猫']);
-    expect(selected[0].readingHiragana).toBe('ゆうき');
-    expect(selected[1].examples).toHaveLength(2);
+    expect(selected[0]!.readingHiragana).toBe('ゆうき');
+    expect(selected[1]!.examples).toHaveLength(2);
     expect(selectTranslationCandidates(sentences, [...analyses].reverse())).toEqual(selected);
   });
 

@@ -257,22 +257,21 @@ export class LanguageWorkerHost {
     };
 
     const components = manifest.components;
+    const [tokenizerFile] = components.tokenizer.files;
+    const [dictionaryFile] = components.dictionary.files;
+    const [presetsFile] = components.grammarPresets.files;
+    const [baselineFile] = components.structuralBaseline.files;
     if (
-      components.tokenizer.files.length === 0 ||
-      components.dictionary.files.length === 0 ||
-      components.grammarPresets.files.length === 0 ||
-      components.structuralBaseline.files.length === 0
+      tokenizerFile === undefined ||
+      dictionaryFile === undefined ||
+      presetsFile === undefined ||
+      baselineFile === undefined
     ) {
       return {
         ok: false,
         error: languageError('asset-manifest-invalid', 'The language manifest is incomplete.'),
       };
     }
-    const tokenizerFile = components.tokenizer.files[0];
-    const dictionaryFile = components.dictionary.files[0];
-    const presetsFile = components.grammarPresets.files[0];
-    const baselineFile = components.structuralBaseline.files[0];
-
     const dictionaryJson = await loadAssetJson(context, dictionaryFile);
     if (!dictionaryJson.ok) {
       return dictionaryJson;

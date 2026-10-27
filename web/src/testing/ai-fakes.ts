@@ -556,7 +556,7 @@ export function autoAnswerAuxiliary(provider: StubTextProvider): void {
       answeredGrammar = provider.grammarRequests.length;
     }
     if (provider.translationRequests.length > answeredTranslation) {
-      const request = provider.translationRequests[provider.translationRequests.length - 1];
+      const request = provider.translationRequests[provider.translationRequests.length - 1]!;
       provider.translationQueue.push(
         ok({
           translations: translationTargets(request).map((sentence) => ({

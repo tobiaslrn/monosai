@@ -35,9 +35,9 @@ describe('DexieEnrichmentRepository', () => {
   function translation(index: number, cacheKey = `translation-${index}`): TranslationRecord {
     return {
       id: uuid(7000 + index),
-      sentenceId: draft.sentences[index].id,
+      sentenceId: draft.sentences[index]!.id,
       readingId: draft.reading.id,
-      sourceContentHash: draft.sentences[index].contentHash,
+      sourceContentHash: draft.sentences[index]!.contentHash,
       textEn: `Sentence ${index} in English.`,
       modelId: MODEL,
       promptVersion: 'translate-v1',
@@ -54,9 +54,9 @@ describe('DexieEnrichmentRepository', () => {
     return {
       id: uuid(7900 + index),
       cacheKey,
-      sentenceId: draft.sentences[index].id,
+      sentenceId: draft.sentences[index]!.id,
       readingId: draft.reading.id,
-      sourceContentHash: draft.sentences[index].contentHash,
+      sourceContentHash: draft.sentences[index]!.contentHash,
       profileHash: 'profile-hash-1',
       modelId: MODEL,
       promptVersion: 'grammar-v1',
@@ -68,9 +68,9 @@ describe('DexieEnrichmentRepository', () => {
   function audio(index: number, cacheKey = `audio-${index}`): AudioAsset {
     return {
       id: assetId(uuid(7500 + index)),
-      sentenceId: draft.sentences[index].id,
+      sentenceId: draft.sentences[index]!.id,
       readingId: draft.reading.id,
-      sourceContentHash: draft.sentences[index].contentHash,
+      sourceContentHash: draft.sentences[index]!.contentHash,
       modelId: 'vendor/tts-model',
       voiceId: 'voice-a',
       optionsFingerprint: 'tts-fingerprint',
@@ -133,7 +133,7 @@ describe('DexieEnrichmentRepository', () => {
 
   it('counts every sentence covered by a shared translation key', async () => {
     const cacheKeys = currentTranslationKeys();
-    cacheKeys.set(draft.sentences[1].id, 'translation-0');
+    cacheKeys.set(draft.sentences[1]!.id, 'translation-0');
 
     await repository.storeTranslation(translation(0), cacheKeys);
 
@@ -175,7 +175,7 @@ describe('DexieEnrichmentRepository', () => {
     if (!missing.ok) {
       return;
     }
-    expect(missing.value).toEqual([draft.sentences[1].id, draft.sentences[2].id]);
+    expect(missing.value).toEqual([draft.sentences[1]!.id, draft.sentences[2]!.id]);
   });
 
   describe('sentences that own a stored aid under any configuration', () => {
@@ -190,20 +190,22 @@ describe('DexieEnrichmentRepository', () => {
       if (!stored.ok) {
         return;
       }
-      expect(stored.value).toEqual([draft.sentences[0].id]);
+      expect(stored.value).toEqual([draft.sentences[0]!.id]);
     });
 
     it('answers only for the sentences it was asked about', async () => {
       await repository.storeTranslation(translation(0), currentTranslationKeys());
       await repository.storeTranslation(translation(1, 'translation-1'), currentTranslationKeys());
 
-      const stored = await repository.listSentenceIdsWithStoredTranslation([draft.sentences[1].id]);
+      const stored = await repository.listSentenceIdsWithStoredTranslation([
+        draft.sentences[1]!.id,
+      ]);
 
       expect(stored.ok).toBe(true);
       if (!stored.ok) {
         return;
       }
-      expect(stored.value).toEqual([draft.sentences[1].id]);
+      expect(stored.value).toEqual([draft.sentences[1]!.id]);
     });
 
     it('reports stored grammar analyses regardless of their profile', async () => {
@@ -220,7 +222,7 @@ describe('DexieEnrichmentRepository', () => {
       if (!stored.ok) {
         return;
       }
-      expect(stored.value).toEqual([draft.sentences[2].id]);
+      expect(stored.value).toEqual([draft.sentences[2]!.id]);
     });
 
     it('reports stored audio without reading a single clip', async () => {
@@ -235,7 +237,7 @@ describe('DexieEnrichmentRepository', () => {
       if (!stored.ok) {
         return;
       }
-      expect(stored.value).toEqual([draft.sentences[1].id]);
+      expect(stored.value).toEqual([draft.sentences[1]!.id]);
       expect(spy).not.toHaveBeenCalled();
     });
 
@@ -260,8 +262,8 @@ describe('DexieEnrichmentRepository', () => {
     await repository.storeTranslation(translation(2, 'translation-2'), cacheKeys);
 
     const bounded = await repository.listTranslationsForSentences([
-      draft.sentences[0].id,
-      draft.sentences[2].id,
+      draft.sentences[0]!.id,
+      draft.sentences[2]!.id,
     ]);
 
     expect(bounded.ok).toBe(true);
@@ -269,7 +271,7 @@ describe('DexieEnrichmentRepository', () => {
       return;
     }
     expect(bounded.value.map((record) => record.sentenceId).sort()).toEqual(
-      [draft.sentences[0].id, draft.sentences[2].id].sort(),
+      [draft.sentences[0]!.id, draft.sentences[2]!.id].sort(),
     );
   });
 
@@ -374,7 +376,7 @@ describe('DexieEnrichmentRepository', () => {
     const loaded = await repository.getGrammarAnalysisByCacheKey('grammar-0');
 
     expect(loaded.ok && loaded.value?.profileHash).toBe('profile-hash-1');
-    expect(loaded.ok && loaded.value?.findings[0].confidence).toBe('high');
+    expect(loaded.ok && loaded.value?.findings[0]!.confidence).toBe('high');
   });
 
   it('lists grammar analyses only for the requested sentences, not the whole reading', async () => {
@@ -383,13 +385,13 @@ describe('DexieEnrichmentRepository', () => {
     await repository.storeGrammarAnalysis(grammarAnalysis(1), cacheKeys);
     await repository.storeGrammarAnalysis(grammarAnalysis(2), cacheKeys);
 
-    const bounded = await repository.listGrammarAnalysesForSentences([draft.sentences[1].id]);
+    const bounded = await repository.listGrammarAnalysesForSentences([draft.sentences[1]!.id]);
 
     expect(bounded.ok).toBe(true);
     if (!bounded.ok) {
       return;
     }
-    expect(bounded.value.map((record) => record.sentenceId)).toEqual([draft.sentences[1].id]);
+    expect(bounded.value.map((record) => record.sentenceId)).toEqual([draft.sentences[1]!.id]);
   });
 
   describe('grammar summary', () => {
@@ -530,7 +532,7 @@ describe('DexieEnrichmentRepository', () => {
       if (!bounded.ok) {
         return;
       }
-      expect(bounded.value.map((summary) => summary.sentenceId)).toEqual([draft.sentences[1].id]);
+      expect(bounded.value.map((summary) => summary.sentenceId)).toEqual([draft.sentences[1]!.id]);
     });
 
     /**
@@ -579,7 +581,7 @@ describe('DexieEnrichmentRepository', () => {
     /** Maps two sentences onto one key, as identical Japanese would. */
     function sharedKeys(): Map<(typeof draft.sentences)[number]['id'], string> {
       const keys = currentAudioKeys();
-      keys.set(draft.sentences[1].id, 'audio-0');
+      keys.set(draft.sentences[1]!.id, 'audio-0');
       return keys;
     }
 
@@ -604,7 +606,7 @@ describe('DexieEnrichmentRepository', () => {
 
       const missing = await repository.listSentenceIdsMissingAudio(draft.reading.id, cacheKeys);
 
-      expect(missing.ok && missing.value).toEqual([draft.sentences[2].id]);
+      expect(missing.ok && missing.value).toEqual([draft.sentences[2]!.id]);
     });
 
     it('finds the shared clip for the sentence that has no row of its own', async () => {

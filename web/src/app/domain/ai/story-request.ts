@@ -7,7 +7,7 @@ import type { PlotFrame, StoryDirectionRecord } from './story-direction';
 
 export const STORY_SENTENCE_COUNTS = [5, 15, 30, 50, 100, 200, 400, 800] as const;
 export const MIN_STORY_SENTENCES = STORY_SENTENCE_COUNTS[0];
-export const MAX_STORY_SENTENCES = STORY_SENTENCE_COUNTS[STORY_SENTENCE_COUNTS.length - 1];
+export const MAX_STORY_SENTENCES = Math.max(...STORY_SENTENCE_COUNTS);
 export const DEFAULT_STORY_SENTENCES = 15;
 /** At and above this count, models become notably less reliable at obeying constraints. */
 export const STORY_LENGTH_RELIABILITY_WARNING_SENTENCES = 100;
@@ -65,8 +65,9 @@ export function planStorySegments(
   const plans: StorySegmentPlan[] = [];
   let remaining = sentenceCount;
   while (remaining > 0) {
-    plans.push({ index: plans.length, sentenceCount: Math.min(maximum, remaining) });
-    remaining -= plans[plans.length - 1].sentenceCount;
+    const segmentSentenceCount = Math.min(maximum, remaining);
+    plans.push({ index: plans.length, sentenceCount: segmentSentenceCount });
+    remaining -= segmentSentenceCount;
   }
   return plans;
 }
@@ -196,7 +197,7 @@ export function countCodePoints(text: string): number {
  */
 export function validateStoryInput(
   draft: StoryInputDraft,
-): Result<ValidatedStoryInput, readonly StoryInputIssue[]> {
+): Result<ValidatedStoryInput, readonly [StoryInputIssue, ...StoryInputIssue[]]> {
   const issues: StoryInputIssue[] = [];
   const premise = draft.premise.trim();
   const instructions = draft.specialInstructions?.trim() ?? '';
@@ -221,8 +222,9 @@ export function validateStoryInput(
     });
   }
 
-  if (issues.length > 0) {
-    return err(issues);
+  const [firstIssue, ...laterIssues] = issues;
+  if (firstIssue !== undefined) {
+    return err([firstIssue, ...laterIssues]);
   }
   return ok({
     premise,

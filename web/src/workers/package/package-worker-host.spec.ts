@@ -432,7 +432,7 @@ describe('PackageWorkerHost', () => {
     it('rejects an unusable message without throwing', async () => {
       const harness = createPackageHarness();
       await harness.host.handleMessage({ requestId: 'bad-1', nonsense: true });
-      expect(harness.responses[0].outcome.ok).toBe(false);
+      expect(harness.responses[0]!.outcome.ok).toBe(false);
     });
 
     it('answers a cancelled request with cancelled instead of a stale result', async () => {

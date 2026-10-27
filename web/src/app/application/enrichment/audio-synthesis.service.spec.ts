@@ -116,7 +116,7 @@ describe('AudioSynthesisService', () => {
   function firstSentence(): Sentence {
     return [...bed.draft.sentences].sort(
       (left, right) => left.positionInReading - right.positionInReading,
-    )[0];
+    )[0]!;
   }
 
   function resolved() {

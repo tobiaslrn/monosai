@@ -9,6 +9,7 @@ import { ENRICHMENT_REPOSITORY, READING_REPOSITORY } from '../shared/repository-
 import { AppSettingsStore } from '../settings/app-settings.store';
 import { AUDIO_PLAYER, type AudioSequenceClip, type AudioTimeline } from './audio-player';
 import { MEDIA_SESSION } from './media-session';
+import { defined } from '../../domain/shared/invariant';
 
 /** Audio containers that can be appended to one native continuous resource. */
 type SequenceMimeType = 'audio/mpeg' | 'audio/webm';
@@ -524,7 +525,7 @@ export class AudioPlaybackStore {
   /** Moves to the next posture in `PLAYBACK_MODES`, wrapping at the end. */
   cycleMode(): void {
     const next = PLAYBACK_MODES.indexOf(this.modeSignal()) + 1;
-    this.setMode(PLAYBACK_MODES[next % PLAYBACK_MODES.length]);
+    this.setMode(defined(PLAYBACK_MODES[next % PLAYBACK_MODES.length], 'cycleMode'));
   }
 
   /** Persists and immediately applies the learner's local speech rate. */
@@ -568,10 +569,10 @@ export class AudioPlaybackStore {
     }
     const refIndex = this.refsSignal().findIndex((ref) => ref.id === current);
     const offset = refIndex - sequence.baseIndex;
-    if (offset < 0 || offset >= sequence.timeline.starts.length) {
+    const start = sequence.timeline.starts[offset];
+    if (start === undefined) {
       return;
     }
-    const start = sequence.timeline.starts[offset];
     const end = sequence.timeline.starts[offset + 1] ?? sequence.timeline.duration;
     const elapsed = Math.min(Math.max(this.player.elapsed() - start, 0), Math.max(end - start, 0));
     this.player.pause();
@@ -600,10 +601,10 @@ export class AudioPlaybackStore {
     }
     const clamped = Math.min(Math.max(Math.round(position), 1), refs.length);
     const index = this.nearestAvailableIndex(clamped - 1);
-    if (index === -1) {
+    const target = refs[index]?.id;
+    if (target === undefined) {
       return;
     }
-    const target = refs[index].id;
     if (this.isActive()) {
       const time = this.sequenceTimeOf(index);
       if (time !== null) {
@@ -748,14 +749,14 @@ export class AudioPlaybackStore {
       return;
     }
     const refs = this.refsSignal();
-    const after = refs.findIndex((ref) => ref.id === current) + 1;
-    if (after >= refs.length) {
+    const after = refs[refs.findIndex((ref) => ref.id === current) + 1];
+    if (after === undefined) {
       // The last sentence. Nothing is coming, and the reading is over.
       return;
     }
     this.navigationSignal.update((count) => count + 1);
     this.single = false;
-    this.pendingSignal.set(refs[after].id);
+    this.pendingSignal.set(after.id);
     this.statusSignal.set('waiting');
     this.mediaSession.setPlaybackState('paused');
   }
@@ -916,7 +917,8 @@ export class AudioPlaybackStore {
       return;
     }
     const target = this.availableIndexFrom(direction);
-    if (target === -1) {
+    const targetRef = this.refsSignal()[target];
+    if (targetRef === undefined) {
       if (direction === -1) {
         await this.replayCurrent();
       }
@@ -927,7 +929,6 @@ export class AudioPlaybackStore {
     this.pendingSignal.set(null);
     const time = this.sequenceTimeOf(target);
     if (time !== null) {
-      const targetRef = this.refsSignal()[target];
       this.currentSignal.set(targetRef.id);
       this.player.seek(time);
       try {
@@ -947,10 +948,10 @@ export class AudioPlaybackStore {
       // A sentence stored since the resource was built, or one before its
       // start. Starting there builds a resource from it rather than seeking
       // into audio the element does not have.
-      await this.startAt(this.refsSignal()[target].id);
+      await this.startAt(targetRef.id);
       return;
     }
-    await this.load(this.refsSignal()[target].id);
+    await this.load(targetRef.id);
   }
 
   /** The automatic advance. Deliberately does not count as a navigation. */
@@ -963,11 +964,11 @@ export class AudioPlaybackStore {
     if (this.sequence !== null) {
       // A sealed resource can end at a pace boundary. Continue with the next
       // playable run rather than making the learner press Play again.
-      const next = this.availableIndexFrom(1);
-      if (next === -1) {
+      const next = refs[this.availableIndexFrom(1)];
+      if (next === undefined) {
         this.finish();
       } else {
-        await this.startAt(refs[next].id);
+        await this.startAt(next.id);
       }
       return;
     }
@@ -975,8 +976,8 @@ export class AudioPlaybackStore {
       this.stop();
       return;
     }
-    const target = refs.findIndex((ref) => ref.id === current) + 1;
-    if (target >= refs.length) {
+    const next = refs[refs.findIndex((ref) => ref.id === current) + 1];
+    if (next === undefined) {
       this.finish();
       return;
     }
@@ -988,7 +989,6 @@ export class AudioPlaybackStore {
       this.mediaSession.setPlaybackState('paused');
       return;
     }
-    const next = refs[target];
     if (!this.availableSignal().has(next.id)) {
       // The frontier. The cursor stays on the sentence just heard, so the
       // reader keeps showing where the learner is, and the session waits for
@@ -1157,16 +1157,17 @@ export class AudioPlaybackStore {
     const available = this.availableSignal();
     const playable = this.playableSignal();
     const run: SentenceRef[] = [];
-    const first = playable.get(refs[startIndex]?.id);
+    const startRef = refs[startIndex];
+    const first = startRef === undefined ? undefined : playable.get(startRef.id);
     if (first === undefined) {
       return run;
     }
-    for (let index = startIndex; index < refs.length; index += 1) {
-      const clip = playable.get(refs[index].id);
-      if (!available.has(refs[index].id) || clip?.pace !== first.pace) {
+    for (const ref of refs.slice(startIndex)) {
+      const clip = playable.get(ref.id);
+      if (!available.has(ref.id) || clip?.pace !== first.pace) {
         break;
       }
-      run.push(refs[index]);
+      run.push(ref);
     }
     return run;
   }
@@ -1177,11 +1178,10 @@ export class AudioPlaybackStore {
     if (sequence === null) {
       return null;
     }
-    const offset = refIndex - sequence.baseIndex;
-    if (offset < 0 || offset >= sequence.timeline.starts.length) {
+    const start = sequence.timeline.starts[refIndex - sequence.baseIndex];
+    if (start === undefined) {
       return null;
     }
-    const start = sequence.timeline.starts[offset];
     // Never below the floor: audio evicted to make room for an append is no
     // longer there to seek to, and landing under it would stall the element.
     return Math.max(start, sequence.timeline.floor);
@@ -1220,11 +1220,10 @@ export class AudioPlaybackStore {
     // a regenerated clip replaces an older fallback. Appending that clip would
     // change the resource's source configuration, so it is sealed instead and
     // what is already in it plays out.
-    const rekeyed =
-      sequence.baseIndex + sequence.keys.length > refs.length ||
-      sequence.keys.some(
-        (key, offset) => playable.get(refs[sequence.baseIndex + offset].id)?.cacheKey !== key,
-      );
+    const rekeyed = sequence.keys.some((key, offset) => {
+      const ref = refs[sequence.baseIndex + offset];
+      return ref === undefined || playable.get(ref.id)?.cacheKey !== key;
+    });
     if (rekeyed) {
       this.sealSequence();
       return;
@@ -1232,15 +1231,16 @@ export class AudioPlaybackStore {
 
     const available = this.availableSignal();
     const pending: { readonly cacheKey: string }[] = [];
-    for (let index = this.appendedLimitIndex() + 1; index < refs.length; index += 1) {
-      const clip = playable.get(refs[index].id);
-      if (clip?.pace !== sequence.pace || !available.has(refs[index].id)) {
+    for (const ref of refs.slice(this.appendedLimitIndex() + 1)) {
+      const clip = playable.get(ref.id);
+      if (clip?.pace !== sequence.pace || !available.has(ref.id)) {
         break;
       }
       pending.push({ cacheKey: clip.cacheKey });
     }
     if (pending.length === 0) {
-      const next = playable.get(refs[this.appendedLimitIndex() + 1]?.id);
+      const nextRef = refs[this.appendedLimitIndex() + 1];
+      const next = nextRef === undefined ? undefined : playable.get(nextRef.id);
       if (next !== undefined && next.pace !== sequence.pace) {
         this.sealSequence();
       }
@@ -1283,9 +1283,9 @@ export class AudioPlaybackStore {
       return;
     }
     this.publishMediaPosition();
-    const nextIndex = this.appendedLimitIndex() + 1;
-    const next = playable.get(refs[nextIndex]?.id);
-    if (nextIndex >= refs.length || (next !== undefined && next.pace !== sequence.pace)) {
+    const nextRef = refs[this.appendedLimitIndex() + 1];
+    const next = nextRef === undefined ? undefined : playable.get(nextRef.id);
+    if (nextRef === undefined || (next !== undefined && next.pace !== sequence.pace)) {
       this.sealSequence();
     }
   }
@@ -1313,11 +1313,11 @@ export class AudioPlaybackStore {
     if (sequence === null || !sequence.timeline.open || this.statusSignal() !== 'playing') {
       return;
     }
-    const nextIndex = this.appendedLimitIndex() + 1;
-    if (nextIndex >= this.refsSignal().length) {
+    const nextRef = this.refsSignal()[this.appendedLimitIndex() + 1];
+    if (nextRef === undefined) {
       return;
     }
-    this.pendingSignal.set(this.refsSignal()[nextIndex].id);
+    this.pendingSignal.set(nextRef.id);
     this.statusSignal.set('waiting');
     this.mediaSession.setPlaybackState('paused');
   }
@@ -1377,7 +1377,7 @@ export class AudioPlaybackStore {
       this.player.setRate(this.rateForPace(playable.pace));
       await this.player.play(clip.value.blob, {
         startPaused,
-        startSeconds: options?.startSeconds,
+        ...(options?.startSeconds === undefined ? {} : { startSeconds: options.startSeconds }),
       });
     } catch {
       if (token === this.loadToken) {
@@ -1407,23 +1407,24 @@ export class AudioPlaybackStore {
     const timeline = sequence.timeline;
     const elapsed = this.player.elapsed();
     let index = 0;
-    for (let candidate = 1; candidate < timeline.starts.length; candidate += 1) {
-      if (timeline.starts[candidate] > elapsed) {
+    let indexStart = 0;
+    for (const [candidate, start] of timeline.starts.entries()) {
+      if (candidate > 0 && start > elapsed) {
         break;
       }
       index = candidate;
+      indexStart = start;
     }
-    const refIndex = sequence.baseIndex + index;
-    if (refIndex >= this.refsSignal().length) {
+    const ref = this.refsSignal()[sequence.baseIndex + index];
+    if (ref === undefined) {
       return;
     }
-    const ref = this.refsSignal()[refIndex];
     if (ref.id !== this.currentSignal()) {
       if (this.modeSignal() === 'sentence') {
         this.player.pause();
         this.statusSignal.set('stepped');
         this.mediaSession.setPlaybackState('paused');
-        this.player.seek(timeline.starts[index]);
+        this.player.seek(indexStart);
         // Keep the cursor on the sentence that was actually heard. Continuing
         // advances from it to `ref`; moving the cursor here skipped `ref` on the
         // next press and made the player jump straight to the sentence after it.
@@ -1509,11 +1510,13 @@ export class AudioPlaybackStore {
     const available = this.availableSignal();
     for (let distance = 0; distance < refs.length; distance += 1) {
       const before = index - distance;
-      if (before >= 0 && available.has(refs[before].id)) {
+      const beforeRef = refs[before];
+      if (beforeRef !== undefined && available.has(beforeRef.id)) {
         return before;
       }
       const after = index + distance;
-      if (after < refs.length && available.has(refs[after].id)) {
+      const afterRef = refs[after];
+      if (afterRef !== undefined && available.has(afterRef.id)) {
         return after;
       }
     }
@@ -1531,8 +1534,12 @@ export class AudioPlaybackStore {
     if (from === -1) {
       return -1;
     }
-    for (let index = from + direction; index >= 0 && index < refs.length; index += direction) {
-      if (available.has(refs[index].id)) {
+    for (
+      let index = from + direction, ref = refs[index];
+      ref !== undefined;
+      index += direction, ref = refs[index]
+    ) {
+      if (available.has(ref.id)) {
         return index;
       }
     }

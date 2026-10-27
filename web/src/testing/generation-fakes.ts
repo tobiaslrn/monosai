@@ -143,8 +143,8 @@ function tokenize(text: string): readonly Token[] {
   };
 
   while (cursor < text.length) {
-    if (PUNCTUATION.has(text[cursor])) {
-      push(text[cursor], true);
+    if (PUNCTUATION.has(text[cursor]!)) {
+      push(text[cursor]!, true);
       continue;
     }
     const word = LEXICON.find((entry) => text.startsWith(entry, cursor));
@@ -156,7 +156,7 @@ function tokenize(text: string): readonly Token[] {
     let end = cursor + 1;
     while (
       end < text.length &&
-      !PUNCTUATION.has(text[end]) &&
+      !PUNCTUATION.has(text[end]!) &&
       !LEXICON.some((entry) => text.startsWith(entry, end))
     ) {
       end += 1;

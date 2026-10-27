@@ -221,23 +221,19 @@ function dataBlock(text: string, label: string): string | null {
 
 function markdownUnescape(value: string): string {
   let result = '';
-  for (let index = 0; index < value.length; index += 1) {
-    const character = value[index];
-    if (character !== '\\' || index + 1 >= value.length) {
-      result += character;
-      continue;
-    }
-    const next = value[index + 1];
-    if (next === 'n') {
-      result += '\n';
-    } else if (next === 'r') {
-      result += '\r';
+  let escaping = false;
+  for (const character of value) {
+    if (escaping) {
+      result += character === 'n' ? '\n' : character === 'r' ? '\r' : character;
+      escaping = false;
+    } else if (character === '\\') {
+      escaping = true;
     } else {
-      result += next;
+      result += character;
     }
-    index += 1;
   }
-  return result;
+  // A trailing backslash escapes nothing and stays as written.
+  return escaping ? `${result}\\` : result;
 }
 
 function markdownRequestedEntries(text: string): readonly RequestedEntry[] | null {
@@ -253,11 +249,9 @@ function markdownRequestedEntries(text: string): readonly RequestedEntry[] | nul
       if (current !== undefined) {
         entries.push(current);
       }
-      current = {
-        id: match[1],
-        textJa: markdownUnescape(match[3]),
-        target: match[2] === 'TARGET',
-      };
+      // Every group participates in a match, so the defaults only satisfy the type.
+      const [, id = '', kind, textJa = ''] = match;
+      current = { id, textJa: markdownUnescape(textJa), target: kind === 'TARGET' };
     }
     if (current !== undefined) {
       entries.push(current);
@@ -269,9 +263,11 @@ function markdownRequestedEntries(text: string): readonly RequestedEntry[] | nul
   if (sentences !== null) {
     return sentences.split(/\r?\n/).flatMap((line) => {
       const match = /^\[(\d+)\]\s+(.*)$/.exec(line);
-      return match === null
-        ? []
-        : [{ id: match[1], textJa: markdownUnescape(match[2]), target: true }];
+      if (match === null) {
+        return [];
+      }
+      const [, id = '', textJa = ''] = match;
+      return [{ id, textJa: markdownUnescape(textJa), target: true }];
     });
   }
   return null;
@@ -316,7 +312,7 @@ function legacyRequestedEntries(text: string): readonly RequestedEntry[] {
   const lines = text.split('\n');
   const found: RequestedEntry[] = [];
   lines.forEach((line, index) => {
-    const next = lines[index + 1] as string | undefined;
+    const next = lines[index + 1];
     if (!line.startsWith('id: ') || next?.startsWith('text: ') !== true) {
       return;
     }

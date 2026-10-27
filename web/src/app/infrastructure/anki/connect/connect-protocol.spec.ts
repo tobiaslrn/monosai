@@ -90,7 +90,7 @@ describe('shared bridge wire fixtures', () => {
       expect(catalog.ok).toBe(true);
       if (!catalog.ok) return;
       const samples = await adapter.sampleFields(catalog.value);
-      expect(samples.ok && samples.value[0].fields['Expression']).toBe('ねこ');
+      expect(samples.ok && samples.value[0]!.fields['Expression']).toBe('ねこ');
     });
   }
 });

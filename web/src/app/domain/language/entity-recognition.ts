@@ -35,13 +35,12 @@ function isNumeric(token: Token): boolean {
 export function recognizeEntities(tokens: readonly Token[]): readonly EntityMatch[] {
   const matches: EntityMatch[] = [];
   let index = 0;
-  while (index < tokens.length) {
-    const token = tokens[index];
+  // The update re-reads `index`, which each branch advances past what it matched.
+  for (let token = tokens[index]; token !== undefined; token = tokens[index]) {
     if (isNumeric(token)) {
       let end = index;
       let kind: EntityKind = 'number';
-      while (end + 1 < tokens.length) {
-        const next = tokens[end + 1];
+      for (let next = tokens[end + 1]; next !== undefined; next = tokens[end + 1]) {
         if (isNumeric(next)) {
           end += 1;
           continue;

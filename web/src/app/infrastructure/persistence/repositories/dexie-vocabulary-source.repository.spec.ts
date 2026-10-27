@@ -96,7 +96,7 @@ describe('DexieVocabularySourceRepository', () => {
     const listed = await repository.list();
     expect(listed.ok).toBe(true);
     if (!listed.ok) return;
-    expect(listed.value[0].enabled).toBe(false);
+    expect(listed.value[0]!.enabled).toBe(false);
   });
 
   it('reports a missing mapping rather than creating one', async () => {

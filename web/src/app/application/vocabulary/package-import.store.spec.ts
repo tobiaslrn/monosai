@@ -183,7 +183,7 @@ describe('PackageImportStore', () => {
     // The live source shares the deck name but is never replaced by a package.
     expect([...beds.mappings.stored.values()]).toHaveLength(3);
     expect(beds.mappings.stored.get(liveAnki.id)).toEqual(liveAnki);
-    expect(beds.vocabulary.snapshots[0].uniqueEntryCount).toBe(3);
+    expect(beds.vocabulary.snapshots[0]!.uniqueEntryCount).toBe(3);
   });
 
   it('asks which deck to import when a collection carries several', async () => {

@@ -50,13 +50,13 @@ describe('VocabularyBrowsePageComponent', () => {
 
   async function seedVocabulary(): Promise<void> {
     const commit = snapshotFixture(80, 3);
-    const sourceId = commit.provenance[0].sourceId;
+    const sourceId = commit.provenance[0]!.sourceId;
     beds.mappings.stored.set(sourceId, mappingFor({ id: sourceId }));
     await beds.vocabulary.commitSnapshot({
       ...commit,
       items: [
         {
-          ...commit.items[0],
+          ...commit.items[0]!,
           visibleExpression: '食べる',
           canonicalExpression: '食べる',
           meaning: 'eat',
@@ -65,14 +65,14 @@ describe('VocabularyBrowsePageComponent', () => {
           analyzedSequence: [{ surface: '食べる', readingHiragana: 'たべる' }],
         },
         {
-          ...commit.items[1],
+          ...commit.items[1]!,
           visibleExpression: '飲む',
           canonicalExpression: '飲む',
           meaning: 'drink',
           firstReviewedAt: NOW - 40 * 86_400_000,
         },
         {
-          ...commit.items[2],
+          ...commit.items[2]!,
           visibleExpression: '見る',
           canonicalExpression: '見る',
         },

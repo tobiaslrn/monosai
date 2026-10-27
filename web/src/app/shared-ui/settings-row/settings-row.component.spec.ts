@@ -43,7 +43,7 @@ describe('SettingsRowComponent', () => {
   it('leaves the title without an id when none is asked for', () => {
     const titles = render().querySelectorAll('.mn-settings-row__title');
 
-    expect(titles[1].hasAttribute('id')).toBe(false);
+    expect(titles[1]!.hasAttribute('id')).toBe(false);
   });
 
   it('places the detail line under the title and the control at the end', () => {
@@ -59,7 +59,7 @@ describe('SettingsRowComponent', () => {
   it('lays the end slot out as the actions row only when asked', () => {
     const ends = render().querySelectorAll('.mn-settings-row__end');
 
-    expect(ends[0].classList.contains('mn-actions')).toBe(true);
-    expect(ends[1].classList.contains('mn-actions')).toBe(false);
+    expect(ends[0]!.classList.contains('mn-actions')).toBe(true);
+    expect(ends[1]!.classList.contains('mn-actions')).toBe(false);
   });
 });

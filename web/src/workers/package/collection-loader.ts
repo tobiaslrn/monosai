@@ -43,8 +43,7 @@ function readPackageVersion(meta: Uint8Array): number | null {
   if (meta.length >= 2 && meta[0] === 0x08) {
     let value = 0;
     let shift = 0;
-    for (let index = 1; index < meta.length && index < 6; index += 1) {
-      const byte = meta[index];
+    for (const byte of meta.subarray(1, 6)) {
       value |= (byte & 0x7f) << shift;
       if ((byte & 0x80) === 0) {
         return value;

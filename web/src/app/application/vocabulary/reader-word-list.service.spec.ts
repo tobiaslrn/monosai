@@ -28,7 +28,7 @@ describe('ReaderWordListService', () => {
     expect(bed.mappings.stored.get(anki!.id)).toEqual(anki);
     const lists = [...bed.mappings.stored.values()].filter((source) => source.kind === 'text-list');
     expect(lists).toHaveLength(1);
-    expect(lists[0].content).toBe('猫\n犬');
+    expect(lists[0]!.content).toBe('猫\n犬');
     expect(bed.vocabulary.items.map((item) => item.visibleExpression)).toEqual(['猫', '犬']);
   });
 

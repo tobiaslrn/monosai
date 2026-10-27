@@ -47,6 +47,12 @@ export class NavigationHistoryService {
     return this.canPopTo(expectedOrigin) ? navigationOriginState(expectedOrigin) : undefined;
   }
 
+  /** `preservedOriginState` as navigation extras, with no `state` when there is none. */
+  preservedOrigin(expectedOrigin: string): { readonly state?: NavigationOriginState } {
+    const state = this.preservedOriginState(expectedOrigin);
+    return state === undefined ? {} : { state };
+  }
+
   async backOrNavigate(fallbackUrl: string): Promise<void> {
     if (this.canPopTo(fallbackUrl)) {
       this.location.back();

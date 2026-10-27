@@ -490,9 +490,9 @@ describe('BrowserStorageMaintenance', () => {
     await enrichment.storeAudio(
       {
         id: assetId(uuid(9100)),
-        sentenceId: draft.sentences[0].id,
+        sentenceId: draft.sentences[0]!.id,
         readingId: draft.reading.id,
-        sourceContentHash: draft.sentences[0].contentHash,
+        sourceContentHash: draft.sentences[0]!.contentHash,
         modelId: 'vendor/tts',
         voiceId: 'voice-a',
         optionsFingerprint: 'fingerprint',
@@ -502,21 +502,21 @@ describe('BrowserStorageMaintenance', () => {
         cacheKey: 'audio-key',
         createdAt: 1_700_800_000_000,
       },
-      new Map([[draft.sentences[0].id, 'audio-key']]),
+      new Map([[draft.sentences[0]!.id, 'audio-key']]),
     );
     await enrichment.storeTranslation(
       {
         id: uuid(9200),
-        sentenceId: draft.sentences[0].id,
+        sentenceId: draft.sentences[0]!.id,
         readingId: draft.reading.id,
-        sourceContentHash: draft.sentences[0].contentHash,
+        sourceContentHash: draft.sentences[0]!.contentHash,
         textEn: 'The cat likes it.',
         modelId: 'vendor/text',
         promptVersion: 'v1',
         cacheKey: 'translation-key',
         createdAt: 1_700_800_000_000,
       },
-      new Map([[draft.sentences[0].id, 'translation-key']]),
+      new Map([[draft.sentences[0]!.id, 'translation-key']]),
     );
 
     const cleared = await maintenance.clearAudioCache();
@@ -547,9 +547,9 @@ describe('BrowserStorageMaintenance', () => {
       await enrichment.storeAudio(
         {
           id: assetId(uuid(seed)),
-          sentenceId: draft.sentences[0].id,
+          sentenceId: draft.sentences[0]!.id,
           readingId: draft.reading.id,
-          sourceContentHash: draft.sentences[0].contentHash,
+          sourceContentHash: draft.sentences[0]!.contentHash,
           modelId: 'vendor/tts',
           voiceId: 'voice-a',
           optionsFingerprint: 'fingerprint',
@@ -559,15 +559,15 @@ describe('BrowserStorageMaintenance', () => {
           cacheKey: key,
           createdAt: 1_700_800_000_000,
         },
-        new Map([[draft.sentences[0].id, key]]),
+        new Map([[draft.sentences[0]!.id, key]]),
       );
       await jobs.create({
         id: jobId(uuid(seed + 1)),
         kind: 'prepare-audio',
         readingId: draft.reading.id,
         state: 'complete',
-        orderedSentenceIds: [draft.sentences[0].id],
-        completedSentenceIds: [draft.sentences[0].id],
+        orderedSentenceIds: [draft.sentences[0]!.id],
+        completedSentenceIds: [draft.sentences[0]!.id],
         failedItems: [],
         configFingerprint: 'fingerprint',
         createdAt: 1_700_800_000_000,
@@ -597,23 +597,23 @@ describe('BrowserStorageMaintenance', () => {
     await enrichment.storeTranslation(
       {
         id: uuid(9500),
-        sentenceId: draft.sentences[0].id,
+        sentenceId: draft.sentences[0]!.id,
         readingId: draft.reading.id,
-        sourceContentHash: draft.sentences[0].contentHash,
+        sourceContentHash: draft.sentences[0]!.contentHash,
         textEn: 'Saved translation.',
         modelId: 'vendor/text',
         promptVersion: 'v1',
         cacheKey: 'translation-clear-key',
         createdAt: clock.now(),
       },
-      new Map([[draft.sentences[0].id, 'translation-clear-key']]),
+      new Map([[draft.sentences[0]!.id, 'translation-clear-key']]),
     );
     await enrichment.storeAudio(
       {
         id: assetId(uuid(9501)),
-        sentenceId: draft.sentences[0].id,
+        sentenceId: draft.sentences[0]!.id,
         readingId: draft.reading.id,
-        sourceContentHash: draft.sentences[0].contentHash,
+        sourceContentHash: draft.sentences[0]!.contentHash,
         modelId: 'vendor/tts',
         voiceId: 'voice-a',
         optionsFingerprint: 'fingerprint',
@@ -623,15 +623,15 @@ describe('BrowserStorageMaintenance', () => {
         cacheKey: 'audio-preserved-key',
         createdAt: clock.now(),
       },
-      new Map([[draft.sentences[0].id, 'audio-preserved-key']]),
+      new Map([[draft.sentences[0]!.id, 'audio-preserved-key']]),
     );
     await jobs.create({
       id: jobId(uuid(9502)),
       kind: 'translate-reading',
       readingId: draft.reading.id,
       state: 'complete',
-      orderedSentenceIds: [draft.sentences[0].id],
-      completedSentenceIds: [draft.sentences[0].id],
+      orderedSentenceIds: [draft.sentences[0]!.id],
+      completedSentenceIds: [draft.sentences[0]!.id],
       failedItems: [],
       configFingerprint: 'fingerprint',
       createdAt: clock.now(),

@@ -99,18 +99,19 @@ function longestMatch(
   index: number,
   keysFor: (token: Token) => readonly string[],
 ): TrieHit | null {
-  if (index >= tokens.length) {
+  const token = tokens[index];
+  if (token === undefined) {
     return null;
   }
-  const token = tokens[index];
   let best: TrieHit | null = null;
   for (const key of keysFor(token)) {
     const child = node.children.get(key);
     if (child === undefined) {
       continue;
     }
-    if (child.itemIds.length > 0 && (best === null || index > best.endTokenIndex)) {
-      best = { itemId: child.itemIds[0], endTokenIndex: index };
+    const [itemId] = child.itemIds;
+    if (itemId !== undefined && (best === null || index > best.endTokenIndex)) {
+      best = { itemId, endTokenIndex: index };
     }
     const deeper = longestMatch(child, tokens, index + 1, keysFor);
     if (deeper !== null && (best === null || deeper.endTokenIndex > best.endTokenIndex)) {

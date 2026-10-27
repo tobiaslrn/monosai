@@ -315,9 +315,14 @@ export class GrammarJobStore {
      * layers fill the reading together rather than one after another.
      */
     const runBatch = async (batch: readonly Sentence[]): Promise<void> => {
+      const [first] = batch;
+      if (first === undefined) {
+        // An empty batch asks for nothing.
+        return;
+      }
       let permit;
       try {
-        permit = await this.pacer.acquire(batch[0].positionInReading, 'grammar', signal);
+        permit = await this.pacer.acquire(first.positionInReading, 'grammar', signal);
       } catch {
         // Cancelled while still queued: nothing was requested, so there is
         // nothing to store and nothing to record.
@@ -352,7 +357,7 @@ export class GrammarJobStore {
       // sentences themselves and never the provider's reply.
       this.logger.info('job.batch', {
         kind: 'grammar',
-        step: batch[0].positionInReading,
+        step: first.positionInReading,
         count: batch.length,
         durationMs: this.clock.now() - startedAt,
       });

@@ -30,6 +30,7 @@ import {
   VOCABULARY_REPOSITORY,
 } from '../shared/repository-tokens';
 import { VocabularyPreparationService } from './vocabulary-preparation.service';
+import { defined } from '../../domain/shared/invariant';
 
 export type PlotDraftStatus = 'idle' | 'drafting' | 'ready' | 'failed';
 
@@ -346,13 +347,18 @@ export class StoryPlotStore {
       this.random,
       kept.map((card) => card?.frame ?? null),
     );
-    const writing = kept.flatMap((card, index) => (card === null ? [index] : []));
+    // `rollPlotFrames` returns one frame per kept entry, in order.
+    const slots = kept.map((card, index) => ({
+      card,
+      frame: defined(frames[index], 'rolled plot frame'),
+    }));
+    const writing = slots.flatMap(({ card, frame }) => (card === null ? [frame] : []));
     const keptPlots = kept.flatMap((card) => (card === null ? [] : [card.text.trim()]));
     const trimmedNotes = notes.trim();
 
     const drafted = await this.provider.draftPlots(
       {
-        frames: writing.map((index) => frames[index]),
+        frames: writing,
         keptPlots,
         recentStories,
         focusVocabulary: prepared.value.focusVocabulary
@@ -373,12 +379,12 @@ export class StoryPlotStore {
 
     const texts = [...drafted.value];
     this.cardsSignal.set(
-      kept.map((card, index) => {
+      slots.map(({ card, frame }) => {
         if (card !== null) {
           return card;
         }
         const text = texts.shift() ?? '';
-        return { id: this.newCardId(), frame: frames[index], text, draftedText: text };
+        return { id: this.newCardId(), frame, text, draftedText: text };
       }),
     );
     this.selectedSignal.update((index) => Math.min(index, kept.length - 1));

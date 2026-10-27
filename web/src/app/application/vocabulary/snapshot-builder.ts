@@ -17,6 +17,7 @@ import type { VocabularyContent } from '../../domain/vocabulary/vocabulary-repos
 import { MARKUP_TEXT_EXTRACTOR } from '../shared/anki-tokens';
 import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { CLOCK, HASHER, ID_GENERATOR } from '../shared/repository-tokens';
+import { defined } from '../../domain/shared/invariant';
 
 /** Expressions sent to the language worker per call. */
 const ANALYSIS_BATCH_SIZE = 200;
@@ -240,7 +241,8 @@ export class SnapshotBuilder {
       }
 
       batch.forEach(([hash], index) => {
-        const sentence = analyzed.value[index];
+        // Same length as `batch`, checked above.
+        const sentence = defined(analyzed.value[index], 'expression analysis');
         sequences.set(
           hash,
           sentence.tokens.map((token) => ({

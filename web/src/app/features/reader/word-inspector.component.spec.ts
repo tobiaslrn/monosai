@@ -37,6 +37,12 @@ const TOKEN: Token = {
   isPunctuation: false,
 };
 
+/** `TOKEN` without a reading, as the analyzer leaves one it could not read. */
+function unreadToken(): Token {
+  const { readingHiragana: _reading, ...rest } = TOKEN;
+  return rest;
+}
+
 const POLITE_ENDING: StructuralBaselineEntry = {
   id: 'sb-copula-desu',
   category: 'copula',
@@ -241,8 +247,8 @@ describe('WordInspectorComponent', () => {
     // One entry per rule, title and explanation together. There is nothing to
     // open: the explanation is the reason the reader stopped at this word.
     expect(findings).toHaveLength(1);
-    expect(findings[0].textContent).toContain('が as subject marker');
-    expect(findings[0].textContent).toContain('Marks who performs the action.');
+    expect(findings[0]!.textContent).toContain('が as subject marker');
+    expect(findings[0]!.textContent).toContain('Marks who performs the action.');
     expect(element.querySelector('details')).toBeNull();
   });
 
@@ -469,9 +475,8 @@ describe('WordInspectorComponent', () => {
       ).nativeElement as HTMLElement;
       const unreadable = (
         await render(NO_WORD_GRAMMAR, {
-          ...TOKEN,
+          ...unreadToken(),
           surface: '開く',
-          readingHiragana: undefined,
         })
       ).nativeElement as HTMLElement;
 
@@ -532,7 +537,7 @@ describe('WordInspectorComponent', () => {
   describe('compact form summary', () => {
     async function renderWord(tokens: readonly Token[]) {
       await TestBed.inject(WordInspectorStore).inspect({
-        token: tokens[0],
+        token: tokens[0]!,
         word: wordAt(tokens, 0),
         sentence: SENTENCE,
         status: null,

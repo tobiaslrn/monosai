@@ -374,7 +374,7 @@ async function storeClipsAt(
     sentences.map((sentence) => [sentence.id, keyFor(bed, sentence.contentHash)]),
   );
   for (const index of positions) {
-    const sentence = sentences[index];
+    const sentence = sentences[index]!;
     const asset: AudioAsset = {
       id: assetId(uuid(8100 + index)),
       sentenceId: sentence.id,
@@ -432,7 +432,7 @@ describe('AudioPlaybackStore', () => {
       await storeClipsAt(bed, [0], 'audio/mpeg', null);
       await bed.store.prepare(bed.reading);
 
-      await bed.store.playSentence(orderedSentences(bed.draft)[0].id);
+      await bed.store.playSentence(orderedSentences(bed.draft)[0]!.id);
 
       expect(bed.player.rates.at(-1)).toBe(1);
     });
@@ -504,10 +504,10 @@ describe('AudioPlaybackStore', () => {
       bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
 
       await bed.store.prepare(bed.reading);
-      await bed.store.playSentence(orderedSentences(bed.draft)[0].id);
+      await bed.store.playSentence(orderedSentences(bed.draft)[0]!.id);
 
       const newest = await bed.enrichment.getAudioByCacheKey(
-        keyFor(bed, orderedSentences(bed.draft)[0].contentHash, 'voice-c'),
+        keyFor(bed, orderedSentences(bed.draft)[0]!.contentHash, 'voice-c'),
       );
       expect(newest.ok && newest.value).not.toBeNull();
       expect(await bed.player.played[0]?.text()).toBe(
@@ -516,7 +516,7 @@ describe('AudioPlaybackStore', () => {
     });
 
     it('does not fall back after a sentence was edited', async () => {
-      const sentence = orderedSentences(bed.draft)[0];
+      const sentence = orderedSentences(bed.draft)[0]!;
       await bed.enrichment.storeAudio(
         {
           id: assetId(uuid(8900)),
@@ -608,7 +608,7 @@ describe('AudioPlaybackStore', () => {
       await storeClips(bed, 1);
       await bed.store.prepare(bed.reading);
 
-      await bed.store.playFrom(orderedSentences(bed.draft)[2].id);
+      await bed.store.playFrom(orderedSentences(bed.draft)[2]!.id);
 
       expect(bed.player.played).toEqual([]);
       expect(bed.store.status()).toBe('idle');
@@ -712,15 +712,15 @@ describe('AudioPlaybackStore', () => {
       if (!loaded.ok || loaded.value === null) {
         throw new Error('the duplicate fixture should save');
       }
-      const shared = keyFor(bed, duplicates.sentences[0].contentHash);
-      expect(keyFor(bed, duplicates.sentences[1].contentHash)).toBe(shared);
+      const shared = keyFor(bed, duplicates.sentences[0]!.contentHash);
+      expect(keyFor(bed, duplicates.sentences[1]!.contentHash)).toBe(shared);
 
       await bed.enrichment.storeAudio(
         {
           id: assetId(uuid(8200)),
-          sentenceId: duplicates.sentences[0].id,
+          sentenceId: duplicates.sentences[0]!.id,
           readingId: duplicates.reading.id,
-          sourceContentHash: duplicates.sentences[0].contentHash,
+          sourceContentHash: duplicates.sentences[0]!.contentHash,
           modelId: bed.settings().modelId,
           voiceId: bed.settings().voiceId,
           optionsFingerprint: audioOptionsFingerprint(TEST_HASHER, {
@@ -750,7 +750,7 @@ describe('AudioPlaybackStore', () => {
       await storeClips(bed, 1);
       await bed.store.prepare(bed.reading);
 
-      await bed.store.playSentence(orderedSentences(bed.draft)[0].id);
+      await bed.store.playSentence(orderedSentences(bed.draft)[0]!.id);
 
       expect(bed.player.played).toHaveLength(1);
       expect(bed.store.status()).toBe('playing');
@@ -767,19 +767,19 @@ describe('AudioPlaybackStore', () => {
       const sentences = orderedSentences(bed.draft);
 
       await bed.store.play();
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[0]!.id);
       expect(bed.store.currentPosition()).toBe(1);
 
       for (let index = 1; index < SENTENCE_COUNT; index += 1) {
         bed.player.finishClip();
         await settle();
-        expect(bed.store.currentSentenceId()).toBe(sentences[index].id);
+        expect(bed.store.currentSentenceId()).toBe(sentences[index]!.id);
       }
       expect(bed.player.played).toHaveLength(SENTENCE_COUNT);
     });
 
     it('starts from the sentence it was asked to start from', async () => {
-      const third = orderedSentences(bed.draft)[2];
+      const third = orderedSentences(bed.draft)[2]!;
 
       await bed.store.playFrom(third.id);
 
@@ -795,20 +795,20 @@ describe('AudioPlaybackStore', () => {
      */
     it('ends at the last sentence, keeping the cursor there', async () => {
       const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[SENTENCE_COUNT - 1].id);
+      await bed.store.playFrom(sentences[SENTENCE_COUNT - 1]!.id);
 
       bed.player.finishClip();
       await settle();
 
       expect(bed.store.status()).toBe('ended');
-      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1]!.id);
       expect(bed.store.currentPosition()).toBe(SENTENCE_COUNT);
       expect(bed.store.canGoPrevious()).toBe(true);
     });
 
     it('replays the last sentence from a finished reading', async () => {
       const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[SENTENCE_COUNT - 1].id);
+      await bed.store.playFrom(sentences[SENTENCE_COUNT - 1]!.id);
       bed.player.finishClip();
       await settle();
       bed.player.position = 4;
@@ -817,7 +817,7 @@ describe('AudioPlaybackStore', () => {
 
       expect(bed.player.restarts).toBe(1);
       expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1]!.id);
     });
 
     /**
@@ -842,12 +842,12 @@ describe('AudioPlaybackStore', () => {
      */
     it('does nothing when Next is pressed at the last sentence', async () => {
       const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[SENTENCE_COUNT - 1].id);
+      await bed.store.playFrom(sentences[SENTENCE_COUNT - 1]!.id);
 
       await bed.store.next();
 
       expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1]!.id);
     });
 
     /**
@@ -857,36 +857,36 @@ describe('AudioPlaybackStore', () => {
      */
     it('replays the sentence being read before stepping back to the one before', async () => {
       const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[1].id);
+      await bed.store.playFrom(sentences[1]!.id);
       bed.player.position = 4;
 
       await bed.store.previous();
 
       expect(bed.player.restarts).toBe(1);
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
       expect(bed.store.status()).toBe('playing');
 
       // Restarting put playback back at the beginning, where Previous means
       // the sentence before this one again.
       await bed.store.previous();
 
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[0]!.id);
     });
 
     it('steps back rather than replaying when a sentence has only just started', async () => {
       const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[1].id);
+      await bed.store.playFrom(sentences[1]!.id);
       bed.player.position = 0.4;
 
       await bed.store.previous();
 
       expect(bed.player.restarts).toBe(0);
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[0]!.id);
     });
 
     it('replays from the start of a paused sentence rather than resuming it', async () => {
       const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[1].id);
+      await bed.store.playFrom(sentences[1]!.id);
       bed.player.position = 4;
       bed.store.pause();
 
@@ -909,7 +909,7 @@ describe('AudioPlaybackStore', () => {
     });
 
     it('plays one sentence and stops at its end rather than reading on', async () => {
-      await bed.store.playSentence(orderedSentences(bed.draft)[0].id);
+      await bed.store.playSentence(orderedSentences(bed.draft)[0]!.id);
 
       bed.player.finishClip();
       await settle();
@@ -959,15 +959,15 @@ describe('AudioPlaybackStore', () => {
 
       bed.player.finishClip();
       await settle();
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
 
       bed.player.finishClip();
       await settle();
 
       expect(bed.store.status()).toBe('waiting');
       // The cursor stays where the learner is, so the reader keeps showing it.
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
-      expect(bed.store.pendingSentenceId()).toBe(sentences[2].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
+      expect(bed.store.pendingSentenceId()).toBe(sentences[2]!.id);
       expect(bed.store.pendingPosition()).toBe(3);
       expect(bed.player.played).toHaveLength(2);
     });
@@ -985,7 +985,7 @@ describe('AudioPlaybackStore', () => {
       await bed.store.prepare(bed.reading);
 
       expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[2]!.id);
       expect(bed.store.pendingSentenceId()).toBeNull();
       expect(bed.player.played).toHaveLength(3);
     });
@@ -1038,7 +1038,7 @@ describe('AudioPlaybackStore', () => {
     it('ends at the end of the reading rather than waiting for a sentence after it', async () => {
       await storeClips(bed);
       await bed.store.prepare(bed.reading);
-      await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1].id);
+      await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1]!.id);
 
       bed.player.finishClip();
       await settle();
@@ -1066,7 +1066,7 @@ describe('AudioPlaybackStore', () => {
       expect(bed.store.status()).toBe('ended');
       expect(bed.store.pendingSentenceId()).toBeNull();
       // The cursor stays on the sentence that was heard, so Back still works.
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
       expect(bed.store.failure()).toEqual({ kind: 'not-generated', position: 3 });
     });
 
@@ -1097,7 +1097,7 @@ describe('AudioPlaybackStore', () => {
       await settle();
 
       expect(bed.store.status()).toBe('stepped');
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[0]!.id);
       expect(bed.player.played).toHaveLength(1);
     });
 
@@ -1113,7 +1113,7 @@ describe('AudioPlaybackStore', () => {
       await bed.store.continueReading();
 
       expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
       expect(bed.player.played).toHaveLength(2);
     });
 
@@ -1130,7 +1130,7 @@ describe('AudioPlaybackStore', () => {
 
       await bed.store.continueReading();
 
-      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[2]!.id);
     });
 
     /**
@@ -1151,21 +1151,21 @@ describe('AudioPlaybackStore', () => {
       await bed.store.continueReading();
 
       expect(bed.store.status()).toBe('waiting');
-      expect(bed.store.pendingSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.pendingSentenceId()).toBe(sentences[1]!.id);
       expect(bed.player.played).toHaveLength(1);
 
       await storeClips(bed, 2);
       await bed.store.prepare(bed.reading);
 
       expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
     });
 
     it('still ends the reading at the last sentence', async () => {
       await storeClips(bed);
       await bed.store.prepare(bed.reading);
       bed.store.setStepMode(true);
-      await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1].id);
+      await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1]!.id);
 
       bed.player.finishClip();
       await settle();
@@ -1192,7 +1192,7 @@ describe('AudioPlaybackStore', () => {
       await bed.store.previous();
 
       expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[0]!.id);
       expect(bed.player.restarts).toBe(1);
     });
 
@@ -1272,7 +1272,7 @@ describe('AudioPlaybackStore', () => {
     });
 
     it('stops and names the sentence when a clip has gone missing', async () => {
-      const second = orderedSentences(bed.draft)[1];
+      const second = orderedSentences(bed.draft)[1]!;
       await bed.db.audioAssets.where('sentenceId').equals(second.id).delete();
 
       await bed.store.next();
@@ -1339,23 +1339,23 @@ describe('AudioPlaybackStore', () => {
 
     it('skips the hole rather than treating it as a wall', async () => {
       const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[1].id);
+      await bed.store.playFrom(sentences[1]!.id);
 
       expect(bed.store.canGoNext()).toBe(true);
       await bed.store.next();
 
-      expect(bed.store.currentSentenceId()).toBe(sentences[3].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[3]!.id);
       expect(bed.store.currentPosition()).toBe(4);
     });
 
     it('steps back across the hole as well', async () => {
       const sentences = orderedSentences(bed.draft);
-      await bed.store.playFrom(sentences[3].id);
+      await bed.store.playFrom(sentences[3]!.id);
       bed.player.position = 0;
 
       await bed.store.previous();
 
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
     });
 
     /**
@@ -1409,7 +1409,7 @@ describe('AudioPlaybackStore', () => {
 
       await bed.store.seekTo(3);
 
-      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[2]!.id);
       expect(bed.store.status()).toBe('playing');
     });
 
@@ -1424,7 +1424,7 @@ describe('AudioPlaybackStore', () => {
 
       await bed.store.seekTo(2);
 
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
       expect(bed.store.status()).toBe('idle');
       expect(bed.player.played).toHaveLength(0);
     });
@@ -1437,7 +1437,7 @@ describe('AudioPlaybackStore', () => {
 
       await bed.store.seekTo(3);
 
-      expect(bed.store.currentSentenceId()).toBe(sentences[3].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[3]!.id);
     });
 
     it('clamps a position outside the reading, and does nothing without audio', async () => {
@@ -1452,7 +1452,7 @@ describe('AudioPlaybackStore', () => {
       await bed.store.prepare(bed.reading);
       await bed.store.seekTo(99);
 
-      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[SENTENCE_COUNT - 1]!.id);
     });
   });
 
@@ -1468,18 +1468,18 @@ describe('AudioPlaybackStore', () => {
       expect(bed.player.sequences).toHaveLength(1);
       expect(bed.player.sequences[0]).toHaveLength(SENTENCE_COUNT);
       expect(bed.player.played).toEqual([]);
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[0]!.id);
 
       bed.player.moveTo(2.2);
-      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[2]!.id);
 
       await bed.store.next();
       expect(bed.player.position).toBe(3);
-      expect(bed.store.currentSentenceId()).toBe(sentences[3].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[3]!.id);
 
       await bed.store.previous();
       expect(bed.player.position).toBe(2);
-      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[2]!.id);
     });
 
     it('loads a complete WebM reading as one native sequence', async () => {
@@ -1524,13 +1524,13 @@ describe('AudioPlaybackStore', () => {
       await bed.store.prepare(bed.reading);
       bed.player.sequenceSupported = true;
 
-      await bed.store.playFrom(sentences[2].id);
+      await bed.store.playFrom(sentences[2]!.id);
 
       expect(bed.player.sequences[0]).toHaveLength(2);
-      expect(bed.store.currentSentenceId()).toBe(sentences[2].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[2]!.id);
 
       bed.player.moveTo(1.2);
-      expect(bed.store.currentSentenceId()).toBe(sentences[3].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[3]!.id);
 
       // Sentence 2 is not in this resource. Aiming at it builds one from there
       // rather than seeking into audio the element does not have.
@@ -1538,7 +1538,7 @@ describe('AudioPlaybackStore', () => {
 
       expect(bed.player.sequences).toHaveLength(2);
       expect(bed.player.sequences[1]).toHaveLength(3);
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
       expect(bed.player.played).toEqual([]);
     });
 
@@ -1568,15 +1568,15 @@ describe('AudioPlaybackStore', () => {
       expect(bed.player.pauses).toBe(1);
       expect(bed.player.played).toHaveLength(1);
       expect(bed.player.startedAt).toEqual([0.6]);
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[0]!.id);
 
       bed.player.finishClip();
       await settle();
       expect(bed.store.status()).toBe('stepped');
-      expect(bed.store.currentSentenceId()).toBe(sentences[0].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[0]!.id);
 
       await bed.store.continueReading();
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
       expect(bed.player.startedAt).toEqual([0.6, 0]);
     });
 
@@ -1656,7 +1656,7 @@ describe('AudioPlaybackStore', () => {
       bed.player.stall();
 
       expect(bed.store.status()).toBe('waiting');
-      expect(bed.store.pendingSentenceId()).toBe(sentences[2].id);
+      expect(bed.store.pendingSentenceId()).toBe(sentences[2]!.id);
 
       await storeClips(bed, 3);
       await bed.store.prepare(bed.reading);
@@ -1761,7 +1761,7 @@ describe('AudioPlaybackStore', () => {
      */
     it('reads on when a single sentence is resumed from the transport', async () => {
       const sentences = orderedSentences(bed.draft);
-      await bed.store.playSentence(sentences[0].id);
+      await bed.store.playSentence(sentences[0]!.id);
       bed.store.pause();
 
       await bed.store.resume(true);
@@ -1769,7 +1769,7 @@ describe('AudioPlaybackStore', () => {
       await settle();
 
       expect(bed.store.status()).toBe('playing');
-      expect(bed.store.currentSentenceId()).toBe(sentences[1].id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
     });
 
     /**
@@ -1778,7 +1778,7 @@ describe('AudioPlaybackStore', () => {
      */
     it('names a missing sentence without tearing down the session', async () => {
       await storeClipsAt(bed, [0]);
-      const third = orderedSentences(bed.draft)[2];
+      const third = orderedSentences(bed.draft)[2]!;
       await bed.db.audioAssets.where('sentenceId').equals(third.id).delete();
       await bed.store.prepare(bed.reading);
       await bed.store.play();
@@ -1806,7 +1806,7 @@ describe('AudioPlaybackStore', () => {
   it('clears a reported failure when the surface that showed it is done', async () => {
     await storeClips(bed, SENTENCE_COUNT - 1);
     await bed.store.prepare(bed.reading);
-    await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1].id);
+    await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1]!.id);
     expect(bed.store.failure()).not.toBeNull();
 
     bed.store.acknowledgeFailure();

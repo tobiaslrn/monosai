@@ -55,12 +55,12 @@ describe('applyAnalysis', () => {
       '猫が寝た。犬も寝た。\n\n',
       '鳥は飛んだ。',
     ]);
-    expect(analyzed.paragraphs[0].sentences[1].tokens).toEqual([token('犬')]);
+    expect(analyzed.paragraphs[0]!.sentences[1]!.tokens).toEqual([token('犬')]);
   });
 
   it('leaves sentences without a returned analysis untouched', () => {
     const analyzed = applyAnalysis(draft(), new Map([['s1', [token('猫')]]]));
 
-    expect(analyzed.paragraphs[1].sentences[0].tokens).toBeNull();
+    expect(analyzed.paragraphs[1]!.sentences[0]!.tokens).toBeNull();
   });
 });

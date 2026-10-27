@@ -152,7 +152,7 @@ export class AddTextPageComponent {
     if (id !== null) {
       await this.router.navigate(['/reader', id], {
         replaceUrl: true,
-        state: this.navigation.preservedOriginState('/library'),
+        ...this.navigation.preservedOrigin('/library'),
       });
     }
   }

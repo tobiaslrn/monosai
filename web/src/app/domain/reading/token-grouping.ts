@@ -1,5 +1,6 @@
 import type { PartOfSpeech, Token } from './token';
 import type { TokenSpan, TokenStatusAssignment } from './validation';
+import { defined } from '../shared/invariant';
 
 /**
  * How the reader groups morphemes into the units a learner reads.
@@ -71,22 +72,18 @@ const CONNECTING_PARTICLES: ReadonlySet<string> = new Set(['て', 'で', 'ちゃ
  * than marking it. The test is deliberately narrow — a listed particle, between
  * a stem and a helper — so an ordinary particle is never swallowed.
  */
-function connectsAHelperVerb(tokens: readonly Token[], index: number): boolean {
-  const token = tokens[index];
+function connectsAHelperVerb(previous: Token, token: Token, next: Token | undefined): boolean {
   if (token.partOfSpeech !== 'particle' || !CONNECTING_PARTICLES.has(token.surface)) {
     return false;
   }
-  const previous = tokens[index - 1].partOfSpeech;
   return (
-    previous !== undefined &&
-    CONJUGABLE.has(previous) &&
-    tokens[index + 1]?.partOfSpeech === 'auxiliary'
+    previous.partOfSpeech !== undefined &&
+    CONJUGABLE.has(previous.partOfSpeech) &&
+    next?.partOfSpeech === 'auxiliary'
   );
 }
 
-function opensAWord(tokens: readonly Token[], index: number): boolean {
-  const token = tokens[index];
-  const previous = tokens[index - 1];
+function opensAWord(previous: Token, token: Token, next: Token | undefined): boolean {
   // A prefix opens a word and takes what it modifies with it: ご + 飯 is one
   // word, not two. Chains of prefixes fall out of the same rule.
   if (previous.partOfSpeech === 'prefix' && !token.isPunctuation) {
@@ -95,7 +92,7 @@ function opensAWord(tokens: readonly Token[], index: number): boolean {
   if (token.isPunctuation || previous.isPunctuation) {
     return true;
   }
-  if (connectsAHelperVerb(tokens, index)) {
+  if (connectsAHelperVerb(previous, token, next)) {
     return false;
   }
   return token.partOfSpeech === undefined || !WORD_ATTACHING.has(token.partOfSpeech);
@@ -103,7 +100,10 @@ function opensAWord(tokens: readonly Token[], index: number): boolean {
 
 /** Marks, for each token, whether it opens a word. The first always does. */
 export function wordStarts(tokens: readonly Token[]): readonly boolean[] {
-  return tokens.map((_, index) => index === 0 || opensAWord(tokens, index));
+  return tokens.map((token, index) => {
+    const previous = tokens[index - 1];
+    return previous === undefined || opensAWord(previous, token, tokens[index + 1]);
+  });
 }
 
 function coveredByLaterPartOfSpan(spans: readonly TokenSpan[], index: number): boolean {
@@ -195,7 +195,10 @@ export function wordAt(tokens: readonly Token[], index: number): WordGroup {
   const grouped = tokens.slice(start, end + 1);
   // A prefix carries no lemma or part of speech of its own, so the word is
   // about the first token that is not one.
-  const head = grouped.find((token) => token.partOfSpeech !== 'prefix') ?? grouped[0];
+  const head = defined(
+    grouped.find((token) => token.partOfSpeech !== 'prefix') ?? grouped[0],
+    'wordAt head',
+  );
   const readings = grouped.map((token) => token.readingHiragana);
   const complete = readings.every((reading) => reading !== undefined);
 

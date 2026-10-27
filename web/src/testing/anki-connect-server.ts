@@ -54,26 +54,27 @@ export interface FakeServerOptions {
   readonly cardShape?: 'bridge' | 'desktop';
 }
 
+/** Copied from a fixture card, where any optional column may be missing. */
 interface ServerCard {
   readonly cardId: number;
   readonly note: number;
   readonly reps: number;
-  readonly lapses?: number;
-  readonly factor?: number;
+  readonly lapses?: number | undefined;
+  readonly factor?: number | undefined;
   readonly queue: number;
   /** Home deck, which is what Anki's `deck:` matches even for a filtered card. */
   readonly deckName: string;
   /** Where the card sits right now, when that is not its home deck. */
-  readonly filteredDeckName?: string;
+  readonly filteredDeckName?: string | undefined;
   readonly noteTypeName: string;
-  readonly interval?: number;
-  readonly firstReviewedAt?: number;
-  readonly lastAnsweredDaysAgo?: number;
-  readonly answeredAgain?: boolean;
-  readonly answeredHard?: boolean;
-  readonly cardType?: number;
-  readonly fsrsDifficulty?: number;
-  readonly lastReviewedAt?: number;
+  readonly interval?: number | undefined;
+  readonly firstReviewedAt?: number | undefined;
+  readonly lastAnsweredDaysAgo?: number | undefined;
+  readonly answeredAgain?: boolean | undefined;
+  readonly answeredHard?: boolean | undefined;
+  readonly cardType?: number | undefined;
+  readonly fsrsDifficulty?: number | undefined;
+  readonly lastReviewedAt?: number | undefined;
 }
 
 /**
@@ -304,8 +305,8 @@ export class FakeAnkiConnectServer {
    */
   private findCards(query: string): number[] {
     const clauses = [...query.matchAll(/\(cid:([0-9,]+) ([^()]+)\)/gu)].map((match) => ({
-      ids: new Set(match[1].split(',').map(Number)),
-      term: match[2],
+      ids: new Set(match[1]!.split(',').map(Number)),
+      term: match[2]!,
     }));
     if (clauses.length > 0) {
       return this.cards
@@ -321,7 +322,7 @@ export class FakeAnkiConnectServer {
     // silently drop every `rated:` term and answer the scope search instead,
     // which is the same as claiming the learner answered their whole deck today.
     const terms = [...query.replace(/[()]/gu, ' ').matchAll(/(-?)("[^"]*"|\S+)/gu)].map(
-      (match) => ({ negated: match[1] === '-', term: unquote(match[2]) }),
+      (match) => ({ negated: match[1] === '-', term: unquote(match[2]!) }),
     );
 
     return this.cards

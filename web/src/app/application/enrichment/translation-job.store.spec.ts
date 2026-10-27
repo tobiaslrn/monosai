@@ -210,7 +210,7 @@ describe('TranslationJobStore', () => {
     let peak = 0;
     vi.spyOn(bed.provider, 'translate').mockImplementation(async (request) => {
       const targets = translationTargets(request);
-      askedFor.push(targets[0].textJa);
+      askedFor.push(targets[0]!.textJa);
       inFlight += 1;
       peak = Math.max(peak, inFlight);
       await new Promise((resolve) => setTimeout(resolve, 5));
@@ -266,8 +266,8 @@ describe('TranslationJobStore', () => {
     expect(progress.counts.completed).toBe(5);
 
     const rows = await bed.db.assetJobs.toArray();
-    expect(rows[0].state).toBe('failed');
-    expect(rows[0].failedItems.map((item) => item.errorCode)).toContain('provider-unavailable');
+    expect(rows[0]!.state).toBe('failed');
+    expect(rows[0]!.failedItems.map((item) => item.errorCode)).toContain('provider-unavailable');
   });
 
   it('ends a resumed job as failed when a batch failed before it was parked', async () => {
@@ -291,7 +291,9 @@ describe('TranslationJobStore', () => {
 
     await bed.store.start(bed.draft.reading.id);
     expect(bed.store.progress().kind).toBe('paused');
-    const failed = (await bed.db.assetJobs.toArray())[0].failedItems.map((item) => item.sentenceId);
+    const failed = (await bed.db.assetJobs.toArray())[0]!.failedItems.map(
+      (item) => item.sentenceId,
+    );
     expect(failed).toHaveLength(7);
     const askedBeforeResume = asked.length;
 
@@ -330,7 +332,7 @@ describe('TranslationJobStore', () => {
 
     const rows = await bed.db.assetJobs.toArray();
     expect(rows).toHaveLength(1);
-    expect(rows[0].state).toBe('failed');
+    expect(rows[0]!.state).toBe('failed');
   });
 
   it('retries a failed job as a fresh bounded attempt over what is still missing', async () => {
@@ -387,8 +389,8 @@ describe('TranslationJobStore', () => {
 
     await bed.store.retry(bed.draft.reading.id);
 
-    expect(translationTargets(requests[1])).toEqual([]);
-    expect(requests[1].openingTranslations).toHaveLength(3);
+    expect(translationTargets(requests[1]!)).toEqual([]);
+    expect(requests[1]!.openingTranslations).toHaveLength(3);
     const ready = await bed.enrichment.getTranslationPlan(bed.draft.reading.id);
     expect(ready.ok && ready.value?.state).toBe('ready');
     expect(bed.store.progress().kind).toBe('complete');
@@ -433,7 +435,7 @@ describe('TranslationJobStore', () => {
 
     const rows = await bed.db.assetJobs.toArray();
     expect(rows).toHaveLength(1);
-    expect(rows[0].state).toBe('cancelled');
+    expect(rows[0]!.state).toBe('cancelled');
   });
 
   it('parks rather than stops when the lane yields while the opening waits its turn', async () => {
@@ -561,7 +563,7 @@ describe('TranslationJobStore', () => {
     const fingerprints = new Set(rows.map((row) => row.configFingerprint));
     expect(fingerprints.size).toBe(2);
     // The new job covers every sentence, because no row carries the new key.
-    const active = rows.find((row) => row.configFingerprint !== first[0].configFingerprint);
+    const active = rows.find((row) => row.configFingerprint !== first[0]!.configFingerprint);
     expect(active?.orderedSentenceIds).toHaveLength(SENTENCE_COUNT);
   });
 
@@ -691,7 +693,7 @@ describe('TranslationJobStore', () => {
 
     // An imported reading has no premise and no provenance. That is a reading
     // to translate, not a run to refuse, so the request simply carries less.
-    const request = bed.provider.translationRequests[0];
+    const request = bed.provider.translationRequests[0]!;
     expect(request.registerPreference).toBe('written');
     expect(request.premiseJa).toBeUndefined();
     expect(request.titleJa).toBe(bed.draft.reading.title);
@@ -740,7 +742,7 @@ describe('TranslationJobStore', () => {
     it('queues plan-aware remaining work when the learner explicitly continues', async () => {
       await bed.store.start(bed.draft.reading.id);
       const stored = await bed.db.translations.toArray();
-      const removed = stored[0];
+      const removed = stored[0]!;
       expect(removed).toBeDefined();
       await bed.db.translations.delete(removed.cacheKey);
 

@@ -19,8 +19,8 @@ describe('buildImportDraft', () => {
   it('groups sentences under the paragraph they came from', () => {
     const draft = build('猫が寝た。犬も寝た。\n\n鳥は飛んだ。');
     expect(draft.paragraphs).toHaveLength(2);
-    expect(draft.paragraphs[0].sentences.map((s) => s.text)).toEqual(['猫が寝た。', '犬も寝た。']);
-    expect(draft.paragraphs[1].sentences.map((s) => s.text)).toEqual(['鳥は飛んだ。']);
+    expect(draft.paragraphs[0]!.sentences.map((s) => s.text)).toEqual(['猫が寝た。', '犬も寝た。']);
+    expect(draft.paragraphs[1]!.sentences.map((s) => s.text)).toEqual(['鳥は飛んだ。']);
   });
 
   it('keeps the paragraph source slice exactly, including its trailing blank line', () => {
@@ -31,7 +31,7 @@ describe('buildImportDraft', () => {
 
   it('trims the line breaks that end a sentence out of stored Japanese', () => {
     const draft = build('「そうか。」\n「うん。」');
-    expect(draft.paragraphs[0].sentences.map((s) => s.text)).toEqual([
+    expect(draft.paragraphs[0]!.sentences.map((s) => s.text)).toEqual([
       '「そうか。」',
       '「うん。」',
     ]);
@@ -49,7 +49,7 @@ describe('buildImportDraft', () => {
 
   it('leaves every sentence awaiting analysis', () => {
     const draft = build('猫が寝た。');
-    expect(draft.paragraphs[0].sentences[0].tokens).toBeNull();
+    expect(draft.paragraphs[0]!.sentences[0]!.tokens).toBeNull();
   });
 
   it('gives every sentence and paragraph a distinct id', () => {
@@ -63,17 +63,17 @@ describe('buildImportDraft', () => {
 
   it('preserves interior spacing inside a sentence', () => {
     const draft = build('猫　が　寝た。');
-    expect(draft.paragraphs[0].sentences[0].text).toBe('猫　が　寝た。');
+    expect(draft.paragraphs[0]!.sentences[0]!.text).toBe('猫　が　寝た。');
   });
 
   it('keeps a single paragraph when there is no blank line', () => {
     const draft = build('一行目。\n二行目。\n三行目。');
     expect(draft.paragraphs).toHaveLength(1);
-    expect(draft.paragraphs[0].sentences).toHaveLength(3);
+    expect(draft.paragraphs[0]!.sentences).toHaveLength(3);
   });
 
   it('handles text ending without a terminator', () => {
     const draft = build('終わりのない文');
-    expect(draft.paragraphs[0].sentences.map((s) => s.text)).toEqual(['終わりのない文']);
+    expect(draft.paragraphs[0]!.sentences.map((s) => s.text)).toEqual(['終わりのない文']);
   });
 });

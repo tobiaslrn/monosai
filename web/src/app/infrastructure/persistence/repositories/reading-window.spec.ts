@@ -142,7 +142,7 @@ describe('reading window and cascade', () => {
       await repository.listLibraryPage({
         filter: 'all',
         limit: 3,
-        createdBefore: first.items[2].createdAt,
+        createdBefore: first.items[2]!.createdAt,
       }),
     );
     expect(second.items.map((reading) => reading.title)).toEqual(['Reading 1', 'Reading 0']);

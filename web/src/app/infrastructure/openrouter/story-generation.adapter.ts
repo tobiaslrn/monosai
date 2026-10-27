@@ -51,6 +51,7 @@ import { buildRepairPrompt, buildScopedRepairPrompt } from './prompts/repair-pro
 import { buildSegmentPrompt } from './prompts/segment-prompt';
 import { buildStoryPrompt } from './prompts/story-prompt';
 import { StructuredTaskRunner } from './structured-request';
+import { defined } from '../../domain/shared/invariant';
 
 /**
  * Reply budgets.
@@ -398,7 +399,8 @@ function blueprintReader(
     }
     const segments: StoryBlueprint['segments'][number][] = [];
     for (const [index, beatEn] of payload.data.beatsEn.entries()) {
-      const plan = planned[index];
+      // Same length as `planned`, checked above.
+      const plan = defined(planned[index], 'story blueprint segment plan');
       segments.push({ ...plan, beatEn: beatEn.trim() });
     }
     return ok({ titleJa: payload.data.titleJa.trim(), segments });

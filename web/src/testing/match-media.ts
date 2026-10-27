@@ -16,11 +16,11 @@ interface ManagedList {
 function evaluate(query: string, widthPx: number, prefersDark: boolean): boolean {
   const min = /\(min-width:\s*(\d+(?:\.\d+)?)(px|em)\)/.exec(query);
   if (min) {
-    return widthPx >= toPixels(Number(min[1]), min[2]);
+    return widthPx >= toPixels(Number(min[1]), min[2]!);
   }
   const max = /\(max-width:\s*(\d+(?:\.\d+)?)(px|em)\)/.exec(query);
   if (max) {
-    return widthPx <= toPixels(Number(max[1]), max[2]);
+    return widthPx <= toPixels(Number(max[1]), max[2]!);
   }
   if (query.includes('prefers-color-scheme: dark')) {
     return prefersDark;

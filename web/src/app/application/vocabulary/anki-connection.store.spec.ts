@@ -41,7 +41,7 @@ describe('AnkiConnectionStore', () => {
       await store.confirm();
       expect(beds.vocabulary.commitCount).toBe(1);
       expect(beds.mappings.stored.size).toBe(1);
-      const source = [...beds.mappings.stored.values()][0];
+      const source = [...beds.mappings.stored.values()][0]!;
       expect(source.kind !== 'text-list' && source.providerKind).toBe(kind);
     },
   );

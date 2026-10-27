@@ -114,7 +114,9 @@ export function selectTranslationCandidates(
       };
       current.count += 1;
       current.proper ||= token.partOfSpeech === 'proper-noun';
-      current.readingHiragana ??= token.readingHiragana;
+      if (current.readingHiragana === undefined && token.readingHiragana !== undefined) {
+        current.readingHiragana = token.readingHiragana;
+      }
       if (
         current.examples.length < MAX_CANDIDATE_EXAMPLES &&
         sentence.japaneseText.length <= MAX_CANDIDATE_EXAMPLE_CHARS &&
@@ -183,7 +185,10 @@ export function createPendingTranslationPlan(
     contextPolicyVersion: TRANSLATION_CONTEXT_POLICY_VERSION,
     candidates: candidates.map((candidate) => ({
       surfaceJa: candidate.surfaceJa,
-      readingHiragana: candidate.readingHiragana,
+      // Omitted rather than undefined; the canonical hash drops both alike.
+      ...(candidate.readingHiragana === undefined
+        ? {}
+        : { readingHiragana: candidate.readingHiragana }),
       kind: candidate.kind,
       examples: candidate.examples.map((example) => ({
         sentenceId: example.sentenceId,
@@ -253,9 +258,8 @@ export function selectOpeningSentences(
 ): readonly Sentence[] {
   const ordered = [...sentences].sort((a, b) => a.positionInReading - b.positionInReading);
   if (ordered.length <= 3) return fitTranslationBudget(ordered, suppliedContextTokens);
-  const firstParagraph = ordered.filter(
-    (sentence) => sentence.paragraphId === ordered[0].paragraphId,
-  );
+  const openingParagraphId = ordered[0]?.paragraphId;
+  const firstParagraph = ordered.filter((sentence) => sentence.paragraphId === openingParagraphId);
   const selected =
     firstParagraph.length >= 3 && firstParagraph.length <= 5 ? firstParagraph : ordered.slice(0, 3);
   return fitTranslationBudget(selected, suppliedContextTokens);

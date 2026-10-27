@@ -95,8 +95,8 @@ describe('DexieReadingRepository', () => {
       const saved = await repository.saveImportedReading({
         reading: { ...draft.reading, sentenceCount: 1 },
         paragraphs: [],
-        sentences: [draft.sentences[0]],
-        tokenAnalyses: [draft.tokenAnalyses[0]],
+        sentences: [draft.sentences[0]!],
+        tokenAnalyses: [draft.tokenAnalyses[0]!],
       });
 
       expect(saved.ok).toBe(false);
@@ -113,7 +113,7 @@ describe('DexieReadingRepository', () => {
 
       const saved = await repository.saveImportedReading({
         ...draft,
-        tokenAnalyses: [...draft.tokenAnalyses, other.tokenAnalyses[0]],
+        tokenAnalyses: [...draft.tokenAnalyses, other.tokenAnalyses[0]!],
       });
 
       expect(saved.ok).toBe(false);
@@ -173,8 +173,8 @@ describe('DexieReadingRepository', () => {
 
       expect(saved.ok).toBe(true);
       expect(await db.readings.count()).toBe(1);
-      const stored = await db.frozenValidations.get(draft.frozenValidations[0].sentenceId);
-      expect(stored?.tokenStatuses[0].validation).toEqual({
+      const stored = await db.frozenValidations.get(draft.frozenValidations[0]!.sentenceId);
+      expect(stored?.tokenStatuses[0]!.validation).toEqual({
         category: 'unknown',
         reason: 'unresolved-after-repair',
       });
@@ -370,7 +370,7 @@ describe('DexieReadingRepository', () => {
       expect(graph.value.sentences.map((sentence) => sentence.positionInReading)).toEqual([
         0, 1, 2,
       ]);
-      expect(graph.value.sentences[0].japaneseText).toBe('ねこがすきです。');
+      expect(graph.value.sentences[0]!.japaneseText).toBe('ねこがすきです。');
     });
 
     it('returns lightweight sentence references in source order', async () => {
@@ -411,14 +411,14 @@ describe('DexieReadingRepository', () => {
       const draft = importedReadingFixture();
       await repository.saveImportedReading(draft);
 
-      const analyses = await repository.loadTokenAnalyses([draft.sentences[0].id]);
+      const analyses = await repository.loadTokenAnalyses([draft.sentences[0]!.id]);
 
       expect(analyses.ok).toBe(true);
       if (!analyses.ok) {
         return;
       }
       expect(analyses.value).toHaveLength(1);
-      expect(analyses.value[0].sentenceId).toBe(draft.sentences[0].id);
+      expect(analyses.value[0]!.sentenceId).toBe(draft.sentences[0]!.id);
     });
 
     it('loads frozen validations for the requested sentences only', async () => {
@@ -430,7 +430,7 @@ describe('DexieReadingRepository', () => {
         },
       });
       await repository.saveGeneratedStory(draft);
-      const first = draft.frozenValidations[0];
+      const first = draft.frozenValidations[0]!;
 
       const loaded = await repository.loadFrozenValidations([first.sentenceId]);
 
@@ -472,7 +472,7 @@ describe('DexieReadingRepository', () => {
       const second = await repository.listLibraryPage({
         filter: 'all',
         limit: 2,
-        createdBefore: first.value.items[1].createdAt,
+        createdBefore: first.value.items[1]!.createdAt,
       });
       expect(second.ok && second.value.items.map((reading) => reading.title)).toEqual([
         'Reading 0',
@@ -551,7 +551,7 @@ describe('DexieReadingRepository', () => {
         v: ROW_VERSION,
         id: uuid(9001),
         cacheKey: 'cache-key-1',
-        sentenceId: second.sentences[0].id,
+        sentenceId: second.sentences[0]!.id,
         readingId: second.reading.id,
         sourceContentHash: 'hash',
         textEn: 'The cat likes it.',
@@ -618,7 +618,7 @@ describe('DexieReadingRepository', () => {
       const draft = importedReadingFixture();
       await repository.saveImportedReading(draft);
 
-      const loaded = await repository.loadFrozenValidations([draft.sentences[0].id]);
+      const loaded = await repository.loadFrozenValidations([draft.sentences[0]!.id]);
 
       expect(loaded.ok && loaded.value).toEqual([]);
     });
@@ -626,7 +626,7 @@ describe('DexieReadingRepository', () => {
     it('reports a corrupt frozen validation row', async () => {
       const draft = generatedStoryDraftFixture(snapshotId(uuid(9_502)));
       await repository.saveGeneratedStory(draft);
-      const first = draft.frozenValidations[0];
+      const first = draft.frozenValidations[0]!;
       await db.frozenValidations.update(first.sentenceId, { validatorVersion: '' });
 
       const loaded = await repository.loadFrozenValidations([first.sentenceId]);
@@ -638,7 +638,7 @@ describe('DexieReadingRepository', () => {
     it('reports a corrupt paragraph row when loading the graph', async () => {
       const draft = importedReadingFixture();
       await repository.saveImportedReading(draft);
-      await db.paragraphs.update(draft.paragraphs[0].id, { position: -1 });
+      await db.paragraphs.update(draft.paragraphs[0]!.id, { position: -1 });
 
       const graph = await repository.loadGraph(draft.reading.id);
 
@@ -649,7 +649,7 @@ describe('DexieReadingRepository', () => {
     it('reports a corrupt sentence row when loading the graph', async () => {
       const draft = importedReadingFixture();
       await repository.saveImportedReading(draft);
-      await db.sentences.update(draft.sentences[0].id, { positionInReading: -1 });
+      await db.sentences.update(draft.sentences[0]!.id, { positionInReading: -1 });
 
       const graph = await repository.loadGraph(draft.reading.id);
 
@@ -686,12 +686,12 @@ describe('DexieReadingRepository', () => {
       vi.spyOn(db.tokenAnalyses, 'where').mockImplementationOnce(() => {
         throw failure;
       });
-      expect((await repository.loadTokenAnalyses([draft.sentences[0].id])).ok).toBe(false);
+      expect((await repository.loadTokenAnalyses([draft.sentences[0]!.id])).ok).toBe(false);
 
       vi.spyOn(db.frozenValidations, 'where').mockImplementationOnce(() => {
         throw failure;
       });
-      expect((await repository.loadFrozenValidations([draft.sentences[0].id])).ok).toBe(false);
+      expect((await repository.loadFrozenValidations([draft.sentences[0]!.id])).ok).toBe(false);
     });
   });
 

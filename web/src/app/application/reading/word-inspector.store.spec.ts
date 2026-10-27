@@ -165,7 +165,7 @@ describe('WordInspectorStore', () => {
     ];
 
     await store().inspect({
-      token: inflected[1],
+      token: inflected[1]!,
       word: wordAt(inflected, 1),
       sentence: sentence(),
       status: null,
@@ -221,7 +221,7 @@ describe('WordInspectorStore', () => {
     ];
 
     await store().inspect({
-      token: inflected[0],
+      token: inflected[0]!,
       word: wordAt(inflected, 0),
       sentence: sentence(),
       status: null,
@@ -290,7 +290,7 @@ describe('WordInspectorStore', () => {
     const inspector = store();
 
     await inspector.inspect({
-      token: inflected[0],
+      token: inflected[0]!,
       word: wordAt(inflected, 0),
       sentence: sentence(),
       status: null,

@@ -24,8 +24,8 @@ describe('planScopedRepair', () => {
 
     expect(entries.map((entry) => entry.index)).toEqual([1, 2, 3]);
     expect(scopedRepairTargets(entries).map((entry) => entry.index)).toEqual([2]);
-    expect(entries[1].surfaces).toEqual(['図書館']);
-    expect(entries[0].surfaces).toEqual([]);
+    expect(entries[1]!.surfaces).toEqual(['図書館']);
+    expect(entries[0]!.surfaces).toEqual([]);
   });
 
   it('sends each sentence once when two faults have overlapping windows', () => {
@@ -47,7 +47,7 @@ describe('planScopedRepair', () => {
     const entries = planScopedRepair(CANDIDATE, [{ sentenceIndex: null, surface: '一日' }]);
 
     expect(entries.map((entry) => entry.index)).toEqual([TITLE_INDEX]);
-    expect(entries[0].textJa).toBe('ねこの一日');
+    expect(entries[0]!.textJa).toBe('ねこの一日');
   });
 
   it('groups several surfaces in one sentence into a single entry', () => {
@@ -57,7 +57,7 @@ describe('planScopedRepair', () => {
       { sentenceIndex: 2, surface: '図書館' },
     ]);
 
-    expect(scopedRepairTargets(entries)[0].surfaces).toEqual(['図書館', '行き']);
+    expect(scopedRepairTargets(entries)[0]!.surfaces).toEqual(['図書館', '行き']);
   });
 });
 

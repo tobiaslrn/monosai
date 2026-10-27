@@ -58,9 +58,11 @@ const cryptoRandomSource: RandomSource = {
     const limit = Math.floor(0x1_0000_0000 / exclusiveMax) * exclusiveMax;
     const buffer = new Uint32Array(1);
     for (;;) {
-      crypto.getRandomValues(buffer);
-      if (buffer[0] < limit) {
-        return buffer[0] % exclusiveMax;
+      // One value per draw; iterating reads it without an unchecked index.
+      for (const value of crypto.getRandomValues(buffer)) {
+        if (value < limit) {
+          return value % exclusiveMax;
+        }
       }
     }
   },

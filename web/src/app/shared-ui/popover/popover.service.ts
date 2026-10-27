@@ -2,6 +2,7 @@ import {
   createFlexibleConnectedPositionStrategy,
   createGlobalPositionStrategy,
   createOverlayRef,
+  NoopScrollStrategy,
   type ConnectedPosition,
   type FlexibleConnectedPositionStrategyOrigin,
   type OverlayRef,
@@ -199,7 +200,7 @@ export class PopoverService {
       // behind it — which is what makes it possible to read on with a
       // translation still open. An anchored card closes instead, through
       // `closeOnScroll`, because it would otherwise drag down the page.
-      scrollStrategy: undefined,
+      scrollStrategy: new NoopScrollStrategy(),
       hasBackdrop: modal,
       backdropClass: ['cdk-overlay-transparent-backdrop', 'reader-popover-backdrop'],
       panelClass: panelClasses(modal, sheet),

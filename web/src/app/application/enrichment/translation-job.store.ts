@@ -423,7 +423,8 @@ export class TranslationJobStore {
         }),
       ),
     );
-    if (opening.length === 0) {
+    const [openingFirst] = opening;
+    if (openingFirst === undefined) {
       return err(
         aiError(
           'context-budget-exceeded',
@@ -436,7 +437,7 @@ export class TranslationJobStore {
       );
     }
     const passage = openingPassage;
-    const outcome = await this.withPermit(opening[0].positionInReading, signal, () =>
+    const outcome = await this.withPermit(openingFirst.positionInReading, signal, () =>
       this.translation.run(
         opening,
         context.readingId,
@@ -650,14 +651,17 @@ export class TranslationJobStore {
     let storage: StorageError | null = null;
     let next = 0;
     const worker = async (): Promise<void> => {
-      while (
-        next < batches.length &&
-        storage === null &&
-        !signal.aborted &&
-        !this.lifecycle.yieldRequested
-      ) {
+      while (storage === null && !signal.aborted && !this.lifecycle.yieldRequested) {
         const batch = batches[next++];
-        const passage = translationPassageWindow(context.sentences, batch[0].positionInReading);
+        if (batch === undefined) {
+          break;
+        }
+        // Buckets are created by the sentence that fills them, so none is empty.
+        const [first] = batch;
+        if (first === undefined) {
+          continue;
+        }
+        const passage = translationPassageWindow(context.sentences, first.positionInReading);
         const estimatedInput = estimateTokens(
           JSON.stringify({
             title: plan.title,
@@ -689,7 +693,7 @@ export class TranslationJobStore {
           firstError ??= oversized;
           continue;
         }
-        const outcome = await this.withPermit(batch[0].positionInReading, signal, () =>
+        const outcome = await this.withPermit(first.positionInReading, signal, () =>
           this.translation.run(
             batch,
             context.readingId,

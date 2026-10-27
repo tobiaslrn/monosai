@@ -59,11 +59,11 @@ describe('LevelChoicePageComponent', () => {
     const { fixture, element } = await render();
     const store = TestBed.inject(GrammarProfileStore);
 
-    radios(element)[1].click();
+    radios(element)[1]!.click();
     await settle(fixture);
 
     expect(store.selection().presetId).toBe('mn-preset-starter');
-    expect(element.querySelector('.example')?.textContent.trim()).toBe(TEST_PRESETS[1].exampleJa);
+    expect(element.querySelector('.example')?.textContent.trim()).toBe(TEST_PRESETS[1]!.exampleJa);
     expect(backOrNavigate).not.toHaveBeenCalled();
 
     save(element);

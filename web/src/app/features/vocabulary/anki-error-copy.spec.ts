@@ -100,7 +100,7 @@ describe('connectFailureCopy', () => {
     const copy = connectFailureCopy('desktop', ankiError('not-running', 'x'), 9999);
 
     expect(copy.headline).toBe('Anki is not answering.');
-    expect(copy.paragraphs[0].link?.href).toBe(ANKI_LINKS.ankiConnectAddon);
+    expect(copy.paragraphs[0]!.link?.href).toBe(ANKI_LINKS.ankiConnectAddon);
     expect(copy.offersPort).toBe(true);
   });
 
@@ -142,6 +142,6 @@ describe('connectFailureCopy', () => {
     const copy = connectFailureCopy('desktop', ankiError('origin-not-allowed', 'x'), 8765);
 
     expect(copy.headline).toBe(ANKI_ERROR_COPY['origin-not-allowed'].whatFailed);
-    expect(copy.paragraphs[0].before).toBe(ANKI_ERROR_COPY['origin-not-allowed'].primaryAction);
+    expect(copy.paragraphs[0]!.before).toBe(ANKI_ERROR_COPY['origin-not-allowed'].primaryAction);
   });
 });

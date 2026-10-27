@@ -185,7 +185,7 @@ describe('GeneratePageComponent', () => {
   });
 
   it('drops a finished run when the learner goes back to the form', async () => {
-    const [frame] = rollPlotFrames(EMPTY_STORY_DIRECTION, { nextInt: () => 0 });
+    const frame = rollPlotFrames(EMPTY_STORY_DIRECTION, { nextInt: () => 0 })[0]!;
     jobs.setJobs([
       {
         ...fakeGenerationJob(
@@ -245,13 +245,13 @@ describe('GeneratePageComponent', () => {
     });
     expect(bed.provider.generationCalls.plots).toBe(1);
 
-    page.querySelectorAll<HTMLInputElement>('input[name="mn-plot"]')[1].click();
+    page.querySelectorAll<HTMLInputElement>('input[name="mn-plot"]')[1]!.click();
     await settle(fixture);
     press(page, 'generate');
     await settle(fixture);
 
     expect(jobs.started).toHaveLength(1);
-    const started = jobs.started[0].draft;
+    const started = jobs.started[0]!.draft;
     expect(started.premise).toBe(
       'Two old friends plan a picnic, but a sudden call changes the day.',
     );

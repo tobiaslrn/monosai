@@ -134,7 +134,7 @@ describe('SpeechEncoderHost', () => {
 
     expect(supportedConfig).toMatchObject({ codec: 'opus', bitrate: 96_000 });
     expect(posted).toHaveLength(1);
-    const message = posted[0];
+    const message = posted[0]!;
     expect(message.ok).toBe(true);
     if (message.ok) {
       expect(message.result.value.bytes.byteLength).toBeGreaterThan(0);
@@ -148,7 +148,7 @@ describe('SpeechEncoderHost', () => {
     await host.handleMessage({ requestId: 'r9', nonsense: true });
 
     expect(posted[0]).toMatchObject({ requestId: 'r9', ok: false });
-    expect(errorCode(posted[0])).toBe('invalid-input');
+    expect(errorCode(posted[0]!)).toBe('invalid-input');
   });
 
   it('refuses a client speaking a different protocol version', async () => {
@@ -156,7 +156,7 @@ describe('SpeechEncoderHost', () => {
 
     await host.handleMessage({ ...encodeMessage(), version: SPEECH_ENCODER_PROTOCOL_VERSION + 1 });
 
-    expect(errorCode(posted[0])).toBe('worker-unavailable');
+    expect(errorCode(posted[0]!)).toBe('worker-unavailable');
   });
 
   it('reports a browser with no encoder instead of failing to start', async () => {
@@ -164,7 +164,7 @@ describe('SpeechEncoderHost', () => {
 
     await host.handleMessage(encodeMessage());
 
-    expect(errorCode(posted[0])).toBe('unsupported');
+    expect(errorCode(posted[0]!)).toBe('unsupported');
   });
 
   it('reports an encoder that fails on the clip', async () => {
@@ -172,7 +172,7 @@ describe('SpeechEncoderHost', () => {
 
     await host.handleMessage(encodeMessage());
 
-    expect(errorCode(posted[0])).toBe('encode-failed');
+    expect(errorCode(posted[0]!)).toBe('encode-failed');
   });
 
   it('drops a request cancelled before it ran', async () => {
@@ -186,7 +186,7 @@ describe('SpeechEncoderHost', () => {
     await host.handleMessage(encodeMessage('r1'));
 
     expect(posted).toHaveLength(1);
-    expect(errorCode(posted[0])).toBe('cancelled');
+    expect(errorCode(posted[0]!)).toBe('cancelled');
   });
 
   it('runs encodes one at a time even when several arrive together', async () => {

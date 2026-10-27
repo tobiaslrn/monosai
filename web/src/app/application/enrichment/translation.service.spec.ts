@@ -83,8 +83,8 @@ describe('TranslationService', () => {
       { titleJa: 'ねこの一日', registerPreference: 'polite' },
     );
 
-    const second = provider.translationRequests[1];
-    const carried = second.window[0];
+    const second = provider.translationRequests[1]!;
+    const carried = second.window[0]!;
     // The last sentence of the previous batch travels as context, with the
     // English it was just given, so names stay consistent across the boundary.
     expect(carried.targetId).toBeNull();
@@ -97,9 +97,9 @@ describe('TranslationService', () => {
 
   it('carries an established proper-name rendering across non-adjacent batches', async () => {
     const list = sentences(MAX_TRANSLATION_BATCH + 2);
-    list[0] = { ...list[0], japaneseText: '優希は家を出た。' };
+    list[0] = { ...list[0]!, japaneseText: '優希は家を出た。' };
     list[MAX_TRANSLATION_BATCH] = {
-      ...list[MAX_TRANSLATION_BATCH],
+      ...list[MAX_TRANSLATION_BATCH]!,
       japaneseText: '夜に優希は帰った。',
     };
     provider.translateWith = (request) =>
@@ -129,8 +129,8 @@ describe('TranslationService', () => {
       },
     );
 
-    expect(provider.translationRequests[1].premiseJa).toBe('優希の一日。');
-    expect(provider.translationRequests[1].establishedRenderings).toEqual([
+    expect(provider.translationRequests[1]!.premiseJa).toBe('優希の一日。');
+    expect(provider.translationRequests[1]!.establishedRenderings).toEqual([
       {
         surfaceJa: '優希',
         exampleJa: '優希は家を出た。',
@@ -165,13 +165,13 @@ describe('TranslationService', () => {
     expect(provider.generationCalls.translate).toBe(1);
     // One ordered window, each sentence once, rather than a before/after pair
     // per sentence repeating most of the batch two more times.
-    expect(provider.translationRequests[0].window).toEqual([
-      { targetId: list[0].id, textJa: '文0。' },
-      { targetId: list[1].id, textJa: '文1。' },
-      { targetId: list[2].id, textJa: '文2。' },
+    expect(provider.translationRequests[0]!.window).toEqual([
+      { targetId: list[0]!.id, textJa: '文0。' },
+      { targetId: list[1]!.id, textJa: '文1。' },
+      { targetId: list[2]!.id, textJa: '文2。' },
     ]);
     expect(outcome.records[0]).toMatchObject({
-      sentenceId: list[0].id,
+      sentenceId: list[0]!.id,
       readingId: READING_ID,
       sourceContentHash: 'hash-0',
       textEn: 'EN 文0。',
@@ -182,10 +182,10 @@ describe('TranslationService', () => {
 
   it('reuses a cached translation instead of calling the provider again', async () => {
     const list = sentences(1);
-    const key = keysFor(list).get(list[0].id)!;
+    const key = keysFor(list).get(list[0]!.id)!;
     enrichment.translations.push({
       id: 'cached',
-      sentenceId: list[0].id,
+      sentenceId: list[0]!.id,
       readingId: READING_ID,
       sourceContentHash: 'hash-0',
       textEn: 'Cached.',
@@ -207,7 +207,7 @@ describe('TranslationService', () => {
 
     expect(outcome.records).toHaveLength(1);
     expect(outcome.records[0]).toMatchObject({
-      sentenceId: list[0].id,
+      sentenceId: list[0]!.id,
       readingId: READING_ID,
       sourceContentHash: 'hash-0',
       textEn: 'Cached.',
@@ -218,7 +218,7 @@ describe('TranslationService', () => {
 
   it('rebuilds a cache hit against the current sentence and reading rather than the row it came from', async () => {
     const list = sentences(1);
-    const key = keysFor(list).get(list[0].id)!;
+    const key = keysFor(list).get(list[0]!.id)!;
     const foreignReadingId = readingId('some-other-reading');
     const foreignSentenceId = sentenceId('some-other-sentence');
     enrichment.translations.push({
@@ -244,16 +244,16 @@ describe('TranslationService', () => {
     );
 
     expect(outcome.records).toHaveLength(1);
-    expect(outcome.records[0].sentenceId).toBe(list[0].id);
-    expect(outcome.records[0].readingId).toBe(READING_ID);
-    expect(outcome.records[0].sourceContentHash).toBe(list[0].contentHash);
-    expect(outcome.records[0].id).not.toBe('cached-elsewhere');
+    expect(outcome.records[0]!.sentenceId).toBe(list[0]!.id);
+    expect(outcome.records[0]!.readingId).toBe(READING_ID);
+    expect(outcome.records[0]!.sourceContentHash).toBe(list[0]!.contentHash);
+    expect(outcome.records[0]!.id).not.toBe('cached-elsewhere');
   });
 
   it('falls through to the provider when the cache read itself fails', async () => {
     const list = sentences(1);
     enrichment.failGetTranslationWith = storageError('unavailable', 'x');
-    provider.translationQueue.push(ok({ translations: [{ id: list[0].id, textEn: 'EN.' }] }));
+    provider.translationQueue.push(ok({ translations: [{ id: list[0]!.id, textEn: 'EN.' }] }));
 
     const outcome = await service.run(
       list,
@@ -335,7 +335,7 @@ describe('TranslationService', () => {
     );
 
     expect(outcome.records).toHaveLength(0);
-    expect(outcome.failures).toEqual([list[0].id]);
+    expect(outcome.failures).toEqual([list[0]!.id]);
   });
 
   it('keeps what a partial reply settled and re-asks only for the rest', async () => {
@@ -343,14 +343,14 @@ describe('TranslationService', () => {
     provider.translationQueue.push(
       ok({
         translations: [
-          { id: list[0].id, textEn: 'EN one.' },
-          { id: list[1].id, textEn: '   ' },
+          { id: list[0]!.id, textEn: 'EN one.' },
+          { id: list[1]!.id, textEn: '   ' },
         ],
       }),
       ok({
         translations: [
-          { id: list[1].id, textEn: 'EN two.' },
-          { id: list[2].id, textEn: 'EN three.' },
+          { id: list[1]!.id, textEn: 'EN two.' },
+          { id: list[2]!.id, textEn: 'EN three.' },
         ],
       }),
     );
@@ -378,8 +378,8 @@ describe('TranslationService', () => {
   it('re-asks only once, and fails whatever is still unresolved', async () => {
     const list = sentences(2);
     provider.translationQueue.push(
-      ok({ translations: [{ id: list[0].id, textEn: 'EN one.' }] }),
-      ok({ translations: [{ id: list[1].id, textEn: '' }] }),
+      ok({ translations: [{ id: list[0]!.id, textEn: 'EN one.' }] }),
+      ok({ translations: [{ id: list[1]!.id, textEn: '' }] }),
     );
 
     const outcome = await service.run(
@@ -393,7 +393,7 @@ describe('TranslationService', () => {
     );
 
     expect(outcome.records).toHaveLength(1);
-    expect(outcome.failures).toEqual([list[1].id]);
+    expect(outcome.failures).toEqual([list[1]!.id]);
     expect(provider.generationCalls.translate).toBe(2);
   });
 

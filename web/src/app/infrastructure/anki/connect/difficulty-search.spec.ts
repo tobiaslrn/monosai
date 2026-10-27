@@ -22,7 +22,7 @@ class DifficultySearchFake {
     const matched = new Set<number>();
     for (const clause of query.matchAll(/\(cid:([0-9,]+) prop:d>=([0-9.]+)\)/gu)) {
       const threshold = Number(clause[2]);
-      for (const cardId of clause[1].split(',').map(Number)) {
+      for (const cardId of clause[1]!.split(',').map(Number)) {
         const difficulty = this.difficulty.get(cardId);
         if (difficulty !== undefined && (difficulty - 1) / 9 >= threshold) matched.add(cardId);
       }

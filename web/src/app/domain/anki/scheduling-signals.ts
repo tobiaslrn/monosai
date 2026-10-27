@@ -76,14 +76,16 @@ export function fsrsDifficultyFromPercent(percent: number): number {
 /** One eligible card's raw scheduling columns, before normalization. */
 export interface AnkiCardScheduling {
   readonly reps: number;
-  readonly lapses?: number;
-  readonly factor?: number;
-  readonly firstReviewedAt?: number;
-  readonly firstReviewedPrecision?: AnkiSchedulingSignals['firstReviewedPrecision'];
+  // A column a source could not read arrives as `undefined`; it is raw input
+  // to normalization, so that is a value here rather than an omission.
+  readonly lapses?: number | undefined;
+  readonly factor?: number | undefined;
+  readonly firstReviewedAt?: number | undefined;
+  readonly firstReviewedPrecision?: AnkiSchedulingSignals['firstReviewedPrecision'] | undefined;
   /** Anki's `ivl`: positive days, or negative seconds while a card is learning. */
-  readonly intervalDays?: number;
-  readonly fsrsDifficulty?: number;
-  readonly lastReviewedAt?: number;
+  readonly intervalDays?: number | undefined;
+  readonly fsrsDifficulty?: number | undefined;
+  readonly lastReviewedAt?: number | undefined;
 }
 
 /** Anki's queue code for a card the learner explicitly suspended. */
@@ -101,9 +103,17 @@ export function isEligibleReviewedCard(reps: number, queue: number): boolean {
   return Number.isInteger(reps) && reps > 0 && queue !== SUSPENDED_QUEUE;
 }
 
+/**
+ * Provider output before normalization. Any signal may be missing or explicitly
+ * `undefined`; both mean the source has no value for it.
+ */
+export type RawSchedulingSignals = {
+  readonly [K in keyof AnkiSchedulingSignals]?: AnkiSchedulingSignals[K] | undefined;
+};
+
 /** Keeps provider output finite and in the normalized shape persisted by the app. */
 export function normalizeSchedulingSignals(
-  signals: Partial<AnkiSchedulingSignals> | null | undefined,
+  signals: RawSchedulingSignals | null | undefined,
 ): AnkiSchedulingSignals {
   const reps = positiveInteger(signals?.reps);
   const lapseRatio = unitInterval(signals?.lapseRatio);

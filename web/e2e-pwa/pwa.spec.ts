@@ -259,10 +259,10 @@ test.describe('Android share target', () => {
 
     const files = shareTarget?.params.files ?? [];
     expect(files).toHaveLength(1);
-    expect(files[0].name).toBe('package');
+    expect(files[0]!.name).toBe('package');
     // Android matches the share sheet by MIME type, and knows no mapping for
     // `.apkg`, so the types AnkiDroid shares with have to be listed too.
-    expect(files[0].accept).toEqual(
+    expect(files[0]!.accept).toEqual(
       expect.arrayContaining([
         'application/zip',
         'application/octet-stream',

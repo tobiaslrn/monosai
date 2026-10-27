@@ -56,7 +56,7 @@ describe('VariableHeightVirtualListModel', () => {
     virtualizer.updateMeasurement('item-1', 180);
 
     const currentItems = items(3);
-    virtualizer.setItems([currentItems[0], currentItems[2]]);
+    virtualizer.setItems([currentItems[0]!, currentItems[2]!]);
 
     expect(virtualizer.totalHeight).toBe(200);
     expect(virtualizer.heightOf('item-1')).toBeNull();

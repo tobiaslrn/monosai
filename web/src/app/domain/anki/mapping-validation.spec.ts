@@ -20,17 +20,17 @@ describe('resolveMappings', () => {
 
   it('marks a vanished deck stale', () => {
     const resolution = resolveMappings([mappingFor({ deckName: 'Gone' })], CATALOG);
-    expect(resolution.stale[0].reason).toBe('deck-missing');
+    expect(resolution.stale[0]!.reason).toBe('deck-missing');
   });
 
   it('marks a vanished note type stale', () => {
     const resolution = resolveMappings([mappingFor({ noteTypeName: 'Gone' })], CATALOG);
-    expect(resolution.stale[0].reason).toBe('note-type-missing');
+    expect(resolution.stale[0]!.reason).toBe('note-type-missing');
   });
 
   it('marks a vanished field stale', () => {
     const resolution = resolveMappings([mappingFor({ expressionFieldName: 'Gone' })], CATALOG);
-    expect(resolution.stale[0].reason).toBe('field-missing');
+    expect(resolution.stale[0]!.reason).toBe('field-missing');
   });
 
   it('ignores disabled mappings entirely', () => {

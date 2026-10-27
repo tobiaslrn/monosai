@@ -14,8 +14,8 @@ export const versionSchema = z.number().int().positive();
 
 export const permissionSchema = z.object({
   permission: z.enum(['granted', 'denied']),
-  requireApiKey: z.boolean().optional(),
-  version: z.number().int().optional(),
+  requireApiKey: z.boolean().exactOptional(),
+  version: z.number().int().exactOptional(),
   /**
    * The first-party bridge's own identity, which AnkiConnect and any other
    * compatible endpoint leave out.
@@ -31,7 +31,7 @@ export const permissionSchema = z.object({
       version: z.string().min(1).max(32),
       contract: z.number().int().nonnegative().max(1_000),
     })
-    .optional(),
+    .exactOptional(),
 });
 
 export const nameListSchema = z.array(z.string());
@@ -54,18 +54,18 @@ export const cardsInfoSchema = z.array(
       reps: z.number().int().nonnegative(),
       queue: z.number().int(),
       /** Scheduling columns are absent from some Anki-compatible bridges. */
-      lapses: z.number().int().nonnegative().nullable().optional(),
-      factor: z.number().int().nonnegative().nullable().optional(),
+      lapses: z.number().int().nonnegative().nullable().exactOptional(),
+      factor: z.number().int().nonnegative().nullable().exactOptional(),
       /** Anki's `ivl`: positive days, or negative seconds while a card is learning. */
-      interval: z.number().int().nullable().optional(),
+      interval: z.number().int().nullable().exactOptional(),
       /** Anki's card type code, which says whether the card is being learned. */
-      cardType: z.number().int().nullable().optional(),
+      cardType: z.number().int().nullable().exactOptional(),
       /** The desktop add-on's name for the same code; folded into `cardType` below. */
-      type: z.number().int().nullable().optional(),
+      type: z.number().int().nullable().exactOptional(),
       /** Raw FSRS memory-state difficulty, validated against its scale in the domain. */
-      fsrsDifficulty: z.number().nullable().optional(),
+      fsrsDifficulty: z.number().nullable().exactOptional(),
       /** Epoch milliseconds of the last answer. The bridge converts from seconds. */
-      lastReviewedAt: z.number().int().nullable().optional(),
+      lastReviewedAt: z.number().int().nullable().exactOptional(),
       deckName: z.string(),
       /**
        * Home deck of a card currently in a filtered deck.
@@ -74,7 +74,7 @@ export const cardsInfoSchema = z.array(
        * scope has to be checked against this where it exists. Without it, studying
        * from a filtered deck would silently drop a mapping's own cards.
        */
-      originalDeckName: z.string().nullable().optional(),
+      originalDeckName: z.string().nullable().exactOptional(),
     })
     // AnkiConnect reports the card type as `type` and the first-party bridge as
     // `cardType`. Reading only one would silently drop learning state for the

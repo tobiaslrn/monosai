@@ -158,7 +158,10 @@ export class SheetHandleComponent {
 
   private track(event: PointerEvent): void {
     this.samples.push({ y: event.clientY, time: event.timeStamp });
-    while (this.samples.length > 2 && event.timeStamp - this.samples[0].time > VELOCITY_WINDOW_MS) {
+    while (
+      this.samples.length > 2 &&
+      event.timeStamp - (this.samples.at(0)?.time ?? event.timeStamp) > VELOCITY_WINDOW_MS
+    ) {
       this.samples.shift();
     }
   }

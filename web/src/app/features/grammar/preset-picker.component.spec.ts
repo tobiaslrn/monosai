@@ -61,7 +61,7 @@ describe('PresetPickerComponent', () => {
 
     expect(cards).toHaveLength(TEST_PRESETS.length);
     for (const [index, card] of cards.entries()) {
-      const preset = TEST_PRESETS[index];
+      const preset = TEST_PRESETS[index]!;
       expect(card.querySelector('.name')?.textContent.trim()).toBe(preset.nameEn);
       expect(card.querySelector('.name')?.textContent).not.toMatch(/\bN[1-5]\b/);
       expect(card.querySelector('.caption')?.textContent.trim()).toBe(
@@ -79,20 +79,20 @@ describe('PresetPickerComponent', () => {
     const examples = (): Element[] => [...element.querySelectorAll('.example')];
 
     expect(examples()).toHaveLength(1);
-    expect(examples()[0].textContent.trim()).toBe(TEST_PRESETS[0].exampleJa);
-    expect(examples()[0].getAttribute('lang')).toBe('ja');
+    expect(examples()[0]!.textContent.trim()).toBe(TEST_PRESETS[0]!.exampleJa);
+    expect(examples()[0]!.getAttribute('lang')).toBe('ja');
 
     fixture.componentInstance.selected.set('mn-preset-basic');
     fixture.detectChanges();
 
     expect(examples()).toHaveLength(1);
-    expect(examples()[0].textContent.trim()).toBe(TEST_PRESETS[1].exampleJa);
+    expect(examples()[0]!.textContent.trim()).toBe(TEST_PRESETS[1]!.exampleJa);
   });
 
   it('reports a choice without saving it', async () => {
     const { fixture, element } = await render();
 
-    radios(element)[1].click();
+    radios(element)[1]!.click();
     await Promise.resolve();
 
     expect(fixture.componentInstance.chosen()).toBe('mn-preset-basic');

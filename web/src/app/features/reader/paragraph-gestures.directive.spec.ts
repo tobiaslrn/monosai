@@ -141,7 +141,7 @@ describe('ParagraphGesturesDirective', () => {
   it('selects from the leading between two lines', () => {
     click(paragraph(), 50, 137);
 
-    expect(selections()[0].sentenceId).toBe('s2');
+    expect(selections()[0]!.sentenceId).toBe('s2');
   });
 
   it('does not delay a keyboard word activation', () => {

@@ -86,7 +86,7 @@ describe('OpenRouterTtsSynthesizer', () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const body = harness.server.requests[0].body;
+    const body = harness.server.requests[0]!.body;
     expect(body['input']).toBe(SENTENCE);
     expect(body['input']).not.toContain('雨');
     expect(body['instructions']).toContain('雨が強くなりました。');

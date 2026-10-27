@@ -103,8 +103,9 @@ export class AndroidConnectAdapter implements AnkiVocabularyProvider {
     }
 
     let canDiscoverFields = false;
-    if (models.ok && models.value.length > 0) {
-      const fields = await this.client.modelFieldNames(models.value[0], signal);
+    const firstModel = models.ok ? models.value[0] : undefined;
+    if (firstModel !== undefined) {
+      const fields = await this.client.modelFieldNames(firstModel, signal);
       if (!fields.ok && fields.error.code === 'cancelled') {
         return fields;
       }
@@ -132,11 +133,12 @@ export class AndroidConnectAdapter implements AnkiVocabularyProvider {
       if (!sample.ok && sample.error.code === 'cancelled') {
         return sample;
       }
-      canFilterReviewed = sample.ok && sample.value.length > 0;
-      if (!sample.ok || sample.value.length === 0) {
+      const sampleCard = sample.ok ? sample.value[0] : undefined;
+      canFilterReviewed = sampleCard !== undefined;
+      if (sampleCard === undefined) {
         note('review-counts-unavailable', 'This bridge could not report card review counts.');
       } else {
-        const notes = await this.client.notesInfo([sample.value[0].note], signal);
+        const notes = await this.client.notesInfo([sampleCard.note], signal);
         if (!notes.ok && notes.error.code === 'cancelled') {
           return notes;
         }

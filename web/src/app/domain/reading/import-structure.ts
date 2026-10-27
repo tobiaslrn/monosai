@@ -1,6 +1,7 @@
 import type { SentenceSegment } from '../language/segmentation';
 import { splitIntoParagraphs } from '../language/segmentation';
 import type { DraftParagraph, DraftSentence, ImportDraft } from './import-draft';
+import { defined } from '../shared/invariant';
 
 /**
  * Turns segmented source text into the transient structure used while saving.
@@ -16,25 +17,29 @@ export function buildImportDraft(
   segments: readonly SentenceSegment[],
   nextId: () => string,
 ): ImportDraft {
-  const paragraphRanges = splitIntoParagraphs(text);
-  const sentencesByParagraph = paragraphRanges.map((): DraftSentence[] => []);
+  const buckets = splitIntoParagraphs(text).map((range) => ({
+    range,
+    sentences: [] as DraftSentence[],
+  }));
 
   let paragraphIndex = 0;
   for (const segment of segments) {
+    // Segments are slices of `text`, so there is at least one paragraph.
+    let paragraph = defined(buckets[paragraphIndex], 'buildImportDraft paragraph');
     // Segments arrive in source order, so the paragraph cursor only moves
     // forward instead of being searched for on every sentence.
-    while (
-      paragraphIndex < paragraphRanges.length - 1 &&
-      segment.startUtf16 >= paragraphRanges[paragraphIndex].endUtf16
-    ) {
+    let following = buckets[paragraphIndex + 1];
+    while (following !== undefined && segment.startUtf16 >= paragraph.range.endUtf16) {
       paragraphIndex += 1;
+      paragraph = following;
+      following = buckets[paragraphIndex + 1];
     }
 
     const sentenceText = segment.text.trim();
     if (sentenceText.length === 0) {
       continue;
     }
-    sentencesByParagraph[paragraphIndex].push({
+    paragraph.sentences.push({
       id: nextId(),
       text: sentenceText,
       tokens: null,
@@ -42,8 +47,7 @@ export function buildImportDraft(
   }
 
   const paragraphs: DraftParagraph[] = [];
-  for (let index = 0; index < paragraphRanges.length; index += 1) {
-    const sentences = sentencesByParagraph[index];
+  for (const { range, sentences } of buckets) {
     // A paragraph of nothing but blank lines has no sentences and no reason to
     // exist in the saved reading.
     if (sentences.length === 0) {
@@ -51,7 +55,7 @@ export function buildImportDraft(
     }
     paragraphs.push({
       id: nextId(),
-      sourceText: paragraphRanges[index].text,
+      sourceText: range.text,
       sentences,
     });
   }

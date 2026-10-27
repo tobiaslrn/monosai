@@ -24,11 +24,11 @@ const tokenSchema = z.object({
   startUtf16: z.number().int().nonnegative(),
   endUtf16: z.number().int().positive(),
   surface: nonEmpty,
-  lemma: z.string().optional(),
-  readingHiragana: z.string().optional(),
-  partOfSpeech: partOfSpeechSchema.optional(),
-  inflectionForm: inflectionFormSchema.optional(),
-  verbConjugationFamily: verbConjugationFamilySchema.optional(),
+  lemma: z.string().exactOptional(),
+  readingHiragana: z.string().exactOptional(),
+  partOfSpeech: partOfSpeechSchema.exactOptional(),
+  inflectionForm: inflectionFormSchema.exactOptional(),
+  verbConjugationFamily: verbConjugationFamilySchema.exactOptional(),
   dictionaryKeys: z.array(z.string()),
   isPunctuation: z.boolean(),
 });
@@ -42,19 +42,19 @@ const vocabularyItemSchema = z.object({
   analyzedSequence: z.array(
     z.object({
       surface: nonEmpty,
-      lemma: z.string().optional(),
-      readingHiragana: z.string().optional(),
+      lemma: z.string().exactOptional(),
+      readingHiragana: z.string().exactOptional(),
     }),
   ),
 });
 
 const dictionaryQuerySchema = z.object({
   surface: nonEmpty,
-  lemma: z.string().optional(),
-  readingHiragana: z.string().optional(),
-  partOfSpeech: partOfSpeechSchema.optional(),
-  verbConjugationFamily: verbConjugationFamilySchema.optional(),
-  limit: z.number().int().positive().optional(),
+  lemma: z.string().exactOptional(),
+  readingHiragana: z.string().exactOptional(),
+  partOfSpeech: partOfSpeechSchema.exactOptional(),
+  verbConjugationFamily: verbConjugationFamilySchema.exactOptional(),
+  limit: z.number().int().positive().exactOptional(),
 });
 
 const requestSchema = z.discriminatedUnion('operation', [
@@ -110,7 +110,7 @@ export const languageErrorSchema = z.object({
   domain: z.literal('language'),
   code: z.enum(ALL_LANGUAGE_ERROR_CODES),
   message: z.string(),
-  cause: z.string().optional(),
+  cause: z.string().exactOptional(),
 });
 
 /**

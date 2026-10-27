@@ -201,8 +201,8 @@ describe('ReadingLevelPageComponent', () => {
     });
     const selects = element.querySelectorAll<HTMLSelectElement>('mn-anki-mapping-draft select');
     for (const [index, value] of ['Core Japanese', 'Basic', 'Expression', 'Meaning'].entries()) {
-      selects[index].value = value;
-      selects[index].dispatchEvent(new Event('change'));
+      selects[index]!.value = value;
+      selects[index]!.dispatchEvent(new Event('change'));
       await settle(fixture);
     }
     [...element.querySelectorAll<HTMLButtonElement>('mn-anki-mapping-draft button')]
@@ -222,7 +222,7 @@ describe('ReadingLevelPageComponent', () => {
     });
     const rows = element.querySelectorAll('[data-testid="source-row"]');
     expect(rows).toHaveLength(1);
-    expect(rows[0].textContent).toContain('On this computer');
+    expect(rows[0]!.textContent).toContain('On this computer');
   });
 
   it('says how many words a story needs while there are too few', async () => {

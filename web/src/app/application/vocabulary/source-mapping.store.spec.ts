@@ -35,7 +35,7 @@ describe('SourceMappingStore', () => {
 
     expect(added).not.toBeNull();
     expect(store.mappings()).toHaveLength(1);
-    expect(store.mappings()[0].enabled).toBe(true);
+    expect(store.mappings()[0]!.enabled).toBe(true);
     expect(store.hasIncluded()).toBe(true);
   });
 
@@ -44,7 +44,7 @@ describe('SourceMappingStore', () => {
     await store.load();
 
     expect(store.loaded()).toBe(true);
-    expect(store.mappings()[0].deckName).toBe('Core Japanese');
+    expect(store.mappings()[0]!.deckName).toBe('Core Japanese');
   });
 
   it('allows two mappings on one deck with different note types', async () => {
@@ -60,7 +60,7 @@ describe('SourceMappingStore', () => {
 
     await store.update(added.id, { expressionFieldName: 'Meaning' });
 
-    expect(store.mappings()[0].expressionFieldName).toBe('Meaning');
+    expect(store.mappings()[0]!.expressionFieldName).toBe('Meaning');
     expect(store.mappings()).toHaveLength(1);
   });
 

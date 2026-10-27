@@ -59,7 +59,7 @@ describe('SegmentedControlComponent', () => {
     expect(radios()).toHaveLength(3);
     expect(radios().every((radio) => radio.type === 'radio')).toBe(true);
     expect(new Set(radios().map((radio) => radio.name)).size).toBe(1);
-    expect(radios()[0].name).not.toBe('');
+    expect(radios()[0]!.name).not.toBe('');
   });
 
   it('labels every option and checks only the one that is the value', () => {
@@ -76,7 +76,7 @@ describe('SegmentedControlComponent', () => {
   it('writes the chosen option back through the two-way binding', () => {
     const { fixture, host, radios } = render();
 
-    radios()[2].click();
+    radios()[2]!.click();
     fixture.detectChanges();
 
     expect(host.theme()).toBe('dark');

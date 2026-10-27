@@ -132,11 +132,12 @@ function sameWaveFormat(left: WaveFormat, right: WaveFormat): boolean {
 export async function combineWaveClips(
   clips: readonly Blob[],
 ): Promise<{ readonly blob: Blob; readonly timeline: AudioTimeline }> {
-  if (clips.length === 0) {
+  const parsed = await Promise.all(clips.map(async (clip) => parseWave(await clip.arrayBuffer())));
+  const [head] = parsed;
+  if (head === undefined) {
     throw new Error('A sequence needs at least one clip');
   }
-  const parsed = await Promise.all(clips.map(async (clip) => parseWave(await clip.arrayBuffer())));
-  const format = parsed[0].format;
+  const format = head.format;
   if (!parsed.every((clip) => sameWaveFormat(format, clip.format))) {
     throw new Error('WAV clips use different formats');
   }
@@ -417,10 +418,11 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
     ): Promise<AudioTimeline> {
       const token = (operationToken += 1);
       discardSequence();
-      if (clips.length === 0) {
+      const [firstClip] = clips;
+      if (firstClip === undefined) {
         throw new Error('A sequence needs at least one clip');
       }
-      const mimeType = clips[0].mimeType;
+      const mimeType = firstClip.mimeType;
       if (!clips.every((clip) => clip.mimeType === mimeType)) {
         throw new Error('A sequence cannot mix audio formats');
       }
@@ -455,7 +457,7 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       }
       trackDuration = timeline.duration;
       const startIndex = Math.min(Math.max(options?.startIndex ?? 0, 0), clips.length - 1);
-      element.currentTime = Math.max(options?.startSeconds ?? timeline.starts[startIndex], 0);
+      element.currentTime = Math.max(options?.startSeconds ?? timeline.starts[startIndex] ?? 0, 0);
       if (options?.startPaused === true) {
         return timeline;
       }

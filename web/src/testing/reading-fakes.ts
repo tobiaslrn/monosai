@@ -153,7 +153,7 @@ function tokenize(text: string): readonly Token[] {
   };
 
   for (let index = 0; index < text.length; index += 1) {
-    if (PUNCTUATION.has(text[index])) {
+    if (PUNCTUATION.has(text[index]!)) {
       push(index, false);
       push(index + 1, true);
     }

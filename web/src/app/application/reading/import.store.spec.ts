@@ -58,7 +58,7 @@ class FakeTextImportService {
     if (!analyzed.ok) {
       return analyzed;
     }
-    const map = new Map(sentences.map((s, index) => [s.id, analyzed.value[index].tokens]));
+    const map = new Map(sentences.map((s, index) => [s.id, analyzed.value[index]!.tokens]));
     onProgress?.({ completed: sentences.length, total: sentences.length });
     return ok(map);
   }

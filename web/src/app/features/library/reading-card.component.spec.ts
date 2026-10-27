@@ -267,13 +267,13 @@ describe('ReadingCardComponent', () => {
 
       toggle.click();
       fixture.detectChanges();
-      items[0].click();
+      items[0]!.click();
       fixture.detectChanges();
       expect(toggle.getAttribute('aria-expanded')).toBe('false');
 
       toggle.click();
       fixture.detectChanges();
-      items[1].click();
+      items[1]!.click();
 
       expect(asked).toEqual(['rename', 'delete']);
     });

@@ -14,7 +14,7 @@ import type { TokenStatusAssignment } from './validation';
 function sentence(...specs: readonly string[]): readonly Token[] {
   let cursor = 0;
   return specs.map((spec, index) => {
-    const [surface, pos = ''] = spec.split(':');
+    const [surface = '', pos = ''] = spec.split(':');
     const startUtf16 = cursor;
     cursor += surface.length;
     return {
@@ -36,7 +36,7 @@ function chunks(tokens: readonly Token[], starts: readonly boolean[]): readonly 
     if (starts[index]) {
       grouped.push(token.surface);
     } else {
-      grouped[grouped.length - 1] += token.surface;
+      grouped.push(`${grouped.pop() ?? ''}${token.surface}`);
     }
   });
   return grouped;
@@ -284,11 +284,11 @@ describe('wordAt', () => {
 
   it('composes the reading only when every part has one', () => {
     const complete = [
-      { ...tokens[2], readingHiragana: 'あり' },
-      { ...tokens[3], readingHiragana: 'ます' },
+      { ...tokens[2]!, readingHiragana: 'あり' },
+      { ...tokens[3]!, readingHiragana: 'ます' },
     ];
     expect(wordAt(complete, 0).readingHiragana).toBe('あります');
-    expect(wordAt([complete[0], tokens[3]], 0).readingHiragana).toBeUndefined();
+    expect(wordAt([complete[0]!, tokens[3]!], 0).readingHiragana).toBeUndefined();
   });
 
   it('resolves a single-token word to itself', () => {

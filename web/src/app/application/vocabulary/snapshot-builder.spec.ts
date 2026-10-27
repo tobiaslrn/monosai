@@ -92,8 +92,8 @@ describe('SnapshotBuilder', () => {
   it('canonicalizes for identity while keeping the visible form', async () => {
     const built = await build([entry('ｱｲｳ')]);
 
-    expect(built.content.items[0].visibleExpression).toBe('ｱｲｳ');
-    expect(built.content.items[0].canonicalExpression).toBe('アイウ');
+    expect(built.content.items[0]!.visibleExpression).toBe('ｱｲｳ');
+    expect(built.content.items[0]!.canonicalExpression).toBe('アイウ');
   });
 
   it('gives every item a content hash', async () => {
@@ -107,7 +107,7 @@ describe('SnapshotBuilder', () => {
   it('analyzes each expression into a token sequence for phrase matching', async () => {
     const built = await build([entry('お腹 が 空いた')]);
 
-    expect(built.content.items[0].analyzedSequence).toEqual([
+    expect(built.content.items[0]!.analyzedSequence).toEqual([
       { surface: 'お腹 が 空いた', lemma: 'お腹 が 空いた', readingHiragana: 'お腹 が 空いた' },
     ]);
   });
@@ -196,6 +196,6 @@ describe('SnapshotBuilder', () => {
     });
     if (!built.ok) throw new Error(built.error.message);
 
-    expect(built.value.content.items[0].visibleExpression).toBe('<b>literal</b>');
+    expect(built.value.content.items[0]!.visibleExpression).toBe('<b>literal</b>');
   });
 });

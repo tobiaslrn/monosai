@@ -1,3 +1,4 @@
+import { defined } from './invariant';
 /**
  * Port for the randomness generation depends on.
  *
@@ -34,12 +35,13 @@ export function sampleWithoutReplacement<T>(
     return [];
   }
 
-  const pool = [...items];
+  // Boxed so a missing slot is distinguishable from an item that is itself undefined.
+  const pool = items.map((item) => ({ item }));
   for (let index = 0; index < wanted; index += 1) {
     const pick = index + random.nextInt(pool.length - index);
-    const swapped = pool[pick];
-    pool[pick] = pool[index];
-    pool[index] = swapped;
+    const current = defined(pool[index], 'sampleWithoutReplacement slot');
+    pool[index] = defined(pool[pick], 'sampleWithoutReplacement pick');
+    pool[pick] = current;
   }
-  return pool.slice(0, wanted);
+  return pool.slice(0, wanted).map(({ item }) => item);
 }

@@ -47,6 +47,7 @@ import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
 import { StoryAssemblyService, type AcceptedSentence } from './story-assembly.service';
 import { VocabularyPreparationService } from './vocabulary-preparation.service';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
+import { defined } from '../../domain/shared/invariant';
 
 export type GenerationFailure = AiError | LanguageError | StorageError;
 
@@ -638,7 +639,8 @@ export class GenerationStore {
       key: index === 0 ? 'title' : `s${String(index - 1)}`,
       sentenceIndex: index === 0 ? null : index - 1,
       textJa,
-      tokens: tokenized.value[index].tokens,
+      // Same length as `texts`, checked above.
+      tokens: defined(tokenized.value[index], 'analyze tokenized unit').tokens,
       statuses: [],
     }));
 
@@ -812,7 +814,10 @@ export class GenerationStore {
       .map((unit) => ({ textJa: unit.textJa, tokens: unit.tokens, statuses: unit.statuses }));
 
     const draft = this.assembly.build({
-      titleJa: units[0].textJa,
+      titleJa: defined(
+        units.find((unit) => unit.sentenceIndex === null),
+        'finalize title unit',
+      ).textJa,
       sentences,
       form: request.form,
       premise: request.premise,

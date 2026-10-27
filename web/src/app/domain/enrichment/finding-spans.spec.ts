@@ -51,15 +51,17 @@ describe('findingsCoveringToken', () => {
   it('keeps a covering finding even when it is inside the profile', () => {
     const covering = finding({ inProfile: true, startUtf16: 2, endUtf16: 5 });
 
-    expect(findingsCoveringToken([covering], TOKENS[1])).toEqual([covering]);
+    expect(findingsCoveringToken([covering], TOKENS[1]!)).toEqual([covering]);
   });
 
   it('drops a finding that has no span, because it was never about one word', () => {
-    expect(findingsCoveringToken([finding()], TOKENS[1])).toEqual([]);
+    expect(findingsCoveringToken([finding()], TOKENS[1]!)).toEqual([]);
   });
 
   it('drops a finding whose span lies elsewhere in the sentence', () => {
-    expect(findingsCoveringToken([finding({ startUtf16: 0, endUtf16: 2 })], TOKENS[2])).toEqual([]);
+    expect(findingsCoveringToken([finding({ startUtf16: 0, endUtf16: 2 })], TOKENS[2]!)).toEqual(
+      [],
+    );
   });
 });
 

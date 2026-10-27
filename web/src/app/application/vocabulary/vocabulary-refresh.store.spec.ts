@@ -204,8 +204,8 @@ describe('VocabularyRefreshStore', () => {
       );
 
       expect(records).toHaveLength(2);
-      expect(records[0].deckName).toBe('Core Japanese');
-      expect(records[0].fieldName).toBe('Expression');
+      expect(records[0]!.deckName).toBe('Core Japanese');
+      expect(records[0]!.fieldName).toBe('Expression');
     });
 
     it('tokenizes each distinct expression once', async () => {

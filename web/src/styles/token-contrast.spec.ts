@@ -32,7 +32,7 @@ function extractMixin(source: string, mixinName: string): Palette {
 
   const palette = new Map<string, string>();
   for (const match of body.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{6});/g)) {
-    palette.set(match[1], match[2].toLowerCase());
+    palette.set(match[1]!, match[2]!.toLowerCase());
   }
   return palette;
 }

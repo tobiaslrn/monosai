@@ -64,7 +64,7 @@ describe('GrammarAnalysisService', () => {
       ok({
         findings: [
           {
-            sentenceId: list[1].id,
+            sentenceId: list[1]!.id,
             label: 'て-form',
             explanationEn: 'Connects two clauses.',
             confidence: 'high' as const,
@@ -93,8 +93,8 @@ describe('GrammarAnalysisService', () => {
     }
     expect(outcome.records).toHaveLength(3);
     expect(provider.generationCalls.grammar).toBe(1);
-    expect(outcome.records[0].findings).toEqual([]);
-    expect(outcome.records[1].findings).toEqual([
+    expect(outcome.records[0]!.findings).toEqual([]);
+    expect(outcome.records[1]!.findings).toEqual([
       {
         label: 'て-form',
         explanationEn: 'Connects two clauses.',
@@ -187,6 +187,6 @@ describe('GrammarAnalysisService', () => {
       return;
     }
     expect(outcome.records).toHaveLength(1);
-    expect(outcome.records[0].findings).toEqual([]);
+    expect(outcome.records[0]!.findings).toEqual([]);
   });
 });

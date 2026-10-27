@@ -39,9 +39,9 @@ const REQUEST: StoryPlotRequest = {
 };
 
 function sent(context: ReturnType<typeof openRouterHarness>) {
-  const body = context.server.requests[0].body;
+  const body = context.server.requests[0]!.body;
   const messages = body['messages'] as readonly { content: string }[];
-  return { body, system: messages[0].content, user: messages[1].content };
+  return { body, system: messages[0]!.content, user: messages[1]!.content };
 }
 
 describe('OpenRouterStoryGenerator plot drafting', () => {

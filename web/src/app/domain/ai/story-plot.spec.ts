@@ -21,23 +21,23 @@ describe('checkDraftedPlots', () => {
   });
 
   it('refuses an empty or overlong plot', () => {
-    expect(checkDraftedPlots(['', three[1], three[2]], 3)).toEqual({
+    expect(checkDraftedPlots(['', three[1]!, three[2]!], 3)).toEqual({
       ok: false,
       error: 'plot-empty',
     });
     expect(
-      checkDraftedPlots(['a'.repeat(MAX_DRAFTED_PLOT_LENGTH + 1), three[1], three[2]], 3),
+      checkDraftedPlots(['a'.repeat(MAX_DRAFTED_PLOT_LENGTH + 1), three[1]!, three[2]!], 3),
     ).toEqual({ ok: false, error: 'plot-too-long' });
   });
 
   it('refuses a plot that repeats another, whatever its case and punctuation', () => {
     expect(
-      checkDraftedPlots([three[0], 'aiko loses her umbrella at the station', three[2]], 3),
+      checkDraftedPlots([three[0]!, 'aiko loses her umbrella at the station', three[2]!], 3),
     ).toEqual({ ok: false, error: 'plot-duplicate' });
   });
 
   it('refuses a plot that repeats one the learner kept', () => {
-    expect(checkDraftedPlots([three[1], three[2]], 2, [three[1]])).toEqual({
+    expect(checkDraftedPlots([three[1]!, three[2]!], 2, [three[1]!])).toEqual({
       ok: false,
       error: 'plot-duplicate',
     });

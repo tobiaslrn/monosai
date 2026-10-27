@@ -240,8 +240,8 @@ describe('ReaderStore', () => {
     }
 
     function firstCategory(reader: ReaderStore): string | undefined {
-      const sentence = reader.paragraphs()[0].sentences[0];
-      return sentence.statuses?.get(sentence.tokens[0].id)?.validation.category;
+      const sentence = reader.paragraphs()[0]!.sentences[0]!;
+      return sentence.statuses?.get(sentence.tokens[0]!.id)?.validation.category;
     }
 
     it('keeps a generated story’s policy exception the snapshot does not cover', async () => {

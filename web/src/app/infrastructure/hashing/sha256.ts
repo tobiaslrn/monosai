@@ -36,23 +36,35 @@ export function sha256Bytes(input: Uint8Array): Uint8Array {
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
   ]);
   const w = new Uint32Array(64);
+  // Every index below is in range of a fixed-size typed array, so `?? 0` is
+  // never taken; it only satisfies `noUncheckedIndexedAccess` without a call
+  // or a branch the engine cannot fold.
 
   for (let offset = 0; offset < paddedLength; offset += 64) {
     for (let i = 0; i < 16; i += 1) {
       w[i] = view.getUint32(offset + i * 4);
     }
     for (let i = 16; i < 64; i += 1) {
-      const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
-      const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
-      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+      const w15 = w[i - 15] ?? 0;
+      const w2 = w[i - 2] ?? 0;
+      const s0 = rotr(w15, 7) ^ rotr(w15, 18) ^ (w15 >>> 3);
+      const s1 = rotr(w2, 17) ^ rotr(w2, 19) ^ (w2 >>> 10);
+      w[i] = ((w[i - 16] ?? 0) + s0 + (w[i - 7] ?? 0) + s1) >>> 0;
     }
 
-    let [a, b, c, d, e, f, g, hh] = [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]];
+    let a = h[0] ?? 0;
+    let b = h[1] ?? 0;
+    let c = h[2] ?? 0;
+    let d = h[3] ?? 0;
+    let e = h[4] ?? 0;
+    let f = h[5] ?? 0;
+    let g = h[6] ?? 0;
+    let hh = h[7] ?? 0;
 
     for (let i = 0; i < 64; i += 1) {
       const s1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
       const ch = (e & f) ^ (~e & g);
-      const temp1 = (hh + s1 + ch + K[i] + w[i]) >>> 0;
+      const temp1 = (hh + s1 + ch + (K[i] ?? 0) + (w[i] ?? 0)) >>> 0;
       const s0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
       const maj = (a & b) ^ (a & c) ^ (b & c);
       const temp2 = (s0 + maj) >>> 0;
@@ -67,20 +79,20 @@ export function sha256Bytes(input: Uint8Array): Uint8Array {
       a = (temp1 + temp2) >>> 0;
     }
 
-    h[0] = (h[0] + a) >>> 0;
-    h[1] = (h[1] + b) >>> 0;
-    h[2] = (h[2] + c) >>> 0;
-    h[3] = (h[3] + d) >>> 0;
-    h[4] = (h[4] + e) >>> 0;
-    h[5] = (h[5] + f) >>> 0;
-    h[6] = (h[6] + g) >>> 0;
-    h[7] = (h[7] + hh) >>> 0;
+    h[0] = ((h[0] ?? 0) + a) >>> 0;
+    h[1] = ((h[1] ?? 0) + b) >>> 0;
+    h[2] = ((h[2] ?? 0) + c) >>> 0;
+    h[3] = ((h[3] ?? 0) + d) >>> 0;
+    h[4] = ((h[4] ?? 0) + e) >>> 0;
+    h[5] = ((h[5] ?? 0) + f) >>> 0;
+    h[6] = ((h[6] ?? 0) + g) >>> 0;
+    h[7] = ((h[7] ?? 0) + hh) >>> 0;
   }
 
   const digest = new Uint8Array(32);
   const digestView = new DataView(digest.buffer);
   for (let i = 0; i < 8; i += 1) {
-    digestView.setUint32(i * 4, h[i]);
+    digestView.setUint32(i * 4, h[i] ?? 0);
   }
   return digest;
 }

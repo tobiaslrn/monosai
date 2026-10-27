@@ -87,7 +87,7 @@ describe('SourceListComponent', () => {
   it('says where a source came from and how much is in it', async () => {
     await TestBed.inject(SourceStandingStore).load([TEXT_LIST.id]);
     const { element } = await render();
-    const list = rows(element)[0];
+    const list = rows(element)[0]!;
 
     expect(list.textContent).toContain('My textbook');
     expect(list.textContent).toContain('Your list');
@@ -101,8 +101,8 @@ describe('SourceListComponent', () => {
     await TestBed.inject(SourceMappingStore).setIncluded(TEXT_LIST.id, false);
     const { element } = await render();
 
-    expect(rows(element)[0].textContent).toContain('not counted');
-    expect(rows(element)[0].closest('mn-list-row')?.classList.contains('is-off')).toBe(true);
+    expect(rows(element)[0]!.textContent).toContain('not counted');
+    expect(rows(element)[0]!.closest('mn-list-row')?.classList.contains('is-off')).toBe(true);
   });
 
   /** The vocabulary card above the list states the count; the list does not repeat it. */
