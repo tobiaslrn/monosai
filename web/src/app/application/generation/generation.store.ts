@@ -198,6 +198,9 @@ export class GenerationStore {
    */
   private builtDraft: GeneratedStoryDraft | null = null;
 
+  /** Told once the story is safely written, by whoever owns this run. */
+  onSaved: ((reading: GeneratedStory) => void) | null = null;
+
   readonly state = this.stateSignal.asReadonly();
   readonly announcement = this.announcementSignal.asReadonly();
   /** Content repairs spent so far in this run. Format recovery is not counted. */
@@ -726,6 +729,8 @@ export class GenerationStore {
     this.stateSignal.set({ kind: 'saved', reading: saved.value });
     this.logger.info('job.succeeded', { kind: 'generation' });
     this.announce(`Saved “${saved.value.title}” to your library.`);
+    // Last, because the owner may end this run and destroy this store in reply.
+    this.onSaved?.(saved.value);
   }
 
   /** Structural baseline forms, which stay readable whatever the allowlist says. */

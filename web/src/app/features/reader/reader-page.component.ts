@@ -1,14 +1,12 @@
-import type { ElementRef, TemplateRef } from '@angular/core';
+import type { ElementRef, OnChanges, SimpleChanges, TemplateRef } from '@angular/core';
 import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
   ViewContainerRef,
   computed,
-  effect,
   inject,
   input,
-  untracked,
   viewChild,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
@@ -583,7 +581,7 @@ const WORD_TARGET = 'button.token';
     }
   `,
 })
-export class ReaderPageComponent {
+export class ReaderPageComponent implements OnChanges {
   /** Route parameter, bound by `withComponentInputBinding`. */
   readonly id = input.required<string>();
 
@@ -766,22 +764,6 @@ export class ReaderPageComponent {
   constructor() {
     this.geometry.connect({ bar: this.readerBar, title: this.pageTitle, content: this.content });
 
-    // An effect because the route input is the only trigger there is: opening is
-    // a one-off command that starts a load and resets the page's surfaces, not
-    // a read to derive.
-    effect(() => {
-      const nextReadingId = readingId(this.id());
-      // Untracked, like every store call in it. An effect tracks the signals
-      // its body reads, including the ones read inside the calls it makes, and
-      // these stores read state they then rewrite — so a tracked call makes the
-      // effect its own trigger and it never stops running.
-      untracked(() => {
-        this.closeReaderSurfaces();
-        this.audio.setReading(nextReadingId);
-        void this.openReading(nextReadingId);
-      });
-    });
-
     inject(DestroyRef).onDestroy(() => {
       // Leaving the reading ends the session that was reading it aloud. The
       // player is the only surface with a transport, and it lives here, so
@@ -794,6 +776,16 @@ export class ReaderPageComponent {
       this.preparation.leftReader();
       this.store.close();
     });
+  }
+
+  /** The route naming a reading is what opens it and resets the page's surfaces. */
+  ngOnChanges(changes: SimpleChanges): void {
+    if ('id' in changes) {
+      const nextReadingId = this.currentReadingId();
+      this.closeReaderSurfaces();
+      this.audio.setReading(nextReadingId);
+      void this.openReading(nextReadingId);
+    }
   }
 
   protected reload(): void {

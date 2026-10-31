@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal, type Signal } from '@angular/core';
 
 /**
  * How many stories are being written right now.
@@ -8,17 +8,17 @@ import { Injectable, signal } from '@angular/core';
  * own preparation, so the two subsystems have something to say to each other in
  * both directions — and a direct dependency each way would be a cycle.
  *
- * The generation jobs store publishes the count here; the lane reads it. Being
+ * The generation jobs store connects its count here; the lane reads it. Being
  * a leaf also keeps it out of the initial bundle's dependency graph: neither
  * heavy subsystem is pulled in merely because the other exists.
  */
 @Injectable({ providedIn: 'root' })
 export class GenerationActivityRegistry {
-  private readonly runningSignal = signal(0);
+  private readonly source = signal<Signal<number> | null>(null);
 
-  readonly runningCount = this.runningSignal.asReadonly();
+  readonly runningCount = computed(() => this.source()?.() ?? 0);
 
-  setRunningCount(count: number): void {
-    this.runningSignal.set(count);
+  connect(runningCount: Signal<number>): void {
+    this.source.set(runningCount);
   }
 }

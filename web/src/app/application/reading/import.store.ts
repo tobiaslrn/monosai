@@ -1,4 +1,4 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import type { LanguageError } from '../../domain/language/language-error';
 import {
   applyAnalysis,
@@ -97,15 +97,12 @@ export class ImportStore {
   );
 
   constructor() {
-    effect((onCleanup) => {
-      this.busyRegistry.setBusy(
+    inject(DestroyRef).onDestroy(
+      this.busyRegistry.track(
         'import-draft',
-        this.isDirty() ? 'an import draft is unsaved' : null,
-      );
-      onCleanup(() => {
-        this.busyRegistry.setBusy('import-draft', null);
-      });
-    });
+        computed(() => (this.isDirty() ? 'an import draft is unsaved' : null)),
+      ),
+    );
   }
 
   setPastedText(text: string): void {

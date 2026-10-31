@@ -6,11 +6,11 @@ import {
   Injectable,
   computed,
   createEnvironmentInjector,
-  effect,
   inject,
   signal,
 } from '@angular/core';
 import type { ChosenPlot, StoryInputDraft } from '../../domain/ai/story-request';
+import type { GeneratedStory } from '../../domain/reading/reading';
 import { jobId, type JobId } from '../../domain/shared/ids';
 import { LibraryStore } from '../reading/library.store';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
@@ -89,8 +89,6 @@ export class GenerationJobsStore {
 
   private readonly records = signal<readonly JobRecord[]>([]);
   private readonly watchedSignal = signal<JobId | null>(null);
-  /** Jobs whose save has already been reported, so it is reported once. */
-  private readonly reportedSaves = new Set<JobId>();
 
   readonly jobs = computed(() => this.records().map((record) => record.job));
 
@@ -111,35 +109,22 @@ export class GenerationJobsStore {
   readonly watched = this.watchedSignal.asReadonly();
 
   constructor() {
+    // The lane reads this rather than this store, so neither subsystem has to
+    // import the other.
+    this.activity.connect(this.runningCount);
     // One reason for all of them: the registry is keyed, and a second job
     // clearing the key while a first still runs would tell a reload it is safe.
-    effect(() => {
-      const running = this.runningCount();
-      // The lane reads this rather than this store, so neither subsystem has to
-      // import the other.
-      this.activity.setRunningCount(running);
-      this.busyRegistry.setBusy(
-        'generation',
-        running === 0
+    const releaseBusy = this.busyRegistry.track(
+      'generation',
+      computed(() => {
+        const running = this.runningCount();
+        return running === 0
           ? null
           : running === 1
             ? 'a story is being generated'
-            : `${String(running)} stories are being generated`,
-      );
-    });
-
-    // An effect because a job's save is visible only as its own store's state, and
-    // reporting it is a one-off command. Watching every job from one place rather
-    // than one effect per job, so a job that ends can be cleaned up without an
-    // effect destroying itself.
-    effect(() => {
-      for (const job of this.jobs()) {
-        if (job.store.state().kind === 'saved' && !this.reportedSaves.has(job.id)) {
-          this.reportedSaves.add(job.id);
-          this.storySaved(job.id);
-        }
-      }
-    });
+            : `${String(running)} stories are being generated`;
+      }),
+    );
 
     // Reloading or closing the tab bypasses the router, and an in-flight
     // generation cannot be resumed, so the browser's own prompt is the only
@@ -152,6 +137,7 @@ export class GenerationJobsStore {
     window.addEventListener('beforeunload', warnOnUnload);
     inject(DestroyRef).onDestroy(() => {
       window.removeEventListener('beforeunload', warnOnUnload);
+      releaseBusy();
       for (const record of this.records()) {
         this.tearDown(record);
       }
@@ -190,6 +176,9 @@ export class GenerationJobsStore {
       startedAt: this.clock.now(),
       store,
     };
+    store.onSaved = (reading) => {
+      this.storySaved(id, reading);
+    };
     this.records.update((current) => [...current, { job, store, injector }]);
     void store.generate(sentenceCount, draft, modelPresetId);
     return id;
@@ -220,7 +209,6 @@ export class GenerationJobsStore {
       this.watchedSignal.set(null);
     }
     this.records.update((current) => current.filter((candidate) => candidate !== record));
-    this.reportedSaves.delete(id);
     this.tearDown(record);
   }
 
@@ -233,13 +221,8 @@ export class GenerationJobsStore {
    * row would only repeat it. A watched job stays until its screen releases it,
    * so the learner reading the wait screen still gets the saved panel.
    */
-  private storySaved(id: JobId): void {
-    const saved = this.records()
-      .find((record) => record.job.id === id)
-      ?.store.state();
-    if (saved?.kind === 'saved') {
-      void this.preparation.reconcile(saved.reading);
-    }
+  private storySaved(id: JobId, reading: GeneratedStory): void {
+    void this.preparation.reconcile(reading);
     void this.library.load();
     this.library.noteExternalChange('Your generated story is ready and is in your library.');
     if (this.watchedSignal() !== id) {

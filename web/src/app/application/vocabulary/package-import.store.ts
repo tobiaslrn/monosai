@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { ankiError, isRetryable, type AnkiError } from '../../domain/anki/anki-error';
 import type { AnkiCatalog } from '../../domain/anki/catalog';
 import type { AnkiVocabularyProvider, PackageSource } from '../../domain/anki/anki-provider';
@@ -114,14 +114,13 @@ export class PackageImportStore {
     // An update that reloaded the page mid-import would throw the file away, so
     // the whole flow — including a chooser waiting for an answer — counts as
     // busy until it reaches a terminal state or the page releases the store.
-    effect(() => {
-      this.busyRegistry.setBusy(
-        'package-import',
-        this.isActive() ? 'an Anki package is being imported' : null,
-      );
-    });
+    const releaseBusy = this.busyRegistry.track(
+      'package-import',
+      computed(() => (this.isActive() ? 'an Anki package is being imported' : null)),
+    );
     inject(DestroyRef).onDestroy(() => {
       this.dispose();
+      releaseBusy();
     });
   }
 
@@ -329,7 +328,11 @@ export class PackageImportStore {
     this.controller = null;
     this.releaseProvider();
     this.source = null;
-    this.busyRegistry.setBusy('package-import', null);
+    // A flow left mid-way has no worker behind it any more, so it no longer counts
+    // as busy. A finished one keeps its outcome for the page that reads it.
+    if (this.isActive()) {
+      this.stateSignal.set(IDLE);
+    }
   }
 
   private async run(plan: PackageImportPlan, operation: number): Promise<void> {

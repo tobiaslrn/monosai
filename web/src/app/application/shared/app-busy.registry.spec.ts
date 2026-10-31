@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { describe, expect, it } from 'vitest';
 import { AppBusyRegistry } from './app-busy.registry';
 
@@ -32,5 +33,24 @@ describe('AppBusyRegistry', () => {
 
     expect(registry.isBusy()).toBe(false);
     expect(registry.busyReason()).toBeNull();
+  });
+
+  it('follows a tracked signal, beside reasons set directly, until it is released', () => {
+    const registry = new AppBusyRegistry();
+    const reason = signal<string | null>(null);
+
+    const release = registry.track('generation', reason);
+    expect(registry.isBusy()).toBe(false);
+
+    reason.set('a story is being generated');
+    registry.setBusy('import-draft', 'an import draft is unsaved');
+    expect(registry.isBusy()).toBe(true);
+    expect(registry.busyReason()).toBe('an import draft is unsaved');
+
+    registry.setBusy('import-draft', null);
+    expect(registry.busyReason()).toBe('a story is being generated');
+
+    release();
+    expect(registry.isBusy()).toBe(false);
   });
 });
