@@ -12,9 +12,9 @@ These arc42 chapters never repeat a record's reasoning. They describe the system
 record for the reason. [Chapter 4](04-solution-strategy.md) links the five decisions that shape
 everything else.
 
-Two notes on the numbering. The records are ordered by when the decision was made, not by importance.
-Two records share the number `0028`, which is a real duplicate that is left as it is, because the
-files are already linked from code comments and from other records.
+A note on the numbering. The records are ordered by when the decision was made, not by importance.
+The one exception is `0086`, the word form summary, which was decided on the same day as `0028` and
+shared its number until it was given the next free one.
 
 ## 9.2 Index
 
@@ -100,7 +100,7 @@ files are already linked from code comments and from other records.
 | [0022](../decisions/0022-reader-floating-popover.md)                        | One floating popover replaces the reader's side panel and bottom sheet            |
 | [0023](../decisions/0023-japanese-only-reading-surface.md)                  | The reading surface carries Japanese and nothing else                             |
 | [0025](../decisions/0025-reader-as-the-centre.md)                           | The reader is the centre: no navigation, no reading position, one place for audio |
-| [0028](../decisions/0028-word-form-summary-popup.md)                        | Word details use a compact form summary                                           |
+| [0086](../decisions/0086-word-form-summary-popup.md)                        | Word details use a compact form summary                                           |
 | [0031](../decisions/0031-touch-reading-gestures-and-docked-details.md)      | On touch, a long press selects a sentence and details dock as a sheet             |
 | [0032](../decisions/0032-touch-word-taps-and-one-selection-colour.md)       | A tap on a phone is one press, one colour, and one open thing                     |
 | [0049](../decisions/0049-one-page-for-what-you-can-read.md)                 | Vocabulary and Grammar are one page: what you can read                            |

@@ -1,4 +1,4 @@
-# 0028 — Word details use a compact form summary
+# 0086 — Word details use a compact form summary
 
 Date: 2026-08-22
 Status: Accepted

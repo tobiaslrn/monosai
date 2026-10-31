@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, resource, signal, untracked } from '@angular/core';
 import type { Reading } from '../../domain/reading/reading';
 import type { ReadingId, SentenceId } from '../../domain/shared/ids';
 import { AudioPlaybackStore } from '../audio/audio-playback.store';
@@ -6,6 +6,7 @@ import { AudioConfigurationService } from '../enrichment/audio-configuration.ser
 import { AudioJobStore, isAudioRunInProgress } from '../enrichment/audio-job.store';
 import { ReadingAudioMaintenanceStore } from '../enrichment/reading-audio-maintenance.store';
 import { TtsStore } from '../settings/tts.store';
+import { LOGGER, NOOP_LOGGER, reportRejection, type Logger } from '../shared/diagnostics';
 import { ReaderStore } from './reader.store';
 
 /**
@@ -35,6 +36,7 @@ export class ReaderAudioStore {
    * reading itself has loaded, and audio progress is asked for from that moment.
    */
   private readonly readingIdSignal = signal<ReadingId | null>(null);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly playerOpenSignal = signal(false);
   private readonly playerSentenceIdSignal = signal<SentenceId | null>(null);
@@ -111,6 +113,51 @@ export class ReaderAudioStore {
       this.reader.status() === 'ready' &&
       this.reader.paragraphs().some((paragraph) => paragraph.sentences.length > 0),
   );
+
+  constructor() {
+    // Which clips exist, re-read whenever the reading changes and whenever the
+    // audio job has written more. Two local reads: the player appears because
+    // clips exist, never because a run started. The re-read is also what lets a
+    // session waiting at the frontier read on, since the clip it is waiting for
+    // becomes available here (ADR 0034). Here because playback is
+    // application-wide and outlives the reader, so it cannot watch this reading's
+    // job itself.
+    resource({
+      params: () => {
+        const reading = this.reader.reading();
+        const progress = this.progress();
+        const voice = this.tts.settings();
+        return reading === null ? undefined : { reading, progress, voice };
+      },
+      loader: ({ params }) =>
+        this.playback.prepare(params.reading).catch((error: unknown) => {
+          reportRejection(this.logger, error);
+        }),
+    });
+
+    // An effect because whether a run is still coming belongs to the reader, not
+    // to playback, and releasing a wait is a command.
+    effect(() => {
+      // A session at the frontier is waiting for a clip the run is about to
+      // store. Once the run has failed or been cancelled that clip is never
+      // coming, and only the reader knows: the playback store has no business
+      // watching a generation job, so the word is passed from here.
+      //
+      // Told whether or not a wait is showing, because a continuous session
+      // holds inside its own resource: that resource has to be sealed for the
+      // element to reach the end of what was made rather than stall at it.
+      // The wait is still watched too — one sentence at a time can start one
+      // *after* the run has stopped, and a release that only fired on the job's
+      // own transition would leave it waiting for something already called off.
+      const kind = this.progress().kind;
+      this.playback.status();
+      if (kind === 'failed' || kind === 'cancelled') {
+        untracked(() => {
+          this.playback.stopExpectingClips();
+        });
+      }
+    });
+  }
 
   /**
    * Shows the player, capturing the sentence selected as it opens.

@@ -196,7 +196,11 @@ reader knows about the open reading's audio: generation progress and its start,
 retry and dismissal, whether a voice is configured, the spoken state of the header
 button, the floating player's open state and the sentence it captured, and clearing
 this reading's clips. It is provided by the reader, so the player's open state dies
-with the screen while playback, which is application-wide, outlives it.
+with the screen while playback, which is application-wide, outlives it. It also tells
+playback what playback cannot watch for itself: which clips to re-read as the job
+writes them, and when no more are coming. The page's one remaining effect opens the
+reading its route names; `SentenceAidsStore` follows the mounted window, and
+`ReaderPreparationStore` re-reads the summaries while a job runs.
 
 The component keeps only what is about the page: the confirmation before clips are
 deleted. The player card's measured height, which anything else docked to the
