@@ -112,6 +112,7 @@ export class AddTextPageComponent {
   private readonly router = inject(Router);
   private readonly navigation = inject(NavigationHistoryService);
   private readonly dialog = inject(Dialog);
+  private destroyed = false;
 
   protected readonly busyMessage = computed(() => {
     const busy = this.store.busy();
@@ -139,6 +140,7 @@ export class AddTextPageComponent {
     };
     window.addEventListener('beforeunload', warnOnUnload);
     inject(DestroyRef).onDestroy(() => {
+      this.destroyed = true;
       window.removeEventListener('beforeunload', warnOnUnload);
     });
   }
@@ -149,7 +151,7 @@ export class AddTextPageComponent {
 
   protected async save(): Promise<void> {
     const id = await this.store.save();
-    if (id !== null) {
+    if (id !== null && !this.destroyed) {
       await this.router.navigate(['/reader', id], {
         replaceUrl: true,
         ...this.navigation.preservedOrigin('/library'),

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { ImportStore } from '../../application/reading/import.store';
 import { formatCount, formatCountOf } from '../../domain/shared/locale';
 import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
+import { MAXIMUM_TITLE_LENGTH } from '../../domain/reading/import-title';
 
 /**
  * The pasted-text field of Add text, with its title and its character counter.
@@ -57,6 +58,7 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
       <input
         id="mn-import-title"
         type="text"
+        [attr.maxlength]="maximumTitleLength"
         [value]="store.titleInput()"
         [attr.placeholder]="store.derivedTitle()"
         (input)="onTitle($event)"
@@ -94,6 +96,7 @@ import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
 export class TextInputStepComponent {
   protected readonly store = inject(ImportStore);
   protected readonly limit = MAXIMUM_IMPORT_CHARACTERS;
+  protected readonly maximumTitleLength = MAXIMUM_TITLE_LENGTH;
   protected readonly formatCount = formatCount;
   protected readonly overLimitMessage = computed(
     () =>

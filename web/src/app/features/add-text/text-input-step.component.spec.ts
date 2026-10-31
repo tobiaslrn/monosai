@@ -68,6 +68,12 @@ describe('TextInputStepComponent', () => {
     expect(element.querySelector('[role="tablist"]')).toBeNull();
   });
 
+  it('stops the title input at the stored title limit', () => {
+    const element = render();
+
+    expect(element.querySelector('#mn-import-title')?.getAttribute('maxlength')).toBe('120');
+  });
+
   it('keeps the textarea labelled and hides its counter while far from the limit', () => {
     const element = render();
     const textarea = element.querySelector('textarea');

@@ -54,6 +54,8 @@ export class ImportStore {
   private readonly announcementSignal = signal('');
   private readonly savedIdSignal = signal<ReadingId | null>(null);
   private readonly duplicatesSignal = signal<readonly ImportedReading[]>([]);
+  /** Set when the page is left: an abandoned import must not reach storage. */
+  private discarded = false;
 
   readonly busy = this.busySignal.asReadonly();
   readonly rawText = this.rawTextSignal.asReadonly();
@@ -97,7 +99,11 @@ export class ImportStore {
   );
 
   constructor() {
-    inject(DestroyRef).onDestroy(
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(() => {
+      this.discarded = true;
+    });
+    destroyRef.onDestroy(
       this.busyRegistry.track(
         'import-draft',
         computed(() => (this.isDirty() ? 'an import draft is unsaved' : null)),
@@ -133,6 +139,9 @@ export class ImportStore {
 
     if (this.duplicatesSignal().length === 0) {
       const duplicates = await this.imports.findDuplicates(validated.value.text);
+      if (this.discarded) {
+        return null;
+      }
       if (!duplicates.ok) {
         this.storageFailureSignal.set(duplicates.error);
         this.announce('Existing stories could not be checked. Nothing was saved.');
@@ -147,6 +156,9 @@ export class ImportStore {
 
     this.busySignal.set({ kind: 'preparing-language' });
     const ready = await this.imports.ensureLanguageReady();
+    if (this.discarded) {
+      return null;
+    }
     if (!ready.ok) {
       this.languageFailureSignal.set(ready.error);
       this.busySignal.set(IDLE);
@@ -155,6 +167,9 @@ export class ImportStore {
 
     this.busySignal.set({ kind: 'segmenting' });
     const segmented = await this.imports.segment(validated.value.text);
+    if (this.discarded) {
+      return null;
+    }
     if (!segmented.ok) {
       this.languageFailureSignal.set(segmented.error);
       this.busySignal.set(IDLE);
@@ -164,7 +179,7 @@ export class ImportStore {
     this.draftSignal.set(segmented.value);
     await this.analyzePending();
 
-    if (this.hasPendingAnalysis()) {
+    if (this.hasPendingAnalysis() || this.discarded) {
       return null;
     }
 
@@ -173,7 +188,7 @@ export class ImportStore {
 
   private async persistDraft(): Promise<ReadingId | null> {
     const draft = this.draftSignal();
-    if (draft === null || this.hasPendingAnalysis()) {
+    if (draft === null || this.hasPendingAnalysis() || this.discarded) {
       return null;
     }
 
