@@ -2,11 +2,11 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
-  effect,
   inject,
   input,
   signal,
-  untracked,
+  type OnChanges,
+  type SimpleChanges,
 } from '@angular/core';
 import { ViewportService } from '../../core/platform/viewport.service';
 
@@ -63,7 +63,7 @@ function easeOut(progress: number): number {
     }
   `,
 })
-export class CountingCountComponent {
+export class CountingCountComponent implements OnChanges {
   /** The value to show, and to rise to when it changes. */
   readonly count = input.required<number>();
   /** How the value is said. Passed in so one formatter states it everywhere. */
@@ -71,7 +71,6 @@ export class CountingCountComponent {
 
   private readonly viewport = inject(ViewportService);
   private frame: number | null = null;
-  private settled = false;
 
   protected readonly displayed = signal(0);
   protected readonly rising = signal(false);
@@ -80,20 +79,23 @@ export class CountingCountComponent {
     inject(DestroyRef).onDestroy(() => {
       this.cancel();
     });
-
-    effect(() => {
-      const target = this.count();
-      untracked(() => {
-        this.riseTo(target);
-      });
-    });
   }
 
-  private riseTo(target: number): void {
+  /**
+   * A new count is a one-off command, so it starts the rise from here rather
+   * than from an effect: the displayed number is the one the learner is looking
+   * at, including one part-way through an earlier rise.
+   */
+  ngOnChanges(changes: SimpleChanges): void {
+    const count = changes['count'];
+    if (count !== undefined) {
+      this.riseTo(this.count(), count.firstChange);
+    }
+  }
+
+  private riseTo(target: number, first: boolean): void {
     this.cancel();
-    const first = !this.settled;
     const from = this.displayed();
-    this.settled = true;
     this.displayed.set(target);
 
     if (first || this.viewport.prefersReducedMotion() || from === target) {

@@ -371,9 +371,9 @@ trigger.
 A store does not copy state into another store. A registry takes the signal itself, as
 `AppBusyRegistry.track` and `GenerationActivityRegistry.connect` do, and derives from it; a value
 only one caller knows is an argument, as the catalogue parameters are to `TtsStore.acceptsDirection`.
-A one-off command has an explicit trigger: a route input that opens or hands something over is
-`ngOnChanges`, a completed navigation is a router subscription, and the end of a run is a callback
-from the run. Two effects outside the DOM remain, each commented with why: the preparation lane's
+A one-off command has an explicit trigger: a route input that opens or hands something over, or a
+count that starts rising from the number on screen, is `ngOnChanges`, a completed navigation is a
+router subscription, and the end of a run is a callback from the run. Two effects outside the DOM remain, each commented with why: the preparation lane's
 pump, because its hold clears through three other stores, and the release of a wait for clips in
 `reader-audio.store.ts`, because it answers both a job and a wait that starts after the job stopped.
 

@@ -1,17 +1,18 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ViewportService } from '../../core/platform/viewport.service';
 import { formatCountOf } from '../../domain/shared/locale';
 import { CountingCountComponent } from './counting-count.component';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CountingCountComponent],
-  template: `<mn-counting-count [count]="count()" [format]="words" />`,
+  template: `<mn-counting-count [count]="count()" [format]="words()" />`,
 })
 class HostComponent {
   readonly count = signal(340);
-  readonly words = (value: number): string => formatCountOf(value, 'word');
+  readonly words = signal((value: number): string => formatCountOf(value, 'word'));
 }
 
 /**
@@ -124,6 +125,74 @@ describe('CountingCountComponent', () => {
     fixture.detectChanges();
     expect(element.querySelector('.tick')?.getAttribute('aria-hidden')).toBeNull();
     expect(element.querySelector('.mn-visually-hidden')).toBeNull();
+  });
+
+  /** A second sync mid-rise carries on from the number on screen, not from a jump back. */
+  it('rises from the number on screen when the value changes again mid-rise', () => {
+    const fixture = render();
+    fixture.componentInstance.count.set(440);
+    fixture.detectChanges();
+    clock.advance(0);
+    clock.advance(350);
+    fixture.detectChanges();
+    const midway = Number.parseInt(tick(fixture), 10);
+    expect(midway).toBeGreaterThan(340);
+    expect(midway).toBeLessThan(440);
+
+    fixture.componentInstance.count.set(500);
+    fixture.detectChanges();
+    expect(text(fixture)).toBe('500 words');
+    clock.advance(0);
+    fixture.detectChanges();
+    expect(Number.parseInt(tick(fixture), 10)).toBe(midway);
+
+    clock.advance(1000);
+    fixture.detectChanges();
+    expect(text(fixture)).toBe('500 words');
+  });
+
+  /** Rewording the number is not a new value, so it neither rises nor restarts a rise. */
+  it('keeps a rise going when only the formatter changes', () => {
+    const fixture = render();
+    fixture.componentInstance.count.set(440);
+    fixture.detectChanges();
+    clock.advance(0);
+    clock.advance(350);
+    fixture.detectChanges();
+    const midway = tick(fixture);
+
+    fixture.componentInstance.words.set((value) => `${String(value)} entries`);
+    fixture.detectChanges();
+    expect(tick(fixture)).toMatch(/ entries$/);
+    expect(Number.parseInt(tick(fixture), 10)).toBe(Number.parseInt(midway, 10));
+
+    clock.advance(1000);
+    fixture.detectChanges();
+    expect(text(fixture)).toBe('440 entries');
+  });
+
+  describe('with reduced motion', () => {
+    beforeEach(() => {
+      TestBed.configureTestingModule({
+        providers: [{ provide: ViewportService, useValue: { prefersReducedMotion: signal(true) } }],
+      });
+    });
+
+    /** The final number is shown at once and no frame is ever asked for. */
+    it('states a changed value at once', () => {
+      const fixture = render();
+
+      fixture.componentInstance.count.set(360);
+      fixture.detectChanges();
+
+      expect(text(fixture)).toBe('360 words');
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('.mn-visually-hidden'),
+      ).toBeNull();
+      clock.advance(0);
+      fixture.detectChanges();
+      expect(text(fixture)).toBe('360 words');
+    });
   });
 
   /** Returning to a screen states the count; it does not perform it. */
