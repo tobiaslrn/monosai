@@ -53,5 +53,7 @@
 - Commits: `<type>(<scope>): <imperative summary>` — types `feat`, `fix`, `refactor`,
   `perf`, `test`, `docs`, `build`, `ci`, `chore`, `revert`; scope always required (`repo`
   for cross-cutting); lowercase, no period, ≤ 72 characters.
+- Before starting work, run `git fetch` and bring the current branch up to date. New branches
+  start from the freshly updated `main`, the development branch here (there is no `develop`).
 - Stay on the current branch. Never rewrite history. Push only when asked.
 - After a push, watch CI and fix failures until `gate` is green.

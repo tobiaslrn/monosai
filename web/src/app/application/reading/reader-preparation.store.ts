@@ -1,13 +1,15 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, resource, signal } from '@angular/core';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { ReadingId } from '../../domain/shared/ids';
+import { AudioJobStore } from '../enrichment/audio-job.store';
 import { PreparationStore } from '../enrichment/preparation.store';
 import { TranslationJobStore } from '../enrichment/translation-job.store';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { LanguageStore } from '../language/language.store';
 import { TextModelStore } from '../settings/text-model.store';
 import { TtsStore } from '../settings/tts.store';
+import { LOGGER, NOOP_LOGGER, reportRejection, type Logger } from '../shared/diagnostics';
 import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { ReaderStore } from './reader.store';
 
@@ -36,8 +38,12 @@ export class ReaderPreparationStore {
   private readonly grammarProfile = inject(GrammarProfileStore);
   private readonly language = inject(LanguageStore);
   private readonly network = inject(NETWORK_STATUS);
+  private readonly audio = inject(AudioJobStore);
+  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   private readonly readingIdSignal = signal<ReadingId | null>(null);
+  /** The reading whose row is held, which is the one a re-read replaces. */
+  private readonly heldReadingId = computed(() => this.reader.reading()?.id ?? null);
   private readonly pendingSignal = signal<PreparationLayer | null>(null);
   private readonly errorSignal = signal<string | null>(null);
 
@@ -50,11 +56,6 @@ export class ReaderPreparationStore {
   readonly hasTranslationModel = computed(() => this.textModel.hasModelForTask('translation'));
   readonly hasGrammarModel = computed(() => this.textModel.hasModelForTask('grammar'));
 
-  readonly translationProgress = computed(() => {
-    const id = this.readingIdSignal();
-    return id === null ? this.translation.idleProgress : this.translation.progressFor(id);
-  });
-
   constructor() {
     // The profile a reading's grammar is judged against, and the bundle that
     // profile resolves against. Both are already started at bootstrap; asking
@@ -62,6 +63,34 @@ export class ReaderPreparationStore {
     // from showing an unresolved profile.
     void this.grammarProfile.load();
     void this.language.initialize();
+
+    // Translation, audio, and grammar jobs all write rows the reader is
+    // displaying, so a step by any of them is what says to re-read them. Each
+    // job's progress is read whole, because every step it takes is a reason to
+    // re-read, not only its start and end; one resource, so steps from two jobs
+    // in the same tick are one re-read, not two. Re-reading the reading row also
+    // refreshes the summaries the menu counts, and that in turn re-reads the aids
+    // for the mounted window.
+    //
+    // Keyed on the row's id rather than the row: `refreshSummaries` replaces the
+    // row with a fresh object, and tracking it would be an unbounded loop of reads
+    // behind a screen that looked idle.
+    resource({
+      params: () => {
+        const id = this.heldReadingId();
+        if (id === null) return undefined;
+        const translation = this.translation.progressFor(id);
+        const audio = this.audio.progressFor(id);
+        const grammar = this.lane.progressFor(id, 'grammar');
+        return translation.kind !== 'idle' || audio.kind !== 'idle' || grammar.kind !== 'idle'
+          ? { translation, audio, grammar }
+          : undefined;
+      },
+      loader: () =>
+        this.reader.refreshSummaries().catch((error: unknown) => {
+          reportRejection(this.logger, error);
+        }),
+    });
   }
 
   /** The configuration a layer is gated on: a voice for audio, a text model otherwise. */
@@ -71,12 +100,6 @@ export class ReaderPreparationStore {
 
   progressFor(readingId: ReadingId, layer: PreparationLayer) {
     return this.lane.progressFor(readingId, layer);
-  }
-
-  /** Whether the lane is doing anything at all for this reading's grammar. */
-  grammarRunning(): boolean {
-    const id = this.readingIdSignal();
-    return id !== null && this.lane.progressFor(id, 'grammar').kind !== 'idle';
   }
 
   /**

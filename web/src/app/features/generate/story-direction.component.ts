@@ -248,8 +248,8 @@ export class StoryDirectionComponent {
   protected readonly customLimit = MAX_CUSTOM_OPTION_LENGTH;
   protected readonly formatCount = formatCount;
 
-  /** Genre is where a story starts, so it is the row that opens first. */
-  protected readonly openAxis = signal<StoryAxis | null>('genre');
+  /** Every row starts closed, so Surprise me shows each value in its summary. */
+  protected readonly openAxis = signal<StoryAxis | null>(null);
   protected readonly customAxis = signal<StoryAxis | null>(null);
 
   protected readonly instructionsTooLong = computed(

@@ -551,7 +551,8 @@ Where a learner may steer something along several independent axes, each axis
 is one **disclosure row** in one card, and the rows share a native `name` so the
 browser keeps one open at a time. The closed row states its value opposite its
 label, as every disclosure does: "Any" in secondary text when nothing is chosen,
-the choice in the action colour when something is. The first row is open.
+the choice in the action colour when something is. Every row starts closed, so a
+"surprise" that fills them all shows each value in its own summary.
 
 An open row is a wrap of **choice chips**: ordinary `.mn-button` toggles with
 `aria-pressed`, at the full touch-target height — the density rule allows no

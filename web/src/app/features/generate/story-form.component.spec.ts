@@ -313,7 +313,7 @@ describe('StoryFormComponent', () => {
     expect([...radios].every((radio) => radio.disabled)).toBe(true);
   });
 
-  it('opens Genre first, states every axis value, and keeps one row open at a time', () => {
+  it('starts every row closed, states every axis value, and keeps one row open at a time', () => {
     const { element, fixture } = render();
     atStep(fixture, 2);
 
@@ -326,7 +326,7 @@ describe('StoryFormComponent', () => {
       'cast',
       'format',
     ]);
-    expect(rows.filter((row) => row.open).map((row) => row.dataset['axis'])).toEqual(['genre']);
+    expect(rows.filter((row) => row.open)).toEqual([]);
     expect(rows.every((row) => row.getAttribute('name') === 'mn-story-axis')).toBe(true);
     expect(
       rows.map((row) => row.querySelector('[data-testid="axis-value"]')?.textContent.trim()),
