@@ -276,12 +276,10 @@ export class StubTextProvider implements TextGenerationProvider {
   }
 
   testConfiguration(
-    config: TextModelConfig,
-    signal?: AbortSignal,
+    _config: TextModelConfig,
+    _signal?: AbortSignal,
   ): Promise<Result<ModelTest, AiError>> {
     this.calls += 1;
-    void config;
-    void signal;
     return Promise.resolve(this.outcome);
   }
 
@@ -410,10 +408,8 @@ export class StubTtsProvider implements TextToSpeechProvider {
     this.outcome = outcome;
   }
 
-  testConfiguration(config: TtsConfig, signal?: AbortSignal): Promise<Result<TtsTest, AiError>> {
+  testConfiguration(_config: TtsConfig, _signal?: AbortSignal): Promise<Result<TtsTest, AiError>> {
     this.calls += 1;
-    void config;
-    void signal;
     return Promise.resolve(this.outcome);
   }
 
