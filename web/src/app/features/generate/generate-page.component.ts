@@ -185,7 +185,7 @@ function formatList(items: readonly string[]): string {
             [canContinue]="canContinue()"
             [canGenerate]="canGenerate()"
             [disabledReason]="disabledReason()"
-            [disabled]="isBusy() || savingDefault()"
+            [disabled]="isBusy()"
             [defaultFeedback]="defaultFeedback()"
             [atGenerationLimit]="!jobs.canStart()"
             [snapshotSummary]="snapshotSummary()"
@@ -219,8 +219,8 @@ function formatList(items: readonly string[]): string {
                 'Preparation choices'
               )
             "
-            (next)="next()"
-            (generate)="generate()"
+            (next)="next($event)"
+            (generate)="generate($event)"
           >
             <mn-exception-policy-field story-defaults />
             @if (hasBlockers()) {
@@ -276,21 +276,24 @@ function formatList(items: readonly string[]): string {
   styleUrl: './generate-page.component.scss',
 })
 export class GeneratePageComponent implements OnChanges {
-  protected readonly savingDefault = signal(false);
   protected readonly defaultFeedback = signal('');
+  private savesInFlight = 0;
 
   protected async saveDefault(
     work: Promise<void>,
     failure: () => { message: string } | null,
     label: string,
   ): Promise<void> {
-    this.savingDefault.set(true);
+    this.savesInFlight += 1;
     this.defaultFeedback.set('Saving default…');
     try {
       await work;
-      this.defaultFeedback.set(failure()?.message ?? `${label} saved as a default.`);
     } finally {
-      this.savingDefault.set(false);
+      this.savesInFlight -= 1;
+    }
+    // Saved is said once the last of overlapping saves has finished.
+    if (this.savesInFlight === 0) {
+      this.defaultFeedback.set(failure()?.message ?? `${label} saved as a default.`);
     }
   }
 
@@ -391,11 +394,14 @@ export class GeneratePageComponent implements OnChanges {
    * same prerequisites a story does.
    */
   protected readonly canContinue = computed(
-    () => this.draft.step() === 1 || (allPrerequisitesMet(this.checks()) && this.draft.isValid()),
+    () =>
+      !this.policy.isTooLong() &&
+      (this.draft.step() === 1 || (allPrerequisitesMet(this.checks()) && this.draft.isValid())),
   );
 
   protected readonly canGenerate = computed(
     () =>
+      !this.policy.isTooLong() &&
       allPrerequisitesMet(this.checks()) &&
       this.draft.isValid() &&
       this.jobs.canStart() &&
@@ -537,18 +543,40 @@ export class GeneratePageComponent implements OnChanges {
    * are one step in the learner's history, so Back from the wait screen goes
    * where they came from instead of to a form they have already submitted.
    */
-  protected generate(): void {
-    void this.startGeneration();
+  protected generate(clicks: number): void {
+    if (clicks <= 1) {
+      void this.startGeneration();
+    }
   }
 
-  /** Moves the form one step on; leaving the direction drafts the plots. */
-  protected next(): void {
-    if (!this.canContinue()) {
+  protected next(clicks: number): void {
+    // The second tap of a double tap arrives after the screen has redrawn for
+    // the first, on a button that now means the next step. The click count
+    // tells it apart from a separate press, which the browser counts as one.
+    if (clicks <= 1) {
+      void this.advance();
+    }
+  }
+
+  /**
+   * Moves the form one step on; leaving the direction drafts the plots.
+   *
+   * Leaving
+   * the words saves exceptions that were typed but not saved, and stays if the
+   * save fails, rather than dropping the text from the story.
+   */
+  private async advance(): Promise<void> {
+    if (!this.canContinue() || this.policy.action() !== 'idle') {
       return;
     }
     const step = this.draft.step();
     if (step === 1) {
-      this.draft.setStep(2);
+      if (this.policy.hasUnsavedChanges() && !(await this.policy.save())) {
+        return;
+      }
+      if (this.draft.step() === 1) {
+        this.draft.setStep(2);
+      }
     } else if (step === 2) {
       this.draft.setStep(3);
       void this.plots.prepare(this.draft.direction(), this.draft.specialInstructions());
@@ -563,7 +591,7 @@ export class GeneratePageComponent implements OnChanges {
   }
 
   private async startGeneration(): Promise<void> {
-    if (!this.canGenerate()) return;
+    if (this.draft.step() !== 3 || !this.canGenerate()) return;
     const chosen = this.plots.chosenPlot(this.draft.direction());
     if (chosen === null) return;
     const instructions = this.draft.specialInstructions();
