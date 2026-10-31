@@ -134,6 +134,8 @@ describe('Story options', () => {
     const shown = vi.fn();
     Object.defineProperty(panel, 'showPopover', { value: shown });
     const matches = vi.spyOn(panel, 'matches').mockReturnValue(true);
+    // jsdom does not render a `[popover]` it has not opened, and focus needs a rendered element.
+    panel.style.display = 'block';
     const opened = vi.fn();
     fixture.componentInstance.opened.subscribe(opened);
     fixture.componentInstance.open();

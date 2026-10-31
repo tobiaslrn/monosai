@@ -9,10 +9,16 @@
  * As in the browser, focus returns on Escape and on `hidePopover()`, but not on
  * a light dismiss: a press outside has already put focus where the learner
  * pointed.
+ *
+ * jsdom's own stylesheet hides a `[popover]` that its selector engine does not
+ * see as open, and an element that is not rendered cannot take focus. The shim's
+ * `:popover-open` is not visible to that engine, so an open panel is shown with
+ * an inline `display` for as long as it is open.
  */
 interface OpenPopover {
   readonly element: HTMLElement;
   readonly previousFocus: Element | null;
+  readonly inlineDisplay: string;
 }
 
 export function installPopoverShim(): () => void {
@@ -37,7 +43,12 @@ export function installPopoverShim(): () => void {
       return;
     }
     announce(this, 'beforetoggle', 'closed', 'open');
-    open.push({ element: this, previousFocus: document.activeElement });
+    open.push({
+      element: this,
+      previousFocus: document.activeElement,
+      inlineDisplay: this.style.display,
+    });
+    this.style.display = 'block';
     announce(this, 'toggle', 'closed', 'open');
   }
 
@@ -48,6 +59,7 @@ export function installPopoverShim(): () => void {
     }
     announce(element, 'beforetoggle', 'open', 'closed');
     const [entry] = open.splice(index, 1);
+    element.style.display = entry!.inlineDisplay;
     announce(element, 'toggle', 'open', 'closed');
     if (
       restoreFocus &&
