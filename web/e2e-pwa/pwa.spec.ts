@@ -94,6 +94,28 @@ async function waitForServiceWorkerControl(page: Page): Promise<void> {
   });
 }
 
+/** Resolves once every prefetched file of ngsw.json is cached; going offline earlier degrades the worker. */
+async function waitForPrefetchComplete(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const manifest = (await (await fetch('ngsw.json')).json()) as {
+            assetGroups: { installMode: string; urls: string[] }[];
+          };
+          const urls = manifest.assetGroups
+            .filter((group) => group.installMode === 'prefetch')
+            .flatMap((group) => group.urls);
+          const cached = await Promise.all(
+            urls.map((url) => caches.match(new URL(url, location.origin).toString())),
+          );
+          return cached.filter((response) => response === undefined).length;
+        }),
+      { timeout: 120_000 },
+    )
+    .toBe(0);
+}
+
 interface WebAppManifestIcon {
   readonly src: string;
 }
@@ -239,6 +261,25 @@ test.describe('offline reload', () => {
     await page.goto(new URL('#/library', readerUrl).toString());
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
     await expect(page.getByRole('link', { name: /吾輩は猫である/ })).toBeVisible();
+
+    await context.setOffline(false);
+  });
+
+  test('the start URL reloads offline from the cached shell', async ({ page, context }) => {
+    test.setTimeout(180_000);
+    await page.goto('./#/library');
+    await waitForServiceWorkerControl(page);
+    await waitForPrefetchComplete(page);
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+
+    await context.setOffline(true);
+
+    const root = await page.goto('./');
+    expect(root?.status()).toBe(200);
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
 
     await context.setOffline(false);
   });
