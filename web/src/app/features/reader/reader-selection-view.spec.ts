@@ -12,7 +12,7 @@ function sentence(
     tokens: tokens.map(({ id, surface }) => ({ id, surface })),
     statuses: new Map(
       tokens.flatMap(({ id, validation }) =>
-        validation === null ? [] : [[id, { validation: { kind: validation } }]],
+        validation === null ? [] : [[id, { validation: { category: validation } }]],
       ),
     ),
   } as unknown as ReaderSentence;
@@ -28,7 +28,7 @@ describe('unknownWordsIn', () => {
     const words = unknownWordsIn(
       sentence([
         { id: 't1', surface: '猫', validation: 'not-in-snapshot' },
-        { id: 't2', surface: 'は', validation: 'exception-approved' },
+        { id: 't2', surface: 'は', validation: 'policy-exception' },
         { id: 't3', surface: '猫', validation: 'not-in-snapshot' },
         { id: 't4', surface: '犬', validation: null },
       ]),

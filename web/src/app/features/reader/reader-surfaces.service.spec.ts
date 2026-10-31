@@ -13,7 +13,11 @@ import { ReaderSurfacesService } from './reader-surfaces.service';
 import { ReaderWordPreviewService } from './reader-word-preview.service';
 
 const origin = document.createElement('button');
-const sentenceEntry = { sentence: { id: 's1', japaneseText: '猫です。' }, tokens: [], statuses: null };
+const sentenceEntry = {
+  sentence: { id: 's1', japaneseText: '猫です。' },
+  tokens: [],
+  statuses: null,
+};
 
 function press(modality: 'mouse' | 'touch', clickCount = 1): TokenActivation {
   return {
@@ -27,7 +31,7 @@ function press(modality: 'mouse' | 'touch', clickCount = 1): TokenActivation {
 }
 
 function line(modality: 'mouse' | 'touch', sentenceId = 's1'): SentenceSelection {
-  return { sentenceId, modality, x: 1, y: 2 } as unknown as SentenceSelection;
+  return { sentenceId, modality, x: 1, y: 2 };
 }
 
 describe('ReaderSurfacesService', () => {
