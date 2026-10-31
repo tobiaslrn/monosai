@@ -193,6 +193,49 @@ describe('ImportStore', () => {
       expect(store.isDirty()).toBe(true);
     });
 
+    it('does not save an import whose page was left while it was being analysed', async () => {
+      store.setPastedText('猫が寝た。');
+
+      const pending = store.save();
+      TestBed.resetTestingModule();
+
+      expect(await pending).toBeNull();
+      expect(imports.saved).toBeNull();
+    });
+
+    it('stops before analysing when the page is left during an earlier step', async () => {
+      let analysed = false;
+      const ensure = imports.ensureLanguageReady.bind(imports);
+      imports.ensureLanguageReady = async () => {
+        const result = await ensure();
+        TestBed.resetTestingModule();
+        return result;
+      };
+      const analyze = imports.analyzeSentences.bind(imports);
+      imports.analyzeSentences = (...args) => {
+        analysed = true;
+        return analyze(...args);
+      };
+      store.setPastedText('猫が寝た。');
+
+      expect(await store.save()).toBeNull();
+      expect(analysed).toBe(false);
+      expect(imports.saved).toBeNull();
+    });
+
+    it('does not save when the page is left just before the draft is stored', async () => {
+      const analyze = imports.analyzeSentences.bind(imports);
+      imports.analyzeSentences = async (...args) => {
+        const result = await analyze(...args);
+        TestBed.resetTestingModule();
+        return result;
+      };
+      store.setPastedText('猫が寝た。');
+
+      expect(await store.save()).toBeNull();
+      expect(imports.saved).toBeNull();
+    });
+
     it('does not save when sentence analysis fails', async () => {
       imports.analysisFailure = languageError('analysis-failed', 'nope');
       store.setPastedText('猫が寝た。');
