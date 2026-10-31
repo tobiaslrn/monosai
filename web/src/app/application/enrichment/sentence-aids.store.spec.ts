@@ -1,12 +1,12 @@
-import { ApplicationRef, inject, signal } from '@angular/core';
+import { ApplicationRef, inject, signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import { grammarCacheKey, translationCacheKey } from '../../domain/enrichment/cache-keys';
 import type { GrammarAnalysisRecord, TranslationRecord } from '../../domain/enrichment/records';
-import type { GeneratedStory, ImportedReading } from '../../domain/reading/reading';
-import type { Sentence } from '../../domain/reading/text-hierarchy';
+import type { GeneratedStory, ImportedReading, Reading } from '../../domain/reading/reading';
+import type { Paragraph, Sentence } from '../../domain/reading/text-hierarchy';
 import { DEFAULT_READER_PREFERENCES } from '../../domain/settings/settings';
 import type { Hasher } from '../../domain/shared/hashing';
 import {
@@ -44,6 +44,7 @@ import {
 import { fixedClock } from '../../domain/shared/clock';
 import { EnrichmentKeysService } from './enrichment-keys.service';
 import { GrammarAnalysisService } from './grammar-analysis.service';
+import { ReaderStore, type ReaderParagraph } from '../reading/reader.store';
 import { SentenceAidsStore } from './sentence-aids.store';
 import { SentenceEnrichmentService } from './sentence-enrichment.service';
 import {
@@ -255,6 +256,22 @@ function ttsStub(readiness: 'ready' | 'not-configured' | 'stale-test' = 'ready')
   };
 }
 
+/** Mounts a window in the stubbed reader, and waits for the store to read it. */
+async function mount(reading: Reading, window: readonly Sentence[]): Promise<void> {
+  const reader = TestBed.inject(ReaderStore) as unknown as {
+    reading: WritableSignal<Reading | null>;
+    paragraphs: WritableSignal<readonly ReaderParagraph[]>;
+  };
+  reader.reading.set(reading);
+  reader.paragraphs.set([
+    {
+      paragraph: { id: 'p0' } as unknown as Paragraph,
+      sentences: window.map((sentence) => ({ sentence, tokens: [], statuses: null })),
+    },
+  ]);
+  await TestBed.inject(ApplicationRef).whenStable();
+}
+
 function aidsProviders(
   enrichment: FakeEnrichmentRepository,
   readings: FakeReadingRepository,
@@ -265,6 +282,13 @@ function aidsProviders(
   let nextId = 0;
   return [
     SentenceAidsStore,
+    {
+      provide: ReaderStore,
+      useValue: {
+        reading: signal<Reading | null>(null),
+        paragraphs: signal<readonly ReaderParagraph[]>([]),
+      },
+    },
     SentenceEnrichmentService,
     TranslationService,
     GrammarAnalysisService,
@@ -354,7 +378,7 @@ describe('SentenceAidsStore', () => {
     const window = sentences(2);
     enrichment.translations = [translationFor(window[0]!, 'Sentence zero.')];
 
-    await store.load(importedReading(), window);
+    await mount(importedReading(), window);
 
     expect(enrichment.perSentenceQueries.translations).toEqual([['s0', 's1']]);
     expect(enrichment.perSentenceQueries.grammar).toEqual([['s0', 's1']]);
@@ -375,7 +399,7 @@ describe('SentenceAidsStore', () => {
     const window = sentences(1);
     enrichment.translations = [translationFor(window[0]!, 'Sentence zero.')];
 
-    await store.load(importedReading(), window);
+    await mount(importedReading(), window);
 
     const aids = store.aids().get(window[0]!.id);
     expect(aids?.translation?.textEn).toBe('Sentence zero.');
@@ -390,7 +414,7 @@ describe('SentenceAidsStore', () => {
     const shared = translationFor(window[0]!, 'The repeated sentence.');
     enrichment.translations = [shared];
 
-    await store.load(importedReading(), window);
+    await mount(importedReading(), window);
 
     expect(store.aids().get(window[0]!.id)?.translation?.textEn).toBe('The repeated sentence.');
     expect(store.aids().get(window[1]!.id)?.translation?.textEn).toBeUndefined();
@@ -400,7 +424,7 @@ describe('SentenceAidsStore', () => {
     const window = sentences(1);
     enrichment.grammarAnalyses = [analysisFor(window[0]!, 'profile-old')];
 
-    await store.load(importedReading(), window);
+    await mount(importedReading(), window);
 
     const aids = store.aids().get(window[0]!.id);
     expect(aids?.grammar?.profileHash).toBe('profile-old');
@@ -411,7 +435,7 @@ describe('SentenceAidsStore', () => {
     const window = sentences(1);
     enrichment.grammarAnalyses = [analysisFor(window[0]!, 'profile-captured')];
 
-    await store.load(generatedStory(), window);
+    await mount(generatedStory(), window);
 
     expect(store.aids().get(window[0]!.id)?.grammarStale).toBe(false);
   });
@@ -420,7 +444,7 @@ describe('SentenceAidsStore', () => {
     const window = sentences(1);
     enrichment.grammarAnalyses = [analysisFor(window[0]!, LIVE_PROFILE_HASH)];
 
-    await store.load(importedReading(), window);
+    await mount(importedReading(), window);
 
     expect(store.aids().get(window[0]!.id)?.grammarStale).toBe(false);
   });
@@ -432,7 +456,7 @@ describe('SentenceAidsStore', () => {
       analysisFor(window[1]!, LIVE_PROFILE_HASH, false),
     ];
 
-    await store.load(importedReading(), window);
+    await mount(importedReading(), window);
 
     expect(store.aids().get(window[0]!.id)?.concernCount).toBe(0);
     expect(store.aids().get(window[1]!.id)?.concernCount).toBe(1);
@@ -444,7 +468,7 @@ describe('SentenceAidsStore', () => {
       'The database is closed.',
     );
 
-    await store.load(importedReading(), sentences(1));
+    await mount(importedReading(), sentences(1));
 
     expect(store.lastError()?.message).toBe('The database is closed.');
     expect(store.aids().get(sentenceId('s0'))?.translation ?? null).toBeNull();
@@ -453,9 +477,9 @@ describe('SentenceAidsStore', () => {
   it('drops the previous window when a new one is mounted', async () => {
     const first = sentences(2);
     enrichment.translations = [translationFor(first[0]!, 'Sentence zero.')];
-    await store.load(importedReading(), first);
+    await mount(importedReading(), first);
 
-    await store.load(importedReading(), [first[1]!]);
+    await mount(importedReading(), [first[1]!]);
 
     expect([...store.aids().keys()]).toEqual(['s1']);
   });
@@ -463,7 +487,7 @@ describe('SentenceAidsStore', () => {
   it('reads the mounted sentences again when the live profile arrives after them', async () => {
     const window = withSentences(sentences(1));
     enrichment.grammarAnalyses = [analysisFor(window[0]!, LIVE_PROFILE_HASH)];
-    await store.load(importedReading(), window);
+    await mount(importedReading(), window);
     await TestBed.inject(ApplicationRef).whenStable();
     expect(store.aids().get(window[0]!.id)?.grammarStale).toBe(false);
     const readsBefore = enrichment.perSentenceQueries.grammar.length;
@@ -496,9 +520,9 @@ describe('SentenceAidsStore', () => {
         },
       ],
     });
-    const keyed = TestBed.inject(SentenceAidsStore);
+    TestBed.inject(SentenceAidsStore);
     const window = withSentences(sentences(1));
-    await keyed.load(importedReading(), window);
+    await mount(importedReading(), window);
     await TestBed.inject(ApplicationRef).whenStable();
     const readsBefore = enrichment.perSentenceQueries.grammar.length;
 
@@ -520,9 +544,9 @@ describe('SentenceAidsStore', () => {
         },
       ],
     });
-    const logging = TestBed.inject(SentenceAidsStore);
+    TestBed.inject(SentenceAidsStore);
     const window = withSentences(sentences(1));
-    await logging.load(importedReading(), window);
+    await mount(importedReading(), window);
     await TestBed.inject(ApplicationRef).whenStable();
     enrichment.listTranslationsForSentences = () => Promise.reject(new Error('closed'));
 
@@ -530,6 +554,28 @@ describe('SentenceAidsStore', () => {
     await TestBed.inject(ApplicationRef).whenStable();
 
     expect(logged).toEqual(['runtime.unhandled-rejection']);
+  });
+
+  it('drops a read the window has already moved on from', async () => {
+    const [first, second] = withSentences(sentences(2));
+    enrichment.translations = [translationFor(second!, 'Sentence one.')];
+    const answer = enrichment.listTranslationsForSentences.bind(enrichment);
+    let release = (): void => undefined;
+    enrichment.listTranslationsForSentences = (ids) =>
+      new Promise((resolve) => {
+        release = () => {
+          void answer(ids).then(resolve);
+        };
+      });
+
+    void mount(importedReading(), [first!]);
+    TestBed.tick();
+    enrichment.listTranslationsForSentences = answer;
+    await mount(importedReading(), [second!]);
+    release();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(store.aids().get(second!.id)?.translation?.textEn).toBe('Sentence one.');
   });
 
   it('does not read before anything is mounted', async () => {
@@ -541,7 +587,7 @@ describe('SentenceAidsStore', () => {
   describe('explicit actions', () => {
     it('translates one sentence with exactly one request, and none on a repeat', async () => {
       const window = withSentences(sentences(1));
-      await store.load(importedReading(), window);
+      await mount(importedReading(), window);
 
       await store.translateSentence(window[0]!.id);
       expect(provider.generationCalls.translate).toBe(1);
@@ -555,7 +601,7 @@ describe('SentenceAidsStore', () => {
     it('serves a translation stored in an earlier session without a request', async () => {
       const window = withSentences(sentences(1));
       enrichment.translations = [translationFor(window[0]!, 'Sentence zero.')];
-      await store.load(importedReading(), window);
+      await mount(importedReading(), window);
 
       await store.translateSentence(window[0]!.id);
 
@@ -564,7 +610,7 @@ describe('SentenceAidsStore', () => {
 
     it('leaves the sentence readable and offers a retry when translation fails', async () => {
       const window = withSentences(sentences(1));
-      await store.load(importedReading(), window);
+      await mount(importedReading(), window);
       provider.translationQueue.push(
         err(aiError('rate-limited', 'translation', 'Too many requests.')),
       );
@@ -585,7 +631,7 @@ describe('SentenceAidsStore', () => {
 
     it('analyzes grammar for the sentence that asked, and no other', async () => {
       const window = withSentences(sentences(2));
-      await store.load(importedReading(), window);
+      await mount(importedReading(), window);
 
       await store.analyzeGrammar(window[0]!.id);
 
@@ -597,7 +643,7 @@ describe('SentenceAidsStore', () => {
     it('re-analyzes after a profile change, keeping both rows', async () => {
       const window = withSentences(sentences(1));
       enrichment.grammarAnalyses = [analysisFor(window[0]!, 'profile-old')];
-      await store.load(importedReading(), window);
+      await mount(importedReading(), window);
       expect(store.aids().get(window[0]!.id)?.grammarStale).toBe(true);
 
       await store.analyzeGrammar(window[0]!.id);
@@ -614,7 +660,7 @@ describe('SentenceAidsStore', () => {
     it('makes no request when the analysis is already current', async () => {
       const window = withSentences(sentences(1));
       enrichment.grammarAnalyses = [analysisFor(window[0]!, LIVE_PROFILE_HASH)];
-      await store.load(importedReading(), window);
+      await mount(importedReading(), window);
 
       await store.analyzeGrammar(window[0]!.id);
 

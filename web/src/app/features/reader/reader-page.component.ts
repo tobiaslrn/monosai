@@ -647,7 +647,6 @@ export class ReaderPageComponent {
 
   protected readonly preferences = this.settings.readerPreferences;
   private readonly currentReadingId = computed(() => readingId(this.id()));
-  protected readonly translationProgress = this.preparation.translationProgress;
 
   /** Clamped here too: a stored row is external data like any other. */
   protected readonly textScale = computed(() => clampTextScale(this.preferences().textScale));
@@ -772,7 +771,7 @@ export class ReaderPageComponent {
     // a read to derive.
     effect(() => {
       const nextReadingId = readingId(this.id());
-      // Untracked, like every store call below it. An effect tracks the signals
+      // Untracked, like every store call in it. An effect tracks the signals
       // its body reads, including the ones read inside the calls it makes, and
       // these stores read state they then rewrite — so a tracked call makes the
       // effect its own trigger and it never stops running.
@@ -781,91 +780,6 @@ export class ReaderPageComponent {
         this.audio.setReading(nextReadingId);
         void this.openReading(nextReadingId);
       });
-    });
-
-    // An effect because the sentences now mounted are known only to the page: it
-    // tells the aids store which window to read.
-    effect(() => {
-      const paragraphs = this.store.paragraphs();
-      const reading = this.store.reading();
-      if (reading !== null) {
-        // A local read of the stored aids for exactly the sentences now
-        // mounted. Nothing here reaches a provider: a missing aid is fetched
-        // only when the learner asks for it.
-        untracked(() => {
-          void this.aids.load(
-            reading,
-            paragraphs.flatMap((paragraph) =>
-              paragraph.sentences.map((sentence) => sentence.sentence),
-            ),
-          );
-        });
-      }
-    });
-
-    // An effect because the trigger is three job stores' progress and the
-    // response is a command on the reader's store; no one store owns both.
-    effect(() => {
-      // Translation, audio, and grammar jobs all write rows this page is
-      // displaying, so a step by any of them is what tells the reader to
-      // re-read them. Each job's progress is read whole, because every step it
-      // takes is a reason to re-read, not only its start and end; one effect,
-      // so steps from two jobs in the same tick are one re-read, not two.
-      // Re-reading the reading row also refreshes the summaries the menu
-      // counts, and that in turn re-reads the aids for the mounted window.
-      const translating = this.translationProgress().kind !== 'idle';
-      const voicing = this.audio.progress().kind !== 'idle';
-      const analysing = this.preparation.grammarRunning();
-      if (translating || voicing || analysing) {
-        // `refreshSummaries` reads the reading row it is about to replace, and
-        // replaces it with a fresh object. Tracked, that re-ran this effect,
-        // which refreshed again — an unbounded loop of reads behind a screen
-        // that looked idle.
-        untracked(() => {
-          void this.store.refreshSummaries();
-        });
-      }
-    });
-
-    // An effect because playback is application-wide and outlives this page, so
-    // it cannot watch this reader's reading and job; the page tells it.
-    effect(() => {
-      // Which clips exist, re-read whenever the reading changes and whenever
-      // the audio job has written more. Two local reads: the player appears
-      // because clips exist, never because a run started. The re-read is also
-      // what lets a session waiting at the frontier read on, since the clip it
-      // is waiting for becomes available here (ADR 0034).
-      const reading = this.store.reading();
-      this.audio.progress();
-      this.audio.tts.settings();
-      if (reading !== null) {
-        untracked(() => {
-          void this.audio.playback.prepare(reading);
-        });
-      }
-    });
-
-    // An effect because whether a run is still coming belongs to the reader, not
-    // to playback, and releasing a wait is a command.
-    effect(() => {
-      // A session at the frontier is waiting for a clip the run is about to
-      // store. Once the run has failed or been cancelled that clip is never
-      // coming, and only the reader knows: the playback store has no business
-      // watching a generation job, so the word is passed from here.
-      //
-      // Told whether or not a wait is showing, because a continuous session
-      // holds inside its own resource: that resource has to be sealed for the
-      // element to reach the end of what was made rather than stall at it.
-      // The wait is still watched too — one sentence at a time can start one
-      // *after* the run has stopped, and a release that only fired on the job's
-      // own transition would leave it waiting for something already called off.
-      const kind = this.audio.progress().kind;
-      this.audio.playback.status();
-      if (kind === 'failed' || kind === 'cancelled') {
-        untracked(() => {
-          this.audio.playback.stopExpectingClips();
-        });
-      }
     });
 
     inject(DestroyRef).onDestroy(() => {
