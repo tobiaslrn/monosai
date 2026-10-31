@@ -45,7 +45,7 @@ import {
   LucideSlidersHorizontal,
   LucideSparkles,
   LucideSpellCheck,
-  LucideTrash2,
+  LucideTrash,
   LucideUpload,
   LucideX,
 } from '@lucide/angular';
@@ -71,7 +71,7 @@ export const ICON_SET = {
   warning: LucideCircleAlert,
   check: LucideCheck,
   copy: LucideCopy,
-  delete: LucideTrash2,
+  delete: LucideTrash,
   rename: LucidePencil,
   file: LucideFileText,
   search: LucideSearch,
