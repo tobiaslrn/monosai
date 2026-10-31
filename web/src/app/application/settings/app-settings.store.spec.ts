@@ -167,3 +167,21 @@ describe('AppSettingsStore reader preferences', () => {
     expect(update).toHaveBeenNthCalledWith(3, { playbackRate: 1 });
   });
 });
+
+describe('AppSettingsStore startup failure', () => {
+  it('keeps the storage error when loading fails', async () => {
+    const failure = storageError('migration-failed', 'The stored database could not be upgraded.');
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: SETTINGS_REPOSITORY,
+          useValue: { getAppSettings: vi.fn().mockResolvedValue(err(failure)) },
+        },
+      ],
+    });
+
+    await expect(TestBed.inject(AppSettingsStore).load()).rejects.toMatchObject({
+      storageError: failure,
+    });
+  });
+});

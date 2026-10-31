@@ -5,7 +5,7 @@ import {
   type GenerationSettings,
   type VocabularyStrictness,
 } from '../../domain/settings/settings';
-import type { StorageError } from '../../domain/storage/storage-error';
+import { StorageFailure, type StorageError } from '../../domain/storage/storage-error';
 import { SETTINGS_REPOSITORY } from '../shared/repository-tokens';
 
 /** Device-wide defaults captured by each generation when it starts. */
@@ -28,7 +28,7 @@ export class GenerationSettingsStore {
     const loaded = await this.repository.getGenerationSettings();
     if (!loaded.ok) {
       this.failureSignal.set(loaded.error);
-      throw new Error(loaded.error.message);
+      throw new StorageFailure(loaded.error);
     }
     this.settingsSignal.set(loaded.value);
     this.failureSignal.set(null);

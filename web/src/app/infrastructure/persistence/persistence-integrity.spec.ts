@@ -3,7 +3,9 @@ import Dexie from 'dexie';
 import { fixedClock } from '../../domain/shared/clock';
 import { createTestDatabase, destroyTestDatabase } from '../../../testing/test-database';
 import { importedReadingFixture, snapshotFixture } from '../../../testing/persistence-fixtures';
-import { CURRENT_SCHEMA_VERSION, SCHEMA_VERSIONS } from './migrations';
+import { resetMayRecover } from '../../domain/storage/storage-error';
+import { CURRENT_SCHEMA_VERSION, guardUpgrade, SCHEMA_VERSIONS } from './migrations';
+import { mapStorageFailure } from './storage-error-mapper';
 import { MonosaiDatabase } from './monosai-db';
 import {
   BrowserStorageMaintenance,
@@ -118,6 +120,86 @@ describe('database schema', () => {
     } finally {
       stale.close();
       await Dexie.delete(name);
+    }
+  });
+
+  it('reports an upgrade that rejects a stored row as a failed migration and keeps the row', async () => {
+    const name = `monosai-v17-rejected-${Date.now()}`;
+    const legacy = new Dexie(name);
+    legacy.version(17).stores({ settings: '&key' });
+    const row = { key: 'app', v: 1, value: 'not an object' };
+
+    try {
+      await legacy.open();
+      await legacy.table('settings').put(row);
+      legacy.close();
+
+      const upgraded = new MonosaiDatabase(name);
+      const thrown: unknown = await upgraded.open().then(
+        () => null,
+        (failure: unknown) => failure,
+      );
+      upgraded.close();
+
+      const mapped = mapStorageFailure(thrown, 'database.open');
+      expect(mapped.code).toBe('migration-failed');
+      expect(resetMayRecover(mapped)).toBe(true);
+
+      await legacy.open();
+      expect(legacy.verno).toBe(17);
+      expect(await legacy.table('settings').get('app')).toEqual(row);
+    } finally {
+      legacy.close();
+      await Dexie.delete(name);
+    }
+  });
+
+  it('reports an upgrade whose modify rejects a row as a failed migration', async () => {
+    const name = `monosai-v7-rejected-${Date.now()}`;
+    const stores = Object.fromEntries(
+      Object.entries(
+        SCHEMA_VERSIONS.filter((entry) => entry.version <= 7).reduce<Record<string, string | null>>(
+          (all, entry) => ({ ...all, ...entry.stores }),
+          {},
+        ),
+      ).filter((entry): entry is [string, string] => entry[1] !== null),
+    );
+    const legacy = new Dexie(name);
+    legacy.version(7).stores(stores);
+
+    try {
+      await legacy.open();
+      await legacy.table('readings').put({ id: uuid(9200), sentenceCount: 3 });
+      legacy.close();
+
+      const upgraded = new MonosaiDatabase(name);
+      const thrown: unknown = await upgraded.open().then(
+        () => null,
+        (failure: unknown) => failure,
+      );
+      upgraded.close();
+
+      expect(mapStorageFailure(thrown, 'database.open').code).toBe('migration-failed');
+    } finally {
+      legacy.close();
+      await Dexie.delete(name);
+    }
+  });
+
+  it('leaves a browser failure during an upgrade under its own code', async () => {
+    const quota = new Error('disk full');
+    quota.name = 'QuotaExceededError';
+    const modify = new Dexie.ModifyError('modify failed', [quota], 0, []);
+
+    for (const thrown of [quota, modify]) {
+      const failure: unknown = await guardUpgrade(18, () => Promise.reject(thrown))(
+        undefined as never,
+      ).then(
+        () => null,
+        (rejected: unknown) => rejected,
+      );
+
+      expect(mapStorageFailure(failure, 'database.open').code).toBe('quota');
     }
   });
 
@@ -684,8 +766,89 @@ describe('BrowserStorageMaintenance', () => {
     });
   });
 
+  it('exports the stored rows without the API key or audio, leaving the database as it was', async () => {
+    const secret = 'sk-or-export-must-not-contain-this';
+    await db.settings.put({ key: 'app', v: 1, value: { theme: 'dark' } });
+    await db.credentials.put({
+      key: 'openrouter',
+      v: 1,
+      apiKey: secret,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const nativeVersion = db.backendDB().version;
+    db.close();
+
+    const exported = await maintenance.exportData();
+
+    expect(exported.ok).toBe(true);
+    if (!exported.ok) {
+      return;
+    }
+    const text = await exported.value.text();
+    expect(text).not.toContain(secret);
+    const parsed = JSON.parse(text) as {
+      readonly databaseVersion: number;
+      readonly tables: Readonly<Record<string, readonly unknown[]>>;
+    };
+    expect(parsed.databaseVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(parsed.tables['settings']).toEqual([{ key: 'app', v: 1, value: { theme: 'dark' } }]);
+    expect(parsed.tables['readings']).toEqual([]);
+    expect(Object.keys(parsed.tables)).not.toContain('credentials');
+    expect(Object.keys(parsed.tables)).not.toContain('audioAssets');
+
+    await db.open();
+    expect(db.backendDB().version).toBe(nativeVersion);
+    expect(await db.credentials.count()).toBe(1);
+  });
+
+  it('exports a database written by a newer version without upgrading or resetting it', async () => {
+    const name = db.name;
+    db.close();
+    await Dexie.delete(name);
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open(name, 99999);
+      request.onupgradeneeded = () => {
+        request.result
+          .createObjectStore('futureTable', { keyPath: 'id' })
+          .put({ id: 'kept', note: 'from a newer version' });
+      };
+      request.onerror = () => {
+        reject(new Error('could not seed the newer database'));
+      };
+      request.onsuccess = () => {
+        request.result.close();
+        resolve();
+      };
+    });
+
+    const exported = await maintenance.exportData();
+
+    expect(exported.ok).toBe(true);
+    if (!exported.ok) {
+      return;
+    }
+    const parsed = JSON.parse(await exported.value.text()) as {
+      readonly tables: Readonly<Record<string, readonly unknown[]>>;
+    };
+    expect(parsed.tables['futureTable']).toEqual([{ id: 'kept', note: 'from a newer version' }]);
+    const native = await new Dexie(name).open();
+    expect(native.backendDB().version).toBe(99999);
+    native.close();
+  });
+
   it('resets all data without touching caches when none are given', async () => {
     const result = await maintenance.resetAllData();
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('reports the reset as done when the data is gone but a cache will not clear', async () => {
+    const cachesStub = {
+      keys: () => Promise.reject(new Error('caches unavailable')),
+    } as unknown as CacheStorage;
+
+    const result = await new BrowserStorageMaintenance(db, undefined, cachesStub).resetAllData();
 
     expect(result.ok).toBe(true);
   });

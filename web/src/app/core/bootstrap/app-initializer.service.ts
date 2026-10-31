@@ -1,14 +1,32 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { describeThrown, safeErrorTypeOf } from '../../domain/shared/errors';
+import { StorageFailure, resetMayRecover } from '../../domain/storage/storage-error';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../../application/shared/diagnostics';
 import { INITIALIZATION_STEP } from './initialization-step';
-import type { InitializationState } from './initialization-state';
+import type { BootstrapFailure, InitializationState } from './initialization-state';
+
+/** What the recovery screen says and offers for whatever a step threw. */
+function bootstrapFailureFrom(thrown: unknown): BootstrapFailure {
+  if (thrown instanceof StorageFailure) {
+    return { error: thrown.storageError, resetMayHelp: resetMayRecover(thrown.storageError) };
+  }
+  return {
+    error: {
+      domain: 'bootstrap',
+      code: 'initialization-failed',
+      message: 'Monosai could not finish starting up.',
+      cause: describeThrown(thrown),
+    },
+    resetMayHelp: false,
+  };
+}
 
 /**
  * Owns the startup sequence and its recoverable failure state.
  *
  * Navigation renders only after initialization succeeds; a failure shows the
- * recovery screen with Retry rather than looping reloads or deleting data.
+ * recovery screen rather than looping reloads or deleting data. Deleting data
+ * is only ever the learner's own choice from that screen.
  */
 @Injectable({ providedIn: 'root' })
 export class AppInitializerService {
@@ -27,27 +45,17 @@ export class AppInitializerService {
         await step.run();
         this.logger.debug('app.initialization.step.succeeded', { step: step.name });
       } catch (thrown) {
+        const failure = bootstrapFailureFrom(thrown);
         this.logger.error('app.initialization.step.failed', {
           step: step.name,
           errorType: safeErrorTypeOf(thrown),
-          errorCode: 'initialization-failed',
+          errorCode: failure.error.code,
         });
         this.logger.error('app.initialization.failed', {
           step: step.name,
-          errorCode: 'initialization-failed',
+          errorCode: failure.error.code,
         });
-        this.stateSignal.set({
-          status: 'failed',
-          failure: {
-            error: {
-              domain: 'bootstrap',
-              code: 'initialization-failed',
-              message: `Monosai could not finish starting up (step: ${step.name}).`,
-              cause: describeThrown(thrown),
-            },
-            resetMayHelp: true,
-          },
-        });
+        this.stateSignal.set({ status: 'failed', failure });
         return;
       }
     }

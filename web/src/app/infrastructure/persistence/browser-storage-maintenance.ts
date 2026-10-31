@@ -16,6 +16,9 @@ import {
   StorageRuleViolation,
 } from './repositories/storage-operation';
 
+/** The API key never leaves through an export, and audio is raw bytes JSON cannot hold. */
+const TABLES_LEFT_OUT_OF_EXPORT: readonly string[] = ['credentials', 'audioAssets'];
+
 /**
  * Storage durability and destructive maintenance.
  *
@@ -146,16 +149,56 @@ export class BrowserStorageMaintenance implements StorageMaintenance {
     });
   }
 
+  /**
+   * Opens the database without a schema, so reading it neither upgrades it nor
+   * depends on this build understanding the version that wrote it.
+   */
+  exportData(): Promise<Result<Blob, StorageError>> {
+    return runStorage('storage.export', async () => {
+      const stored = new Dexie(this.db.name);
+      try {
+        await stored.open();
+        const parts: string[] = [`{"databaseVersion":${JSON.stringify(stored.verno)},"tables":{`];
+        const tables = stored.tables.filter(
+          (table) => !TABLES_LEFT_OUT_OF_EXPORT.includes(table.name),
+        );
+        for (const [tableIndex, table] of tables.entries()) {
+          const rows: unknown[] = await table.toArray();
+          parts.push(`${tableIndex === 0 ? '' : ','}${JSON.stringify(table.name)}:[`);
+          parts.push(rows.map((row) => JSON.stringify(row)).join(','));
+          parts.push(']');
+        }
+        parts.push('}}');
+        return new Blob(parts, { type: 'application/json' });
+      } finally {
+        stored.close();
+      }
+    });
+  }
+
   resetAllData(): Promise<Result<void, StorageError>> {
     return runStorage('storage.reset', async () => {
       this.db.close();
       await Dexie.delete(DATABASE_NAME);
+      await this.clearCaches();
+    });
+  }
+
+  /**
+   * Best effort. By now the data is gone, so a cache that will not clear must not
+   * report the reset as failed and keep the learner on a screen describing data
+   * that no longer exists. Whatever stays is only re-downloadable files.
+   */
+  private async clearCaches(): Promise<void> {
+    try {
       if (this.caches) {
         for (const key of await this.caches.keys()) {
           await this.caches.delete(key);
         }
       }
-    });
+    } catch {
+      return;
+    }
   }
 }
 

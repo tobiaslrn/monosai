@@ -10,7 +10,7 @@ import {
   type RecentFocusSize,
   type ThemeSetting,
 } from '../../domain/settings/settings';
-import type { StorageError } from '../../domain/storage/storage-error';
+import { StorageFailure, type StorageError } from '../../domain/storage/storage-error';
 import { SETTINGS_REPOSITORY } from '../shared/repository-tokens';
 
 /**
@@ -66,14 +66,14 @@ export class AppSettingsStore {
     const settings = await this.repository.getAppSettings();
     if (!settings.ok) {
       this.failure.set(settings.error);
-      throw new Error(settings.error.message);
+      throw new StorageFailure(settings.error);
     }
     this.appSettings.set(settings.value);
 
     const preferences = await this.repository.getReaderPreferences();
     if (!preferences.ok) {
       this.failure.set(preferences.error);
-      throw new Error(preferences.error.message);
+      throw new StorageFailure(preferences.error);
     }
     this.preferences.set(preferences.value);
   }

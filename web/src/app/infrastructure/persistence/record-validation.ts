@@ -28,11 +28,11 @@ export function parseRecord<T>(
   return err(
     storageError(
       'corrupt-record',
-      `A stored ${table} record is not readable.`,
-      parsed.error.issues
+      'A stored record could not be read.',
+      `${table}: ${parsed.error.issues
         .slice(0, 3)
         .map((issue) => `${issue.path.join('.')}: ${issue.code}`)
-        .join('; '),
+        .join('; ')}`,
     ),
   );
 }

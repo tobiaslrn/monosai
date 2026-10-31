@@ -6,7 +6,8 @@ import {
 import type { StorageError } from '../../domain/storage/storage-error';
 import { STORAGE_MAINTENANCE } from '../shared/repository-tokens';
 
-export type StorageAction = 'idle' | 'requesting-persistence' | 'clearing-audio' | 'resetting';
+export type StorageAction =
+  'idle' | 'requesting-persistence' | 'clearing-audio' | 'exporting' | 'resetting';
 
 /**
  * What is known about storage protection right now.
@@ -101,6 +102,24 @@ export class StorageStore {
       this.failureSignal.set(cleared.error);
     }
     this.actionSignal.set('idle');
+  }
+
+  /** Forgets a reported failure, so it cannot reappear on another screen. */
+  clearFailure(): void {
+    this.failureSignal.set(null);
+  }
+
+  /** The file to hand to the learner, or `null` with the failure recorded. */
+  async exportData(): Promise<Blob | null> {
+    this.actionSignal.set('exporting');
+    const exported = await this.maintenance.exportData();
+    this.actionSignal.set('idle');
+    if (!exported.ok) {
+      this.failureSignal.set(exported.error);
+      return null;
+    }
+    this.failureSignal.set(null);
+    return exported.value;
   }
 
   /** Callers must have collected two explicit confirmations before calling this. */

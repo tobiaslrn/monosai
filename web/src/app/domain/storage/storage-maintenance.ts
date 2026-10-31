@@ -20,6 +20,11 @@ export interface StorageMaintenance {
     readingId: ReadingId,
     layer: ClearableReadingAid,
   ): Promise<Result<void, StorageError>>;
+  /**
+   * Copies the stored rows into a JSON file, whatever schema version wrote them.
+   * The API key and audio bytes are left out.
+   */
+  exportData(): Promise<Result<Blob, StorageError>>;
   /** Deletes every Monosai database and cache after explicit confirmation. */
   resetAllData(): Promise<Result<void, StorageError>>;
 }

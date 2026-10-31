@@ -121,8 +121,10 @@ Three rules hold:
 1. **A published version is immutable.** A change adds a new, higher version.
 2. **A shape or meaning change gets an upgrade function**, declared beside the stores it changes so
    the transition stays reviewable.
-3. **A migration failure never resets the database.** It routes to the recovery screen with the data
-   still there.
+3. **A migration failure never resets the database by itself.** It routes to the recovery screen with
+   the data still there. Only the learner can delete it from there, after saving a copy if they want
+   one and confirming a list of what is removed. Anything an upgrade function throws counts as a
+   migration failure, unless the browser itself failed (quota, a blocked or aborted transaction).
 
 Indexes exist only for queries the application actually makes. Large text, token arrays, blobs,
 credentials, and policy text are never indexed. Every multi-table write is one transaction, so a

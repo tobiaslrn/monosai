@@ -8,7 +8,10 @@ building blocks, named by their role rather than by their file.
 ## 6.1 Startup
 
 Startup is ordered and it can fail. Navigation renders only after every step succeeds. A failure
-routes to a recovery screen. It never deletes data and never reloads by itself.
+routes to a recovery screen. It never deletes data and never reloads by itself. When the stored data
+is the problem (a failed migration or a corrupt record), that screen also lets the learner save a
+copy of the data, without the API key and audio and not loadable back into Monosai, and delete all
+local data after a confirmation that names what is removed.
 
 ```mermaid
 sequenceDiagram

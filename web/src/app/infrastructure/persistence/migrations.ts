@@ -1,6 +1,9 @@
-import type { Dexie, Transaction } from 'dexie';
+import Dexie, { type Transaction } from 'dexie';
 import { DEFAULT_PLAYBACK_RATE, DEFAULT_READER_PREFERENCES } from '../../domain/settings/settings';
+import { describeThrown } from '../../domain/shared/errors';
 import { defined } from '../../domain/shared/invariant';
+import type { StorageErrorCode } from '../../domain/storage/storage-error';
+import { mapStorageFailure } from './storage-error-mapper';
 
 interface SchemaVersion {
   readonly version: number;
@@ -465,9 +468,44 @@ export function applySchema(db: Dexie): void {
   for (const entry of SCHEMA_VERSIONS) {
     const version = db.version(entry.version).stores(entry.stores);
     if (entry.upgrade !== undefined) {
-      version.upgrade(entry.upgrade);
+      version.upgrade(guardUpgrade(entry.version, entry.upgrade));
     }
   }
+}
+
+/** The browser failed the upgrade, not the stored data, so these keep their own code. */
+const ENVIRONMENT_FAILURES: readonly StorageErrorCode[] = [
+  'quota',
+  'blocked',
+  'transaction-aborted',
+  'unavailable',
+];
+
+/**
+ * Names a failed upgrade as one.
+ *
+ * An upgrade function rejects a stored row with a plain `Error`, or through
+ * Dexie's `ModifyError`, and neither says by itself that a migration failed. This
+ * is the one place that knows the failure happened during an upgrade.
+ */
+export function guardUpgrade(
+  version: number,
+  upgrade: (transaction: Transaction) => void | PromiseLike<void>,
+): (transaction: Transaction) => Promise<void> {
+  return async (transaction) => {
+    try {
+      await upgrade(transaction);
+    } catch (thrown) {
+      const failure: unknown =
+        thrown instanceof Dexie.ModifyError ? (thrown.failures[0] ?? thrown) : thrown;
+      if (ENVIRONMENT_FAILURES.includes(mapStorageFailure(failure, 'upgrade').code)) {
+        throw failure;
+      }
+      const upgradeError = new Error(`Version ${String(version)}: ${describeThrown(failure)}`);
+      upgradeError.name = 'UpgradeError';
+      throw upgradeError;
+    }
+  };
 }
 
 function seededSpeedSupport(modelId: unknown): boolean {

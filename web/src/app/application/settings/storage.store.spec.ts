@@ -23,6 +23,7 @@ const UNSUPPORTED: PersistenceStatus = { ...UNKNOWN_PERSISTENCE, usageBytes: 102
 class StubMaintenance implements StorageMaintenance {
   status: Result<PersistenceStatus, StorageError> = ok(ASKABLE);
   request: Result<PersistenceStatus, StorageError> = ok(ASKABLE);
+  exported: Result<Blob, StorageError> = ok(new Blob(['{}']));
 
   getPersistenceStatus(): Promise<Result<PersistenceStatus, StorageError>> {
     return Promise.resolve(this.status);
@@ -42,6 +43,10 @@ class StubMaintenance implements StorageMaintenance {
 
   clearReadingAid(): Promise<Result<void, StorageError>> {
     return Promise.resolve(ok(undefined));
+  }
+
+  exportData(): Promise<Result<Blob, StorageError>> {
+    return Promise.resolve(this.exported);
   }
 
   resetAllData(): Promise<Result<void, StorageError>> {
@@ -127,5 +132,30 @@ describe('StorageStore persistence', () => {
 
     expect(store.persistence()).toBe('unknown');
     expect(store.status()).toEqual(UNKNOWN_PERSISTENCE);
+  });
+});
+
+describe('StorageStore export', () => {
+  it('hands over the file, and records a failure instead when it cannot be read', async () => {
+    TestBed.resetTestingModule();
+    const maintenance = new StubMaintenance();
+    TestBed.configureTestingModule({
+      providers: [StorageStore, { provide: STORAGE_MAINTENANCE, useValue: maintenance }],
+    });
+    const store = TestBed.inject(StorageStore);
+
+    expect(await store.exportData()).toBeInstanceOf(Blob);
+    expect(store.action()).toBe('idle');
+
+    const failure = storageError('unavailable', 'Browser storage is unavailable.');
+    maintenance.exported = err(failure);
+
+    expect(await store.exportData()).toBeNull();
+    expect(store.failure()).toEqual(failure);
+    expect(store.action()).toBe('idle');
+
+    store.clearFailure();
+
+    expect(store.failure()).toBeNull();
   });
 });

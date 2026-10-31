@@ -31,3 +31,18 @@ const RECOVERABLE_BY_RETRY: readonly StorageErrorCode[] = [
 export function isRetryable(error: StorageError): boolean {
   return RECOVERABLE_BY_RETRY.includes(error.code);
 }
+
+const RECOVERABLE_BY_RESET: readonly StorageErrorCode[] = ['migration-failed', 'corrupt-record'];
+
+/** Whether the stored data itself is the problem, so deleting it can get past the failure. */
+export function resetMayRecover(error: StorageError): boolean {
+  return RECOVERABLE_BY_RESET.includes(error.code);
+}
+
+/** Carries a typed storage failure through a code path that reports by throwing. */
+export class StorageFailure extends Error {
+  constructor(readonly storageError: StorageError) {
+    super(storageError.message);
+    this.name = 'StorageFailure';
+  }
+}

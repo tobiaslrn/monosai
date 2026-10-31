@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
+import { StorageFailure, storageError } from '../../domain/storage/storage-error';
 import { AppInitializerService } from './app-initializer.service';
 import { INITIALIZATION_STEP, type InitializationStep } from './initialization-step';
 
@@ -70,11 +71,41 @@ describe('AppInitializerService', () => {
       throw new Error('expected failed state');
     }
     expect(state.failure.error.code).toBe('initialization-failed');
-    expect(state.failure.error.message).toContain('database');
+    expect(state.failure.error.message).toBe('Monosai could not finish starting up.');
     expect(state.failure.error.cause).toBe('Error: open blocked');
-    expect(state.failure.resetMayHelp).toBe(true);
+    expect(state.failure.resetMayHelp).toBe(false);
     expect(ranAfterFailure).toBe(false);
   });
+
+  it.each([
+    ['migration-failed', true],
+    ['corrupt-record', true],
+    ['blocked', false],
+    ['quota', false],
+    ['unavailable', false],
+    ['unknown', false],
+  ] as const)(
+    'reports a %s storage failure in its own words, offering a reset: %s',
+    async (code, resetMayHelp) => {
+      const error = storageError(code, 'The storage reason.', 'database.open: VersionError');
+      TestBed.configureTestingModule({
+        providers: [
+          {
+            provide: INITIALIZATION_STEP,
+            useValue: [step('settings', () => Promise.reject(new StorageFailure(error)))],
+          },
+        ],
+      });
+
+      const service = TestBed.inject(AppInitializerService);
+      await service.run();
+
+      expect(service.state()).toEqual({
+        status: 'failed',
+        failure: { error, resetMayHelp },
+      });
+    },
+  );
 
   it('can retry after a failure', async () => {
     let attempts = 0;

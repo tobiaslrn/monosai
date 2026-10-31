@@ -4,6 +4,7 @@ import { CredentialStore } from '../../application/settings/credential.store';
 import { GenerationSettingsStore } from '../../application/settings/generation-settings.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
+import { StorageFailure } from '../../domain/storage/storage-error';
 import { MonosaiDatabase } from '../../infrastructure/persistence/monosai-db';
 import { mapStorageFailure } from '../../infrastructure/persistence/storage-error-mapper';
 import { INITIALIZATION_STEP, type InitializationStep } from './initialization-step';
@@ -31,9 +32,7 @@ export function provideInitializationSteps() {
             try {
               await database.open();
             } catch (thrown) {
-              throw new Error(mapStorageFailure(thrown, 'database.open').message, {
-                cause: thrown,
-              });
+              throw new StorageFailure(mapStorageFailure(thrown, 'database.open'));
             }
           },
         },

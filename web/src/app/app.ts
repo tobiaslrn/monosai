@@ -1,29 +1,21 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
+import { StartupFailureComponent } from './core/bootstrap/startup-failure.component';
 import { AppShellComponent } from './core/layout/app-shell.component';
 import { OpenReadingWatcher } from './core/platform/open-reading-watcher.service';
 import { PointerModalityService } from './core/platform/pointer-modality.service';
-import { ErrorScreenComponent } from './shared-ui/error-screen/error-screen.component';
 
 @Component({
   selector: 'mn-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AppShellComponent, ErrorScreenComponent],
+  imports: [AppShellComponent, StartupFailureComponent],
   template: `
     @let state = initializer.state();
 
     @if (state.status === 'initializing') {
       <p class="boot" role="status">Starting Monosai…</p>
     } @else if (state.status === 'failed') {
-      <mn-error-screen
-        heading="Monosai could not start"
-        [description]="state.failure.error.message"
-        dataStatus="Your saved stories have not been changed."
-      >
-        <button data-actions type="button" class="mn-button mn-button--primary" (click)="retry()">
-          Try again
-        </button>
-      </mn-error-screen>
+      <mn-startup-failure [failure]="state.failure" (retry)="retry()" />
     } @else {
       <mn-app-shell />
     }
