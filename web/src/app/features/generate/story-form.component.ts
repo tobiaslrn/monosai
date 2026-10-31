@@ -214,11 +214,11 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
             </mn-radio-card-group>
           </details>
 
-          <ng-content select="[story-defaults]" />
-
           @if (defaultFeedback()) {
             <p class="mn-hint" role="status">{{ defaultFeedback() }}</p>
           }
+
+          <ng-content select="[story-defaults]" />
 
           <dl class="mn-facts generation-sources" data-testid="form-sources">
             <div>
@@ -276,7 +276,7 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
             data-testid="wizard-next"
             [disabled]="disabled() || !canContinue()"
             [attr.aria-describedby]="!canContinue() ? 'mn-generate-disabled-reason' : null"
-            (click)="next.emit()"
+            (click)="next.emit($event.detail)"
           >
             Next
           </button>
@@ -287,7 +287,7 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
             data-testid="generate"
             [disabled]="disabled() || !canGenerate()"
             [attr.aria-describedby]="!canGenerate() ? 'mn-generate-disabled-reason' : null"
-            (click)="generate.emit()"
+            (click)="generate.emit($event.detail)"
           >
             <mn-icon name="generate" [size]="18" />
             <span>Generate story</span>
@@ -539,8 +539,9 @@ export class StoryFormComponent {
   readonly preparationTargets = input<readonly PreparationLayer[]>(['english', 'grammar']);
   readonly audioReadiness = input<ConfigurationReadiness>('incomplete');
 
-  readonly next = output<void>();
-  readonly generate = output<void>();
+  /** Both carry the click count, so a repeat of a double tap can be told from a press. */
+  readonly next = output<number>();
+  readonly generate = output<number>();
   readonly ankiWordPriorityModeChanged = output<AnkiWordPriorityMode>();
   readonly recentFocusSizeChanged = output<RecentFocusSize>();
   readonly vocabularyStrictnessChanged = output<VocabularyStrictness>();

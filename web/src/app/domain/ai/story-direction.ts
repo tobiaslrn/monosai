@@ -99,7 +99,8 @@ export function normalizeCustomOption(text: string): string {
  * Adds a learner-typed option to an axis and picks it.
  *
  * Text that already names an option on this axis, in any letter case, picks
- * that option instead of adding a second chip that says the same thing.
+ * that option instead of adding a second chip that says the same thing. "Any"
+ * names the row's own Any choice, so it puts the axis back on Any.
  */
 export function addCustomOption(
   direction: StoryDirection,
@@ -112,6 +113,9 @@ export function addCustomOption(
   }
   if (countCodePoints(value) > MAX_CUSTOM_OPTION_LENGTH) {
     return err('too-long');
+  }
+  if (value.toLocaleLowerCase('en') === 'any') {
+    return ok(clearAxis(direction, axis));
   }
   const existing = axisOptions(direction, axis).find(
     (option) => option.toLocaleLowerCase('en') === value.toLocaleLowerCase('en'),

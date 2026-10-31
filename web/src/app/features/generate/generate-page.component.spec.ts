@@ -4,6 +4,7 @@ import { signal } from '@angular/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
+import { ExceptionPolicyStore } from '../../application/settings/exception-policy.store';
 import { StoryPlotStore } from '../../application/generation/story-plot.store';
 import {
   EMPTY_STORY_DIRECTION,
@@ -100,12 +101,13 @@ describe('GeneratePageComponent', () => {
     }
   }
 
-  function press(page: HTMLElement, testId: string): void {
+  /** A click on the named button; `clicks` is the browser's count for a quick repeat. */
+  function press(page: HTMLElement, testId: string, clicks = 1): void {
     const button = page.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`);
     if (button === null) {
       throw new Error(`no button named ${testId}`);
     }
-    button.click();
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: clicks }));
   }
 
   async function render(jobId?: string) {
@@ -260,6 +262,87 @@ describe('GeneratePageComponent', () => {
     // The next story starts from the words, with the same choices.
     expect(draft.step()).toBe(1);
     expect(draft.direction().selected.mood).toEqual(['Cozy']);
+  });
+
+  it('takes a double press of Next as one press', async () => {
+    const fixture = await renderFixture();
+    const page = fixture.nativeElement as HTMLElement;
+    const draft = TestBed.inject(GenerationDraftStore);
+
+    // The screen redraws for the first press before the second tap arrives, so
+    // the second lands on a Next that now belongs to the Direction step.
+    press(page, 'wizard-next');
+    fixture.detectChanges();
+    press(page, 'wizard-next', 2);
+    await settle(fixture);
+
+    expect(draft.step()).toBe(2);
+    expect(bed.provider.generationCalls.plots).toBe(0);
+  });
+
+  it('takes a second Next that is a separate press as a new press', async () => {
+    bed.provider.plotQueue.push(ok(['One plot.', 'Two plot.', 'Three plot.']));
+    sources.set([{}]);
+    const fixture = await renderFixture();
+    const page = fixture.nativeElement as HTMLElement;
+    const draft = TestBed.inject(GenerationDraftStore);
+
+    press(page, 'wizard-next');
+    fixture.detectChanges();
+    press(page, 'wizard-next');
+    await settle(fixture);
+
+    expect(draft.step()).toBe(3);
+  });
+
+  it('starts one story from a double press of Generate', async () => {
+    bed.provider.plotQueue.push(ok(['One plot.', 'Two plot.', 'Three plot.']));
+    const fixture = await renderFixture();
+    const page = fixture.nativeElement as HTMLElement;
+    sources.set([{}]);
+    press(page, 'wizard-next');
+    await settle(fixture);
+    press(page, 'wizard-next');
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(page.querySelectorAll('[data-testid="plot-option"]')).toHaveLength(3);
+    });
+
+    // The redraw after the first tap puts Next on the words where Generate was.
+    press(page, 'generate');
+    fixture.detectChanges();
+    press(page, 'wizard-next', 2);
+    await settle(fixture);
+
+    expect(jobs.started).toHaveLength(1);
+    expect(TestBed.inject(GenerationDraftStore).step()).toBe(1);
+    expect(bed.provider.generationCalls.plots).toBe(1);
+  });
+
+  it('saves exceptions that were typed but not saved before leaving the words', async () => {
+    const fixture = await renderFixture();
+    const page = fixture.nativeElement as HTMLElement;
+    const policy = TestBed.inject(ExceptionPolicyStore);
+    policy.setDraft('Allow proper nouns for the cat.');
+
+    press(page, 'wizard-next');
+    await settle(fixture);
+
+    expect(policy.hasUnsavedChanges()).toBe(false);
+    expect(policy.policy().text).toBe('Allow proper nouns for the cat.');
+    expect(TestBed.inject(GenerationDraftStore).step()).toBe(2);
+  });
+
+  it('holds Next on the words while the exceptions are over the limit', async () => {
+    const fixture = await renderFixture();
+    const page = fixture.nativeElement as HTMLElement;
+    TestBed.inject(ExceptionPolicyStore).setDraft('x'.repeat(2_001));
+    fixture.detectChanges();
+
+    expect(page.querySelector<HTMLButtonElement>('[data-testid="wizard-next"]')?.disabled).toBe(
+      true,
+    );
+    expect(TestBed.inject(GenerationDraftStore).step()).toBe(1);
   });
 
   it('goes up one step at a time from the header, and to the library from the words', async () => {

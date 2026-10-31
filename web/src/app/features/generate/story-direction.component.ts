@@ -214,6 +214,12 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       gap: var(--space-2);
     }
 
+    .chips button {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+
     .custom-row {
       display: flex;
       gap: var(--space-2);

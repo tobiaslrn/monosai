@@ -95,6 +95,13 @@ describe('addCustomOption', () => {
     expect(added.ok && added.value.selected.mood).toEqual(['Cozy']);
   });
 
+  it('treats Any as the Any choice instead of adding a second chip', () => {
+    const picked = toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Cozy');
+    const added = addCustomOption(picked, 'mood', ' ANY ');
+    expect(added.ok && added.value.custom.mood).toEqual([]);
+    expect(added.ok && added.value.selected.mood).toEqual([]);
+  });
+
   it('refuses empty text and text longer than a chip', () => {
     expect(addCustomOption(EMPTY_STORY_DIRECTION, 'mood', '   ')).toEqual({
       ok: false,
