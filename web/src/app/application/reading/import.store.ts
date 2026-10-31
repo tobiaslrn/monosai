@@ -55,7 +55,7 @@ export class ImportStore {
   private readonly savedIdSignal = signal<ReadingId | null>(null);
   private readonly duplicatesSignal = signal<readonly ImportedReading[]>([]);
   /** Set when the page is left: an abandoned import must not reach storage. */
-  private discarded = false;
+  private readonly discarded = signal(false);
 
   readonly busy = this.busySignal.asReadonly();
   readonly rawText = this.rawTextSignal.asReadonly();
@@ -101,7 +101,7 @@ export class ImportStore {
   constructor() {
     const destroyRef = inject(DestroyRef);
     destroyRef.onDestroy(() => {
-      this.discarded = true;
+      this.discarded.set(true);
     });
     destroyRef.onDestroy(
       this.busyRegistry.track(
@@ -139,7 +139,7 @@ export class ImportStore {
 
     if (this.duplicatesSignal().length === 0) {
       const duplicates = await this.imports.findDuplicates(validated.value.text);
-      if (this.discarded) {
+      if (this.discarded()) {
         return null;
       }
       if (!duplicates.ok) {
@@ -156,7 +156,7 @@ export class ImportStore {
 
     this.busySignal.set({ kind: 'preparing-language' });
     const ready = await this.imports.ensureLanguageReady();
-    if (this.discarded) {
+    if (this.discarded()) {
       return null;
     }
     if (!ready.ok) {
@@ -167,7 +167,7 @@ export class ImportStore {
 
     this.busySignal.set({ kind: 'segmenting' });
     const segmented = await this.imports.segment(validated.value.text);
-    if (this.discarded) {
+    if (this.discarded()) {
       return null;
     }
     if (!segmented.ok) {
@@ -179,7 +179,7 @@ export class ImportStore {
     this.draftSignal.set(segmented.value);
     await this.analyzePending();
 
-    if (this.hasPendingAnalysis() || this.discarded) {
+    if (this.hasPendingAnalysis() || this.discarded()) {
       return null;
     }
 
@@ -188,7 +188,7 @@ export class ImportStore {
 
   private async persistDraft(): Promise<ReadingId | null> {
     const draft = this.draftSignal();
-    if (draft === null || this.hasPendingAnalysis() || this.discarded) {
+    if (draft === null || this.hasPendingAnalysis() || this.discarded()) {
       return null;
     }
 
