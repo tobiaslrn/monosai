@@ -54,6 +54,11 @@ import { VoiceModelComponent } from './voice-model.component';
       </div>
     </mn-settings-section>
   `,
+  styles: `
+    p {
+      margin: 0;
+    }
+  `,
 })
 export class ModelsSectionComponent {
   protected readonly credential = inject(CredentialStore);

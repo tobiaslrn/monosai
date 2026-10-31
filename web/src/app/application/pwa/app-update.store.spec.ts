@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -140,7 +141,7 @@ describe('AppUpdateStore', () => {
   it('refuses to activate while busy work is in progress, and never reloads', async () => {
     const instance = store();
     checker.events.next({ kind: 'ready' });
-    busy.setBusy('import-draft', 'an import draft is unsaved');
+    busy.track('import-draft', signal('an import draft is unsaved'));
 
     expect(instance.canActivate()).toBe(false);
     await instance.activate();
@@ -194,7 +195,7 @@ describe('AppUpdateStore', () => {
 
   it('reloadNow refuses while busy work is in progress', () => {
     const instance = store();
-    busy.setBusy('generation', 'a story is being generated');
+    busy.track('generation', signal('a story is being generated'));
 
     instance.reloadNow();
 

@@ -198,12 +198,11 @@ button, the floating player's open state and the sentence it captured, and clear
 this reading's clips. It is provided by the reader, so the player's open state dies
 with the screen while playback, which is application-wide, outlives it. It also tells
 playback what playback cannot watch for itself: which clips to re-read as the job
-writes them, and when no more are coming. The page's one remaining effect opens the
-reading its route names; `SentenceAidsStore` follows the mounted window, and
+writes them, and when no more are coming. The page opens the reading its route names from
+`ngOnChanges`; `SentenceAidsStore` follows the mounted window, and
 `ReaderPreparationStore` re-reads the summaries while a job runs.
 
-The component keeps only what is about the page: the confirmation before clips are
-deleted. The player card's measured height, which anything else docked to the
+The confirmation before clips are deleted is `ReaderContentActionsService`'s. The player card's measured height, which anything else docked to the
 bottom edge reads, is published by the `mnDockedPlayer` directive on the card's
 shell (below).
 
