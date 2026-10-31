@@ -1,9 +1,9 @@
+import type { OnChanges, SimpleChanges } from '@angular/core';
 import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
   computed,
-  effect,
   inject,
   input,
   signal,
@@ -18,7 +18,7 @@ import {
   grammarPresetLine,
   prerequisiteChecks,
 } from '../../application/generation/generation-prerequisites';
-import type { GenerationState } from '../../application/generation/generation.store';
+import type { GenerationState } from '../../application/generation/generation-state';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
@@ -275,7 +275,7 @@ function formatList(items: readonly string[]): string {
   `,
   styleUrl: './generate-page.component.scss',
 })
-export class GeneratePageComponent {
+export class GeneratePageComponent implements OnChanges {
   protected readonly savingDefault = signal(false);
   protected readonly defaultFeedback = signal('');
 
@@ -507,13 +507,6 @@ export class GeneratePageComponent {
     void this.grammar.load();
     void this.snapshots.load();
 
-    // Tells the registry which run has a screen, so a story that lands while
-    // the learner is watching keeps its panel instead of being cleaned up the
-    // moment it is saved.
-    effect(() => {
-      const id = this.jobId();
-      this.jobs.watch(id === undefined ? null : jobId(id));
-    });
     inject(DestroyRef).onDestroy(() => {
       // Leaving no longer stops the run — that is the point. It only stops
       // being the watched one, and a story already saved has nothing left to
@@ -523,6 +516,18 @@ export class GeneratePageComponent {
         this.jobs.release(jobId(id));
       }
     });
+  }
+
+  /**
+   * Tells the registry which run has a screen, so a story that lands while the
+   * learner is watching keeps its panel instead of being cleaned up the moment
+   * it is saved.
+   */
+  ngOnChanges(changes: SimpleChanges): void {
+    if ('jobId' in changes) {
+      const id = this.jobId();
+      this.jobs.watch(id === undefined ? null : jobId(id));
+    }
   }
 
   /**

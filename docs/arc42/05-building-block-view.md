@@ -198,12 +198,11 @@ button, the floating player's open state and the sentence it captured, and clear
 this reading's clips. It is provided by the reader, so the player's open state dies
 with the screen while playback, which is application-wide, outlives it. It also tells
 playback what playback cannot watch for itself: which clips to re-read as the job
-writes them, and when no more are coming. The page's one remaining effect opens the
-reading its route names; `SentenceAidsStore` follows the mounted window, and
+writes them, and when no more are coming. The page opens the reading its route names from
+`ngOnChanges`; `SentenceAidsStore` follows the mounted window, and
 `ReaderPreparationStore` re-reads the summaries while a job runs.
 
-The component keeps only what is about the page: the confirmation before clips are
-deleted. The player card's measured height, which anything else docked to the
+The confirmation before clips are deleted is `ReaderContentActionsService`'s. The player card's measured height, which anything else docked to the
 bottom edge reads, is published by the `mnDockedPlayer` directive on the card's
 shell (below).
 
@@ -240,6 +239,24 @@ component is composition and template:
   and moves `ReaderStore`'s window when a scroll reaches one outside it.
   Measurements reset through a `linkedSignal` over the paragraph layout.
 - `ReaderWordPreviewService` owns the hover preview's delay and its card.
+- `ReaderSurfacesService` owns what a press commands: which surface opens, how
+  one gives way to the next, and when a second press puts one away. The page
+  passes it its templates with `connect`. What those surfaces show about a
+  sentence or a word is plain functions in `reader-selection-view.ts`.
+- `ReaderContentActionsService` owns what the menu draws and commands: the
+  content rows, preparing and stopping a layer, and the confirmed deletions.
+
+The AI settings are split the same way. `ModelsSectionComponent` composes
+`mn-openrouter-connection`, `mn-text-models` and `mn-voice-model`, which share one
+catalogue fetch through `ModelCatalogView`, provided by the section.
+
+`TranslationJobStore` keeps its public surface and the run itself.
+`TranslationJobPlanner` works out the plan, its keys and the job row, and
+`TranslationTerminologyService` settles the opening and repairs a glossary, using
+the pacing and progress the running job lends it. `GenerationStore` keeps the
+state machine; `GenerationContextService` captures what a run is judged against,
+`StoryAnalysisService` reads a candidate into tokens and statuses, and
+`generation-state.ts` holds the states.
 
 A paragraph hands the looked-up and previewed word only to the sentence that
 contains it, so a hover re-renders the two sentences it moved between instead of

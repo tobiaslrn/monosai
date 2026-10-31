@@ -1,3 +1,4 @@
+import type { OnChanges, SimpleChanges } from '@angular/core';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -343,7 +344,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     }
   `,
 })
-export class ReadingLevelPageComponent {
+export class ReadingLevelPageComponent implements OnChanges {
   protected readonly refresh = inject(VocabularyRefreshStore);
   protected readonly profile = inject(GrammarProfileStore);
   protected readonly language = inject(LanguageStore);
@@ -459,14 +460,6 @@ export class ReadingLevelPageComponent {
     void this.language.initialize();
     void this.profile.load();
 
-    effect(() => {
-      const marker = this.shared();
-      if (marker === undefined) {
-        return;
-      }
-      void this.consumeShare(marker, this.reason());
-    });
-
     // The history is a read model of what has been committed, so it is reloaded
     // whenever a commit finishes rather than being patched in place. A refresh
     // is confirmed through the Anki connection store, which reloads it itself.
@@ -500,6 +493,14 @@ export class ReadingLevelPageComponent {
         this.revealFragment(fragment);
       });
     });
+  }
+
+  /** A shared file arrives as a route input, and is taken once per arrival. */
+  ngOnChanges(changes: SimpleChanges): void {
+    const marker = this.shared();
+    if ('shared' in changes && marker !== undefined) {
+      void this.consumeShare(marker, this.reason());
+    }
   }
 
   protected closeTextDraft(): void {

@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, NavigationError, Router, RouterOutlet } from '@angular/router';
 import { filter, map, tap } from 'rxjs';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../../application/shared/diagnostics';
@@ -121,11 +121,9 @@ export class AppShellComponent {
         }
       }),
       filter((event) => event instanceof NavigationEnd),
-      // Keep the completed navigation as an event, even when its URL matches
-      // Router.url. The first NavigationEnd must wake the intro effect.
-      map((event) => ({ url: event.urlAfterRedirects, completed: true })),
+      map((event) => event.urlAfterRedirects),
     ),
-    { initialValue: { url: this.router.url, completed: this.router.navigated } },
+    { initialValue: this.router.url },
   );
 
   /**
@@ -137,7 +135,7 @@ export class AppShellComponent {
    * prefix match.
    */
   protected readonly isReaderRoute = computed(() => {
-    const url = this.url().url;
+    const url = this.url();
     if (!url.startsWith('/reader/')) return false;
     // Not decoded: an id needs no escaping, so anything that carries some is
     // already not one.
@@ -146,15 +144,25 @@ export class AppShellComponent {
   });
 
   constructor() {
-    // An effect because a completed navigation is the only trigger, and offering a
-    // notice is a one-off command rather than state to derive.
-    effect(() => {
-      if (this.url().completed) {
-        void this.alpha.offer();
-        if (!this.isReaderRoute()) {
-          this.intro.offer();
-        }
-      }
-    });
+    // Subscribed after `url`, so the route the notices are judged by is already
+    // the one this navigation ended on.
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => {
+        this.offerNotices();
+      });
+    if (this.router.navigated) {
+      this.offerNotices();
+    }
+  }
+
+  private offerNotices(): void {
+    void this.alpha.offer();
+    if (!this.isReaderRoute()) {
+      this.intro.offer();
+    }
   }
 }

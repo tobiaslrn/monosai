@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import { describe, expect, it } from 'vitest';
@@ -63,7 +64,7 @@ describe('AppUpdateBannerComponent', () => {
   it('disables the update action and explains why while busy work is in progress', () => {
     const { fixture, checker, busy, element } = render();
     checker.events.next({ kind: 'ready' });
-    busy.setBusy('generation', 'a story is being generated');
+    busy.track('generation', signal('a story is being generated'));
     fixture.detectChanges();
 
     const enabledButton = element.querySelector('button:not([disabled])');

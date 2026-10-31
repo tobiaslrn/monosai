@@ -1,0 +1,256 @@
+@use '../../../styles/breakpoints' as breakpoints;
+
+/*
+ * One column at every width. Word and sentence details float over the text
+ * rather than taking a column of their own, so the reading measure never
+ * changes when something is opened (ADR 0022).
+ */
+/*
+ * Reading size is a learner setting, and vertical space follows it: the
+ * gaps a sentence is pressed in have to grow with the glyphs. Both are
+ * bounded, so the largest scale stays a page of prose rather than one
+ * sentence a screen.
+ */
+.reader {
+  --reader-font-size: calc(var(--reader-base-font-size) * var(--reader-scale));
+  --reader-line-height-plain: clamp(1.75, calc(2.1 - (var(--reader-scale) - 1) * 0.25), 2.3);
+  /*
+   * Deliberately loose. The leading is not only room for ruby: it is the
+   * whitespace a sentence is pressed in, and at an ordinary leading almost
+   * every pixel of a line is a glyph, which left the sentence unreachable.
+   * The ratio eases off as the text grows, because the gap that matters is
+   * the one in pixels and large text already has it.
+   */
+  --reader-line-height-ruby: clamp(2.05, calc(2.6 - (var(--reader-scale) - 1) * 0.35), 2.8);
+  --reader-paragraph-gap: clamp(1.75rem, calc(2.25rem * var(--reader-scale)), 6rem);
+
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  grid-template-areas: 'bar' 'title' 'content';
+  gap: var(--space-4);
+  max-width: var(--reader-measure);
+  margin-inline: auto;
+}
+
+/*
+ * Clearance for the floating player, so the last line of a reading is never
+ * parked permanently underneath it. Its published height rather than an
+ * estimate of it, with a fallback for the frame before the first
+ * measurement lands.
+ */
+.reader.has-audio-player {
+  padding-bottom: calc(
+    var(--mn-docked-player-height, 7rem) + var(--space-4) + var(--sheet-scroll-reserve, 0px)
+  );
+}
+
+/*
+ * Temporary room below the last line, so a sheet opened over the end of a
+ * reading still has somewhere to scroll the pressed line to. Zero at every
+ * other moment: it is scaffolding for one gesture, not layout.
+ */
+.reader:not(.has-audio-player) {
+  padding-bottom: var(--sheet-scroll-reserve, 0px);
+}
+
+/*
+ * Sticky, opaque, and above the text: ruby annotations overflow above their
+ * line, and without its own stacking context they would sit over the header
+ * and swallow clicks meant for Back or Aids.
+ */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 1001;
+  grid-area: bar;
+  isolation: isolate;
+  /*
+   * A grid item is sized by its content unless it is allowed to shrink, and
+   * a long title would otherwise stretch the whole reader past its measure
+   * and push the actions off the screen.
+   */
+  min-width: 0;
+  padding-block: var(--space-2);
+  background: var(--surface-canvas);
+}
+
+/*
+ * The reader is measured, but its sticky furniture must still cover the
+ * full viewport while text scrolls beneath it. Keep the backdrop in the
+ * reader's own canvas token so it stays opaque in both themes.
+ *
+ * Its lower edge is what separates the bar from the reading. Unlike a page
+ * header's, it is always drawn: the reading starts directly beneath the bar
+ * in type as large as the title, so without the edge the two run together.
+ */
+.bar::before {
+  position: absolute;
+  z-index: -1;
+  inset-block: 0;
+  inset-inline: -100vw;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-canvas);
+  content: '';
+  pointer-events: none;
+}
+
+.bar-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+/*
+ * Glyphs, not hit areas, line up with the reading's edges. The title tucks
+ * into Back's inset too, so the arrow and the title read as one unit.
+ */
+.bar-row > .back {
+  margin-inline: calc(-1 * var(--space-2));
+}
+
+/*
+ * The story's whole name, above the reading and wrapping as far as it
+ * needs to. It scrolls away with the text and hands over to the bar.
+ */
+.title {
+  grid-area: title;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-page-title);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * One line in the bar, present only once the heading has gone beneath it.
+ * It keeps its space while hidden, so the actions never shift.
+ */
+.bar-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(var(--space-1));
+  visibility: hidden;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard),
+    visibility 0s linear var(--motion-fast);
+}
+
+.bar-title.is-shown {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-title {
+    transform: none;
+    transition: none;
+  }
+}
+
+.bar-actions {
+  display: flex;
+  flex: none;
+  gap: var(--space-1);
+  align-items: center;
+  margin-inline-end: calc(-1 * var(--space-2));
+}
+
+.audio-maintenance-message {
+  margin: var(--space-2) 0 0 calc(var(--touch-target) + var(--space-2));
+  font-size: var(--text-sm);
+}
+
+/*
+ * Playing is the shared primary fill, drawn at the bar's own touch target
+ * rather than the player's large circle.
+ */
+.audio-button {
+  --icon-button-primary-size: var(--touch-target);
+}
+
+/* A job is running behind a closed player; the button is the only sign of it. */
+.audio-button.is-busy:not(.is-playing) {
+  color: var(--action-primary);
+}
+
+.audio-button.is-busy {
+  animation: audio-pulse var(--motion-breathe) var(--ease-ambient) infinite;
+}
+
+@keyframes audio-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audio-button.is-busy {
+    animation: none;
+  }
+}
+
+.content {
+  position: relative;
+  z-index: 0;
+  grid-area: content;
+  min-width: 0;
+}
+
+.audio-player-shell {
+  position: fixed;
+  z-index: 1002;
+  right: 0;
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  left: 50%;
+  box-sizing: border-box;
+  width: min(34rem, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sheet);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-overlay);
+  transform: translateX(-50%);
+}
+
+/*
+ * On a phone the transport docks to the bottom edge instead of floating
+ * clear of it. An inset card there wasted both margins on a screen that has
+ * none to spare, and left the controls hovering over the text they are
+ * about; docked, the reading ends where the player begins.
+ */
+@media (max-width: breakpoints.$wide-max) {
+  .audio-player-shell {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: var(--space-4) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+    border-inline: 0;
+    border-block-end: 0;
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+    transform: none;
+  }
+}
+
+/* Room for the ruby above the first line of the reading. */
+.text {
+  max-width: var(--reader-measure);
+  padding-top: var(--space-4);
+}
+
+.virtual-spacer {
+  width: 1px;
+  max-width: 100%;
+  pointer-events: none;
+}
