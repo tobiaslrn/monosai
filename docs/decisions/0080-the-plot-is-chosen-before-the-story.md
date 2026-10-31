@@ -31,7 +31,8 @@ facts naming the vocabulary and grammar level. Grammar stays global. No focus-wo
 list is shown.
 
 **Direction** offers seven axes — genre, mood, setting, cast, format, ending, time
-— as one card of disclosures, one open at a time. Every axis starts on Any. Genre
+— as one card of disclosures, one open at a time. Every axis starts on Any, and every
+row starts closed: the learner opens one only to customise. Genre
 takes up to two choices, a third replacing the oldest; every other axis takes one.
 A learner may add a custom option of up to forty characters, which stays in its
 row. Surprise me fills all seven from the built-in lists. Special instructions stay

@@ -64,6 +64,7 @@ test.describe('generate prerequisites', () => {
 
     await page.getByTestId('story-length').fill('2');
     await page.getByTestId('wizard-next').click();
+    await openAxis(page, 'genre');
     await chip(page, 'genre', 'Mystery').click();
 
     await page.locator('[data-check="text-model"]').getByRole('link').click();
@@ -78,6 +79,7 @@ test.describe('generate prerequisites', () => {
     await expect(page).toHaveURL(/#\/reading-level\?from=generate(?:#words)?$/);
     await page.getByRole('button', { name: 'Back to story' }).click();
 
+    await openAxis(page, 'genre');
     await expect(chip(page, 'genre', 'Mystery')).toHaveAttribute('aria-pressed', 'true');
     await page.getByRole('button', { name: 'Back to words' }).click();
     await expect(page.getByTestId('story-length')).toHaveValue('2');
@@ -88,6 +90,7 @@ test.describe('generate prerequisites', () => {
     await openGenerate(page);
 
     await page.getByTestId('wizard-next').click();
+    await openAxis(page, 'genre');
     await chip(page, 'genre', 'Comedy').click();
     await page.getByTestId('surprise-direction').click();
     await page.getByTestId('special-instructions').fill('Write it as a diary entry.');
@@ -163,9 +166,10 @@ test.describe('steering a story', () => {
 
     const rows = page.locator('details.axis');
     await expect(rows).toHaveCount(6);
-    await expect(page.locator('details.axis[open]')).toHaveCount(1);
-    await expect(page.locator('[data-axis="genre"]')).toHaveAttribute('open', '');
+    await expect(page.locator('details.axis[open]')).toHaveCount(0);
 
+    await openAxis(page, 'genre');
+    await expect(page.locator('details.axis[open]')).toHaveCount(1);
     const genreChips = page.locator('[data-axis="genre"] .chips button');
     const before = await genreChips.allTextContents();
     await chip(page, 'genre', 'Mystery').click();
@@ -216,6 +220,7 @@ test.describe('steering a story', () => {
     await openGenerate(page);
     await page.getByTestId('story-length').fill('0');
     await page.getByTestId('wizard-next').click();
+    await openAxis(page, 'genre');
     await chip(page, 'genre', 'Mystery').click();
     await openAxis(page, 'mood');
     await chip(page, 'mood', 'Heartwarming').click();
