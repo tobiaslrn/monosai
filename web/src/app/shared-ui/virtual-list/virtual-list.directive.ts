@@ -8,7 +8,7 @@ import {
   input,
   output,
   signal,
-  untracked,
+  type OnChanges,
 } from '@angular/core';
 import {
   EMPTY_VIRTUAL_RANGE,
@@ -48,7 +48,7 @@ const NO_GENERATION = Symbol('no generation');
     '(window:resize)': 'refresh()',
   },
 })
-export class VirtualListDirective<T extends VirtualListItem> {
+export class VirtualListDirective<T extends VirtualListItem> implements OnChanges {
   readonly items = input.required<readonly T[]>({ alias: 'mnVirtualList' });
   /** The height assumed for an item that has not been measured yet. */
   readonly estimateHeight = input.required<(item: T) => number>();
@@ -83,28 +83,6 @@ export class VirtualListDirective<T extends VirtualListItem> {
             this.measure(entries.map((entry) => entry.target));
           });
 
-    effect(() => {
-      const items = this.items();
-      const generation = this.generation();
-      const options = {
-        estimateHeight: this.estimateHeight(),
-        overscanPx: this.overscanPx(),
-        loadMoreThresholdPx: this.loadMoreThresholdPx(),
-      };
-      untracked(() => {
-        // Options can change like any binding; measurements survive it.
-        const model = (this.model ??= new VariableHeightVirtualListModel<T>(options));
-        model.configure(options);
-        if (generation !== this.lastGeneration) {
-          model.reset(items);
-          this.lastGeneration = generation;
-        } else {
-          model.setItems(items);
-        }
-        this.refresh();
-      });
-    });
-
     effect((onCleanup) => {
       const elements = this.slots().map((slot) => slot.element);
       resizeObserver?.disconnect();
@@ -126,6 +104,33 @@ export class VirtualListDirective<T extends VirtualListItem> {
     inject(DestroyRef).onDestroy(() => {
       resizeObserver?.disconnect();
     });
+  }
+
+  /**
+   * Takes the bound inputs into the model and publishes the range for them.
+   *
+   * Run by the owner's binding pass rather than after it, so the rows for new
+   * items are in that same pass instead of the one an effect would force; and a
+   * `nearEnd` handler that writes the owner's state marks the owner for another
+   * pass like any other signal write.
+   */
+  ngOnChanges(): void {
+    // Options can change like any binding; measurements survive it.
+    const options = {
+      estimateHeight: this.estimateHeight(),
+      overscanPx: this.overscanPx(),
+      loadMoreThresholdPx: this.loadMoreThresholdPx(),
+    };
+    const model = (this.model ??= new VariableHeightVirtualListModel<T>(options));
+    model.configure(options);
+    const generation = this.generation();
+    if (generation !== this.lastGeneration) {
+      model.reset(this.items());
+      this.lastGeneration = generation;
+    } else {
+      model.setItems(this.items());
+    }
+    this.refresh();
   }
 
   protected refresh(): void {

@@ -290,7 +290,9 @@ stable key. `mnVirtualList` sits on the element a list renders in, and its host
 template renders `visibleItems()` between two spacers sized from `range()`, marking
 each slot with `mnVirtualItem`. The directive measures those slots as they mount and
 resize, recomputes the range on window scroll and resize through `host` listeners, and
-emits `nearEnd` for an owner that pages. A new `generation` discards every
+emits `nearEnd` for an owner that pages. Bound inputs reach the model in `ngOnChanges`,
+so the rows for new items mount in the owner's own pass, and the one effect left
+measures the slots after they render. A new `generation` discards every
 measurement. The Library's shelf and the vocabulary browser are its two users; the
 Library still regroups the mounted items into date sections, so virtualization
 changes how much is mounted and never what a row means.

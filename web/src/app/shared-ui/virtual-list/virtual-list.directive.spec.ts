@@ -40,6 +40,31 @@ class HostComponent {
   nearEnd = 0;
 }
 
+/** An owner whose load-more handler writes state its own template has already read. */
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [VirtualListDirective, VirtualItemDirective],
+  template: `
+    <p class="loads">{{ loads() }}</p>
+    <div
+      #list="virtualList"
+      [mnVirtualList]="items()"
+      [estimateHeight]="estimate"
+      [loadMoreThresholdPx]="50"
+      (nearEnd)="loads.update((n) => n + 1)"
+    >
+      @for (row of list.visibleItems(); track row.key) {
+        <div class="row" [mnVirtualItem]="row.key">{{ row.key }}</div>
+      }
+    </div>
+  `,
+})
+class ShortListHostComponent {
+  readonly items = signal(rows(3));
+  readonly loads = signal(0);
+  readonly estimate = (): number => 50;
+}
+
 describe('VirtualListDirective', () => {
   let fixture: ReturnType<typeof TestBed.createComponent<HostComponent>>;
   /** How far down the document the list starts. */
@@ -182,5 +207,43 @@ describe('VirtualListDirective', () => {
 
   it('marks each mounted slot with its key', () => {
     expect(element().querySelector('.row')?.getAttribute('data-virtual-key')).toBe('row-0');
+  });
+
+  /**
+   * A list too short to scroll is near its end the moment it has rows, so the
+   * owner is told while its own template is still being checked, and answers by
+   * writing state it has already rendered.
+   */
+  it('lets the owner react to a short list while the owner renders', () => {
+    const owner = TestBed.createComponent(ShortListHostComponent);
+
+    expect(() => {
+      owner.detectChanges();
+    }).not.toThrow();
+
+    const root = owner.nativeElement as HTMLElement;
+    expect(root.querySelectorAll('.row')).toHaveLength(3);
+    expect(root.querySelector('.loads')?.textContent).toBe('1');
+    owner.destroy();
+  });
+
+  it('mounts the rows in the first check, before any scroll or frame', () => {
+    const owner = TestBed.createComponent(HostComponent);
+    owner.detectChanges();
+
+    expect((owner.nativeElement as HTMLElement).querySelectorAll('.row')).toHaveLength(10);
+    owner.destroy();
+  });
+
+  it('drops measurements when only the collection changes, not the items', () => {
+    layOutRows(100);
+    vi.advanceTimersToNextFrame();
+    fixture.detectChanges();
+    expect(spacer('.bottom')).toBeGreaterThan(90 * 50);
+
+    fixture.componentInstance.generation.set(2);
+    fixture.detectChanges();
+
+    expect(spacer('.bottom')).toBe(90 * 50);
   });
 });
