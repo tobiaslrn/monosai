@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import type { GenerationState } from '../../application/generation/generation.store';
+import type { GenerationState } from '../../application/generation/generation-state';
 
 interface WaitCopy {
   readonly key: string;

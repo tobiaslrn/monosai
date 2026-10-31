@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { aiError, type AiError } from '../../domain/ai/ai-error';
+import { aiError } from '../../domain/ai/ai-error';
 import {
   applyDecisions,
   noApprovals,
@@ -14,107 +14,29 @@ import {
   type StoryGenerationRequest,
   type StoryInputDraft,
 } from '../../domain/ai/story-request';
-import { checkStoryStructure, orderedSentences } from '../../domain/ai/story-structure';
-import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
-import type { GrammarProfileSnapshot } from '../../domain/grammar/profile';
+import { checkStoryStructure } from '../../domain/ai/story-structure';
 import { VALIDATOR_VERSION } from '../../domain/language/analyzer-version';
-import type { LanguageError } from '../../domain/language/language-error';
-import type { SentenceTokens } from '../../domain/language/language-runtime';
 import type { GeneratedStory } from '../../domain/reading/reading';
 import type { GeneratedStoryDraft } from '../../domain/reading/reading-repository';
-import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { VocabularyItemId } from '../../domain/shared/ids';
-import type { StorageError } from '../../domain/storage/storage-error';
-import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
-import type {
-  AnkiWordPriorityMode,
-  RecentFocusSize,
-  VocabularyStrictness,
-} from '../../domain/settings/settings';
-import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { LanguageStore } from '../language/language.store';
-import { VocabularyClassificationService } from '../reading/vocabulary-classification.service';
-import { ExceptionPolicyStore } from '../settings/exception-policy.store';
 import { AppSettingsStore } from '../settings/app-settings.store';
-import { GenerationSettingsStore } from '../settings/generation-settings.store';
-import { TextModelStore } from '../settings/text-model.store';
 import { TEXT_GENERATION_PROVIDER } from '../shared/ai-tokens';
-import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
-import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
+import { GenerationContextService, type CapturedContext } from './generation-context.service';
+import {
+  CANCELLABLE,
+  IDLE,
+  repairAnnouncement,
+  type GenerationFailure,
+  type GenerationState,
+  type RunningStateKind,
+} from './generation-state';
+import { StoryAnalysisService } from './story-analysis.service';
 import { StoryAssemblyService, type AcceptedSentence } from './story-assembly.service';
 import { RepairMemory, StoryRepairService, type AnalyzedUnit } from './story-repair.service';
 import { VocabularyPreparationService } from './vocabulary-preparation.service';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
 import { defined } from '../../domain/shared/invariant';
-
-export type GenerationFailure = AiError | LanguageError | StorageError;
-
-/**
- * The generation state machine from ai-pipelines section 5.
- *
- * The ordering carries the guarantee: everything up to `finalizing` is
- * discardable, so a cancellation or a failure at any of those states leaves no
- * reading row, and `finalizing` is the one non-cancellable state because it is
- * a single transaction that either writes the whole story or writes nothing.
- */
-export type GenerationState =
-  | { readonly kind: 'idle' }
-  | { readonly kind: 'checking-prerequisites' }
-  | { readonly kind: 'preparing' }
-  | { readonly kind: 'writing' }
-  | { readonly kind: 'parsing' }
-  | { readonly kind: 'validating' }
-  | { readonly kind: 'exception-review'; readonly candidateCount: number }
-  | {
-      readonly kind: 'repairing';
-      readonly attempt: number;
-      readonly totalAttempts: number;
-      readonly unknownCount: number;
-      readonly structureIssueCount: number;
-    }
-  | { readonly kind: 'finalizing' }
-  | { readonly kind: 'saved'; readonly reading: GeneratedStory }
-  | {
-      readonly kind: 'cancelled';
-      /** The stage the run was in when it was cancelled. */
-      readonly during: RunningStateKind;
-    }
-  | {
-      readonly kind: 'failed';
-      readonly error: GenerationFailure;
-      /**
-       * The stage the run was in when it failed.
-       *
-       * A terminal state names no stage of its own, and the progress display
-       * has to say where the run stopped rather than painting everything as
-       * never started.
-       */
-      readonly during: RunningStateKind;
-    };
-
-/** The states a run passes through, as opposed to the ones it ends in. */
-export type RunningStateKind =
-  | 'checking-prerequisites'
-  | 'preparing'
-  | 'writing'
-  | 'parsing'
-  | 'validating'
-  | 'exception-review'
-  | 'repairing'
-  | 'finalizing';
-
-const IDLE: GenerationState = { kind: 'idle' };
-
-/** States where a cancel request is still meaningful. */
-const CANCELLABLE = new Set<GenerationState['kind']>([
-  'checking-prerequisites',
-  'preparing',
-  'writing',
-  'parsing',
-  'validating',
-  'exception-review',
-  'repairing',
-]);
 
 /**
  * Reads the current abort state.
@@ -125,39 +47,6 @@ const CANCELLABLE = new Set<GenerationState['kind']>([
  */
 function isAborted(signal: AbortSignal): boolean {
   return signal.aborted;
-}
-
-/** The context captured before the first request and never re-read after it. */
-interface CapturedContext {
-  readonly snapshot: VocabularySnapshot;
-  readonly profile: GrammarProfileSnapshot;
-  readonly policyText: string;
-  readonly policyHash: string;
-  readonly taskConfig: TextTaskConfig;
-  readonly ankiWordPriorityMode: AnkiWordPriorityMode;
-  readonly recentFocusSize: RecentFocusSize;
-  readonly vocabularyStrictness: VocabularyStrictness;
-  readonly repairBudget: number;
-  /**
-   * The aid layers the saved story declares. Captured like everything else
-   * here, so switching the defaults while a story is being written changes the
-   * next story rather than this one.
-   */
-  readonly preparationTargets: readonly PreparationLayer[];
-}
-
-/** What the learner is told while a repair runs. */
-function repairAnnouncement(
-  unknownCount: number,
-  structureIssueCount: number,
-  attempt: number,
-  totalAttempts: number,
-): string {
-  const work =
-    unknownCount > 0
-      ? `Replacing ${String(unknownCount)} unfamiliar ${unknownCount === 1 ? 'word' : 'words'}${structureIssueCount > 0 ? ' and fixing the story structure' : ''}`
-      : 'Fixing the story structure';
-  return `${work} (attempt ${String(attempt)} of ${String(totalAttempts)})…`;
 }
 
 /**
@@ -172,17 +61,12 @@ function repairAnnouncement(
 @Injectable()
 export class GenerationStore {
   private readonly provider = inject(TEXT_GENERATION_PROVIDER);
-  private readonly runtime = inject(LANGUAGE_RUNTIME);
-  private readonly vocabulary = inject(VOCABULARY_REPOSITORY);
   private readonly preparation = inject(VocabularyPreparationService);
   private readonly assembly = inject(StoryAssemblyService);
   private readonly storyRepair = inject(StoryRepairService);
-  private readonly classification = inject(VocabularyClassificationService);
-  private readonly grammar = inject(GrammarProfileStore);
-  private readonly policy = inject(ExceptionPolicyStore);
+  private readonly contexts = inject(GenerationContextService);
+  private readonly analysis = inject(StoryAnalysisService);
   private readonly appSettings = inject(AppSettingsStore);
-  private readonly generationSettings = inject(GenerationSettingsStore);
-  private readonly textModel = inject(TextModelStore);
   private readonly language = inject(LanguageStore);
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
@@ -247,7 +131,11 @@ export class GenerationStore {
     this.stateSignal.set({ kind: 'checking-prerequisites' });
     this.announce('Checking what this story needs…');
 
-    const captured = await this.capture(modelPresetId, capturedPriorityMode, capturedFocusSize);
+    const captured = await this.contexts.capture(
+      modelPresetId,
+      capturedPriorityMode,
+      capturedFocusSize,
+    );
     if (!captured.ok) {
       this.fail(captured.error);
       return;
@@ -405,7 +293,7 @@ export class GenerationStore {
 
       this.stateSignal.set({ kind: 'validating' });
       this.announce('Checking every word against your vocabulary…');
-      const analyzed = await this.analyze(candidate, context, signal);
+      const analyzed = await this.analysis.analyze(candidate, context, signal);
       if (!analyzed.ok) {
         this.finish(analyzed.error, signal);
         return;
@@ -511,141 +399,6 @@ export class GenerationStore {
       }
       candidate = repaired.value;
     }
-  }
-
-  /** Captures the snapshot, profile, policy, and model before anything is spent. */
-  private async capture(
-    modelPresetId: string | null,
-    ankiWordPriorityMode: AnkiWordPriorityMode,
-    recentFocusSize: RecentFocusSize,
-  ): Promise<
-    | { readonly ok: true; readonly value: CapturedContext }
-    | { readonly ok: false; readonly error: GenerationFailure }
-  > {
-    const vocabularyStrictness = this.generationSettings.vocabularyStrictness();
-    const repairBudget = this.generationSettings.repairBudget();
-    const preparationTargets = this.generationSettings.defaultPreparationTargets();
-    const snapshot = await this.vocabulary.getActiveSnapshot();
-    if (!snapshot.ok) {
-      return { ok: false, error: snapshot.error };
-    }
-    if (snapshot.value === null) {
-      return {
-        ok: false,
-        error: aiError('unknown', 'story-generation', 'There is no active vocabulary snapshot.', {
-          detail: { issueCode: 'no-snapshot' },
-        }),
-      };
-    }
-
-    const profile = await this.grammar.captureProfile();
-    if (!profile.ok) {
-      return { ok: false, error: profile.error };
-    }
-
-    const settings = this.textModel.settings();
-    const configurable = this.textModel as Partial<Pick<TextModelStore, 'configForPreset'>>;
-    const selected =
-      modelPresetId === null
-        ? (configurable.configForPreset?.(settings.activePresetId) ??
-          (settings.modelId !== '' && settings.structuredOutput !== null
-            ? {
-                modelId: settings.modelId,
-                reasoningEffort: settings.reasoningEffort,
-                structuredOutput: settings.structuredOutput,
-                storyTokenBudget: settings.storyTokenBudget,
-              }
-            : null))
-        : (configurable.configForPreset?.(modelPresetId) ?? null);
-    if (selected === null) {
-      return {
-        ok: false,
-        error: aiError(
-          'capability-unsupported',
-          'story-generation',
-          'No tested text model is available for generation.',
-          { detail: { capability: 'structured-output' } },
-        ),
-      };
-    }
-
-    const policy = this.policy.policy();
-    return {
-      ok: true,
-      value: {
-        snapshot: snapshot.value,
-        profile: profile.value,
-        policyText: policy.text,
-        policyHash: policy.policyHash,
-        taskConfig: selected,
-        ankiWordPriorityMode,
-        recentFocusSize,
-        vocabularyStrictness,
-        repairBudget,
-        preparationTargets,
-      },
-    };
-  }
-
-  /** Tokenizes the title and every sentence, then classifies them together. */
-  private async analyze(
-    candidate: StoryCandidate,
-    context: CapturedContext,
-    signal: AbortSignal,
-  ): Promise<
-    | { readonly ok: true; readonly value: AnalyzedUnit[] }
-    | { readonly ok: false; readonly error: GenerationFailure }
-  > {
-    const sentences = orderedSentences(candidate);
-    const texts = [candidate.titleJa, ...sentences];
-
-    const tokenized = await this.runtime.analyzeSentences(texts, signal);
-    if (!tokenized.ok) {
-      return { ok: false, error: tokenized.error };
-    }
-    if (tokenized.value.length !== texts.length) {
-      return {
-        ok: false,
-        error: aiError(
-          'unknown',
-          'story-generation',
-          'The analysis returned the wrong number of sentences.',
-          {
-            detail: { issueCode: 'analysis-length-mismatch' },
-          },
-        ),
-      };
-    }
-
-    const units: AnalyzedUnit[] = texts.map((textJa, index) => ({
-      key: index === 0 ? 'title' : `s${String(index - 1)}`,
-      sentenceIndex: index === 0 ? null : index - 1,
-      textJa,
-      // One analysis per text, as the length check above proves.
-      tokens: defined(tokenized.value[index], 'sentence analysis').tokens,
-      statuses: [],
-    }));
-
-    const input: readonly SentenceTokens[] = units.map((unit) => ({
-      sentenceId: unit.key,
-      tokens: unit.tokens,
-    }));
-    const classified = await this.classification.classifyGenerated(
-      context.snapshot.id,
-      input,
-      signal,
-    );
-    if (!classified.ok) {
-      return { ok: false, error: classified.error };
-    }
-
-    const byKey = new Map(
-      classified.value.sentences.map((sentence) => [sentence.sentenceId, sentence.statuses]),
-    );
-    for (const unit of units) {
-      unit.statuses = byKey.get(unit.key) ?? [];
-    }
-    return { ok: true, value: units };
   }
 
   /**

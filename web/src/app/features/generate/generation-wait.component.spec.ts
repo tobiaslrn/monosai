@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { GenerationState } from '../../application/generation/generation.store';
+import type { GenerationState } from '../../application/generation/generation-state';
 import { generationWaitCopy } from './generation-wait.component';
 
 describe('generationWaitCopy', () => {

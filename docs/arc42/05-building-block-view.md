@@ -240,6 +240,24 @@ component is composition and template:
   and moves `ReaderStore`'s window when a scroll reaches one outside it.
   Measurements reset through a `linkedSignal` over the paragraph layout.
 - `ReaderWordPreviewService` owns the hover preview's delay and its card.
+- `ReaderSurfacesService` owns what a press commands: which surface opens, how
+  one gives way to the next, and when a second press puts one away. The page
+  passes it its templates with `connect`. What those surfaces show about a
+  sentence or a word is plain functions in `reader-selection-view.ts`.
+- `ReaderContentActionsService` owns what the menu draws and commands: the
+  content rows, preparing and stopping a layer, and the confirmed deletions.
+
+The AI settings are split the same way. `ModelsSectionComponent` composes
+`mn-openrouter-connection`, `mn-text-models` and `mn-voice-model`, which share one
+catalogue fetch through `ModelCatalogView`, provided by the section.
+
+`TranslationJobStore` keeps its public surface and the run itself.
+`TranslationJobPlanner` works out the plan, its keys and the job row, and
+`TranslationTerminologyService` settles the opening and repairs a glossary, using
+the pacing and progress the running job lends it. `GenerationStore` keeps the
+state machine; `GenerationContextService` captures what a run is judged against,
+`StoryAnalysisService` reads a candidate into tokens and statuses, and
+`generation-state.ts` holds the states.
 
 A paragraph hands the looked-up and previewed word only to the sentence that
 contains it, so a hover re-renders the two sentences it moved between instead of

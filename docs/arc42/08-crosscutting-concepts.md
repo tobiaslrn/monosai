@@ -368,6 +368,15 @@ connection store does for the history, nothing needs to watch it. An effect that
 method which reads state it then rewrites wraps the call in `untracked()`, or it becomes its own
 trigger.
 
+A store does not copy state into another store. A registry takes the signal itself, as
+`AppBusyRegistry.track` and `GenerationActivityRegistry.connect` do, and derives from it; a value
+only one caller knows is an argument, as the catalogue parameters are to `TtsStore.acceptsDirection`.
+A one-off command has an explicit trigger: a route input that opens or hands something over is
+`ngOnChanges`, a completed navigation is a router subscription, and the end of a run is a callback
+from the run. Two effects outside the DOM remain, each commented with why: the preparation lane's
+pump, because its hold clears through three other stores, and the release of a wait for clips in
+`reader-audio.store.ts`, because it answers both a job and a wait that starts after the job stopped.
+
 ## 8.12 Compiler strictness
 
 Beyond `strict`, the TypeScript configuration enables `noUncheckedIndexedAccess` and

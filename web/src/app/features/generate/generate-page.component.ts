@@ -18,7 +18,7 @@ import {
   grammarPresetLine,
   prerequisiteChecks,
 } from '../../application/generation/generation-prerequisites';
-import type { GenerationState } from '../../application/generation/generation.store';
+import type { GenerationState } from '../../application/generation/generation-state';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { TextModelStore } from '../../application/settings/text-model.store';

@@ -3,7 +3,7 @@ import type {
   GenerationJob,
   GenerationRun,
 } from '../app/application/generation/generation-jobs.store';
-import type { GenerationState } from '../app/application/generation/generation.store';
+import type { GenerationState } from '../app/application/generation/generation-state';
 import type { StoryInputDraft } from '../app/domain/ai/story-request';
 import { jobId, type JobId } from '../app/domain/shared/ids';
 
