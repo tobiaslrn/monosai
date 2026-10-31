@@ -98,7 +98,12 @@ export class CountingCountComponent implements OnChanges {
     const from = this.displayed();
     this.displayed.set(target);
 
-    if (first || this.viewport.prefersReducedMotion() || from === target) {
+    if (
+      first ||
+      this.viewport.prefersReducedMotion() ||
+      from === target ||
+      typeof requestAnimationFrame === 'undefined'
+    ) {
       return;
     }
 

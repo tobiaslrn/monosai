@@ -171,6 +171,19 @@ describe('CountingCountComponent', () => {
     expect(text(fixture)).toBe('440 entries');
   });
 
+  /** An environment with no frames at all is left holding the true number, not an error. */
+  it('states a changed value at once where there are no animation frames', () => {
+    const fixture = render();
+    vi.stubGlobal('requestAnimationFrame', undefined);
+
+    fixture.componentInstance.count.set(360);
+    expect(() => {
+      fixture.detectChanges();
+    }).not.toThrow();
+
+    expect(text(fixture)).toBe('360 words');
+  });
+
   describe('with reduced motion', () => {
     beforeEach(() => {
       TestBed.configureTestingModule({
