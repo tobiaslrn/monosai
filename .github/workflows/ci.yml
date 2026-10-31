@@ -65,6 +65,9 @@ jobs:
         run: npm run docs:verify
       - name: Third-party licence check
         run: npm run licenses:check
+      - name: Repository script tests
+        run: npm run scripts:test
+        working-directory: web
       - name: Dependency audit (production)
         run: npm audit --omit=dev --audit-level=high
         working-directory: web

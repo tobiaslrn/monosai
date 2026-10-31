@@ -17,7 +17,7 @@
     "url": "https://github.com/tobiaslrn/monosai/issues"
   },
   "scripts": {
-    "start": "ng serve",
+    "start": "node scripts/start.mjs",
     "build": "ng build",
     "build:pages": "ng build --configuration pages --stats-json",
     "test": "ng test",
@@ -31,7 +31,9 @@
     "e2e": "playwright test",
     "e2e:full": "playwright test --config=playwright.full.config.ts",
     "e2e:pwa": "playwright test --config=playwright.pwa.config.ts",
-    "verify:static": "npm run format:check && npm run lint && npm run stylelint && npm run typecheck && npm run assets:verify && npm run fixtures:verify && npm run icons:verify",
+    "verify:static": "npm run format:check && npm run lint && npm run stylelint && npm run typecheck && npm run assets:verify && npm run fixtures:verify && npm run icons:verify && npm run scripts:test",
+    "scripts:test": "node --test scripts/worktree-ports.test.mjs",
+    "worktree:setup": "node scripts/worktree-setup.mjs",
     "verify:build": "npm run build:pages && npm run dist:fallback && npm run verify-dist",
     "dist:fallback": "node scripts/dist-fallback.mjs",
     "assets:build": "node scripts/assets/build-language-assets.mjs",

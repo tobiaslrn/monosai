@@ -61,6 +61,13 @@ fixtures depend on Node's bundled SQLite and compression implementations, so a r
 verify or regenerate those fixtures in the same change. A floating major version would allow an
 unchanged checkout to fail the byte-for-byte reproducibility check after a runner update.
 
+Parallel local worktrees do not share a port. The main checkout and CI use 4200, 4210 and 4300 for
+the development server, the end-to-end suite and the PWA suite;
+[`worktree-ports.mjs`](../../web/scripts/worktree-ports.mjs) gives each linked worktree a stable set
+derived from its path, and so a browser origin of its own. A local end-to-end run rebuilds only when
+[`build-if-stale.mjs`](../../web/scripts/build-if-stale.mjs) finds a changed input; CI still builds
+once and passes the artifact on.
+
 ```mermaid
 flowchart LR
     subgraph parallel["start together"]

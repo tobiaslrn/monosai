@@ -17,7 +17,8 @@
     "url": "https://github.com/tobiaslrn/monosai/issues"
   },
   "scripts": {
-    "start": "npm --prefix web run start",
+    "start": "npm --prefix web run start --",
+    "worktree:setup": "node web/scripts/worktree-setup.mjs",
     "build": "npm --prefix web run build",
     "build:pages": "npm --prefix web run build:pages --",
     "test": "npm --prefix web run test --",

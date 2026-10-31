@@ -28,7 +28,9 @@ on iOS. Live Android setup means two native installs, the PWA and a grant.
 The listener binds only `127.0.0.1:8765`; the desktop port setting does not change
 it. The shipped allowed origins are `https://tobiaslrn.github.io` and
 `http://localhost:4200`. Use **Allowed origins** for another exact origin, with
-no path or wildcard. No collection read is performed for a refused origin.
+no path or wildcard. A linked worktree serves on its own port, so testing a real
+bridge from one needs that origin added here. No collection read is performed for
+a refused origin.
 See [the protocol](../protocol/actions.md) for preflight and denial semantics.
 
 ## Staying available and battery use

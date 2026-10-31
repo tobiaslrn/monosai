@@ -1,8 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 import { env } from 'node:process';
 import { CHROMIUM_EXECUTABLE_OVERRIDE } from './playwright.chromium';
+import { worktreePorts } from './scripts/worktree-ports.mjs';
 
-const PORT = 4300;
+const PORT = worktreePorts().pwa;
 const BASE_URL = `http://127.0.0.1:${PORT}/monosai/`;
 const PROCESS_ENV = env as Record<string, string | undefined>;
 const IS_CI = PROCESS_ENV['CI'] === 'true';
@@ -40,7 +41,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: USE_PREBUILT_DIST ? 'npm run serve-dist' : 'npm run build:pages && npm run serve-dist',
+    command: USE_PREBUILT_DIST
+      ? 'npm run serve-dist'
+      : 'node scripts/build-if-stale.mjs && npm run serve-dist',
     env: { PORT: String(PORT) },
     url: BASE_URL,
     reuseExistingServer: false,

@@ -1,24 +1,31 @@
 #!/bin/bash
-# Makes a Claude Code cloud session able to run the repository's own commands.
+# Makes a Claude Code session able to run the repository's own commands.
 #
-# The session VM is not this project's environment: its Node predates the one
-# `.nvmrc` pins, the fresh clone has no `node_modules`, and its Playwright
+# Locally, a new worktree only lacks what `worktree:setup` installs. A failure
+# there is reported and does not stop the session.
+#
+# The cloud session VM is not this project's environment: its Node predates the
+# one `.nvmrc` pins, the fresh clone has no `node_modules`, and its Playwright
 # browser is a different build from the pinned one while the download CDN is
-# off the network allowlist. A local checkout already has all three, so this
-# only runs in the cloud.
+# off the network allowlist.
 #
-# It is a fallback, not the fast path. Doing the same work in the environment's
-# setup script (see `.claude/setup-script.sh`) puts it in the cached filesystem
-# snapshot, and every step here then finds its work already done.
+# In the cloud this is a fallback, not the fast path. Doing the same work in the
+# environment's setup script (see `.claude/setup-script.sh`) puts it in the
+# cached filesystem snapshot, and every step here then finds its work already
+# done.
 set -euo pipefail
 
-[ "${CLAUDE_CODE_REMOTE:-}" = 'true' ] || exit 0
-
 REPO="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-REQUIRED_NODE="$(tr -d 'v[:space:]' <"$REPO/.nvmrc")"
-SANDBOX_CHROMIUM='/opt/pw-browsers/chromium'
 
 log() { printf 'session-start: %s\n' "$1"; }
+
+if [ "${CLAUDE_CODE_REMOTE:-}" != 'true' ]; then
+  node "$REPO/web/scripts/worktree-setup.mjs" || log 'worktree setup failed; run npm run worktree:setup'
+  exit 0
+fi
+
+REQUIRED_NODE="$(tr -d 'v[:space:]' <"$REPO/.nvmrc")"
+SANDBOX_CHROMIUM='/opt/pw-browsers/chromium'
 
 persist() {
   [ -n "${CLAUDE_ENV_FILE:-}" ] || return 0

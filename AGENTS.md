@@ -27,6 +27,19 @@
 - Playwright: navigate relatively (`page.goto('./#/library')`), stub OpenRouter and Anki,
   never use fixed sleeps.
 
+## Worktrees
+
+- Parallel worktrees are isolated: each gets its own ports from
+  `web/scripts/worktree-ports.mjs`, while the main checkout and CI keep 4200, 4210 and 4300.
+  `npm run worktree:setup` installs what a new worktree lacks.
+- In a linked worktree, `.claude/launch.json` still names port 4200: run `npm start` in a
+  terminal and open the URL it prints.
+- `npm run e2e` reuses a current build; `node scripts/build-if-stale.mjs --force` from `web`
+  rebuilds it.
+- Never `git stash`: all worktrees share one stash list. Commit to your branch instead.
+- Never kill processes by name or a port you did not start; other sessions run theirs too.
+- Never install tools globally; add them to the project's dependencies.
+
 ## CI
 
 - One application build per run; everything downstream uses `MONOSAI_PREBUILT_DIST=true`.

@@ -2,10 +2,11 @@ import { defineConfig, devices } from '@playwright/test';
 import { env } from 'node:process';
 import { INTRO_SEEN_STATE } from './e2e/state';
 import { CHROMIUM_EXECUTABLE_OVERRIDE } from './playwright.chromium';
+import { worktreePorts } from './scripts/worktree-ports.mjs';
 
-// Not 4200: `ng serve` owns that port, and the suite must never silently run
-// against a development server someone left running.
-const PORT = 4210;
+// Not the development port: `ng serve` owns that, and the suite must never
+// silently run against a development server someone left running.
+const PORT = worktreePorts().e2e;
 // The production build bakes `<base href="/monosai/">` into index.html, so it
 // can only be served from that path. Every `page.goto` is relative to this.
 const BASE_URL = `http://127.0.0.1:${PORT}/monosai/`;
@@ -77,7 +78,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: USE_PREBUILT_DIST ? 'npm run serve-dist' : 'npm run build:pages && npm run serve-dist',
+    command: USE_PREBUILT_DIST
+      ? 'npm run serve-dist'
+      : 'node scripts/build-if-stale.mjs && npm run serve-dist',
     env: { PORT: String(PORT) },
     url: BASE_URL,
     // A reused server would serve whatever was built last, which is the wrong
