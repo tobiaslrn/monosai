@@ -164,3 +164,60 @@ test('restores a deep window position after leaving and returning @smoke @mobile
     .poll(() => page.evaluate(() => window.scrollY), { timeout: 20_000 })
     .toBeGreaterThanOrEqual(savedPosition - 2);
 });
+
+test('deleting a deep story keeps the shelf position and focuses the next row @smoke @mobile', async ({
+  page,
+}) => {
+  await importReading(page, '猫がいる。', 'Seed story');
+  await page.goto('./#/library');
+  await seedMoreLibraryRows(page, 48);
+  await page.goto('./#/library');
+
+  await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollHeight))
+    .toBeGreaterThan(1_500);
+  await page.evaluate(() => {
+    window.scrollTo(0, Math.floor(document.documentElement.scrollHeight * 0.5));
+  });
+  const actions = page.locator('[data-virtual-key^="library-reading-"] [aria-haspopup="menu"]');
+  await expect.poll(() => actions.count()).toBeGreaterThan(1);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+      }),
+  );
+  // Overscan mounts rows outside the viewport; pick one in the upper half so its menu opens without scrolling the page.
+  const picked = await page.evaluate(() => {
+    const rows = [
+      ...document.querySelectorAll<HTMLElement>('[data-virtual-key^="library-reading-"]'),
+    ];
+    const headerBottom =
+      document.querySelector('mn-page-header')?.getBoundingClientRect().bottom ?? 0;
+    const index = rows.findIndex((row) => {
+      const rect = row.getBoundingClientRect();
+      return rect.top >= headerBottom + 20 && rect.bottom <= innerHeight / 2;
+    });
+    const label = (at: number) =>
+      rows[at]?.querySelector('[aria-haspopup="menu"]')?.getAttribute('aria-label') ?? '';
+    return { target: label(index), next: label(index + 1) };
+  });
+  const nextLabel = picked.next;
+  const second = page.getByRole('button', { name: picked.target, exact: true });
+
+  await second.dispatchEvent('click');
+  const menuItem = page.getByRole('menuitem', { name: 'Delete' });
+  await expect(menuItem).toBeVisible();
+  const before = await page.evaluate(() => window.scrollY);
+  await menuItem.dispatchEvent('click');
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete permanently' }).click();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await expect(page.locator(':focus')).toHaveAttribute('aria-label', nextLabel);
+  const after = await page.evaluate(() => window.scrollY);
+  expect(Math.abs(after - before)).toBeLessThan(400);
+});

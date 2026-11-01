@@ -4,7 +4,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  Injector,
   ViewContainerRef,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -323,6 +325,7 @@ export class LibraryPageComponent {
   protected readonly store = inject(LibraryStore);
   private readonly clock = inject(CLOCK);
   private readonly dialog = inject(Dialog);
+  private readonly injector = inject(Injector);
   private readonly popover = inject(PopoverService);
   private readonly viewContainerRef = inject(ViewContainerRef);
   private restorationCancelled = false;
@@ -542,7 +545,47 @@ export class LibraryPageComponent {
       // store still holds this reading's refs and clip set, and a deleted
       // reading must not be what the next Play is pointed at.
       this.playback.readingDeleted(reading.id);
-      await this.store.delete(reading.id);
+      const landing = this.rowToFocusAfterDelete(reading);
+      const deleted = await this.store.delete(reading.id);
+      if (!deleted) {
+        return;
+      }
+      // The row that opened the menu is gone, and with it the focus the dialog
+      // would have returned to. Wait for the shelf to render without it.
+      afterNextRender(
+        () => {
+          this.focusAfterDelete(landing);
+        },
+        { injector: this.injector },
+      );
+    }
+  }
+
+  /** The key of the row after the one being deleted, or before it for the last row. */
+  private rowToFocusAfterDelete(reading: Reading): string | null {
+    const keys = [
+      ...document.querySelectorAll<HTMLElement>('[data-virtual-key^="library-reading-"]'),
+    ].map((element) => element.dataset['virtualKey'] ?? '');
+    const index = keys.indexOf(`library-reading-${reading.id}`);
+    if (index < 0) {
+      return null;
+    }
+    return keys[index + 1] ?? keys[index - 1] ?? null;
+  }
+
+  private focusAfterDelete(key: string | null): void {
+    const row =
+      key === null
+        ? null
+        : document.querySelector<HTMLElement>(`[data-virtual-key="${key}"] [aria-haspopup="menu"]`);
+    if (row !== null) {
+      row.focus();
+      return;
+    }
+    const heading = document.getElementById('mn-page-title');
+    if (heading !== null) {
+      heading.tabIndex = -1;
+      heading.focus();
     }
   }
 }

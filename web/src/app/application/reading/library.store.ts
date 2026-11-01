@@ -173,7 +173,13 @@ export class LibraryStore {
     await this.loadMore();
   }
 
-  /** Deletes a reading and reloads the current page. */
+  /**
+   * Deletes a reading and takes its row off the shelf.
+   *
+   * Like rename, the loaded pages stay as they are: re-reading the shelf would
+   * drop a learner deep in a paged shelf back onto its first page. The shelf is
+   * only re-read when nothing listed is left to page from.
+   */
   async delete(id: ReadingId): Promise<boolean> {
     const title = await this.titleOf(id);
     const deleted = await this.readings.deleteReading(id);
@@ -182,7 +188,14 @@ export class LibraryStore {
       this.announce(`${title} could not be deleted. Nothing was removed.`);
       return false;
     }
-    await this.load();
+    const listed = this.itemsSignal().some((reading) => reading.id === id);
+    const remaining = this.itemsSignal().filter((reading) => reading.id !== id);
+    if (!listed || (remaining.length === 0 && this.hasMoreSignal())) {
+      await this.load();
+    } else {
+      this.itemsSignal.set(remaining);
+      this.totalSignal.update((total) => Math.max(0, total - 1));
+    }
     this.mutations.publishDeleted(id, title);
     this.announce(`${title} was deleted.`);
     return true;
