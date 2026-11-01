@@ -15,7 +15,7 @@ import { StorageSectionComponent } from './storage-section.component';
 class FakeStorageStore {
   readonly statusSignal = signal({ ...UNKNOWN_PERSISTENCE, supported: true, canRequest: true });
   readonly persistenceSignal = signal<PersistenceState>('not-asked');
-  readonly actionSignal = signal<'idle' | 'clearing-audio'>('idle');
+  readonly actionSignal = signal<'idle' | 'clearing-audio' | 'requesting-persistence'>('idle');
   readonly clearedSignal = signal(false);
   readonly calls: string[] = [];
 
@@ -241,6 +241,23 @@ describe('StorageSectionComponent', () => {
       await settle(fixture);
 
       expect(storage.calls).toContain('requestPersistence');
+    });
+
+    it('keeps Protect busy, not disabled, while the browser is asked, and ignores a press', async () => {
+      const fixture = TestBed.createComponent(StorageSectionComponent);
+      storage.persistenceSignal.set('refused');
+      storage.actionSignal.set('requesting-persistence');
+      fixture.detectChanges();
+
+      const button = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(
+        (candidate) => candidate.textContent.includes('Protecting'),
+      );
+      expect(button?.disabled).toBe(false);
+      expect(button?.getAttribute('aria-busy')).toBe('true');
+      button?.click();
+      await settle(fixture);
+
+      expect(storage.calls).not.toContain('requestPersistence');
     });
   });
 

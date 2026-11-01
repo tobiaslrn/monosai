@@ -1,5 +1,6 @@
+import { signal } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONTRACT_COLLECTION } from '../../../testing/anki-collection';
 import { FakeAnkiProvider } from '../../../testing/anki-fakes';
 import { mappingFor } from '../../../testing/anki-provider-contract';
@@ -8,6 +9,10 @@ import {
   type VocabularyTestBed,
 } from '../../../testing/vocabulary-fakes';
 import { ANKI_PROVIDER_FACTORY } from '../../application/shared/anki-tokens';
+import {
+  AutomaticAnkiSyncCoordinator,
+  type AutomaticAnkiSyncStatus,
+} from '../../application/vocabulary/automatic-anki-sync.coordinator';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { snapshotFixture } from '../../../testing/persistence-fixtures';
@@ -38,9 +43,24 @@ const TEXT_LIST: TextListVocabularySource = {
 describe('SourceListComponent', () => {
   let beds: VocabularyTestBed;
   let anki: SourceMapping;
+  const status = signal<AutomaticAnkiSyncStatus>({ kind: 'idle' });
+  const trigger = vi.fn((): Promise<void> => {
+    status.set({ kind: 'checking' });
+    return new Promise<void>(() => undefined);
+  });
 
   beforeEach(async () => {
+    status.set({ kind: 'idle' });
+    trigger.mockClear();
     beds = configureVocabularyTestBed();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: AutomaticAnkiSyncCoordinator,
+          useValue: { status: status.asReadonly(), trigger },
+        },
+      ],
+    });
     TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, {
       useValue: () => new FakeAnkiProvider(CONTRACT_COLLECTION, { kind: 'desktop-connect' }),
     });
@@ -170,5 +190,26 @@ describe('SourceListComponent', () => {
     const { element } = await render();
 
     expect(element.querySelector('[data-testid="source-attention"]')).toBeNull();
+  });
+
+  it('keeps Try now enabled and busy while the retry runs, and ignores another press', async () => {
+    const base = snapshotFixture(1).snapshot;
+    beds.vocabulary.snapshots.push({
+      ...base,
+      stats: { ...base.stats, sourceWarnings: ['Anki could not provide review dates.'] },
+    });
+    beds.vocabulary.activeSnapshotId = base.id;
+    await TestBed.inject(SnapshotHistoryStore).load();
+    const { fixture, element } = await render();
+
+    const retry = element.querySelector<HTMLButtonElement>('[data-testid="attention-retry"]');
+    expect(retry?.getAttribute('aria-busy')).toBeNull();
+    retry?.click();
+    await settle(fixture);
+
+    expect(retry?.disabled).toBe(false);
+    expect(retry?.getAttribute('aria-busy')).toBe('true');
+    retry?.click();
+    expect(trigger).toHaveBeenCalledTimes(1);
   });
 });

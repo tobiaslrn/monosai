@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { languageError } from '../../domain/language/language-error';
 import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
 import type { ImportedReading } from '../../domain/reading/reading';
@@ -14,6 +14,8 @@ import { TextImportService, type SaveImportRequest } from './text-import.service
 class FakeTextImportService {
   readonly runtime = new FakeLanguageRuntime();
   languageReady = true;
+  gate: Promise<void> | null = null;
+  ensureCalls = 0;
   analysisFailure: ReturnType<typeof languageError> | null = null;
   saved: SaveImportRequest | null = null;
   saveFailure: StorageError | null = null;
@@ -23,7 +25,9 @@ class FakeTextImportService {
     return Promise.resolve(ok(this.duplicates));
   }
 
-  ensureLanguageReady(): Promise<Result<void, ReturnType<typeof languageError>>> {
+  async ensureLanguageReady(): Promise<Result<void, ReturnType<typeof languageError>>> {
+    this.ensureCalls += 1;
+    await this.gate;
     return Promise.resolve(
       this.languageReady
         ? ok(undefined)
@@ -110,6 +114,27 @@ describe('ImportStore', () => {
 
       expect(store.rejection()?.code).toBe('empty');
       expect(imports.saved).toBeNull();
+    });
+
+    it('stays saveable, so its button can be busy rather than disabled, while a save runs', async () => {
+      let release!: () => void;
+      imports.gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      store.setPastedText('こんにちは。');
+
+      const first = store.save();
+      await vi.waitFor(() => {
+        expect(store.isBusy()).toBe(true);
+      });
+      expect(store.canSave()).toBe(true);
+
+      // A second press while busy is ignored, not started again.
+      expect(await store.save()).toBeNull();
+      expect(imports.ensureCalls).toBe(1);
+
+      release();
+      await first;
     });
 
     it('blocks saving with text over the limit', async () => {

@@ -99,7 +99,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
                 <button
                   type="button"
                   class="mn-button mn-button--ghost"
-                  [disabled]="manual.isSyncing()"
+                  [attr.aria-busy]="manual.isSyncing() ? 'true' : null"
                   (click)="syncNow(source)"
                 >
                   Try now
@@ -129,19 +129,19 @@ const STALE_REASONS: Record<StaleReason, string> = {
               <span class="setting-label">Keep it up to date</span>
             </mn-switch-row>
             <div class="footline">
+              <button
+                type="button"
+                class="mn-button"
+                [disabled]="busy() && !manual.isSyncingSource(source.id)"
+                [attr.aria-busy]="manual.isSyncingSource(source.id) ? 'true' : null"
+                (click)="syncNow(source)"
+                data-testid="sync-now"
+              >
+                {{ manual.isSyncingSource(source.id) ? 'Reading…' : 'Refresh now' }}
+              </button>
               @if (manual.isSyncingSource(source.id)) {
-                <span class="mn-hint">Reading…</span>
                 <button type="button" class="mn-button" (click)="manual.cancel()">Cancel</button>
               } @else {
-                <button
-                  type="button"
-                  class="mn-button"
-                  [disabled]="busy()"
-                  (click)="syncNow(source)"
-                  data-testid="sync-now"
-                >
-                  Refresh now
-                </button>
                 <span class="mn-hint">{{ lastReadLine(source.id) }}</span>
               }
             </div>
@@ -614,6 +614,9 @@ export class SourcePageComponent {
   }
 
   protected async syncNow(source: AnkiVocabularySource): Promise<void> {
+    if (this.manual.isSyncing()) {
+      return;
+    }
     await this.manual.syncNow(source);
     if (this.manual.state().kind === 'complete') {
       await this.reload();

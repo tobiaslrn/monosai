@@ -250,6 +250,49 @@ describe('SourcePageComponent', () => {
     expect(element.textContent).toContain('no longer here');
     expect(element.querySelector('[data-testid="include-source"]')).toBeNull();
   });
+
+  /**
+   * A control that started work is busy, not unavailable and not removed: it
+   * keeps its place with aria-busy, Cancel sits beside it, and a press is ignored.
+   */
+  it('keeps Refresh now in place and busy while a manual read runs', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- re-bound with `call` below
+    const probe = FakeAnkiProvider.prototype.probe;
+    const probes = vi.spyOn(FakeAnkiProvider.prototype, 'probe').mockImplementation(async function (
+      this: FakeAnkiProvider,
+      signal?: AbortSignal,
+    ) {
+      await gate;
+      return probe.call(this, signal);
+    });
+    const { fixture, element } = await render(anki.id);
+    const button = required(element, '[data-testid="sync-now"]') as HTMLButtonElement;
+    expect(button.getAttribute('aria-busy')).toBeNull();
+    expect(button.textContent.trim()).toBe('Refresh now');
+
+    button.click();
+    await settle(fixture);
+
+    expect(required(element, '[data-testid="sync-now"]')).toBe(button);
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    expect(button.textContent.trim()).toBe('Reading…');
+    expect(
+      [...element.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Cancel'),
+    ).toBe(true);
+
+    button.click();
+    await settle(fixture);
+    expect(probes).toHaveBeenCalledTimes(1);
+
+    release();
+    await settle(fixture);
+    probes.mockRestore();
+  });
 });
 
 function clickDialogButton(label: string): void {
