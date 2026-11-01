@@ -23,6 +23,8 @@ export const ALPHA_DIALOG_OPENER = new InjectionToken<AlphaDialogOpener>('Alpha 
           ariaLabelledBy: 'mn-alpha-title',
           ariaDescribedBy: 'mn-alpha-message',
           hasBackdrop: true,
+          panelClass: 'mn-docked-pane',
+          maxWidth: '100vw',
           disableClose: true,
         });
       },
