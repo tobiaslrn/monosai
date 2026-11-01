@@ -613,16 +613,18 @@ An app-level modal surface uses the CDK Dialog pattern: focus moves into the
 surface, `Escape` dismisses it, outside dismissal follows the surface's
 semantics, and focus returns to the control that opened it. The surface is a
 centred card on a wide viewport. On a small viewport it becomes a bottom sheet
-that is full width, owns its scrolling, and uses the sheet radius; it does not
+(the Rename dialog stays a centred card, since its text field must stay above the
+on-screen keyboard) that is full width, owns its scrolling, and uses the sheet radius; it does not
 need an anchor in the page underneath it. The backdrop and focus treatment are
 shared, while the content decides whether its safe dismissal is Cancel, Close,
 or a committed primary action.
 
-Every docked sheet carries the same grab handle, whatever surface it is built
-on, because the handle is the sheet's only way out. Dragging it down dismisses
-the sheet and a plain press does the same; either discards whatever the sheet
-was drafting, exactly as dismissing it from outside would. A sheet that commits
-its draft does so through its own primary action, never through the handle.
+Every docked content sheet carries the same grab handle, whatever surface it is
+built on, because the handle is its gesture way out. Confirmations and notices
+are the one exception, described below. Dragging the handle down dismisses the
+sheet and a plain press does the same; either discards whatever the sheet was
+drafting, exactly as dismissing it from outside would. A sheet that commits its
+draft does so through its own primary action, never through the handle.
 
 The gesture is read the way a phone reads it. The sheet follows the finger
 exactly while it is held. Letting go answers with the same two outcomes a
@@ -642,7 +644,8 @@ slide is ignored. With reduced motion, or on a wide viewport where the card is
 not docked, it closes at once.
 
 A confirmation or notice that is docked as a sheet already has its own way out,
-Cancel, Keep it, or Continue, so it carries no grab handle. Escape and a press
+Cancel, Keep it, or Continue, so it carries no grab handle and no exit slide: it closes at
+once. Escape and a press
 on the backdrop still dismiss a confirmation; the alpha notice is dismissed only
 by Continue. Like any docked sheet it stays within the viewport, scrolls when its
 content is taller, and leaves room for the system gesture area below it.
@@ -760,7 +763,7 @@ together, with no fold to open.
 An anchored card closes from a small control in its own top corner, overlapping
 the card's padding so it costs no vertical space and the content still leads with
 what the reader asked for. Only the card's leading row is inset to clear it. A
-docked sheet carries no such control: its grab handle is both the affordance and
+docked content sheet carries no such control: its grab handle is both the affordance and
 the way out.
 
 On a small screen, word and sentence details are independently scrollable
@@ -775,7 +778,7 @@ boundary. A sentence card keeps its grab handle and its action tray visible
 while the translation, warnings, and grammar scroll between them. Both are
 full-bleed and opaque to the card's own edge, so nothing scrolls visibly past
 them: a card whose content ends in a sticky footer gives that footer the card's
-bottom padding, exactly as a docked sheet gives its grab handle the top one. A
+bottom padding, exactly as a docked content sheet gives its grab handle the top one. A
 sticky row stops at the content edge, and padding left on the card behind it is
 a strip the content shows through.
 
