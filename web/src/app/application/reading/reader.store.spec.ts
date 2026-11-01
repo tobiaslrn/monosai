@@ -320,6 +320,29 @@ describe('ReaderStore', () => {
     });
   });
 
+  describe('moving to a position', () => {
+    it('still arrives when another window move is running', async () => {
+      const rows = repository.add(buildReading({ id: 'r1', paragraphCount: 200 }));
+      const classifier = TestBed.inject(
+        VocabularyClassificationService,
+      ) as unknown as StubVocabularyClassificationService;
+      const reader = store();
+      await reader.open(rows.reading.id);
+
+      classifier.hold();
+      const covering = reader.cover(40, 41, 42);
+      await vi.waitFor(() => {
+        expect(classifier.pending).toBe(1);
+      });
+      const moving = reader.moveTo(199);
+      classifier.release();
+      await Promise.all([covering, moving]);
+
+      expect(reader.paragraphs().at(-1)?.paragraph.position).toBe(199);
+      expect(reader.loadingMore()).toBe(false);
+    });
+  });
+
   describe('vocabulary changes under an open reading', () => {
     const category = (reader: ReaderStore): string | undefined => {
       const sentence = reader.paragraphs()[0]!.sentences[0]!;
