@@ -48,7 +48,9 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
         @if (retestable(text.readiness())) {
           <button
             type="button"
-            class="mn-button mn-button--ghost"
+            class="mn-button"
+            [class.mn-button--ghost]="text.readiness() !== 'failed'"
+            [class.mn-button--danger]="text.readiness() === 'failed'"
             data-testid="test-text-model"
             [disabled]="text.action() !== 'idle'"
             (click)="text.test()"
@@ -131,7 +133,9 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
               @if (text.routePreset(task.id) !== null && retestable(text.routeReadiness(task.id))) {
                 <button
                   type="button"
-                  class="mn-button mn-button--ghost"
+                  class="mn-button"
+                  [class.mn-button--ghost]="text.routeReadiness(task.id) !== 'failed'"
+                  [class.mn-button--danger]="text.routeReadiness(task.id) === 'failed'"
                   data-testid="test-text-model"
                   [disabled]="text.action() !== 'idle'"
                   (click)="text.testTask(task.id)"

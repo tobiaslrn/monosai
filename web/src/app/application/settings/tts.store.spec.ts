@@ -314,6 +314,72 @@ describe('TtsStore', () => {
     expect(store.readiness()).toBe('untested');
   });
 
+  it('drops a pending test, and its clip, when the draft changes', async () => {
+    const store = await ready();
+    store.setDraft(CONFIGURED);
+    await store.save();
+    let release: (() => void) | undefined;
+    provider.testConfiguration = (_config, signal) =>
+      new Promise((resolve) => {
+        release = () => {
+          resolve(ok(ttsTest()));
+        };
+        signal?.addEventListener('abort', () => {
+          release?.();
+        });
+      });
+
+    const pending = store.test();
+    await Promise.resolve();
+    expect(store.action()).toBe('testing');
+
+    store.setDraft({ voiceId: 'kaede' });
+    release?.();
+    await pending;
+
+    expect(store.action()).toBe('idle');
+    expect(store.sample()).toBeNull();
+    expect(store.testCancelled()).toBe(false);
+  });
+
+  it('keeps a voice chosen while the draft is still being written', async () => {
+    const store = await ready();
+    store.setDraft(CONFIGURED);
+    const pending = store.test();
+    store.setDraft({ voiceId: 'kaede' });
+    await pending;
+
+    expect(store.draft().voiceId).toBe('kaede');
+    expect(store.action()).toBe('idle');
+  });
+
+  it('does not abort a preset test when the draft changes', async () => {
+    const store = await ready();
+    const preset = {
+      id: 'p1',
+      modelId: FAKE_OPENROUTER.ttsModel,
+      voiceId: FAKE_OPENROUTER.voice,
+      speechStyle: 'clear' as const,
+      speechPace: 'natural' as const,
+    };
+    await store.registerPreset({ ...preset, name: 'Preset' });
+    await store.testPreset('p1');
+    await store.selectPreset('p1');
+    expect(store.activePresetId()).toBe('p1');
+    provider.testConfiguration = (_config, signal) =>
+      new Promise((resolve) => {
+        signal?.addEventListener('abort', () => {
+          resolve({ ok: false, error: aiError('cancelled', 'tts-test', 'cancelled') });
+        });
+      });
+    void store.test();
+    await Promise.resolve();
+    expect(store.action()).toBe('testing');
+    store.setDraft({ voiceId: 'kaede' });
+    expect(store.action()).toBe('testing');
+    store.cancelTest();
+  });
+
   it('forgets that a test was stopped once another one starts', async () => {
     const store = await ready();
     store.setDraft(CONFIGURED);
