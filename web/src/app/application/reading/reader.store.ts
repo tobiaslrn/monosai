@@ -55,6 +55,8 @@ export class ReaderStore {
   /** The vocabulary revision the mounted window was last classified against. */
   private classifiedRevision: string | null = null;
   private reclassifying = false;
+  /** The window move running now, for a move that has to follow it. */
+  private windowLoad: Promise<unknown> | null = null;
 
   private readonly readingSignal = signal<Reading | null>(null);
   private readonly statusSignal = signal<ReaderStatus>('idle');
@@ -191,13 +193,20 @@ export class ReaderStore {
       return;
     }
 
-    this.loadingMoreSignal.set(true);
-    await this.loadWindow(reading.id, next);
-    this.loadingMoreSignal.set(false);
+    await this.loadMore(reading.id, next);
   }
 
-  /** Loads a bounded window around a position selected through virtual space. */
+  /**
+   * Loads a bounded window around a position selected through virtual space.
+   *
+   * This is a destination rather than a report of where the screen is, so a move
+   * already running delays it instead of dropping it: dropped, Home or End
+   * pressed during a scroll's window move would never arrive.
+   */
   async moveTo(anchorPosition: number): Promise<void> {
+    while (this.windowLoad !== null) {
+      await this.windowLoad;
+    }
     await this.show(windowAround(anchorPosition, this.totalParagraphsSignal()));
   }
 
@@ -218,9 +227,19 @@ export class ReaderStore {
       return;
     }
 
+    await this.loadMore(reading.id, next);
+  }
+
+  private async loadMore(id: ReadingId, next: ParagraphWindowState): Promise<void> {
     this.loadingMoreSignal.set(true);
-    await this.loadWindow(reading.id, next);
-    this.loadingMoreSignal.set(false);
+    const load = this.loadWindow(id, next);
+    this.windowLoad = load;
+    try {
+      await load;
+    } finally {
+      this.windowLoad = null;
+      this.loadingMoreSignal.set(false);
+    }
   }
 
   /** Releases the reading. */
