@@ -45,7 +45,8 @@ h3 {
 }
 .row-copy {
   flex: 1 1 10rem;
-  min-width: 0;
+  /* The status keeps its full width; a wide action wraps below it instead. */
+  min-width: fit-content;
 }
 /*
  * The controls move as one block. Letting them wrap individually put a pill

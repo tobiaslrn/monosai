@@ -2,7 +2,10 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  type ElementRef,
+  afterNextRender,
+  effect,
+  ElementRef,
+  Injector,
   inject,
   input,
   output,
@@ -81,7 +84,12 @@ import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.com
         }
         <div class="content-rows mn-stack mn-stack--tight">
           @for (row of rows(); track row.layer) {
-            <section class="content-row" [attr.aria-label]="row.name" [attr.data-layer]="row.layer">
+            <section
+              class="content-row"
+              tabindex="-1"
+              [attr.aria-label]="row.name"
+              [attr.data-layer]="row.layer"
+            >
               <div class="row-main">
                 <div class="row-copy">
                   <strong>{{ row.name }}</strong>
@@ -97,6 +105,16 @@ import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.com
                           row.label
                         }}</a>
                       }
+                    }
+                    @case ('credit') {
+                      <a
+                        class="mn-button"
+                        href="https://openrouter.ai/settings/credits"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        (click)="followCredit(row.layer)"
+                        >{{ row.label }}</a
+                      >
                     }
                     @case ('prepare') {
                       <button
@@ -154,6 +172,10 @@ export class ReaderMenuComponent {
   readonly error = input<string | null>(null);
   readonly prepare = output<PreparationLayer>();
   readonly opened = output<void>();
+  /** Whether the panel is showing, so what it reported can be told from what it never showed. */
+  readonly shown = output<boolean>();
+  /** The credit link was followed: the learner is leaving to add credit. */
+  readonly creditOpened = output<'english' | 'grammar'>();
   readonly stopRequested = output<PreparationLayer>();
   readonly deleteAudioRequested = output<void>();
   readonly clearAidRequested = output<'english' | 'grammar'>();
@@ -161,8 +183,35 @@ export class ReaderMenuComponent {
   private readonly panel = viewChild.required(SheetPopoverComponent);
   private readonly closeButton = viewChild<ElementRef<HTMLButtonElement>>('closeButton');
   private readonly viewport = inject(ViewportService);
+  private readonly injector = inject(Injector);
   protected readonly isMobile = this.viewport.isMobile;
   protected readonly menuOpen = signal(false);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  /** The row whose credit link holds focus, which the link's removal would drop. */
+  private creditFocus: PreparationLayer | null = null;
+
+  constructor() {
+    // Returning from the credit page removes the link that was focused, and
+    // focus would fall to the page behind a panel that traps it. It goes to
+    // the row's new action, or to the row itself.
+    effect(() => {
+      const rows = this.rows();
+      const layer = this.creditFocus;
+      if (layer === null) return;
+      if (rows.find((row) => row.layer === layer)?.action === 'credit') return;
+      this.creditFocus = null;
+      afterNextRender(
+        () => {
+          const root = this.host.nativeElement;
+          const active = root.ownerDocument.activeElement;
+          if (active !== null && active !== root.ownerDocument.body) return;
+          const row = root.querySelector<HTMLElement>(`[data-layer="${layer}"]`);
+          (row?.querySelector<HTMLElement>('.row-actions a, .row-actions button') ?? row)?.focus();
+        },
+        { injector: this.injector },
+      );
+    });
+  }
 
   /**
    * The setup step two or more rows are waiting on, when they all wait on the
@@ -190,9 +239,15 @@ export class ReaderMenuComponent {
     this.panel().hide();
     this.anchor().nativeElement.focus();
   }
+  protected followCredit(layer: PreparationLayer): void {
+    if (layer === 'audio') return;
+    this.creditFocus = layer;
+    this.creditOpened.emit(layer);
+  }
   protected onToggle(): void {
     const open = this.panel().isOpen();
     this.menuOpen.set(open);
+    this.shown.emit(open);
     if (open) {
       this.opened.emit();
       if (this.isMobile()) {

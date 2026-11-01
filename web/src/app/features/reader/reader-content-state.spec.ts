@@ -249,6 +249,41 @@ describe('reader content state', () => {
     expect(state.error).toBeTruthy();
   });
 
+  describe('a failed run the provider refused', () => {
+    const failed = (code: Parameters<typeof aiError>[0]) =>
+      ({
+        kind: 'failed',
+        readingId: ID,
+        counts: COUNTS,
+        canRetry: true,
+        error: { source: 'provider', error: aiError(code, 'grammar-review', 'Refused') },
+      }) as const;
+
+    it.each(['english', 'grammar'] as const)(
+      'sends a refused key to settings instead of retrying (%s)',
+      (layer) => {
+        expect(
+          readerContentState(READING, layer, failed('authentication'), 'ready', true),
+        ).toMatchObject({ action: 'settings', label: 'Check settings', disabled: false });
+      },
+    );
+
+    it.each(['english', 'grammar'] as const)(
+      'offers the credit page, and no retry, when the account is unpaid (%s)',
+      (layer) => {
+        const state = readerContentState(READING, layer, failed('credit-exhausted'), 'ready', true);
+        expect(state).toMatchObject({ action: 'credit', label: 'OpenRouter credit' });
+        expect(state.error).toBeTruthy();
+      },
+    );
+
+    it('still retries when the provider is rate limiting', () => {
+      expect(
+        readerContentState(READING, 'grammar', failed('rate-limited'), 'ready', true),
+      ).toMatchObject({ action: 'prepare', label: 'Retry remaining' });
+    });
+  });
+
   it('checks changed settings before continuing stopped work', () => {
     expect(
       readerContentState(

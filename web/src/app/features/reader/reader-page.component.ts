@@ -149,6 +149,8 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
                   [error]="actions.error()"
                   (prepare)="actions.prepare($event)"
                   (opened)="popover.close()"
+                  (shown)="actions.menuShown($event)"
+                  (creditOpened)="actions.creditOpened($event)"
                   (stopRequested)="actions.stop($event)"
                   (deleteAudioRequested)="actions.confirmClearAudio()"
                   (clearAidRequested)="actions.confirmClearTextAid($event)"

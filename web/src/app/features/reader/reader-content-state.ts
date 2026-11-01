@@ -4,12 +4,13 @@ import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { Reading } from '../../domain/reading/reading';
 import { formatCount } from '../../domain/shared/locale';
 import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
+import { enrichmentCanRetry, enrichmentNeedsSettings } from './enrichment-failure-copy';
 
 export interface ReaderContentState {
   readonly layer: PreparationLayer;
   readonly name: string;
   readonly status: string;
-  readonly action: 'prepare' | 'cancel' | 'settings' | null;
+  readonly action: 'prepare' | 'cancel' | 'settings' | 'credit' | null;
   readonly label: string;
   readonly disabled: boolean;
   readonly busy: boolean;
@@ -104,18 +105,40 @@ function layerState(
         action: 'cancel',
         label: 'Stop',
       };
-    case 'failed':
+    case 'failed': {
+      // The same policy the sentence popover follows: what a refused key or an
+      // empty account cannot fix by asking again is not offered as a retry.
+      const retry = progress.canRetry && enrichmentCanRetry(progress.error);
+      const toSettings =
+        !progress.canRetry || enrichmentNeedsSettings(progress.error) || readiness !== 'ready';
+      const prepare = retry && readiness === 'ready';
+      // An unpaid account has nothing to fix in Settings and nothing to retry
+      // until credit is added, so its one action is the link to the credit page,
+      // as in the sentence popover. Returning from it forgets the stop.
+      const credit =
+        readiness === 'ready' &&
+        progress.error.source === 'provider' &&
+        progress.error.error.code === 'credit-exhausted';
+      const action = prepare ? 'prepare' : credit ? 'credit' : toSettings ? 'settings' : null;
       return {
         ...base,
         status: `${completedDescription} · Stopped`,
-        action: progress.canRetry && readiness === 'ready' ? 'prepare' : 'settings',
-        label: progress.canRetry && readiness === 'ready' ? 'Retry remaining' : 'Check settings',
-        disabled: progress.canRetry && readiness === 'ready' && !online,
+        action,
+        label:
+          action === 'prepare'
+            ? 'Retry remaining'
+            : action === 'credit'
+              ? 'OpenRouter credit'
+              : action === 'settings'
+                ? 'Check settings'
+                : '',
+        disabled: prepare && !online,
         error:
           progress.error.source === 'storage'
             ? `Saving failed: ${progress.error.error.message}`
             : aiFailureMessage(progress.error.error, 'reader'),
       };
+    }
     case 'cancelled':
       return {
         ...base,

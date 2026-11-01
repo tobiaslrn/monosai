@@ -703,7 +703,10 @@ is the whole status once a layer is finished: a count says what is still
 missing, so a full set prints Ready rather than the same number twice. Closing
 the panel leaves background work running. Progress, failures, and the recovery
 actions for the text layers stay in this panel, beside the layer they affect;
-status changes use the row's accessible announcement. There is no second
+status changes use the row's accessible announcement. A refused key offers Check
+settings and an unpaid account the OpenRouter credit link in place of a retry; the
+stop stays until the learner has seen it and leaves, or comes back from the credit
+page. There is no second
 generation status line in the reader header. Every deletion is confirmed. The
 panel carries no standing cost note.
 

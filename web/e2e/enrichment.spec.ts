@@ -121,6 +121,85 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
   });
 
+  for (const [status, retry, settings, credit] of [
+    [401, false, true, false],
+    [402, false, false, true],
+    [429, true, false, false],
+  ] as const) {
+    test(`offers the right next step when grammar notes are refused with ${String(status)} @mobile @smoke`, async ({
+      page,
+    }) => {
+      await stubOpenRouter(page, { chat: { kind: 'status', status } });
+      await importReading(page, SAMPLE_TEXT);
+      await page.getByRole('button', { name: 'Story options', exact: true }).click();
+      const panel = page.getByRole('dialog', { name: 'Story options', exact: true });
+      await panel.getByRole('button', { name: 'Add notes', exact: true }).click();
+      const grammarRow = panel.locator('[data-layer="grammar"]');
+      await expect(grammarRow.getByRole('status')).toContainText('Stopped', { timeout: 15_000 });
+      // A wide action must wrap below the status rather than clip it.
+      const clipped = await grammarRow
+        .getByRole('status')
+        .evaluate((pill) => pill.scrollWidth > pill.clientWidth);
+      expect(clipped).toBe(false);
+      await expect(grammarRow.getByRole('button', { name: 'Retry remaining' })).toHaveCount(
+        retry ? 1 : 0,
+      );
+      await expect(grammarRow.getByRole('link', { name: 'Check settings' })).toHaveCount(
+        settings ? 1 : 0,
+      );
+      await expect(grammarRow.getByRole('link', { name: 'OpenRouter credit' })).toHaveCount(
+        credit ? 1 : 0,
+      );
+    });
+  }
+
+  test('offers grammar notes again after a refused key was seen and Settings was visited @mobile @smoke', async ({
+    page,
+  }) => {
+    await stubOpenRouter(page, { chat: { kind: 'status', status: 401 } });
+    await importReading(page, SAMPLE_TEXT);
+    const trigger = page.getByRole('button', { name: 'Story options', exact: true });
+    await trigger.click();
+    const panel = page.getByRole('dialog', { name: 'Story options', exact: true });
+    await panel.getByRole('button', { name: 'Add notes', exact: true }).click();
+    const grammarRow = panel.locator('[data-layer="grammar"]');
+    await expect(grammarRow.getByRole('status')).toContainText('Stopped', { timeout: 15_000 });
+    await grammarRow.getByRole('link', { name: 'Check settings' }).click();
+    await expect(page).toHaveURL(/\/settings/);
+    await page.goBack();
+    await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
+    await trigger.click();
+    await expect(grammarRow.getByRole('button', { name: 'Add notes', exact: true })).toBeVisible();
+    await expect(grammarRow.getByRole('alert')).toHaveCount(0);
+  });
+
+  test('offers grammar notes again after the credit page was visited @mobile @smoke', async ({
+    page,
+  }) => {
+    await stubOpenRouter(page, { chat: { kind: 'status', status: 402 } });
+    await importReading(page, SAMPLE_TEXT);
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
+    const panel = page.getByRole('dialog', { name: 'Story options', exact: true });
+    await panel.getByRole('button', { name: 'Add notes', exact: true }).click();
+    const grammarRow = panel.locator('[data-layer="grammar"]');
+    await expect(grammarRow.getByRole('status')).toContainText('Stopped', { timeout: 15_000 });
+    const link = grammarRow.getByRole('link', { name: 'OpenRouter credit' });
+    await expect(link).toHaveAttribute('href', 'https://openrouter.ai/settings/credits');
+    // The link opens another page; the learner leaves this one and comes back.
+    await link.evaluate((anchor) => {
+      anchor.addEventListener('click', (event) => {
+        event.preventDefault();
+      });
+    });
+    await link.click();
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('blur'));
+      window.dispatchEvent(new Event('focus'));
+    });
+    await expect(grammarRow.getByRole('button', { name: 'Add notes', exact: true })).toBeVisible();
+    await expect(grammarRow.getByRole('link', { name: 'OpenRouter credit' })).toHaveCount(0);
+  });
+
   test('reports English and grammar at the same time without clipping @mobile @smoke', async ({
     page,
   }) => {

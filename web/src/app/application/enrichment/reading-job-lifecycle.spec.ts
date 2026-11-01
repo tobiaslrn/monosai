@@ -336,6 +336,17 @@ describe('ReadingJobLifecycle', () => {
     expect(bed.lifecycle.progress().kind).toBe('complete');
   });
 
+  it('returns a failed report to rest only for the reading that owns it', async () => {
+    bed.work = () => Promise.reject(new TypeError('chunk'));
+    await bed.lifecycle.start(bed.reading);
+
+    bed.lifecycle.acknowledge(bed.other);
+    expect(bed.lifecycle.progress().kind).toBe('failed');
+
+    bed.lifecycle.acknowledge(bed.reading);
+    expect(bed.lifecycle.progress().kind).toBe('idle');
+  });
+
   it('finalizes a running run before its reading is deleted', async () => {
     const held = gate();
     bed.processGate = held.opened;

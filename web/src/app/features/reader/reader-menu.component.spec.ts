@@ -198,4 +198,62 @@ describe('Story options', () => {
       ['Test your model.', 'Could not save the stop request.'],
     );
   });
+
+  describe('after the credit link is followed', () => {
+    const CREDIT: ReaderContentState = {
+      ...ROW,
+      layer: 'grammar',
+      name: 'Grammar notes',
+      status: '0 of 3 sentences analyzed · Stopped',
+      action: 'credit',
+      label: 'OpenRouter credit',
+      error: 'Out of credit.',
+    };
+
+    function followCredit() {
+      const bed = render(CREDIT);
+      const followed = vi.fn();
+      bed.fixture.componentInstance.creditOpened.subscribe(followed);
+      const link = bed.element.querySelector<HTMLAnchorElement>('[data-layer="grammar"] a')!;
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+      });
+      link.focus();
+      link.click();
+      return { ...bed, followed, link };
+    }
+
+    it('reports which layer followed it', () => {
+      expect(followCredit().followed).toHaveBeenCalledWith('grammar');
+    });
+
+    it("moves focus to the row's new action when the link is replaced", async () => {
+      const { fixture, element, link } = followCredit();
+      expect(document.activeElement).toBe(link);
+      fixture.componentRef.setInput('rows', [{ ...CREDIT, action: 'prepare', label: 'Continue' }]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(
+        element.querySelector('[data-layer="grammar"] .row-actions button'),
+      );
+    });
+
+    it('moves focus to the row when the link goes and nothing replaces it', async () => {
+      const { fixture, element } = followCredit();
+      fixture.componentRef.setInput('rows', [{ ...CREDIT, action: null, label: '' }]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(element.querySelector('[data-layer="grammar"]'));
+    });
+
+    it('leaves focus alone when it had already moved elsewhere', async () => {
+      const { fixture, element } = followCredit();
+      const elsewhere = element.querySelector<HTMLElement>('.anchor-button')!;
+      elsewhere.focus();
+      fixture.componentRef.setInput('rows', [{ ...CREDIT, action: 'prepare', label: 'Continue' }]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(elsewhere);
+    });
+  });
 });

@@ -118,6 +118,11 @@ export class ReaderPreparationStore {
     await this.lane.reconcile(reading);
   }
 
+  /** Forgets a layer's stopped or failed progress so its row reads from what is stored. */
+  acknowledge(readingId: ReadingId, layer: PreparationLayer): void {
+    this.lane.acknowledge(readingId, layer);
+  }
+
   /** The reader is gone, so the lane no longer prioritises anything for it. */
   leftReader(): void {
     this.readingIdSignal.set(null);
