@@ -19,6 +19,7 @@ import {
   type BrowseQuery,
 } from '../../domain/vocabulary/vocabulary-browse';
 import { vocabularySourceId } from '../../domain/shared/ids';
+import { formatCountOf } from '../../domain/shared/locale';
 import type {
   CapturedSourceObservation,
   VocabularyEntry,
@@ -128,7 +129,7 @@ const DEPARTURE_FALLBACK_MS = 400;
 
       <div class="mn-actions sheet-actions">
         <button type="button" class="mn-button mn-button--primary" (click)="depart(draft())">
-          Show {{ matchCount() }} words
+          Show {{ formatCountOf(matchCount(), 'word') }}
         </button>
         <button type="button" class="mn-button mn-button--ghost" (click)="reset()">Reset</button>
       </div>
@@ -253,6 +254,7 @@ export class VocabularyFilterSheetComponent {
     return offset === 0 ? null : `translateY(${String(offset)}px)`;
   });
 
+  protected readonly formatCountOf = formatCountOf;
   protected readonly matchCount = () =>
     applyBrowseQuery(this.data.entries, this.draft(), this.clock.now()).length;
 

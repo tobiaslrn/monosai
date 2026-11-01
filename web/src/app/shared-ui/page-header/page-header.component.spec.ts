@@ -38,6 +38,12 @@ describe('PageHeaderComponent back control', () => {
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
   });
 
+  it('gives the icon-only back link a tooltip that matches its name', () => {
+    const back = render().querySelector('.back');
+    expect(back?.getAttribute('aria-label')).toBe('Back to settings');
+    expect(back?.getAttribute('title')).toBe('Back to settings');
+  });
+
   afterEach(() => {
     history.replaceState(null, '');
   });

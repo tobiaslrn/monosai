@@ -237,6 +237,16 @@ describe('VocabularyBrowsePageComponent', () => {
     );
   });
 
+  it('gives the word rows a heading level that does not skip past the page heading', async () => {
+    await seedVocabulary();
+    const { element } = await render();
+    const headings = [...element.querySelectorAll('h1, h2, h3')].map((node) => node.tagName);
+
+    expect(headings[0]).toBe('H1');
+    expect(headings).toContain('H2');
+    expect(headings.indexOf('H3')).toBeGreaterThan(headings.indexOf('H2'));
+  });
+
   it('marks a hard word by more than its colour', async () => {
     await seedVocabulary();
     const { element } = await render();

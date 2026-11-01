@@ -16,6 +16,7 @@ import {
   type MappingResolution,
 } from '../../domain/anki/mapping-validation';
 import type { VocabularySourceId } from '../../domain/shared/ids';
+import { formatCountOf } from '../../domain/shared/locale';
 import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
 import type { StorageError } from '../../domain/storage/storage-error';
 import type { SnapshotStats, VocabularySnapshot } from '../../domain/vocabulary/snapshot';
@@ -332,7 +333,7 @@ export class VocabularyRefreshStore {
       summary: { stats: built.value.commit.snapshot.stats, prepared: built.value },
     });
     this.announce(
-      `Found ${String(built.value.commit.snapshot.stats.uniqueExpressions)} unique expressions. Confirm to save them.`,
+      `Found ${formatCountOf(built.value.commit.snapshot.stats.uniqueExpressions, 'unique expression')}. Confirm to save them.`,
     );
   }
 
@@ -368,7 +369,7 @@ export class VocabularyRefreshStore {
     this.stateSignal.set({ kind: 'complete', snapshot: committed.value });
     await this.sources.load();
     this.announce(
-      `Updated vocabulary with ${String(committed.value.uniqueEntryCount)} unique expressions.`,
+      `Updated vocabulary with ${formatCountOf(committed.value.uniqueEntryCount, 'unique expression')}.`,
     );
   }
 

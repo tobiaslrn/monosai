@@ -19,6 +19,18 @@ const CATEGORY_LABELS: Readonly<Record<StructuralBaselineCategory, string>> = {
   punctuation: 'Punctuation',
 };
 
+/**
+ * A baseline name is its Japanese form followed by an English gloss in
+ * parentheses: `が (subject marker)`. The two are split so each carries its own
+ * language.
+ */
+function splitName(name: string): { readonly japanese: string; readonly gloss: string } {
+  const index = name.indexOf(' (');
+  return index === -1
+    ? { japanese: name, gloss: '' }
+    : { japanese: name.slice(0, index), gloss: name.slice(index) };
+}
+
 interface CategoryGroup {
   readonly category: StructuralBaselineCategory;
   readonly label: string;
@@ -56,7 +68,10 @@ interface CategoryGroup {
               @for (entry of group.entries; track entry.id) {
                 <div class="entry">
                   <dt>
-                    <span class="name">{{ entry.nameEn }}</span>
+                    <span class="name"
+                      ><span lang="ja">{{ splitName(entry.nameEn).japanese }}</span
+                      >{{ splitName(entry.nameEn).gloss }}</span
+                    >
                     <span class="forms" lang="ja">{{ formsOf(entry) }}</span>
                   </dt>
                   <dd>
@@ -138,6 +153,7 @@ interface CategoryGroup {
 })
 export class StructuralBaselineSectionComponent {
   private readonly language = inject(LanguageStore);
+  protected readonly splitName = splitName;
 
   protected readonly formCountLabel = computed(() =>
     formatCountOf(this.language.structuralBaseline().length, 'form'),

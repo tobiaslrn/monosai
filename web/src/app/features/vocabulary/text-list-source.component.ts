@@ -11,6 +11,7 @@ import {
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { VocabularySyncService } from '../../application/vocabulary/vocabulary-sync.service';
+import { formatCountOf } from '../../domain/shared/locale';
 import { parseTextList } from '../../domain/vocabulary/text-list-parser';
 import type { TextListVocabularySource } from '../../domain/vocabulary/vocabulary-source';
 import { textListPreviewLabel } from './text-list-preview';
@@ -54,8 +55,9 @@ import { textListPreviewLabel } from './text-list-preview';
       }
       @if (preview().nonJapaneseLines > 0) {
         <p class="mn-hint" role="status">
-          {{ preview().nonJapaneseLines }} lines do not appear to contain Japanese. Check that these
-          are the words you intended; they can still be added.
+          {{ formatCountOf(preview().nonJapaneseLines, 'line') }}
+          {{ preview().nonJapaneseLines === 1 ? 'does' : 'do' }} not appear to contain Japanese.
+          Check that these are the words you intended; they can still be added.
         </p>
       }
       <div class="mn-actions">
@@ -131,6 +133,7 @@ export class TextListSourceComponent {
     return 'Add at least one word to continue.';
   });
   protected readonly previewLabel = computed(() => textListPreviewLabel(this.preview()));
+  protected readonly formatCountOf = formatCountOf;
 
   protected setLabel(event: Event): void {
     this.label.set((event.target as HTMLInputElement).value);

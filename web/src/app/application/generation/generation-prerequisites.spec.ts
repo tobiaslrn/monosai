@@ -80,6 +80,10 @@ describe('prerequisiteChecks', () => {
     expect(checkFor('vocabulary', { snapshot: snapshot(73) }).detail).toBe(
       '73 words are available.',
     );
+    expect(checkFor('vocabulary', { snapshot: snapshot(1) }).detail).toContain('has 1 word.');
+    expect(checkFor('vocabulary', { snapshot: snapshot(1000) }).detail).toContain(
+      '1,000 words are available.',
+    );
   });
 
   it('lists exactly the two external setup checks', () => {

@@ -5,6 +5,7 @@ import {
   type VocabularySnapshot,
 } from '../../domain/vocabulary/snapshot';
 import type { GrammarPreset, GrammarPresetId } from '../../domain/grammar/presets';
+import { formatCountOf } from '../../domain/shared/locale';
 
 /**
  * The two external setup checks the Generate screen shows, each independently actionable.
@@ -61,11 +62,12 @@ function vocabularyDetail(snapshot: VocabularySnapshot | null, hasSources: boole
       : 'Add a word list — from Anki, an Anki package, or a pasted list.';
   }
   if (snapshot.uniqueEntryCount < GENERATION_SNAPSHOT_MINIMUM) {
-    return `Your word list has ${String(snapshot.uniqueEntryCount)} words. Stories need at least ${String(
+    return `Your word list has ${formatCountOf(snapshot.uniqueEntryCount, 'word')}. Stories need at least ${String(
       GENERATION_SNAPSHOT_MINIMUM,
     )}.`;
   }
-  return `${String(snapshot.uniqueEntryCount)} words are available.`;
+  const verb = snapshot.uniqueEntryCount === 1 ? 'is' : 'are';
+  return `${formatCountOf(snapshot.uniqueEntryCount, 'word')} ${verb} available.`;
 }
 
 /**

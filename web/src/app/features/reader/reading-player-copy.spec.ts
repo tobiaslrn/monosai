@@ -206,6 +206,7 @@ describe('offerLabel', () => {
 
   it('counts what has audio once some does', () => {
     expect(offerLabel(4, 13)).toBe('4 of 13 sentences have audio');
+    expect(offerLabel(1, 1)).toBe('1 of 1 sentence has audio');
   });
 });
 
@@ -230,6 +231,9 @@ describe('positionLabel', () => {
 
   it('says a reading that was never started is ready, or not playing while it is being made', () => {
     expect(positionLabel({ ...base, status: 'idle', settled: true })).toBe('13 sentences ready');
+    expect(positionLabel({ ...base, sentenceCount: 1, status: 'idle', settled: true })).toBe(
+      '1 sentence ready',
+    );
     expect(positionLabel({ ...base, status: 'idle' })).toBe('Not playing');
   });
 });
@@ -248,5 +252,6 @@ describe('reading speed', () => {
   it('is shown as a multiplier and named in words', () => {
     expect(playbackSpeedLabel(0.9)).toBe('0.9×');
     expect(playbackSpeedAriaLabel(0.8)).toBe('Reading speed, 0.8 times');
+    expect(playbackSpeedAriaLabel(1)).toBe('Reading speed, 1 time');
   });
 });

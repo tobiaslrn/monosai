@@ -25,6 +25,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
             class="mn-icon-button back"
             data-testid="step-back"
             [attr.aria-label]="backLabel()"
+            [attr.title]="backLabel()"
             (click)="backPressed.emit()"
           >
             <mn-icon name="back" />
@@ -34,12 +35,18 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
             type="button"
             class="mn-icon-button back"
             [attr.aria-label]="backLabel()"
+            [attr.title]="backLabel()"
             (click)="goBack(target)"
           >
             <mn-icon name="back" />
           </button>
         } @else {
-          <a class="mn-icon-button back" [routerLink]="target" [attr.aria-label]="backLabel()">
+          <a
+            class="mn-icon-button back"
+            [routerLink]="target"
+            [attr.aria-label]="backLabel()"
+            [attr.title]="backLabel()"
+          >
             <mn-icon name="back" />
           </a>
         }

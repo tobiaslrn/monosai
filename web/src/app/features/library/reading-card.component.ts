@@ -76,6 +76,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
           aria-haspopup="menu"
           [mnPopupTrigger]="actions"
           [attr.aria-label]="'Actions for ' + reading().title"
+          [attr.title]="'Actions for ' + reading().title"
         >
           <mn-icon name="overflow" [size]="20" />
         </button>

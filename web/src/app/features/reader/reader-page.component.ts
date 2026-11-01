@@ -104,6 +104,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
             class="mn-icon-button back"
             routerLink="/library"
             aria-label="Back to library"
+            title="Back to library"
             (click)="backToLibrary($event)"
           >
             <mn-icon name="back" />

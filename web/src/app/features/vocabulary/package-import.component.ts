@@ -10,6 +10,7 @@ import type { ElementRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { vocabularySourceId } from '../../domain/shared/ids';
+import { formatCountOf } from '../../domain/shared/locale';
 import { ANKI_LINKS } from './anki-links';
 
 /**
@@ -28,8 +29,8 @@ import { ANKI_LINKS } from './anki-links';
           <div class="mn-card" data-testid="package-import-complete">
             <p class="headline">
               {{ current.outcome.replaced ? 'Replaced' : 'Added' }}
-              {{ current.outcome.deckName }} · {{ current.outcome.uniqueExpressions }} unique
-              expressions
+              {{ current.outcome.deckName }} ·
+              {{ formatCountOf(current.outcome.uniqueExpressions, 'unique expression') }}
             </p>
             <div class="mn-actions">
               <button type="button" class="mn-button" (click)="store.dismiss()">Dismiss</button>
@@ -219,6 +220,7 @@ export class PackageImportComponent {
   protected readonly store = inject(PackageImportStore);
   protected readonly state = this.store.state;
   protected readonly links = ANKI_LINKS;
+  protected readonly formatCountOf = formatCountOf;
   private readonly selectionHeading = viewChild<ElementRef<HTMLElement>>('selectionHeading');
 
   protected readonly progress = computed(() => {
