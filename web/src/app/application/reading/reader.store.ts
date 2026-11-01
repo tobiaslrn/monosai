@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import type { LanguageError } from '../../domain/language/language-error';
 import type { SentenceTokens } from '../../domain/language/language-runtime';
 import {
@@ -15,6 +15,7 @@ import type { Token } from '../../domain/reading/token';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import type { ParagraphId, ReadingId, SentenceId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
+import { SnapshotHistoryStore } from '../vocabulary/snapshot-history.store';
 import { CLOCK, READING_REPOSITORY } from '../shared/repository-tokens';
 import {
   VocabularyClassificationService,
@@ -49,6 +50,10 @@ export class ReaderStore {
   private readonly readings = inject(READING_REPOSITORY);
   private readonly classification = inject(VocabularyClassificationService);
   private readonly clock = inject(CLOCK);
+  private readonly history = inject(SnapshotHistoryStore);
+  /** The vocabulary revision the mounted window was last classified against. */
+  private classifiedRevision: string | null = null;
+  private reclassifying = false;
 
   private readonly readingSignal = signal<Reading | null>(null);
   private readonly statusSignal = signal<ReaderStatus>('idle');
@@ -88,6 +93,16 @@ export class ReaderStore {
   readonly vocabularyNotConfigured = computed(
     () => this.vocabularySignal().kind === 'not-configured' && this.languageErrorSignal() === null,
   );
+
+  constructor() {
+    // The vocabulary changes under an open reader when the learner adds a word
+    // to Reader words. The snapshot id stays the same then, so the revision is
+    // what says the mounted window's markers are stale.
+    effect(() => {
+      this.history.active();
+      untracked(() => void this.reclassifyMounted());
+    });
+  }
 
   /**
    * Opens a reading at its first paragraph.
@@ -129,6 +144,8 @@ export class ReaderStore {
     }
 
     this.statusSignal.set('ready');
+    // The vocabulary may have changed while the first window was loading.
+    void this.reclassifyMounted();
   }
 
   /**
@@ -230,6 +247,7 @@ export class ReaderStore {
       sentenceId: sentence.id,
       tokens: tokensBySentence.get(sentence.id) ?? [],
     }));
+    this.classifiedRevision = this.history.active()?.revision ?? null;
     const vocabulary = await this.classification.classify(forClassification);
     if (vocabulary.ok) {
       this.vocabularySignal.set(await this.withStoryEvidence(vocabulary.value, sentenceIds));
@@ -246,6 +264,69 @@ export class ReaderStore {
       this.assemble(graph.value.paragraphs, graph.value.sentences, tokensBySentence),
     );
     return true;
+  }
+
+  /**
+   * Re-derives the vocabulary status of the mounted window once the vocabulary
+   * revision has moved on from the one it was classified against.
+   *
+   * A revision counts as classified only when its result was applied, so a
+   * window that moved or a reading that was replaced meanwhile is classified
+   * again against the newest revision rather than left stale. Sentences whose
+   * statuses did not change keep their objects, so the words the change did not
+   * touch are not rendered again.
+   */
+  private async reclassifyMounted(): Promise<void> {
+    if (this.reclassifying) {
+      return;
+    }
+    this.reclassifying = true;
+    try {
+      for (;;) {
+        const revision = this.history.active()?.revision ?? null;
+        const reading = this.readingSignal();
+        if (this.statusSignal() !== 'ready' || reading === null) return;
+        if (revision === this.classifiedRevision) return;
+        const mounted = this.paragraphsSignal();
+        const sentences = mounted.flatMap((paragraph) => paragraph.sentences);
+        const sentenceIds = sentences.map((entry) => entry.sentence.id);
+        const result = await this.classification.classify(
+          sentences.map((entry) => ({ sentenceId: entry.sentence.id, tokens: entry.tokens })),
+        );
+        if (!result.ok) {
+          // Same report as a failed load; the next revision change tries again.
+          this.vocabularySignal.set(VOCABULARY_NOT_CONFIGURED);
+          this.languageErrorSignal.set(result.error);
+          return;
+        }
+        const next = await this.withStoryEvidence(result.value, sentenceIds);
+        if (this.readingSignal()?.id !== reading.id) return;
+        if (this.paragraphsSignal() !== mounted) {
+          // The window moved while classifying; go round again for the new one.
+          continue;
+        }
+        this.classifiedRevision = revision;
+        this.vocabularySignal.set(next);
+        this.languageErrorSignal.set(null);
+        const remapped = mounted.map((paragraph) => {
+          const updated = paragraph.sentences.map((entry) => {
+            const statuses =
+              next.kind === 'classified'
+                ? indexStatuses(next.statusesBySentence.get(entry.sentence.id) ?? [])
+                : null;
+            return sameStatuses(entry.statuses, statuses) ? entry : { ...entry, statuses };
+          });
+          return updated.some((entry, index) => entry !== paragraph.sentences[index])
+            ? { ...paragraph, sentences: updated }
+            : paragraph;
+        });
+        if (remapped.some((paragraph, index) => paragraph !== mounted[index])) {
+          this.paragraphsSignal.set(remapped);
+        }
+      }
+    } finally {
+      this.reclassifying = false;
+    }
   }
 
   /**
@@ -314,6 +395,32 @@ export class ReaderStore {
     this.errorSignal.set(error);
     this.statusSignal.set('failed');
   }
+}
+
+/**
+ * A validation without the vocabulary item ids, which every commit mints anew
+ * and which nothing in the reader reads: only the category and what is shown
+ * decide whether a word has to be drawn again.
+ */
+function comparable(validation: TokenStatusAssignment['validation']): string {
+  return JSON.stringify(validation, (key, value: unknown) =>
+    key === 'vocabularyItemId' || key === 'vocabularyItemIds' ? undefined : value,
+  );
+}
+
+function sameStatuses(
+  left: ReadonlyMap<string, TokenStatusAssignment> | null,
+  right: ReadonlyMap<string, TokenStatusAssignment> | null,
+): boolean {
+  if (left === null || right === null) return left === right;
+  if (left.size !== right.size) return false;
+  for (const [id, status] of left) {
+    const other = right.get(id);
+    if (other === undefined || comparable(other.validation) !== comparable(status.validation)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function indexStatuses(

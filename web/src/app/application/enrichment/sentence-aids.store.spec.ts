@@ -629,6 +629,22 @@ describe('SentenceAidsStore', () => {
       expect(retried?.translation?.textEn).toBe('EN: 文0。');
     });
 
+    it.each(['authentication', 'credit-exhausted', 'rate-limited', 'malformed-response'] as const)(
+      'keeps the provider’s %s failure when the grammar review is refused',
+      async (code) => {
+        const window = withSentences(sentences(1));
+        await mount(importedReading(), window);
+        provider.grammarQueue.push(err(aiError(code, 'grammar-review', 'Refused.')));
+
+        await store.analyzeGrammar(window[0]!.id);
+
+        const failed = store.aids().get(window[0]!.id)?.grammarAction;
+        expect(failed?.state).toBe('failed');
+        expect(failed?.error?.source).toBe('provider');
+        expect(failed?.error?.source === 'provider' && failed.error.error.code).toBe(code);
+      },
+    );
+
     it('analyzes grammar for the sentence that asked, and no other', async () => {
       const window = withSentences(sentences(2));
       await mount(importedReading(), window);

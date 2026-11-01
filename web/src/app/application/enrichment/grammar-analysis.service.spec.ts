@@ -127,7 +127,7 @@ describe('GrammarAnalysisService', () => {
     expect(outcome).toEqual({
       status: 'unavailable',
       records: [],
-      reasonCode: 'provider-unavailable',
+      error: aiError('provider-unavailable', 'grammar-review', 'The provider is down.'),
     });
   });
 

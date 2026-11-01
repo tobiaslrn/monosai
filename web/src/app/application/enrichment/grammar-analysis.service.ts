@@ -18,7 +18,7 @@ import { CLOCK, ENRICHMENT_REPOSITORY, ID_GENERATOR } from '../shared/repository
 
 export type GrammarRunOutcome =
   | { readonly status: 'complete'; readonly records: readonly GrammarAnalysisRecord[] }
-  | { readonly status: 'unavailable'; readonly records: readonly []; readonly reasonCode: string };
+  | { readonly status: 'unavailable'; readonly records: readonly []; readonly error: AiError };
 
 export type GrammarBatchOutcome =
   | { readonly status: 'complete'; readonly records: readonly GrammarAnalysisRecord[] }
@@ -61,7 +61,11 @@ export class GrammarAnalysisService {
       (sentence) => sentence.japaneseText,
     )) {
       if (signal.aborted) {
-        return { status: 'unavailable', records: [], reasonCode: 'cancelled' };
+        return {
+          status: 'unavailable',
+          records: [],
+          error: aiError('cancelled', 'grammar-review', 'The grammar review was stopped.'),
+        };
       }
       const outcome = await this.runBatch(
         batch,
@@ -76,7 +80,7 @@ export class GrammarAnalysisService {
         signal,
       );
       if (outcome.status === 'unavailable') {
-        return { status: 'unavailable', records: [], reasonCode: outcome.error.code };
+        return { status: 'unavailable', records: [], error: outcome.error };
       }
       records.push(...outcome.records);
     }

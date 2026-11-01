@@ -33,6 +33,7 @@ export class ReadingTextAidMaintenanceStore {
         this.errorSignal.set(cleared.error);
         return false;
       }
+      this.preparation.acknowledge(reading.id, layer);
       await this.reader.refreshSummaries();
       return true;
     } finally {

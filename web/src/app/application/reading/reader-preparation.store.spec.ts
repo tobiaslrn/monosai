@@ -22,6 +22,7 @@ describe('ReaderPreparationStore', () => {
   let grammar: WritableSignal<{ kind: string; step?: number }>;
   let reading: WritableSignal<{ id: typeof ID } | null>;
   let refreshSummaries: ReturnType<typeof vi.fn>;
+  let pump: ReturnType<typeof vi.fn>;
 
   const settled = () => TestBed.inject(ApplicationRef).whenStable();
 
@@ -30,6 +31,7 @@ describe('ReaderPreparationStore', () => {
     audio = signal(IDLE);
     grammar = signal(IDLE);
     reading = signal(null);
+    pump = vi.fn(() => new Promise<void>(() => undefined));
     // Replacing the row is what a real refresh does, and what must not retrigger.
     refreshSummaries = vi.fn(() => {
       reading.set({ id: ID });
@@ -46,6 +48,8 @@ describe('ReaderPreparationStore', () => {
             progressFor: () => grammar(),
             setOpenReading: () => undefined,
             reconcile: () => Promise.resolve(),
+            request: () => Promise.resolve(),
+            pump,
           },
         },
         { provide: TranslationJobStore, useValue: { progressFor: () => translation() } },
@@ -58,6 +62,19 @@ describe('ReaderPreparationStore', () => {
       ],
     });
     TestBed.inject(ReaderPreparationStore);
+  });
+
+  it('shows what is stored for a request without waiting for the lane to drain', async () => {
+    reading.set({ id: ID });
+    await TestBed.inject(ReaderPreparationStore).openedReading(ID);
+    refreshSummaries.mockClear();
+
+    TestBed.inject(ReaderPreparationStore).prepare('english');
+
+    await vi.waitFor(() => {
+      expect(refreshSummaries).toHaveBeenCalled();
+      expect(pump).toHaveBeenCalled();
+    });
   });
 
   it('does not re-read while every job is idle', async () => {

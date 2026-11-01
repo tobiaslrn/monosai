@@ -1,8 +1,9 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLOCK, READING_REPOSITORY } from '../shared/repository-tokens';
 import { fixedClock } from '../../domain/shared/clock';
-import { readingId, snapshotId } from '../../domain/shared/ids';
+import { readingId, snapshotId, vocabularyItemId } from '../../domain/shared/ids';
 import { ok, type Result } from '../../domain/shared/result';
 import { storageError } from '../../domain/storage/storage-error';
 import {
@@ -12,6 +13,7 @@ import {
 } from '../../../testing/reading-repository-fake';
 import type { LanguageError } from '../../domain/language/language-error';
 import type { TokenValidation } from '../../domain/reading/validation';
+import { SnapshotHistoryStore } from '../vocabulary/snapshot-history.store';
 import { ReaderStore } from './reader.store';
 import {
   VOCABULARY_NOT_CONFIGURED,
@@ -22,9 +24,32 @@ import {
 /** Stub that skips the settings/vocabulary dependency chain entirely. */
 class StubVocabularyClassificationService {
   status: VocabularyStatus = VOCABULARY_NOT_CONFIGURED;
+  calls = 0;
+  pending = 0;
+  private gate: Promise<void> | null = null;
+  private open: (() => void) | null = null;
 
-  classify(): Promise<Result<VocabularyStatus, LanguageError>> {
-    return Promise.resolve(ok(this.status));
+  /** Keeps the next classification in flight until released. */
+  hold(): void {
+    this.gate = new Promise<void>((resolve) => {
+      this.open = resolve;
+    });
+  }
+
+  release(): void {
+    this.open?.();
+  }
+
+  async classify(): Promise<Result<VocabularyStatus, LanguageError>> {
+    this.calls += 1;
+    const status = this.status;
+    const gate = this.gate;
+    if (gate !== null) {
+      this.gate = null;
+      this.pending += 1;
+      await gate;
+    }
+    return ok(status);
   }
 
   invalidate(): void {
@@ -34,14 +59,17 @@ class StubVocabularyClassificationService {
 
 describe('ReaderStore', () => {
   let repository: FakeReadingRepository;
+  const activeSnapshot = signal<{ readonly revision: string } | null>({ revision: 'rev-1' });
 
   beforeEach(() => {
     repository = new FakeReadingRepository();
+    activeSnapshot.set({ revision: 'rev-1' });
     TestBed.configureTestingModule({
       providers: [
         ReaderStore,
         { provide: CLOCK, useValue: fixedClock(1_700_000_000_000, 1) },
         { provide: READING_REPOSITORY, useValue: repository },
+        { provide: SnapshotHistoryStore, useValue: { active: activeSnapshot } },
         {
           provide: VocabularyClassificationService,
           useValue: new StubVocabularyClassificationService(),
@@ -275,6 +303,123 @@ describe('ReaderStore', () => {
 
       expect(reader.status()).toBe('ready');
       expect(firstCategory(reader)).toBe('not-in-snapshot');
+    });
+  });
+
+  describe('vocabulary changes under an open reading', () => {
+    const category = (reader: ReaderStore): string | undefined => {
+      const sentence = reader.paragraphs()[0]!.sentences[0]!;
+      return sentence.statuses?.get(sentence.tokens[0]!.id)?.validation.category;
+    };
+
+    function classifiedAs(
+      rows: FakeReadingRows,
+      validation: (itemId: string) => TokenValidation,
+      itemId: string,
+    ): VocabularyStatus {
+      return {
+        kind: 'classified',
+        snapshotId: snapshotId('snap'),
+        statusesBySentence: new Map(
+          rows.tokenAnalyses.map((analysis) => [
+            analysis.sentenceId,
+            analysis.tokens.map((token) => ({
+              tokenId: token.id,
+              validation: validation(itemId),
+            })),
+          ]),
+        ),
+      };
+    }
+
+    const missing = (): TokenValidation => ({ category: 'not-in-snapshot' });
+    const known = (itemId: string): TokenValidation => ({
+      category: 'anki-exact',
+      vocabularyItemIds: [vocabularyItemId(itemId)],
+    });
+
+    function arrange(): {
+      rows: FakeReadingRows;
+      classifier: StubVocabularyClassificationService;
+    } {
+      const rows = repository.add(buildReading({ id: 'r1' }));
+      const classifier = TestBed.inject(
+        VocabularyClassificationService,
+      ) as unknown as StubVocabularyClassificationService;
+      return { rows, classifier };
+    }
+
+    function moveTo(revision: string): void {
+      activeSnapshot.set({ revision });
+      TestBed.tick();
+    }
+
+    it('re-derives markers for the mounted window when the vocabulary revision changes', async () => {
+      const { rows, classifier } = arrange();
+      classifier.status = classifiedAs(rows, missing, 'a');
+      const reader = store();
+      await reader.open(rows.reading.id);
+      expect(category(reader)).toBe('not-in-snapshot');
+
+      classifier.status = classifiedAs(rows, known, 'a');
+      moveTo('rev-2');
+
+      await vi.waitFor(() => {
+        expect(category(reader)).toBe('anki-exact');
+      });
+    });
+
+    it('does not redraw a sentence whose words only got new vocabulary item ids', async () => {
+      const { rows, classifier } = arrange();
+      classifier.status = classifiedAs(rows, known, 'a');
+      const reader = store();
+      await reader.open(rows.reading.id);
+      const before = reader.paragraphs();
+
+      classifier.status = classifiedAs(rows, known, 'b');
+      moveTo('rev-2');
+      await vi.waitFor(() => {
+        expect(classifier.calls).toBeGreaterThan(1);
+      });
+
+      expect(reader.paragraphs()).toBe(before);
+    });
+
+    it('applies the result although the reading row was replaced while classifying', async () => {
+      const { rows, classifier } = arrange();
+      classifier.status = classifiedAs(rows, missing, 'a');
+      const reader = store();
+      await reader.open(rows.reading.id);
+
+      classifier.status = classifiedAs(rows, known, 'a');
+      moveTo('rev-2');
+      await reader.refreshSummaries();
+
+      await vi.waitFor(() => {
+        expect(category(reader)).toBe('anki-exact');
+      });
+    });
+
+    it('classifies again when the revision moves during a classification', async () => {
+      const { rows, classifier } = arrange();
+      classifier.status = classifiedAs(rows, missing, 'a');
+      const reader = store();
+      await reader.open(rows.reading.id);
+
+      classifier.hold();
+      classifier.status = classifiedAs(rows, known, 'a');
+      moveTo('rev-2');
+      await vi.waitFor(() => {
+        expect(classifier.pending).toBe(1);
+      });
+      activeSnapshot.set({ revision: 'rev-3' });
+      TestBed.tick();
+      classifier.release();
+
+      await vi.waitFor(() => {
+        expect(category(reader)).toBe('anki-exact');
+        expect(classifier.calls).toBeGreaterThanOrEqual(3);
+      });
     });
   });
 
