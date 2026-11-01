@@ -56,6 +56,22 @@ describe('ModelPickerComponent', () => {
     expect(panel.querySelector('.results')?.textContent).toContain('Ordinary');
   });
 
+  it('does not say nothing matches while a favourite row matches', async () => {
+    await TestBed.configureTestingModule({ imports: [ModelPickerComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(ModelPickerComponent);
+    fixture.componentRef.setInput('label', 'text models');
+    fixture.componentRef.setInput('models', [model('vendor/favourite', 'Favourite')]);
+    fixture.componentRef.setInput('favoriteIds', ['vendor/favourite']);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    element.querySelector<HTMLButtonElement>('.trigger')!.click();
+    fixture.detectChanges();
+
+    const panel = element.querySelector<HTMLElement>('.panel')!;
+    expect(panel.querySelector('.favorites')?.textContent).toContain('Favourite');
+    expect(panel.querySelector('.state')).toBeNull();
+  });
+
   it('shows a saved model ID before the catalogue has loaded', async () => {
     await TestBed.configureTestingModule({ imports: [ModelPickerComponent] }).compileComponents();
     const fixture = TestBed.createComponent(ModelPickerComponent);

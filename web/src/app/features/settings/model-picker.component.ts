@@ -106,7 +106,9 @@ import { PopupDirective, PopupTriggerDirective } from '../../shared-ui/popup/pop
             } @else if (failure()) {
               <p class="state-notice mn-notice mn-notice--error" role="alert">{{ failure() }}</p>
             } @else if (others().length === 0) {
-              <p class="state">No matching models.</p>
+              @if (favorites().length === 0) {
+                <p class="state">No matching models.</p>
+              }
             } @else {
               @for (model of others(); track model.modelId) {
                 <ng-container

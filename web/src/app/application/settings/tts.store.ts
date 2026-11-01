@@ -158,6 +158,20 @@ export class TtsStore {
   }
 
   setDraft(patch: Partial<TtsDraft>): void {
+    const current = this.draftSignal();
+    const changed = (Object.keys(patch) as (keyof TtsDraft)[]).some(
+      (key) => patch[key] !== undefined && patch[key] !== current[key],
+    );
+    if (
+      changed &&
+      this.actionSignal() === 'testing' &&
+      this.settingsSignal().activePresetId === null
+    ) {
+      // A preview of the old draft is moot: drop it so its clip is never loaded.
+      this.controller?.abort();
+      this.controller = null;
+      this.actionSignal.set('idle');
+    }
     this.draftSignal.update((draft) => ({ ...draft, ...patch }));
   }
 
@@ -364,12 +378,15 @@ export class TtsStore {
       return false;
     }
     this.settingsSignal.set(saved.value);
-    this.draftSignal.set({
-      modelId: saved.value.modelId,
-      voiceId: saved.value.voiceId,
-      speechStyle: saved.value.speechStyle,
-      speechPace: saved.value.speechPace,
-    });
+    // An edit made while the write was pending is newer than what was written.
+    if (this.draftSignal() === draft) {
+      this.draftSignal.set({
+        modelId: saved.value.modelId,
+        voiceId: saved.value.voiceId,
+        speechStyle: saved.value.speechStyle,
+        speechPace: saved.value.speechPace,
+      });
+    }
     this.storageFailureSignal.set(null);
     this.testFailureSignal.set(null);
     this.testCancelledSignal.set(false);
