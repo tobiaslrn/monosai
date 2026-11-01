@@ -15,6 +15,13 @@
 - Anki access is read-only.
 - Validate external, stored, imported, and AI-generated data at runtime.
 
+## Internal references
+
+- Never put internal issue or finding IDs (for example `B6-16`, `P-5`, `H07`, `U11-3`) or the
+  names of internal QA files in code comments, docs, commit messages, or PR text. They mean
+  nothing outside the team's private tracking, and once they reach a commit they cannot be
+  looked up or acted on. Describe the behaviour and the reason instead.
+
 ## Verifying
 
 - Run the affected specs while iterating and `npm test` before committing. Browser-visible
