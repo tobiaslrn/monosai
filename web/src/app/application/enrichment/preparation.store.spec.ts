@@ -619,6 +619,24 @@ describe('PreparationStore', () => {
       expect(beds.runners.english.started).toEqual([FIRST, FIRST]);
     });
 
+    it('shows a requested layer as queued at once while another layer is running', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW);
+      const gate = beds.runners.english.holdOpen();
+      const run = beds.store.pump();
+      await gate.started;
+      expect(beds.store.progressFor(FIRST, 'grammar').kind).toBe('idle');
+
+      await outstandingRow(beds.jobs, FIRST, 'grammar', NOW + 1);
+      const retried = beds.store.retry(FIRST, 'grammar');
+      await vi.waitFor(() => {
+        expect(beds.store.progressFor(FIRST, 'grammar').kind).toBe('queued');
+      });
+
+      gate.release();
+      await run;
+      await retried;
+    });
+
     it('leaves the sibling text layer and the audio behind it untouched', async () => {
       await outstandingRow(beds.jobs, FIRST, 'english', NOW + 1);
       await outstandingRow(beds.jobs, FIRST, 'grammar', NOW + 2);

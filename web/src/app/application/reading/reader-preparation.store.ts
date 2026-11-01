@@ -129,7 +129,16 @@ export class ReaderPreparationStore {
     const id = this.readingIdSignal();
     if (id === null) return;
     this.errorSignal.set(null);
-    void this.lane.retry(id, layer);
+    // A request that finds the work already done changes no progress, and the
+    // lane may be busy with another reading for a long time, so the sheet reads
+    // what is stored once the request is recorded, before the lane gets to it.
+    void (async () => {
+      await this.lane.request(id, layer);
+      await this.reader.refreshSummaries();
+      await this.lane.pump();
+    })().catch((error: unknown) => {
+      reportRejection(this.logger, error);
+    });
   }
 
   /**

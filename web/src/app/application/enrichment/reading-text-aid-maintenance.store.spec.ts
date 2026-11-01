@@ -12,15 +12,17 @@ describe('ReadingTextAidMaintenanceStore', () => {
   const stopLayer = vi.fn(() => Promise.resolve(ok(undefined)));
   const clearReadingAid = vi.fn(() => Promise.resolve(ok(undefined)));
   const refreshSummaries = vi.fn(() => Promise.resolve());
+  const acknowledge = vi.fn();
 
   beforeEach(() => {
     stopLayer.mockClear();
     clearReadingAid.mockClear();
     refreshSummaries.mockClear();
+    acknowledge.mockClear();
     TestBed.configureTestingModule({
       providers: [
         ReadingTextAidMaintenanceStore,
-        { provide: PreparationStore, useValue: { stopLayer } },
+        { provide: PreparationStore, useValue: { stopLayer, acknowledge } },
         {
           provide: STORAGE_MAINTENANCE,
           useValue: { clearReadingAid },
@@ -40,6 +42,7 @@ describe('ReadingTextAidMaintenanceStore', () => {
 
     expect(stopLayer).toHaveBeenCalledWith(reading.id, 'english');
     expect(clearReadingAid).toHaveBeenCalledWith(reading.id, 'english');
+    expect(acknowledge).toHaveBeenCalledWith(reading.id, 'english');
     expect(refreshSummaries).toHaveBeenCalledOnce();
     expect(store.error()).toBeNull();
   });

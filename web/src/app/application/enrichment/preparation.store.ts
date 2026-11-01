@@ -240,12 +240,24 @@ export class PreparationStore {
     return ok(undefined);
   }
 
-  /** Runs one failed layer again, from whatever it still has outstanding. */
-  async retry(readingId: ReadingId, layer: PreparationLayer): Promise<void> {
+  /** Forgets a layer's stopped or failed progress, e.g. once its saved work was cleared. */
+  acknowledge(readingId: ReadingId, layer: PreparationLayer): void {
+    this.runners.runnerFor(layer).acknowledge(readingId);
+  }
+
+  /** Records a layer's request: the lane knows of the work, but has not started it. */
+  async request(readingId: ReadingId, layer: PreparationLayer): Promise<void> {
     const runner = this.runners.runnerFor(layer);
     runner.acknowledge(readingId);
     this.unblock(readingId, [layer]);
     await runner.enqueue(readingId, 'explicit');
+    // The request shows on its row at once, even while another layer is running.
+    await this.refreshQueue();
+  }
+
+  /** Runs one failed layer again, from whatever it still has outstanding. */
+  async retry(readingId: ReadingId, layer: PreparationLayer): Promise<void> {
+    await this.request(readingId, layer);
     await this.pump();
   }
 

@@ -1672,6 +1672,10 @@ test('adds an unknown word locally from the reader @smoke @mobile', async ({ pag
   await expect(wordDetails(page).getByRole('status')).toContainText('Added to Reader words');
   await expect(wordDetails(page).getByRole('button', { name: 'Add to word list' })).toHaveCount(0);
   await page.keyboard.press('Escape');
+  // The open reader follows the vocabulary it just changed: no offer to add it again.
+  await openWordDetails(page, '猫');
+  await expect(wordDetails(page).getByRole('button', { name: 'Add to word list' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await context.setOffline(false);
   await page.goto('./#/reading-level');
   await expect(page.getByText('Reader words', { exact: true })).toBeVisible();

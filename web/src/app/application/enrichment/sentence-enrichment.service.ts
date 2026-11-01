@@ -221,14 +221,15 @@ export class SentenceEnrichmentService {
       context.value.taskConfig,
       signal,
     );
+    if (outcome.status === 'unavailable') {
+      return err({ source: 'provider', error: outcome.error });
+    }
     const record = outcome.records.at(0);
     if (record === undefined) {
       return err({
         source: 'provider',
         error: aiError(
-          outcome.status === 'unavailable' && outcome.reasonCode === 'cancelled'
-            ? 'cancelled'
-            : 'provider-unavailable',
+          'provider-unavailable',
           'grammar-review',
           'The grammar review did not produce an answer for this sentence.',
         ),
