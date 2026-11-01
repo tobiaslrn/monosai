@@ -438,6 +438,7 @@ test.describe('generating a story', () => {
     await expect(dots).toHaveText('...');
     const title = page.locator('.status-title');
     const firstTitleX = await title.evaluate((element) => element.getBoundingClientRect().x);
+    // eslint-disable-next-line no-restricted-syntax -- staying still only shows over elapsed time
     await page.waitForTimeout(350);
     const secondTitleX = await title.evaluate((element) => element.getBoundingClientRect().x);
     expect(secondTitleX).toBe(firstTitleX);

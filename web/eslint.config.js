@@ -39,6 +39,11 @@ const layerZones = [
   { target: './src/workers', from: './src/app/application' },
 ];
 
+const noAnyCast = {
+  selector: 'TSAsExpression > TSAnyKeyword, TSTypeAssertion > TSAnyKeyword',
+  message: 'Casting through `any` is not allowed; validate at the adapter boundary.',
+};
+
 export default tseslint.config(
   {
     ignores: [
@@ -123,13 +128,7 @@ export default tseslint.config(
       ],
       'import/no-cycle': ['error', { maxDepth: Infinity }],
       'import/no-restricted-paths': ['error', { zones: layerZones }],
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector: 'TSAsExpression > TSAnyKeyword, TSTypeAssertion > TSAnyKeyword',
-          message: 'Casting through `any` is not allowed; validate at the adapter boundary.',
-        },
-      ],
+      'no-restricted-syntax': ['error', noAnyCast],
       'no-console': ['error', { allow: ['warn', 'error'] }],
     },
   },
@@ -151,6 +150,20 @@ export default tseslint.config(
     files: ['e2e/**/*.ts', 'e2e-pwa/**/*.ts', '*.config.ts', 'scripts/**/*.{ts,mjs,js}'],
     rules: {
       'no-console': 'off',
+    },
+  },
+  {
+    files: ['e2e/**/*.ts', 'e2e-pwa/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        noAnyCast,
+        {
+          selector: "CallExpression[callee.property.name='waitForTimeout']",
+          message:
+            'Wait on a condition. Disable this only when elapsed time is what the spec exercises, and say why.',
+        },
+      ],
     },
   },
 );

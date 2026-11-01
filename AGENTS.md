@@ -1,66 +1,58 @@
-# Monosai agent guide
+# Working on Monosai
 
-## Before changing things
+Monosai is a local-first Japanese reading app for learners: an offline-capable PWA in Angular.
+It stores everything in the browser, only reads from Anki, and uses the learner's own OpenRouter key for optional AI.
 
-- Structure, layers, persistence, or external boundaries: read [docs/arc42](docs/arc42/)
-  and [docs/decisions](docs/decisions/) first.
-- Anything visual or interactive: follow [the design system](docs/design/design-system.md).
-- Update the affected document in the same commit as the change.
+# Workflow
 
-## Data
+## Starting
+
+- `git fetch` and update the current branch.
+- Stay on the current branch. New branches start from the updated `main`; there is no
+  `develop`.
+- Before changing structure, layers, persistence, or external boundaries: read
+  [docs/arc42](docs/arc42/) and [docs/decisions](docs/decisions/).
+- Before changing either side of `protocol/contract.txt`: read `android-bridge/README.md`.
+- Before changing CI or a build gate: read
+  [the deployment view](docs/arc42/07-deployment-view.md) and
+  [the quality requirements](docs/arc42/10-quality-requirements.md).
+
+## Verifying
+
+- Before committing: `npm test`. Browser-visible changes: also `npm run e2e`.
+- Judge visual changes only from screenshots you opened, in light and dark, at desktop and
+  Android size:
+  1. `npm run build:pages`
+  2. Add a throwaway `@smoke @mobile` spec in `web/e2e` that saves to `test-results/`.
+  3. From `web`: `MONOSAI_PREBUILT_DIST=true npx playwright test --grep @<tag>`
+  4. Delete the spec before committing.
+
+## Committing and pushing
+
+- Format: `<type>(<scope>): <imperative summary>`; lowercase, no period, ≤ 72 characters.
+- Types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci`, `chore`, `revert`.
+- Scope is required; use `repo` for cross-cutting changes.
+- Update affected docs in the same commit.
+- Never rewrite history. Push only when asked.
+- After a push, watch CI and fix failures until `gate` is green.
+
+## Worktrees and processes
+
+- Never `git stash`: all worktrees share one stash list.
+- Never kill processes by name or a port you did not start.
+- Never install tools globally; add them to the project's dependencies.
+- Linked worktrees get their own ports, so `.claude/launch.json`'s 4200 is wrong there: run
+  `npm start` and open the URL it prints.
+- `npm run worktree:setup` installs what a new worktree lacks.
+- `npm run e2e` reuses a current build; from `web`, `node scripts/build-if-stale.mjs --force`
+  rebuilds it.
+
+# Code rules
 
 - Committed Dexie schema versions are immutable. Schema changes add a new version, with a
   transactional upgrade when records change shape or meaning.
 - Never silently reset or lose local data; migration failures offer explicit recovery.
-- Anki access is read-only.
 - Validate external, stored, imported, and AI-generated data at runtime.
-
-## Internal references
-
-- Never put internal issue or finding IDs (for example `B6-16`, `P-5`, `H07`, `U11-3`) or the
-  names of internal QA files in code comments, docs, commit messages, or PR text. They mean
-  nothing outside the team's private tracking, and once they reach a commit they cannot be
-  looked up or acted on. Describe the behaviour and the reason instead.
-
-## Verifying
-
-- Run the affected specs while iterating and `npm test` before committing. Browser-visible
-  changes also need `npm run e2e`.
-- Judge visual changes only from screenshots you have opened, in light and dark, at desktop
-  and Android size: `npm run build:pages`, a throwaway `@smoke @mobile` spec in `web/e2e`
-  that saves to `test-results/`, then
-  `MONOSAI_PREBUILT_DIST=true npx playwright test --grep @<tag>` from `web`. Delete the
-  spec before committing.
-- Playwright: navigate relatively (`page.goto('./#/library')`), stub OpenRouter and Anki,
-  never use fixed sleeps.
-
-## Worktrees
-
-- Parallel worktrees are isolated: each gets its own ports from
-  `web/scripts/worktree-ports.mjs`, while the main checkout and CI keep 4200, 4210 and 4300.
-  `npm run worktree:setup` installs what a new worktree lacks.
-- In a linked worktree, `.claude/launch.json` still names port 4200: run `npm start` in a
-  terminal and open the URL it prints.
-- `npm run e2e` reuses a current build; `node scripts/build-if-stale.mjs --force` from `web`
-  rebuilds it.
-- Never `git stash`: all worktrees share one stash list. Commit to your branch instead.
-- Never kill processes by name or a port you did not start; other sessions run theirs too.
-- Never install tools globally; add them to the project's dependencies.
-
-## CI
-
-- One application build per run; everything downstream uses `MONOSAI_PREBUILT_DIST=true`.
-- `gate` is the single required check. `npm run verify` mirrors CI's blocking gates; change
-  both together.
-- Web app and Android bridge share only `protocol/contract.txt`. Read
-  `android-bridge/README.md` before changing either side of it.
-
-## Git
-
-- Commits: `<type>(<scope>): <imperative summary>` — types `feat`, `fix`, `refactor`,
-  `perf`, `test`, `docs`, `build`, `ci`, `chore`, `revert`; scope always required (`repo`
-  for cross-cutting); lowercase, no period, ≤ 72 characters.
-- Before starting work, run `git fetch` and bring the current branch up to date. New branches
-  start from the freshly updated `main`, the development branch here (there is no `develop`).
-- Stay on the current branch. Never rewrite history. Push only when asked.
-- After a push, watch CI and fix failures until `gate` is green.
+- Visual or interactive changes follow [the design system](docs/design/design-system.md).
+- Never put internal issue IDs (`B6-16`, `H07`) or QA file names in code, docs, commits, or
+  PRs. Describe the behaviour instead.

@@ -89,8 +89,8 @@ comparison, because they follow the PWA's dependencies rather than the bridge's 
 
 ### Which number to raise
 
-`protocol/contract.txt` is the loopback contract version, and it is the only number the web
-app compares against. It is deliberately not the release version: comparing that would give
+`protocol/contract.txt` is the only thing the web app and the bridge share. It is the loopback
+contract version, and the only number the web app compares against. It is deliberately not the release version: comparing that would give
 the web app opinions about release numbering, and a fix release would read as a change in
 what the bridge can do.
 

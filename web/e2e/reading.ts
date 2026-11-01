@@ -111,6 +111,7 @@ export async function holdLine(page: Page, target: Locator): Promise<HeldPress> 
   }
   const held: HeldPress = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   await dispatchTouchPointer(page, 'pointerdown', held.x, held.y);
+  // eslint-disable-next-line no-restricted-syntax -- a long press is defined by how long it lasts
   await page.waitForTimeout(LONG_PRESS_MS + 120);
   return held;
 }

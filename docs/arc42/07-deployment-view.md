@@ -99,7 +99,7 @@ flowchart LR
 | **Deploy** | Runs on the default branch only, after the gate. Downloads the artifact and publishes it. It never builds |
 
 Two rules keep this honest. Nothing except the build stage compiles the application; every test stage
-is told to serve the downloaded artifact rather than build its own. And a stage becomes blocking by
+is told through `MONOSAI_PREBUILT_DIST=true` to serve the downloaded artifact rather than build its own. And a stage becomes blocking by
 joining the gate, which is why there is exactly one required status check.
 
 The independent `bridge` job uses Java 21 and the Gradle wrapper for JVM tests,

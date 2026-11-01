@@ -536,6 +536,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(playerStatus(page)).toContainText('Trying again produced nothing');
 
     const afterSecondRetry = synthesisCount(calls);
+    // eslint-disable-next-line no-restricted-syntax -- an absence only shows over elapsed time
     await page.waitForTimeout(500);
     expect(synthesisCount(calls), 'nothing is spent once the retry is withdrawn').toBe(
       afterSecondRetry,

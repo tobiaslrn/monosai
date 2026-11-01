@@ -281,6 +281,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     // dismissal, and this journey is about the sheet following the finger.
     for (let step = 1; step <= 4; step += 1) {
       await page.mouse.move(x, y + step * 10);
+      // eslint-disable-next-line no-restricted-syntax -- the drag's speed is what is exercised
       await page.waitForTimeout(60);
     }
 
@@ -289,6 +290,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       .poll(() => toggle.boundingBox())
       .toEqual(expect.objectContaining({ x: anchorBefore?.x, y: anchorBefore?.y }));
 
+    // eslint-disable-next-line no-restricted-syntax -- resting before release is what is exercised
     await page.waitForTimeout(200);
     await page.mouse.up();
     await expect(panel).toBeVisible();
@@ -324,6 +326,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await page.mouse.down();
     for (let step = 1; step <= 4; step += 1) {
       await page.mouse.move(x, y + step * 30);
+      // eslint-disable-next-line no-restricted-syntax -- the drag's speed is what is exercised
       await page.waitForTimeout(40);
     }
     await page.mouse.up();
