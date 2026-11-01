@@ -54,8 +54,8 @@
 }
 
 .mn-actions > * {
-  flex: none;
-  white-space: nowrap;
+  flex: 0 1 auto;
+  max-width: 100%;
 }
 
 .mn-actions--end {

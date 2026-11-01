@@ -18,7 +18,10 @@
   font-weight: var(--weight-semibold);
   line-height: var(--leading-tight);
   text-decoration: none;
-  white-space: nowrap;
+  /* Labels stay on one line until the control reaches its container, then wrap. */
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
   cursor: pointer;
   /* Keep the browser's rectangular touch flash from overpowering the pill. */
   -webkit-tap-highlight-color: transparent;

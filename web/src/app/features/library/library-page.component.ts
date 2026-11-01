@@ -212,6 +212,8 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
      * is cropped to the drawing instead.
      */
     .home-hero {
+      --hero-art-max: 16rem;
+
       position: relative;
       isolation: isolate;
       display: flex;
@@ -228,7 +230,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       inset-inline-end: 0;
       margin-block: auto;
       width: 55%;
-      max-width: 16rem;
+      max-width: var(--hero-art-max);
       height: auto;
       aspect-ratio: 1254 / 1070;
       overflow: hidden;
@@ -277,8 +279,8 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       min-height: 7.7rem;
     }
 
-    .home-hero.is-compact .hero-art {
-      max-width: 9rem;
+    .home-hero.is-compact {
+      --hero-art-max: 9rem;
     }
 
     /* The action sits directly below the invitation it acts on. */
@@ -311,12 +313,13 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       }
 
       .home-hero mn-library-standing {
-        width: 59%;
+        /* The sentence ends a gap short of wherever the art really begins. */
+        width: min(59%, calc(100% - min(55%, var(--hero-art-max)) - var(--space-3)));
       }
 
       .filters {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 6rem), 1fr));
       }
     }
   `,
