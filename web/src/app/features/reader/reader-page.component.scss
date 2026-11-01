@@ -23,6 +23,7 @@
    */
   --reader-line-height-ruby: clamp(2.05, calc(2.6 - (var(--reader-scale) - 1) * 0.35), 2.8);
   --reader-paragraph-gap: clamp(1.75rem, calc(2.25rem * var(--reader-scale)), 6rem);
+  --reader-measure: calc(36 * var(--reader-font-size));
 
   display: grid;
   grid-template-rows: auto auto 1fr;

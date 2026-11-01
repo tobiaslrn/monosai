@@ -28,6 +28,7 @@ export class ReaderWordPreviewService {
 
   private timer: ReturnType<typeof setTimeout> | null = null;
   private ref: PopoverRef | null = null;
+  private quiet = false;
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
@@ -40,7 +41,7 @@ export class ReaderWordPreviewService {
     template: TemplateRef<unknown>,
     viewContainerRef: ViewContainerRef,
   ): void {
-    if (this.selection.anythingOpen()) {
+    if (this.quiet || this.selection.anythingOpen()) {
       return;
     }
     this.wordSignal.set({
@@ -61,6 +62,16 @@ export class ReaderWordPreviewService {
         },
       });
     }, PREVIEW_DELAY_MS);
+  }
+
+  /** Runs something that moves focus onto a word the learner did not ask to look up. */
+  withoutPreview(action: () => void): void {
+    this.quiet = true;
+    try {
+      action();
+    } finally {
+      this.quiet = false;
+    }
   }
 
   end(): void {

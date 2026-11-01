@@ -152,6 +152,18 @@ describe('ReaderStore', () => {
       expect(reader.paragraphs().length).toBeLessThanOrEqual(15);
     });
 
+    it('covers every paragraph a screen shows', async () => {
+      const rows = repository.add(buildReading({ id: 'r1', paragraphCount: 100 }));
+      const reader = store();
+      await reader.open(rows.reading.id);
+      await reader.moveTo(50);
+
+      await reader.cover(0, 4, 8);
+
+      expect(reader.window()).toEqual({ first: 0, count: 9 });
+      expect(reader.paragraphs().at(0)?.paragraph.position).toBe(0);
+    });
+
     it('moves directly to the final paragraph for End semantics', async () => {
       const rows = repository.add(buildReading({ id: 'r1', paragraphCount: 100 }));
       const reader = store();

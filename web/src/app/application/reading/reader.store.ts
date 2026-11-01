@@ -4,6 +4,7 @@ import type { SentenceTokens } from '../../domain/language/language-runtime';
 import {
   extendWindow,
   windowAround,
+  windowCovering,
   type ParagraphWindowState,
   type WindowDirection,
 } from '../../domain/reading/paragraph-window';
@@ -197,11 +198,21 @@ export class ReaderStore {
 
   /** Loads a bounded window around a position selected through virtual space. */
   async moveTo(anchorPosition: number): Promise<void> {
+    await this.show(windowAround(anchorPosition, this.totalParagraphsSignal()));
+  }
+
+  /** Loads a bounded window holding every paragraph a screen shows. */
+  async cover(firstVisible: number, middle: number, lastVisible: number): Promise<void> {
+    await this.show(
+      windowCovering(firstVisible, middle, lastVisible, this.totalParagraphsSignal()),
+    );
+  }
+
+  private async show(next: ParagraphWindowState): Promise<void> {
     const reading = this.readingSignal();
     if (reading === null || this.loadingMoreSignal()) {
       return;
     }
-    const next = windowAround(anchorPosition, this.totalParagraphsSignal());
     const current = this.windowSignal();
     if (next.first === current.first && next.count === current.count) {
       return;
