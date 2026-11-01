@@ -1,6 +1,8 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { configureTextModel, configureTts } from '../e2e/generation';
+import { stubOpenRouter } from '../e2e/openrouter';
 
 test.beforeEach(async ({ page }) => {
   await page.addLocatorHandler(
@@ -282,6 +284,110 @@ test.describe('offline reload', () => {
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
 
     await context.setOffline(false);
+  });
+});
+
+/**
+ * A string only the speech synthesizer contains.
+ *
+ * An error message survives minification and, unlike a task name, an endpoint or
+ * a MIME type, is not shared with the settings test or the encoder. If the
+ * message is reworded this stops matching and the test says so.
+ */
+const SPEECH_CHUNK_MARKER = 'Unreachable TTS capability fallback state.';
+
+/**
+ * The file name of the lazy chunk that holds the speech synthesizer.
+ *
+ * Found by content in the served build, because the hash changes with every
+ * build and CI hands this suite only the browser output.
+ */
+function speechChunkName(): string {
+  const directory = join(process.cwd(), 'dist', 'monosai', 'browser');
+  const holders = readdirSync(directory).filter(
+    (file) =>
+      file.startsWith('chunk-') &&
+      file.endsWith('.js') &&
+      readFileSync(join(directory, file), 'utf8').includes(SPEECH_CHUNK_MARKER),
+  );
+  expect(holders, 'exactly one chunk holds the speech synthesizer').toHaveLength(1);
+  return holders[0]!;
+}
+
+test.describe('speech code that cannot be loaded', () => {
+  test('a run ends stopped, not hung, when the worker no longer holds the speech chunk', async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(240_000);
+    const chunk = speechChunkName();
+    // Routed on the context: a page route does not see requests while a worker
+    // controls the page.
+    const calls = await stubOpenRouter({
+      route: (...args: Parameters<Page['route']>) => context.route(...args),
+    } as Page);
+
+    await page.goto('./');
+    await waitForServiceWorkerControl(page);
+    await waitForPrefetchComplete(page);
+    // Nothing may have synthesized yet: a chunk that has loaded once stays in
+    // memory, and then removing it from the cache proves nothing.
+    await configureTextModel(page);
+    await configureTts(page);
+    await importReading(page);
+    await page
+      .locator('.bar-actions')
+      .getByRole('button', { name: /^Audio/ })
+      .click();
+    const player = page.getByRole('region', { name: 'Story audio' });
+    await expect(player).toBeVisible();
+
+    const removed = await page.evaluate(async (name) => {
+      let count = 0;
+      for (const cacheName of await caches.keys()) {
+        const cache = await caches.open(cacheName);
+        for (const request of await cache.keys()) {
+          if (new URL(request.url).pathname.endsWith(`/${name}`)) {
+            await cache.delete(request);
+            count += 1;
+          }
+        }
+      }
+      return count;
+    }, chunk);
+    expect(removed, 'the speech chunk was in the worker cache').toBeGreaterThan(0);
+
+    const synthesisBefore = calls.urls.filter((url) => url.includes('/audio/speech')).length;
+    const chunkFailures: string[] = [];
+    page.on('requestfailed', (request) => {
+      if (request.url().endsWith(`/${chunk}`)) {
+        chunkFailures.push(request.url());
+      }
+    });
+    await context.setOffline(true);
+    await player.getByRole('button', { name: 'Generate audio' }).click();
+
+    // The run is over: it says so, nothing is still being generated, and the
+    // learner is offered another go.
+    await expect(player.locator('[role="status"]')).toContainText('Stopped with 0 of 3 sentences', {
+      timeout: 30_000,
+    });
+    // Offline is the true cause, so the offline wording is the right one.
+    await expect(player).toContainText('This device is offline');
+    await expect(player.getByRole('button', { name: 'Stop generating audio' })).toHaveCount(0);
+    await expect(player.getByRole('button', { name: 'Try again' })).toBeVisible();
+    expect(chunkFailures, 'the chunk was asked for and could not be had').toHaveLength(1);
+    expect(
+      calls.urls.filter((url) => url.includes('/audio/speech')).length,
+      'the run never reached the provider',
+    ).toBe(synthesisBefore);
+
+    // Back online the worker fetches the chunk again and the run completes.
+    await context.setOffline(false);
+    await player.getByRole('button', { name: 'Try again' }).click();
+    await expect(player.locator('[role="status"]')).toHaveText('3 sentences ready', {
+      timeout: 60_000,
+    });
   });
 });
 
