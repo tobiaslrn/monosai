@@ -62,6 +62,9 @@
  */
 .mn-popover-pane.is-preview {
   pointer-events: none;
+  /* Sized to its text rather than to the room right of the anchor, so the overlay can push it inside the window. */
+  width: max-content;
+  max-width: calc(100vw - 16px);
 }
 
 /*

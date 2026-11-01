@@ -889,6 +889,81 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       .toBe('吾輩は猫である。');
   });
 
+  test('a refused Copy shows its notice above the sticky tray @smoke @mobile', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator.clipboard, 'writeText', {
+        configurable: true,
+        value: () => Promise.reject(new DOMException('Denied', 'NotAllowedError')),
+      });
+    });
+    await page.goto('./#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    await openSentence(page);
+    await page.getByRole('button', { name: 'Copy', exact: true }).click();
+
+    const notice = page.getByRole('alert').filter({ hasText: 'Copy failed' });
+    await expect(notice).toBeVisible();
+    const covered = await page.evaluate(() => {
+      const box = document.querySelector('mn-sentence-popover .copy-fallback');
+      const tray = document.querySelector('mn-sentence-popover .tray');
+      if (!box || !tray) {
+        return null;
+      }
+      return box.getBoundingClientRect().bottom > tray.getBoundingClientRect().top;
+    });
+    expect(covered).toBe(false);
+  });
+
+  test('empty failure slots take no space in the sentence card @smoke', async ({ page }) => {
+    await page.goto('./#/add');
+    await pasteAndContinue(page, SAMPLE_TEXT);
+    await saveAndOpenReader(page);
+
+    await openSentence(page);
+    const heights = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('mn-sentence-popover mn-aid-failure')).map(
+        (host) => host.getBoundingClientRect().height,
+      ),
+    );
+    expect(heights.length).toBeGreaterThan(0);
+    expect(heights.every((height) => height === 0)).toBe(true);
+  });
+
+  test('keeps a hover preview inside a narrow window @smoke', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'hover previews are a desktop mouse affordance');
+    await page.setViewportSize({ width: 900, height: 700 });
+    await page.goto('./#/add');
+    await pasteAndContinue(page, '猫がいる。犬もいる。'.repeat(8));
+    await saveAndOpenReader(page);
+
+    const found = await page.evaluate(() => {
+      let best: Element | null = null;
+      let bestRight = -1;
+      for (const token of Array.from(document.querySelectorAll('button.token'))) {
+        const rect = token.getBoundingClientRect();
+        if (rect.top >= 0 && rect.bottom <= window.innerHeight && rect.right > bestRight) {
+          bestRight = rect.right;
+          best = token;
+        }
+      }
+      best?.setAttribute('data-edge-token', '');
+      return best !== null;
+    });
+    expect(found).toBe(true);
+    await page.locator('button[data-edge-token]').hover();
+
+    const preview = page.locator('mn-word-preview .preview');
+    await expect(preview).toBeVisible();
+    await expect
+      .poll(async () => {
+        const box = await preview.boundingBox();
+        return box === null ? null : box.x + box.width <= 900;
+      })
+      .toBe(true);
+  });
+
   test('a tap dismisses what is open instead of opening the next sentence @mobile @smoke', async ({
     page,
     isMobile,

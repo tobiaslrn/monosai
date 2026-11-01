@@ -212,6 +212,17 @@ export class PopoverService {
     });
 
     overlayRef.attach(new TemplatePortal(options.template, options.viewContainerRef));
+    // The overlay measures its pane on attach, before the template has rendered its content, so a pane
+    // that grows afterwards would keep the position chosen for its empty size and overrun the window.
+    if (!sheet && typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => {
+        overlayRef.updatePosition();
+      });
+      observer.observe(overlayRef.overlayElement);
+      overlayRef.detachments().subscribe(() => {
+        observer.disconnect();
+      });
+    }
 
     const close = (returnFocus = true): void => {
       if (this.overlayRef !== overlayRef) {
