@@ -641,6 +641,12 @@ over the backdrop and Escape dismissal to do so. A second dismissal during the
 slide is ignored. With reduced motion, or on a wide viewport where the card is
 not docked, it closes at once.
 
+A confirmation or notice that is docked as a sheet already has its own way out,
+Cancel, Keep it, or Continue, so it carries no grab handle. Escape and a press
+on the backdrop still dismiss a confirmation; the alpha notice is dismissed only
+by Continue. Like any docked sheet it stays within the viewport, scrolls when its
+content is taller, and leaves room for the system gesture area below it.
+
 Add words is the one sheet opened from a native popover rather than a dialog,
 because it must stay open while a file chooser is up. It follows the same
 placement — hanging from its control on a wide screen, docked to the bottom

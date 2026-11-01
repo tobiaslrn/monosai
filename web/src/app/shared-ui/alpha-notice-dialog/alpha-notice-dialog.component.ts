@@ -61,6 +61,18 @@ export interface AlphaNoticeDialogData {
     #mn-alpha-message {
       color: var(--text-secondary);
     }
+
+    @media (max-width: 59.999em) {
+      .dialog {
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding-block-end: calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
+        border-inline: 0;
+        border-block-end: 0;
+        border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+      }
+    }
   `,
 })
 export class AlphaNoticeDialogComponent {

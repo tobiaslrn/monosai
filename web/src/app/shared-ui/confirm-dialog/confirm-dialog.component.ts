@@ -71,6 +71,7 @@ export interface ConfirmDialogData {
 
     h2 {
       margin: 0;
+      overflow-wrap: anywhere;
       font-size: var(--text-xl);
     }
 
@@ -87,6 +88,18 @@ export interface ConfirmDialogData {
 
     .footnote {
       font-size: var(--text-sm);
+    }
+
+    @media (max-width: 59.999em) {
+      .dialog {
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding-block-end: calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
+        border-inline: 0;
+        border-block-end: 0;
+        border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+      }
     }
   `,
 })
@@ -111,6 +124,8 @@ export async function openConfirmDialog(dialog: Dialog, data: ConfirmDialogData)
     ariaLabelledBy: 'mn-confirm-title',
     ariaDescribedBy: 'mn-confirm-message',
     hasBackdrop: true,
+    panelClass: 'mn-docked-pane',
+    maxWidth: '100vw',
   });
   const result = await new Promise<boolean | undefined>((resolve) => {
     ref.closed.subscribe((value) => {

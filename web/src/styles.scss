@@ -56,6 +56,18 @@
   }
 }
 
+/* Confirmations and notices dock to the bottom edge, full width, on a phone. */
+@media (max-width: 59.999em) {
+  .cdk-global-overlay-wrapper:has(> .cdk-overlay-pane.mn-docked-pane) {
+    align-items: flex-end !important;
+    justify-content: stretch !important;
+  }
+
+  .cdk-overlay-pane.mn-docked-pane {
+    width: 100%;
+  }
+}
+
 /*
  * A hover preview is a hint, not a surface: it must never swallow the pointer
  * event that would have pinned the word underneath it.
