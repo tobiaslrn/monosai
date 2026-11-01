@@ -30,8 +30,8 @@ These are the column names AnkiDroid's public contract publishes, which are not
 the names of the fields behind them — the interval is `interval` here and `ivl`
 only inside a collection file. Asking for a backing name makes the provider
 reject the whole projection, which the bridge would then read as an old build.
-The shared `cardsInfo` fixture stays the small collection both sides replay; the
-full card shape is pinned by the bridge's own router test.
+The shared `cardsInfo` fixture stays the small collection both sides replay;
+`cardsInfoFullShape` pins every card key on both sides.
 
 `requestPermission` also carries `monosaiBridge`, which is `{version, contract}`:
 the bridge's release name, and the loopback contract version in `contract.txt`.

@@ -45,18 +45,30 @@ describe('shared bridge wire fixtures', () => {
    * records the refusal the extraction path is written to fall back from.
    */
   const REFUSED_BY_BRIDGE = ['getReviewsOfCards'];
+  /**
+   * Every card key the bridge can send. It sits outside the small collection the
+   * fake replays, so it is checked against the schema rather than the fake.
+   */
+  const FULL_SHAPE = 'cardsInfoFullShape';
+  const replayedFixtures = protocolFixtures.filter((f) => f.name !== FULL_SHAPE);
   it('covers exactly the read allowlist and a refused write', () => {
-    expect(protocolFixtures.map((f) => f.request.action).sort()).toEqual(
+    expect(replayedFixtures.map((f) => f.request.action).sort()).toEqual(
       [...ALLOWED_ACTIONS, 'addNote'].sort(),
     );
     expect(
-      protocolFixtures
+      replayedFixtures
         .filter((f) => f.response.error !== null)
         .map((f) => f.request.action)
         .sort(),
     ).toEqual([...REFUSED_BY_BRIDGE, 'addNote'].sort());
   });
-  for (const fixture of protocolFixtures) {
+  it('keeps every card key the bridge can send', () => {
+    // Zod strips a key it does not know, so a successful parse alone would not
+    // notice the two sides disagreeing on a name.
+    const { result } = protocolFixtures.find((f) => f.name === FULL_SHAPE)!.response;
+    expect(cardsInfoSchema.parse(result)).toEqual(result);
+  });
+  for (const fixture of replayedFixtures) {
     it(`parses and reproduces ${fixture.name}`, async () => {
       if (fixture.response.error === null) {
         const schema = schemas[fixture.request.action as keyof typeof schemas];

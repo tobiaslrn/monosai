@@ -46,36 +46,16 @@ class Router(private val reads: AnkiReads, private val identity: BridgeIdentity)
             // The AnkiConnect keys keep their standard meaning; `monosaiBridge`
             // is the one extension, and a caller that does not know it ignores it
             // exactly as it ignores the absence on any other AnkiConnect endpoint.
-            AllowedReads.PERMISSION -> buildJsonObject {
-                put("permission", "granted"); put("requireApiKey", false); put("version", 6)
-                put("monosaiBridge", buildJsonObject {
-                    put("version", identity.version); put("contract", identity.contract)
-                })
-            }
+            AllowedReads.PERMISSION -> wire.encodeToJsonElement(PermissionResult(
+                permission = "granted", requireApiKey = false, version = 6,
+                monosaiBridge = BridgeAnnouncement(identity.version, identity.contract),
+            ))
             AllowedReads.DECKS -> strings(reads.deckNames())
             AllowedReads.MODELS -> strings(reads.modelNames())
             AllowedReads.FIELDS -> strings(reads.modelFieldNames(params.text("modelName")))
             AllowedReads.FIND_CARDS -> JsonArray(reads.findCards(params.text("query")).map(::JsonPrimitive))
-            AllowedReads.CARDS -> JsonArray(reads.cardsInfo(params.ids("cards")).map { card -> buildJsonObject {
-                put("cardId", card.cardId); put("note", card.note); put("reps", card.reps)
-                put("lapses", card.lapses); put("factor", card.factor); put("queue", card.queue)
-                // Each optional signal is written only when this AnkiDroid and this
-                // card actually carried it, so an absent key never reads as a zero.
-                card.interval?.let { put("interval", it) }
-                card.cardType?.let { put("cardType", it) }
-                card.fsrsDifficulty?.let { put("fsrsDifficulty", it) }
-                card.lastReviewedAt?.let { put("lastReviewedAt", it) }
-                put("deckName", card.deckName)
-                card.originalDeckName?.let { put("originalDeckName", it) }
-            } })
-            AllowedReads.NOTES -> JsonArray(reads.notesInfo(params.ids("notes")).map { note -> buildJsonObject {
-                put("noteId", note.noteId); put("modelName", note.modelName)
-                put("fields", buildJsonObject {
-                    note.fields.entries.forEachIndexed { order, (name, value) ->
-                        put(name, buildJsonObject { put("value", value); put("order", order) })
-                    }
-                })
-            } })
+            AllowedReads.CARDS -> wire.encodeToJsonElement(reads.cardsInfo(params.ids("cards")).map(::CardResult))
+            AllowedReads.NOTES -> wire.encodeToJsonElement(reads.notesInfo(params.ids("notes")).map(::NoteResult))
         }
     }
     private fun strings(values: List<String>) = JsonArray(values.map(::JsonPrimitive))
