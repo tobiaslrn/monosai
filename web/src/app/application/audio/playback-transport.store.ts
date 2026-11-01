@@ -193,6 +193,20 @@ export class PlaybackTransportStore {
     this.mediaSession.clear();
   }
 
+  /**
+   * Hands a finished reading back to the idle state, keeping the cursor.
+   *
+   * Unlike `reset`, the position stays, so the learner who moves the track after
+   * the end is aiming a new start rather than still being told it finished.
+   */
+  release(): void {
+    this.single = false;
+    this.pendingSignal.set(null);
+    this.statusSignal.set('idle');
+    this.mediaSession.setPlaybackState('none');
+    this.mediaSession.clear();
+  }
+
   /** Moves the cursor. */
   moveTo(sentenceId: SentenceId): void {
     this.currentSignal.set(sentenceId);

@@ -32,7 +32,7 @@ export class PlaybackNavigator {
   private readonly sequencer = inject(ClipSequencer);
 
   /**
-   * Starts at the first sentence that has a clip.
+   * Starts at the sentence the track was aimed at, else the first that has a clip.
    *
    * Not strictly the first sentence: a run that failed or is still filling in
    * can leave sentence one missing while the rest of the reading is ready, and
@@ -40,7 +40,9 @@ export class PlaybackNavigator {
    * unreachable from the transport.
    */
   play(): Promise<void> {
-    const first = this.clips.firstAvailable();
+    // An idle session with a cursor is one the learner aimed with the track.
+    const aimed = this.transport.status() === 'idle' ? this.transport.currentSentenceId() : null;
+    const first = aimed ?? this.clips.firstAvailable();
     return first === undefined ? Promise.resolve() : this.startAt(first);
   }
 
@@ -110,6 +112,14 @@ export class PlaybackNavigator {
       return;
     }
     const target = targetRef.id;
+    if (this.transport.status() === 'ended') {
+      // A finished reading has nothing left to jump inside: aiming it is the
+      // same as aiming one that was never played.
+      this.transport.release();
+      this.transport.countNavigation();
+      this.transport.moveTo(target);
+      return;
+    }
     if (this.transport.isActive()) {
       const time = this.sequencer.timeOf(index);
       if (time !== null) {

@@ -289,7 +289,7 @@ import { ReadingTrackComponent } from './reading-track.component';
       color: var(--action-primary);
     }
 
-    .tone-danger {
+    button.slot.tone-danger {
       color: var(--status-danger);
     }
 
