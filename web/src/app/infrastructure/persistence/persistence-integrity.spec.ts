@@ -3,10 +3,10 @@ import Dexie from 'dexie';
 import { fixedClock } from '../../domain/shared/clock';
 import { createTestDatabase, destroyTestDatabase } from '../../../testing/test-database';
 import { importedReadingFixture, snapshotFixture } from '../../../testing/persistence-fixtures';
-import { resetMayRecover } from '../../domain/storage/storage-error';
+import { StorageFailure, resetMayRecover } from '../../domain/storage/storage-error';
 import { CURRENT_SCHEMA_VERSION, guardUpgrade, SCHEMA_VERSIONS } from './migrations';
 import { mapStorageFailure } from './storage-error-mapper';
-import { MonosaiDatabase } from './monosai-db';
+import { MonosaiDatabase, assertStoredSchemaNotNewer } from './monosai-db';
 import {
   BrowserStorageMaintenance,
   resolveMaintenanceDependencies,
@@ -150,6 +150,314 @@ describe('database schema', () => {
       expect(await legacy.table('settings').get('app')).toEqual(row);
     } finally {
       legacy.close();
+      await Dexie.delete(name);
+    }
+  });
+
+  describe('a database from a newer build', () => {
+    const newerNative = CURRENT_SCHEMA_VERSION * 10 + 10;
+
+    /** Reads the native version, stores and one store's rows, as the browser holds them. */
+    async function nativeState(
+      name: string,
+    ): Promise<{ version: number; stores: string[]; rows: unknown[] }> {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(name);
+        request.onerror = () => {
+          reject(new Error('could not read the database'));
+        };
+        request.onsuccess = () => {
+          const db = request.result;
+          const stores = Array.from(db.objectStoreNames).sort();
+          const finish = (rows: unknown[]) => {
+            const state = { version: db.version, stores, rows };
+            db.close();
+            resolve(state);
+          };
+          if (!stores.includes('futureStore')) {
+            finish([]);
+            return;
+          }
+          const read = db.transaction('futureStore').objectStore('futureStore').getAll();
+          read.onsuccess = () => {
+            finish(read.result as unknown[]);
+          };
+        };
+      });
+    }
+
+    /** Leaves a database as a newer build would: a higher version, a new store, no `readings`. */
+    async function seedNewer(name: string, removeReadings = true): Promise<void> {
+      const current = new MonosaiDatabase(name);
+      await current.open();
+      current.close();
+      await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open(name, newerNative);
+        request.onupgradeneeded = () => {
+          request.result.createObjectStore('futureStore', { keyPath: 'id' }).put({ id: 'a' });
+          if (removeReadings) {
+            request.result.deleteObjectStore('readings');
+          }
+        };
+        request.onerror = () => {
+          reject(new Error('could not seed'));
+        };
+        request.onsuccess = () => {
+          request.result.close();
+          resolve();
+        };
+      });
+    }
+
+    function failureOf(attempt: Promise<unknown>): Promise<unknown> {
+      return attempt.then(
+        () => null,
+        (failure: unknown) => failure,
+      );
+    }
+
+    it('is refused before it is opened, and the browser is left as it was', async () => {
+      const name = `monosai-newer-${Date.now()}`;
+      try {
+        await seedNewer(name);
+        const before = await nativeState(name);
+
+        const thrown = await failureOf(assertStoredSchemaNotNewer(name));
+        expect(thrown).toBeInstanceOf(StorageFailure);
+        const failure = (thrown as StorageFailure).storageError;
+        expect(failure.code).toBe('newer-version');
+        expect(resetMayRecover(failure)).toBe(true);
+
+        const after = await nativeState(name);
+        expect(after).toEqual(before);
+        expect(after).toMatchObject({ version: newerNative, rows: [{ id: 'a' }] });
+        expect(after.stores).not.toContain('readings');
+      } finally {
+        await Dexie.delete(name);
+      }
+    });
+
+    it('is refused when Dexie opens it anyway', async () => {
+      const name = `monosai-newer-open-${Date.now()}`;
+      try {
+        await seedNewer(name, false);
+        const before = await nativeState(name);
+
+        const db = new MonosaiDatabase(name);
+        const thrown = await failureOf(db.open());
+
+        expect((thrown as StorageFailure).storageError.code).toBe('newer-version');
+        expect(db.isOpen()).toBe(false);
+        expect(await nativeState(name)).toEqual(before);
+      } finally {
+        await Dexie.delete(name);
+      }
+    });
+
+    it('accepts the native version Dexie uses when it patches a schema, and refuses a whole version above', async () => {
+      const name = `monosai-patched-${Date.now()}`;
+      const patched = CURRENT_SCHEMA_VERSION * 10 + 1;
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const request = indexedDB.open(name, patched);
+          request.onerror = () => {
+            reject(new Error('could not seed'));
+          };
+          request.onsuccess = () => {
+            request.result.close();
+            resolve();
+          };
+        });
+        await assertStoredSchemaNotNewer(name);
+        await Dexie.delete(name);
+
+        await new Promise<void>((resolve, reject) => {
+          const request = indexedDB.open(name, newerNative);
+          request.onerror = () => {
+            reject(new Error('could not seed'));
+          };
+          request.onsuccess = () => {
+            request.result.close();
+            resolve();
+          };
+        });
+        expect(await failureOf(assertStoredSchemaNotNewer(name))).toBeInstanceOf(StorageFailure);
+      } finally {
+        await Dexie.delete(name);
+      }
+    });
+
+    it('creates nothing on a fresh profile and does not block a later open', async () => {
+      const name = `monosai-absent-${Date.now()}`;
+
+      await assertStoredSchemaNotNewer(name);
+
+      expect(await Dexie.exists(name)).toBe(false);
+      const created = new MonosaiDatabase(name);
+      try {
+        await created.open();
+        expect(created.verno).toBe(CURRENT_SCHEMA_VERSION);
+      } finally {
+        created.close();
+        await Dexie.delete(name);
+      }
+    });
+
+    it('accepts a database at the current version', async () => {
+      const name = `monosai-current-${Date.now()}`;
+      const current = new MonosaiDatabase(name);
+
+      try {
+        await current.open();
+        current.close();
+        await assertStoredSchemaNotNewer(name);
+      } finally {
+        current.close();
+        await Dexie.delete(name);
+      }
+    });
+
+    /** Makes every native open fail the way the browser reports a given error. */
+    function failOpens(errorName: string): { calls: () => number; restore: () => void } {
+      let calls = 0;
+      const spy = vi.spyOn(indexedDB, 'open').mockImplementation(() => {
+        calls += 1;
+        const request: { error?: DOMException; onerror?: (event: Event) => void } = {};
+        queueMicrotask(() => {
+          request.error = Object.assign(new Error('failed'), {
+            name: errorName,
+          }) as unknown as DOMException;
+          request.onerror?.(new Event('error'));
+        });
+        return request as unknown as IDBOpenDBRequest;
+      });
+      return {
+        calls: () => calls,
+        restore: () => {
+          spy.mockRestore();
+        },
+      };
+    }
+
+    it('retries a transient browser error the way Dexie does, then reports it', async () => {
+      const opens = failOpens('UnknownError');
+
+      const thrown = await failureOf(assertStoredSchemaNotNewer(`monosai-flaky-${Date.now()}`));
+      opens.restore();
+
+      expect(opens.calls()).toBe(4);
+      expect((thrown as StorageFailure).storageError.code).toBe('unavailable');
+    });
+
+    it('reports a full disk as full rather than passing or calling it unavailable', async () => {
+      const opens = failOpens('QuotaExceededError');
+
+      const thrown = await failureOf(assertStoredSchemaNotNewer(`monosai-full-${Date.now()}`));
+      opens.restore();
+
+      expect(opens.calls()).toBe(1);
+      expect((thrown as StorageFailure).storageError.code).toBe('quota');
+    });
+
+    it('can recreate a missing store, empty, when the upgrade lands after the probe', async () => {
+      const name = `monosai-late-${Date.now()}`;
+      try {
+        await seedNewer(name);
+        const db = new MonosaiDatabase(name);
+
+        const thrown = await failureOf(db.open());
+        const after = await nativeState(name);
+
+        expect((thrown as StorageFailure).storageError.code).toBe('newer-version');
+        expect(db.isOpen()).toBe(false);
+        expect(after.version).toBe(newerNative + 1);
+        expect(after.stores).toContain('readings');
+        expect(after.rows).toEqual([{ id: 'a' }]);
+      } finally {
+        await Dexie.delete(name);
+      }
+    });
+
+    it('stays closed when another connection upgrades it, instead of reopening and writing', async () => {
+      const name = `monosai-superseded-${Date.now()}`;
+      const running = new MonosaiDatabase(name);
+      try {
+        await running.open();
+        const superseded = vi.fn();
+        running.onLoss(superseded);
+
+        await seedNewer(name);
+        const before = await nativeState(name);
+
+        expect(superseded).toHaveBeenCalledExactlyOnceWith('another-tab');
+        const thrown = await failureOf(
+          running.table('settings').put({ key: 'app', v: 1, value: {} }),
+        );
+        expect(thrown).toMatchObject({ name: 'DatabaseClosedError' });
+        expect(running.isOpen()).toBe(false);
+        expect(await nativeState(name)).toEqual(before);
+        expect(before.version).toBe(newerNative);
+        expect(before.stores).not.toContain('readings');
+      } finally {
+        running.close();
+        await Dexie.delete(name);
+      }
+    });
+  });
+
+  it('reports a connection the browser closed', async () => {
+    const name = `monosai-closed-${Date.now()}`;
+    const running = new MonosaiDatabase(name);
+    // The browser's forced close is an event on the connection; capture the listener to fire it.
+    const closeListeners: (() => void)[] = [];
+    const sample = await new Promise<IDBDatabase>((resolve) => {
+      const request = indexedDB.open(`${name}-probe`);
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+    });
+    sample.close();
+    const connection = Object.getPrototypeOf(sample) as {
+      addEventListener: (type: string, listener: () => void) => void;
+    };
+    const original = connection.addEventListener;
+    connection.addEventListener = function (type: string, listener: () => void) {
+      if (type === 'close') {
+        closeListeners.push(listener);
+      }
+      original.call(this, type, listener);
+    };
+    try {
+      await running.open();
+      const lost = vi.fn();
+      running.onLoss(lost);
+
+      closeListeners.forEach((listener) => {
+        listener();
+      });
+
+      expect(lost).toHaveBeenCalledExactlyOnceWith('connection-closed');
+    } finally {
+      connection.addEventListener = original;
+      running.close();
+      await Dexie.delete(name);
+      await Dexie.delete(`${name}-probe`);
+    }
+  });
+
+  it('does not report a connection this instance closed itself', async () => {
+    const name = `monosai-own-close-${Date.now()}`;
+    const running = new MonosaiDatabase(name);
+    try {
+      await running.open();
+      const lost = vi.fn();
+      running.onLoss(lost);
+
+      running.close();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect(lost).not.toHaveBeenCalled();
+    } finally {
       await Dexie.delete(name);
     }
   });

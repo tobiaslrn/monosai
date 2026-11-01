@@ -17,7 +17,8 @@ import { AlphaNoticeService } from './alpha-notice.service';
  * The shell draws no bar of its own: every page's top bar is its
  * `mn-page-header`, and the reader keeps its own. Banners and the first-use
  * Help guide belong to non-reader surfaces; the alpha disclosure is a startup
- * release notice and may cover any route once.
+ * release notice and may cover any route once. The one other exception is the notice that this
+ * tab lost its database: a reader that cannot save must say so.
  */
 @Component({
   selector: 'mn-app-shell',
@@ -27,7 +28,9 @@ import { AlphaNoticeService } from './alpha-notice.service';
   template: `
     <a class="mn-skip-link" href="#mn-main">Skip to main content</a>
 
-    @if (!isReaderRoute()) {
+    @if (isReaderRoute()) {
+      <mn-app-update-banner [supersededOnly]="true" />
+    } @else {
       <mn-app-update-banner />
       <mn-vocabulary-sync-banner />
       @if (intro.visible()) {

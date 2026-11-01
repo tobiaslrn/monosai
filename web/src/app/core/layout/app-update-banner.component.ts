@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Dialog } from '@angular/cdk/dialog';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
+import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 
 /**
  * A non-modal update notice.
@@ -14,9 +16,29 @@ import { AppUpdateStore } from '../../application/pwa/app-update.store';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let status = store.status();
-    @if (status.kind === 'available' || status.kind === 'activating' || status.kind === 'failed') {
-      <div class="banner" role="status" aria-live="polite">
+    @if (
+      status.kind === 'superseded' ||
+      (!supersededOnly() &&
+        (status.kind === 'available' || status.kind === 'activating' || status.kind === 'failed'))
+    ) {
+      <div
+        class="banner"
+        [attr.role]="status.kind === 'superseded' ? 'alert' : 'status'"
+        [attr.aria-live]="status.kind === 'superseded' ? null : 'polite'"
+      >
         @switch (status.kind) {
+          @case ('superseded') {
+            <p>{{ status.message }}</p>
+            <div class="mn-actions">
+              <button
+                type="button"
+                class="mn-button mn-button--primary"
+                (click)="reloadSuperseded()"
+              >
+                Reload
+              </button>
+            </div>
+          }
           @case ('available') {
             <p>A new version of Monosai has downloaded.</p>
             @if (store.isBusy()) {
@@ -79,6 +101,32 @@ import { AppUpdateStore } from '../../application/pwa/app-update.store';
 })
 export class AppUpdateBannerComponent {
   protected readonly store = inject(AppUpdateStore);
+  private readonly dialog = inject(Dialog);
+
+  /** The reader carries no application chrome, so it shows only a lost database. */
+  readonly supersededOnly = input(false);
+
+  /**
+   * Saving can never succeed in this tab, so busy work is not worth waiting for; the learner is
+   * told what a reload discards and decides.
+   */
+  protected async reloadSuperseded(): Promise<void> {
+    const work = this.store.busyReason();
+    if (work !== null) {
+      const confirmed = await openConfirmDialog(this.dialog, {
+        title: 'Reload and lose unsaved work?',
+        message: 'This tab can no longer save, so reloading discards:',
+        details: [work.charAt(0).toUpperCase() + work.slice(1)],
+        confirmLabel: 'Reload',
+        cancelLabel: 'Stay here',
+        tone: 'danger',
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+    this.store.reloadSuperseded();
+  }
 
   protected activate(): void {
     void this.store.activate();

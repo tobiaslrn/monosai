@@ -13,6 +13,25 @@ is the problem (a failed migration or a corrupt record), that screen also lets t
 copy of the data, without the API key and audio and not loadable back into Monosai, and delete all
 local data after a confirmation that names what is removed.
 
+Before the database opens, startup reads its stored version with a native open that creates
+nothing, and checks the version again once Dexie has opened it. A whole schema version above the
+one this build ships is a database from a newer build: Dexie would open it and could write to it
+or upgrade it, so startup stops there with the same recovery screen. Its primary action is Reload,
+which checks for and activates a newer build before reloading, because trying again in the same
+page cannot succeed; saving a copy and deleting everything stay as they are. The database never
+reopens by itself. When another tab upgrades or deletes it while this one is running, or the browser
+closes the connection, this tab stops using it and shows a notice with a Reload action that no
+update check, update event or dismissal replaces; only a reload ends it. The notice also shows on
+the reader, as the one piece of chrome it carries. Saving can no longer succeed there, so Reload
+does not wait for busy work: it asks first, naming what is unsaved, and never reloads by itself.
+An in-memory generated story that is not yet saved is lost by that reload; there is no separate
+way to copy it out.
+
+The version probe narrows the window rather than closing it. If another tab's upgrade lands
+between the probe and Dexie's open, and a store the newer build removed is missing, Dexie raises
+the version by one and recreates that store empty. No rows are deleted, and the check after the
+open then refuses the database.
+
 ```mermaid
 sequenceDiagram
     participant Boot as Initializer

@@ -1,11 +1,15 @@
 import { inject } from '@angular/core';
+import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { CredentialStore } from '../../application/settings/credential.store';
 import { GenerationSettingsStore } from '../../application/settings/generation-settings.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import { StorageFailure } from '../../domain/storage/storage-error';
-import { MonosaiDatabase } from '../../infrastructure/persistence/monosai-db';
+import {
+  MonosaiDatabase,
+  assertStoredSchemaNotNewer,
+} from '../../infrastructure/persistence/monosai-db';
 import { mapStorageFailure } from '../../infrastructure/persistence/storage-error-mapper';
 import { INITIALIZATION_STEP, type InitializationStep } from './initialization-step';
 
@@ -24,14 +28,26 @@ export function provideInitializationSteps() {
       const generationSettings = inject(GenerationSettingsStore);
       const textModel = inject(TextModelStore);
       const tts = inject(TtsStore);
+      const updates = inject(AppUpdateStore);
+      let watching = false;
 
       return [
         {
           name: 'database',
           run: async () => {
+            await assertStoredSchemaNotNewer(database.name);
             try {
               await database.open();
+              if (!watching) {
+                watching = true;
+                database.onLoss((cause) => {
+                  updates.reportDatabaseLost(cause);
+                });
+              }
             } catch (thrown) {
+              if (thrown instanceof StorageFailure) {
+                throw thrown;
+              }
               throw new StorageFailure(mapStorageFailure(thrown, 'database.open'));
             }
           },

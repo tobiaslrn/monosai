@@ -59,6 +59,12 @@ this decision was about — that the frame carries no navigation and each page
 states its own way back — is unchanged, and one route replacing two is one
 destination fewer.)*
 
+*(Exception: when a tab loses its connection to the database, because another tab
+upgraded or deleted it or the browser closed the connection, the reader shows that
+one notice with a Reload action. Nothing can be saved from that tab any more, and a
+reader that stays silent about it would let a learner keep working into the void.
+No other banner appears on the reader.)*
+
 Adding a story is one **New story** button that opens a chooser with **Paste
 text** and **Write with AI**. Generating becomes structurally a branch of adding
 rather than a destination competing with reading. *(The button was called New

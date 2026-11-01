@@ -331,7 +331,8 @@ successful startup and waits for a completed route before offering the alpha
 disclosure, while Help still waits for a completed non-reader route. Each page owns its single top bar,
 `mn-page-header` from `shared-ui/`; the Library projects the utility navigation
 into its own. Reader routes show neither banners nor the introduction and keep
-the reader's own bar. `features/help/` is a lazy static guide: a hub at `/help`
+the reader's own bar, with one exception: the notice that this tab lost its database
+(ADR 0025's amendment), because a reader that cannot save must say so. `features/help/` is a lazy static guide: a hub at `/help`
 and one lazily loaded page per topic below it, all declared once in
 `help-topics.ts` and framed by `help-article.component.ts`. Nothing in it reaches
 a provider. The Library opts its shared page header into the small alpha marker

@@ -3,6 +3,7 @@ import { signal } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { StorageStore } from '../../application/settings/storage.store';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { fixedClock } from '../../domain/shared/clock';
@@ -22,6 +23,7 @@ describe('StartupFailureComponent', () => {
     resetAllData: vi.fn<() => Promise<boolean>>(),
   };
   const dialog = { open: vi.fn() };
+  const updates = { reloadIntoLatest: vi.fn<() => Promise<void>>() };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,6 +32,7 @@ describe('StartupFailureComponent', () => {
       providers: [
         { provide: StorageStore, useValue: storage },
         { provide: Dialog, useValue: dialog },
+        { provide: AppUpdateStore, useValue: updates },
         { provide: CLOCK, useValue: fixedClock(Date.UTC(2026, 9, 31)) },
       ],
     });
@@ -39,10 +42,13 @@ describe('StartupFailureComponent', () => {
     vi.restoreAllMocks();
   });
 
-  function render(resetMayHelp: boolean): ComponentFixture<StartupFailureComponent> {
+  function render(
+    resetMayHelp: boolean,
+    code: 'migration-failed' | 'newer-version' = 'migration-failed',
+  ): ComponentFixture<StartupFailureComponent> {
     const fixture = TestBed.createComponent(StartupFailureComponent);
     fixture.componentRef.setInput('failure', {
-      error: storageError('migration-failed', 'The stored database could not be upgraded.'),
+      error: storageError(code, 'The stored database could not be upgraded.'),
       resetMayHelp,
     });
     fixture.detectChanges();
@@ -82,6 +88,38 @@ describe('StartupFailureComponent', () => {
       'Save a copy of my data',
       'Delete all Monosai data',
     ]);
+  });
+
+  it('reloads into the newest build, rather than retrying in place, for a newer database', () => {
+    const fixture = render(true, 'newer-version');
+
+    expect(labels(fixture)).toEqual([
+      'Reload',
+      'Save a copy of my data',
+      'Delete all Monosai data',
+    ]);
+    press(fixture, 'Reload');
+    expect(updates.reloadIntoLatest).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows that a reload is under way and cannot be pressed twice', async () => {
+    let finish!: () => void;
+    updates.reloadIntoLatest.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const fixture = render(true, 'newer-version');
+
+    press(fixture, 'Reload');
+    fixture.detectChanges();
+
+    expect(labels(fixture)[0]).toBe('Reloading…');
+    expect(element(fixture).querySelector('button')?.disabled).toBe(true);
+    finish();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(labels(fixture)[0]).toBe('Reload');
   });
 
   it('deletes nothing unless the confirmation is accepted, and names what goes', async () => {

@@ -1,7 +1,9 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Subject } from 'rxjs';
-import { describe, expect, it } from 'vitest';
+import { Subject, of } from 'rxjs';
+import { describe, expect, it, vi } from 'vitest';
+import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AppBusyRegistry } from '../../application/shared/app-busy.registry';
 import {
   APP_RELOAD,
@@ -25,18 +27,28 @@ class FakeChecker implements AppUpdateChecker {
   }
 }
 
-function render() {
+function render(confirmed = true) {
   const checker = new FakeChecker();
+  const reload = vi.fn();
+  const dialogOpen = vi.fn(() => ({ closed: of(confirmed) }));
   TestBed.configureTestingModule({
     providers: [
       { provide: APP_UPDATE_CHECKER, useValue: checker },
-      { provide: APP_RELOAD, useValue: () => undefined },
+      { provide: APP_RELOAD, useValue: reload },
+      { provide: Dialog, useValue: { open: dialogOpen } },
     ],
   });
   const busy = TestBed.inject(AppBusyRegistry);
   const fixture = TestBed.createComponent(AppUpdateBannerComponent);
   fixture.detectChanges();
-  return { fixture, checker, busy, element: fixture.nativeElement as HTMLElement };
+  return {
+    fixture,
+    checker,
+    busy,
+    reload,
+    dialogOpen,
+    element: fixture.nativeElement as HTMLElement,
+  };
 }
 
 describe('AppUpdateBannerComponent', () => {
@@ -86,5 +98,84 @@ describe('AppUpdateBannerComponent', () => {
     const buttons = [...element.querySelectorAll('button')];
     const reloadButton = buttons.find((el) => el.textContent.includes('Reload to recover'));
     expect(reloadButton).toBeDefined();
+  });
+
+  describe('when this tab lost its database', () => {
+    function lose(view: ReturnType<typeof render>) {
+      TestBed.inject(AppUpdateStore).reportDatabaseLost('another-tab');
+      view.fixture.detectChanges();
+    }
+
+    function reloadButton(element: HTMLElement): HTMLButtonElement {
+      const button = [...element.querySelectorAll('button')].find(
+        (candidate) => candidate.textContent.trim() === 'Reload',
+      );
+      if (button === undefined) {
+        throw new Error('no Reload button');
+      }
+      return button;
+    }
+
+    it('says so as an alert and reloads at once when nothing is unsaved', () => {
+      const view = render();
+      lose(view);
+
+      expect(view.element.querySelector('.banner')?.getAttribute('role')).toBe('alert');
+      expect(view.element.textContent).toContain('can no longer save');
+      reloadButton(view.element).click();
+
+      expect(view.dialogOpen).not.toHaveBeenCalled();
+      expect(view.reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not claim to wait for work, and asks before discarding unsaved work', async () => {
+      const view = render(false);
+      view.busy.track('import-draft', signal('an import draft is unsaved'));
+      lose(view);
+
+      expect(view.element.textContent).not.toContain('Waiting for current work');
+      expect(reloadButton(view.element).disabled).toBe(false);
+      reloadButton(view.element).click();
+      await view.fixture.whenStable();
+
+      expect(view.dialogOpen).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(view.dialogOpen.mock.calls)).toContain('An import draft is unsaved');
+      expect(view.reload).not.toHaveBeenCalled();
+    });
+
+    it('reloads once the learner confirms discarding the work', async () => {
+      const view = render(true);
+      view.busy.track('import-draft', signal('an import draft is unsaved'));
+      lose(view);
+
+      reloadButton(view.element).click();
+      await view.fixture.whenStable();
+
+      expect(view.reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays after an update is announced', () => {
+      const view = render();
+      lose(view);
+
+      view.checker.events.next({ kind: 'ready' });
+      view.fixture.detectChanges();
+
+      expect(view.element.textContent).toContain('can no longer save');
+      expect(view.element.textContent).not.toContain('has downloaded');
+    });
+  });
+
+  it('shows only a lost database where the surface carries no chrome', () => {
+    const view = render();
+    view.fixture.componentRef.setInput('supersededOnly', true);
+    view.checker.events.next({ kind: 'ready' });
+    view.fixture.detectChanges();
+    expect(view.element.querySelector('.banner')).toBeNull();
+
+    TestBed.inject(AppUpdateStore).reportDatabaseLost('another-tab');
+    view.fixture.detectChanges();
+
+    expect(view.element.textContent).toContain('can no longer save');
   });
 });

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import { importReading, SAMPLE_TEXT } from './reading';
 
@@ -93,5 +93,93 @@ test.describe('Add text semantics', () => {
     // The counter waits until the text is near its limit.
     await expect(page.getByText('of 50,000 characters')).toHaveCount(0);
     await expectNoSeriousAccessibilityViolations(page);
+  });
+});
+
+/** Another tab, or a newer build, takes the database from a tab that is still open. */
+test.describe('a tab that lost its database', () => {
+  async function upgradeFromAnotherTab(page: Page): Promise<void> {
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          const current = indexedDB.open('monosai');
+          current.onerror = () => {
+            reject(new Error('could not read the version'));
+          };
+          current.onsuccess = () => {
+            const version = current.result.version + 10;
+            current.result.close();
+            const request = indexedDB.open('monosai', version);
+            request.onupgradeneeded = () => {
+              request.result.createObjectStore('futureStore', { keyPath: 'id' });
+            };
+            request.onerror = () => {
+              reject(new Error('could not upgrade'));
+            };
+            request.onsuccess = () => {
+              request.result.close();
+              resolve();
+            };
+          };
+        }),
+    );
+  }
+
+  test('the reader says it can no longer save, and keeps saying it when the tab is revisited @smoke @mobile', async ({
+    context,
+  }) => {
+    const first = await context.newPage();
+    await importReading(first, SAMPLE_TEXT, 'Lost database reading');
+    const second = await context.newPage();
+    await second.goto('./#/library');
+
+    await upgradeFromAnotherTab(second);
+
+    const notice = first.getByRole('alert').filter({ hasText: 'can no longer save' });
+    await expect(notice).toBeVisible();
+    await expect(first.locator('mn-reader-paragraph').first()).toBeVisible();
+    await first.evaluate(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    // eslint-disable-next-line no-restricted-syntax -- an absence only shows over elapsed time
+    await first.waitForTimeout(500);
+    await expect(notice).toBeVisible();
+    await expect(notice.getByRole('button', { name: 'Reload' })).toBeEnabled();
+  });
+
+  test('reload asks before discarding an unsaved draft, and nothing reloads on its own @smoke', async ({
+    context,
+  }) => {
+    const first = await context.newPage();
+    await first.goto('./#/add');
+    await first.getByLabel('Japanese text').fill(SAMPLE_TEXT);
+    const second = await context.newPage();
+    await second.goto('./#/library');
+
+    await upgradeFromAnotherTab(second);
+
+    const notice = first.getByRole('alert').filter({ hasText: 'can no longer save' });
+    await expect(notice).toBeVisible();
+    await expect(notice).not.toContainText('Waiting for current work');
+    await expect(first.getByLabel('Japanese text')).toHaveValue(SAMPLE_TEXT);
+
+    await notice.getByRole('button', { name: 'Reload' }).click();
+    const confirm = first.getByRole('alertdialog', { name: 'Reload and lose unsaved work?' });
+    await expect(confirm).toContainText('An import draft is unsaved');
+    await confirm.getByRole('button', { name: 'Stay here' }).click();
+    await expect(confirm).toHaveCount(0);
+    await expect(first.getByLabel('Japanese text')).toHaveValue(SAMPLE_TEXT);
+
+    await first.evaluate(() => {
+      (window as unknown as { loadedBefore: boolean }).loadedBefore = true;
+    });
+    await notice.getByRole('button', { name: 'Reload' }).click();
+    await confirm.getByRole('button', { name: 'Reload' }).click();
+    await expect
+      .poll(
+        () => first.evaluate(() => (window as unknown as { loadedBefore?: boolean }).loadedBefore),
+        { timeout: 15_000 },
+      )
+      .toBeUndefined();
   });
 });

@@ -359,6 +359,12 @@ export const ERROR_CODE_GROUPS: readonly ErrorCodeGroup[] = [
         fix: 'Report it with the copied diagnostics. Exporting your Anki words as a package file keeps them safe. Deleting everything under Storage in Settings is the last resort, and it cannot be undone.',
       },
       {
+        code: 'storage/newer-version',
+        cause:
+          'The saved data was written by a newer version of Monosai than the one running, for example after another tab updated. This version leaves it untouched.',
+        fix: 'Reload to load the newer version. Saving a copy of your data is safe. Deleting everything is the last resort, and it cannot be undone.',
+      },
+      {
         code: 'storage/not-found',
         cause:
           'The app tried to read a record that no longer exists, because it was already deleted.',

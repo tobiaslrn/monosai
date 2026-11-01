@@ -202,6 +202,111 @@ describe('AppUpdateStore', () => {
     expect(reloadCalls).toBe(0);
   });
 
+  it('activates a downloaded update when reloading into the latest build', async () => {
+    checker.check = () => {
+      checker.events.next({ kind: 'ready' });
+      return Promise.resolve(ok(undefined));
+    };
+    const instance = store();
+
+    await instance.reloadIntoLatest();
+
+    expect(checker.activateCalls).toBe(1);
+    expect(reloadCalls).toBe(1);
+  });
+
+  it('just reloads when there is no update to activate', async () => {
+    await store().reloadIntoLatest();
+
+    expect(checker.activateCalls).toBe(0);
+    expect(reloadCalls).toBe(1);
+  });
+
+  it('offers a reload, without performing one, when another tab took the database', () => {
+    const instance = store();
+
+    instance.reportDatabaseLost('another-tab');
+
+    expect(instance.status()).toMatchObject({
+      kind: 'superseded',
+      message: expect.stringContaining('another tab') as unknown,
+    });
+    expect(reloadCalls).toBe(0);
+  });
+
+  it('does not blame another tab when the browser closed the connection', () => {
+    const instance = store();
+
+    instance.reportDatabaseLost('connection-closed');
+
+    const status = instance.status();
+    expect(status.kind).toBe('superseded');
+    expect(status.kind === 'superseded' && status.message).not.toContain('another tab');
+  });
+
+  describe('once the database is lost', () => {
+    function superseded(): AppUpdateStore {
+      const instance = store();
+      instance.reportDatabaseLost('another-tab');
+      return instance;
+    }
+
+    it('keeps the notice through a check that finds nothing, and one that fails', async () => {
+      const instance = superseded();
+
+      await instance.check();
+      checker.checkResult = err({ message: 'check failed' });
+      await instance.check();
+
+      expect(instance.status().kind).toBe('superseded');
+    });
+
+    it('keeps the notice when the worker reports current, ready or a failure', () => {
+      const instance = superseded();
+
+      checker.events.next({ kind: 'current' });
+      checker.events.next({ kind: 'ready' });
+      checker.events.next({ kind: 'installation-failed', reason: 'x' });
+      checker.events.next({ kind: 'unrecoverable', reason: 'y' });
+      checker.events.next({ kind: 'unsupported' });
+      instance.dismiss();
+
+      expect(instance.status().kind).toBe('superseded');
+      expect(instance.canActivate()).toBe(false);
+    });
+
+    it('reloads even while work is unsaved, because saving can no longer succeed', () => {
+      const instance = superseded();
+      busy.track('import-draft', signal('an import draft is unsaved'));
+
+      instance.reloadSuperseded();
+
+      expect(reloadCalls).toBe(1);
+    });
+
+    it('keeps the first cause', () => {
+      const instance = superseded();
+
+      instance.reportDatabaseLost('connection-closed');
+
+      expect(instance.status()).toMatchObject({
+        message: expect.stringContaining('another tab') as unknown,
+      });
+    });
+  });
+
+  it('reloads anyway when activating the downloaded version fails', async () => {
+    checker.activateResult = err({ message: 'activation failed' });
+    checker.check = () => {
+      checker.events.next({ kind: 'ready' });
+      return Promise.resolve(ok(undefined));
+    };
+
+    await store().reloadIntoLatest();
+
+    expect(reloadCalls).toBe(1);
+  });
+
   it('records a failure when a check fails', async () => {
     checker.checkResult = err({ message: 'check failed' });
     const instance = store();

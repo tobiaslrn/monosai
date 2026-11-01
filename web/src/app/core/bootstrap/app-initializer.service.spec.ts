@@ -80,6 +80,7 @@ describe('AppInitializerService', () => {
   it.each([
     ['migration-failed', true],
     ['corrupt-record', true],
+    ['newer-version', true],
     ['blocked', false],
     ['quota', false],
     ['unavailable', false],

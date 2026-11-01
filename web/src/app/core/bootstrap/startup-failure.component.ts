@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
+import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { StorageStore } from '../../application/settings/storage.store';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import type { Clock } from '../../domain/shared/clock';
@@ -35,14 +36,26 @@ const EXPORT_URL_LIFETIME_MS = 60_000;
       [dataStatus]="resetFailed() ? null : 'Your saved stories have not been changed.'"
     >
       <ng-container data-actions>
-        <button
-          type="button"
-          class="mn-button mn-button--primary"
-          [disabled]="storage.action() !== 'idle'"
-          (click)="tryAgain()"
-        >
-          Try again
-        </button>
+        @if (failure().error.code === 'newer-version') {
+          <button
+            type="button"
+            class="mn-button mn-button--primary"
+            [disabled]="reloading() || storage.action() !== 'idle'"
+            [attr.aria-busy]="reloading() ? 'true' : null"
+            (click)="reload()"
+          >
+            {{ reloading() ? 'Reloading…' : 'Reload' }}
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="mn-button mn-button--primary"
+            [disabled]="storage.action() !== 'idle'"
+            (click)="tryAgain()"
+          >
+            Try again
+          </button>
+        }
         @if (failure().resetMayHelp) {
           <button
             type="button"
@@ -86,6 +99,7 @@ export class StartupFailureComponent {
   private readonly dialog = inject(Dialog);
   private readonly clock = inject<Clock>(CLOCK);
   protected readonly storage = inject(StorageStore);
+  private readonly updates = inject(AppUpdateStore);
 
   readonly failure = input.required<BootstrapFailure>();
   readonly retry = output();
@@ -93,9 +107,22 @@ export class StartupFailureComponent {
   /** After a reset that reported failure, nothing can promise the stories are untouched. */
   protected readonly resetFailed = signal(false);
 
+  /** The reload waits for an update check, so the button says it is working. */
+  protected readonly reloading = signal(false);
+
   protected tryAgain(): void {
     this.storage.clearFailure();
     this.retry.emit();
+  }
+
+  /** Retrying in this page cannot get past a newer database; only a newer build can. */
+  protected async reload(): Promise<void> {
+    this.reloading.set(true);
+    try {
+      await this.updates.reloadIntoLatest();
+    } finally {
+      this.reloading.set(false);
+    }
   }
 
   protected async saveCopy(): Promise<void> {

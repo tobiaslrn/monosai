@@ -337,7 +337,7 @@ same alert panel, the same explanation shape, and the application's ordinary pri
 and secondary buttons — so a dead link never looks like a different product.
 
 Application chrome follows the same rule. The shell drops its banners and
-first-use Help offer only for the reader itself, which is decided by classifying the
+first-use Help offer only for the reader itself, except the notice that the tab lost its database, which is decided by classifying the
 URL's id rather than by matching the `/reader/` prefix: a segment that is not an
 id never reaches the reader, and that screen previously lost every way out of the
 application to the prefix match. Every other page wears the shared page frame and

@@ -7,6 +7,7 @@ export type StorageErrorCode =
   | 'transaction-aborted'
   | 'unavailable'
   | 'migration-failed'
+  | 'newer-version'
   | 'not-found'
   | 'conflict'
   | 'unknown';
@@ -32,12 +33,23 @@ export function isRetryable(error: StorageError): boolean {
   return RECOVERABLE_BY_RETRY.includes(error.code);
 }
 
-const RECOVERABLE_BY_RESET: readonly StorageErrorCode[] = ['migration-failed', 'corrupt-record'];
+const RECOVERABLE_BY_RESET: readonly StorageErrorCode[] = [
+  'migration-failed',
+  'corrupt-record',
+  'newer-version',
+];
 
-/** Whether the stored data itself is the problem, so deleting it can get past the failure. */
+/**
+ * Whether the stored data itself is the problem, so deleting it can get past the failure.
+ * For a database from a newer build, reloading into that build is the better remedy; the
+ * reset is only the explicit last resort for staying on this one.
+ */
 export function resetMayRecover(error: StorageError): boolean {
   return RECOVERABLE_BY_RESET.includes(error.code);
 }
+
+/** Why a tab's connection to the database ended without the tab closing it. */
+export type DatabaseLossCause = 'another-tab' | 'connection-closed';
 
 /** Carries a typed storage failure through a code path that reports by throwing. */
 export class StorageFailure extends Error {

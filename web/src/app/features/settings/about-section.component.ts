@@ -153,6 +153,7 @@ export class AboutSectionComponent {
       case 'activating':
         return 'Updating…';
       case 'failed':
+      case 'superseded':
         return status.message;
     }
   }

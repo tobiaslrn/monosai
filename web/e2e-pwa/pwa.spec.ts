@@ -476,3 +476,54 @@ test.describe('Android share target', () => {
     expect(await sharedInboxEntries(page)).toEqual([]);
   });
 });
+
+test.describe('a tab that lost its database, under a live worker', () => {
+  test('the notice survives the update checks that run when the tab is revisited', async ({
+    page,
+    context,
+  }) => {
+    await page.goto('./');
+    await waitForServiceWorkerControl(page);
+    await page.reload();
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+    await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+
+    const other = await context.newPage();
+    await other.goto('./#/library');
+    await other.evaluate(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          const current = indexedDB.open('monosai');
+          current.onerror = () => {
+            reject(new Error('could not read the version'));
+          };
+          current.onsuccess = () => {
+            const version = current.result.version + 10;
+            current.result.close();
+            const request = indexedDB.open('monosai', version);
+            request.onupgradeneeded = () => {
+              request.result.createObjectStore('futureStore', { keyPath: 'id' });
+            };
+            request.onerror = () => {
+              reject(new Error('could not upgrade'));
+            };
+            request.onsuccess = () => {
+              request.result.close();
+              resolve();
+            };
+          };
+        }),
+    );
+
+    const notice = page.getByRole('alert').filter({ hasText: 'can no longer save' });
+    await expect(notice).toBeVisible();
+    await page.evaluate(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    // The check reaches the live worker and answers that nothing is newer.
+    // eslint-disable-next-line no-restricted-syntax -- an absence only shows over elapsed time
+    await page.waitForTimeout(3000);
+    await expect(notice).toBeVisible();
+    await expect(page.getByText('You’re up to date.')).toHaveCount(0);
+  });
+});
