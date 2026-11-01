@@ -8,6 +8,7 @@
 
 .mn-settings-section__header {
   display: flex;
+  flex-wrap: wrap;
   min-width: 0;
   min-height: 1.75rem;
   gap: var(--space-2);
@@ -128,6 +129,7 @@
 
 .mn-settings-group__header {
   display: flex;
+  flex-wrap: wrap;
   min-width: 0;
   min-height: 2.75rem;
   gap: var(--space-2);

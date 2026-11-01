@@ -314,7 +314,7 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
 
     .steps {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.5rem), 1fr));
       gap: var(--space-2);
       margin: 0;
       padding: 0;
@@ -323,7 +323,8 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
 
     .steps li {
       display: flex;
-      gap: var(--space-2);
+      flex-wrap: wrap;
+      gap: var(--space-1) var(--space-2);
       align-items: center;
       min-width: 0;
       padding-top: var(--space-2);
@@ -331,6 +332,7 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
       color: var(--text-secondary);
       font-size: var(--text-sm);
       font-weight: var(--weight-semibold);
+      overflow-wrap: anywhere;
     }
 
     .steps li.is-done,

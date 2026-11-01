@@ -206,7 +206,6 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
     .head-status {
       flex: 0 1 auto;
       justify-content: flex-end;
-      flex-wrap: nowrap;
     }
     .branch {
       min-width: 0;

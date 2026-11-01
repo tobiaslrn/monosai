@@ -17,7 +17,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, IconComponent, WordmarkComponent],
   template: `
-    <header class="head">
+    <header class="head" [class.head--home]="home()">
       @if (backTo(); as target) {
         @if (stepsBack()) {
           <button
@@ -51,7 +51,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
           }
         </span>
       }
-      <div class="titles">
+      <div class="titles" [class.titles--home]="home()">
         @if (home()) {
           <h1 id="mn-page-title">
             <span class="mn-visually-hidden">{{ heading() }}</span>
@@ -84,6 +84,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
       z-index: 20;
       isolation: isolate;
       display: flex;
+      flex-wrap: wrap;
       gap: var(--space-2);
       align-items: center;
       min-width: 0;
@@ -153,8 +154,18 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
       white-space: nowrap;
     }
 
+    /* The title keeps room to read; at large text the trailing action drops to its own line. */
     .titles {
       flex: 1;
+      min-width: 5rem;
+    }
+
+    /* The home bar leads with a wordmark, not a title that needs room to read. */
+    .head--home {
+      flex-wrap: nowrap;
+    }
+
+    .titles--home {
       min-width: 0;
     }
 
@@ -178,7 +189,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
       flex: none;
       gap: var(--space-1);
       align-items: center;
-      margin-inline-end: calc(-1 * var(--space-2));
+      margin-inline: auto calc(-1 * var(--space-2));
     }
 
     .trailing:empty {
