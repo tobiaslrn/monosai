@@ -143,6 +143,24 @@ describe('StorageSectionComponent', () => {
     expect(playback.calls).toEqual([]);
   });
 
+  it('moves focus into the reset confirmation and back to the button on Cancel', async () => {
+    const fixture = TestBed.createComponent(StorageSectionComponent);
+    document.body.appendChild(fixture.nativeElement as HTMLElement);
+    await settle(fixture);
+    const element = fixture.nativeElement as HTMLElement;
+    const button = (id: string) =>
+      element.querySelector<HTMLButtonElement>(`[data-testid="${id}"]`);
+
+    button('begin-reset')?.click();
+    await settle(fixture);
+    expect(document.activeElement).toBe(button('cancel-reset'));
+
+    button('cancel-reset')?.click();
+    await settle(fixture);
+    expect(document.activeElement).toBe(button('begin-reset'));
+    (fixture.nativeElement as HTMLElement).remove();
+  });
+
   /**
    * Playback stops before the cache is reported empty. Telling the learner the
    * clips are gone while one of them is still audible is a report they can hear

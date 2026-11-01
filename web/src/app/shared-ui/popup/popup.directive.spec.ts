@@ -126,6 +126,22 @@ describe('PopupDirective', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it('closes when focus moves on to the page, but not to its own items or trigger', () => {
+    const { fixture, trigger, panel, byId } = render();
+    const leave = (to: HTMLElement | null) =>
+      panel.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: to }));
+    trigger.click();
+    fixture.detectChanges();
+
+    leave(byId('second'));
+    leave(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+
+    leave(byId('outside'));
+    fixture.detectChanges();
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('closes itself from code, which is how a chosen item puts it away', () => {
     const { fixture, trigger, panel } = render();
     trigger.click();

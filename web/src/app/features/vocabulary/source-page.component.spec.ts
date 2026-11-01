@@ -132,6 +132,23 @@ describe('SourcePageComponent', () => {
     expect(list.element.textContent).toContain('Your own words');
   });
 
+  it('returns focus to Edit list when the pasted-list editor is cancelled', async () => {
+    const { element, fixture } = await render(TEXT_LIST.id);
+    document.body.appendChild(element);
+    const edit = required(element, '[data-testid="edit-text-list"]');
+
+    edit.click();
+    await settle(fixture);
+    [...element.querySelectorAll<HTMLButtonElement>('mn-text-list-source button')]
+      .find((candidate) => candidate.textContent.includes('Cancel'))
+      ?.click();
+    await settle(fixture);
+
+    expect(element.querySelector('mn-text-list-source')).toBeNull();
+    expect(document.activeElement).toBe(edit);
+    element.remove();
+  });
+
   /** The whole point of separating them: this one may not touch the vocabulary. */
   it('leaves the vocabulary alone when automatic reading is turned off', async () => {
     const { element, fixture } = await render(anki.id);

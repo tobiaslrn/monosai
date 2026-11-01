@@ -469,6 +469,11 @@ export class AddWordsComponent {
     this.mode.set('closed');
   }
 
+  /** For a page that took over from the menu and is done: the control that asked comes back. */
+  focusToggle(): void {
+    this.toggleButton()?.nativeElement.focus();
+  }
+
   /** Cancel: nothing was chosen, so focus goes back to the control that opened it. */
   protected dismiss(): void {
     this.hideMenu();

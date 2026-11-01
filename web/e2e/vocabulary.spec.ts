@@ -126,6 +126,26 @@ test.describe('vocabulary', () => {
     ).toBeVisible();
   });
 
+  test('returns focus to Add words when the pasted-list editor closes @smoke', async ({ page }) => {
+    await openVocabulary(page);
+    const toggle = page.getByTestId('add-words');
+    const editor = page.getByTestId('text-source-editor');
+
+    await openAddWords(page);
+    await page.getByTestId('add-text-source').click();
+    await editor.getByRole('button', { name: 'Cancel' }).click();
+    await expect(editor).toHaveCount(0);
+    await expect(toggle).toBeFocused();
+
+    await openAddWords(page);
+    await page.getByTestId('add-text-source').click();
+    await editor.getByRole('textbox', { name: 'List name' }).fill('Focus list');
+    await page.getByTestId('text-source-content').fill('猫');
+    await page.getByTestId('save-text-source').click();
+    await expect(editor).toHaveCount(0);
+    await expect(toggle).toBeFocused();
+  });
+
   test('dismisses the Add words sheet without triggering another action', async ({ page }) => {
     await openVocabulary(page);
     const toggle = page.getByTestId('add-words');

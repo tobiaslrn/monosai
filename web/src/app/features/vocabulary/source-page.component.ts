@@ -1,10 +1,13 @@
 import { Dialog } from '@angular/cdk/dialog';
 import {
+  DOCUMENT,
   ChangeDetectionStrategy,
   Component,
   computed,
   inject,
   input,
+  Injector,
+  afterNextRender,
   resource,
   signal,
 } from '@angular/core';
@@ -186,7 +189,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
               <mn-text-list-source
                 [source]="textList(source)"
                 (saved)="finishEdit()"
-                (cancelled)="editing.set(false)"
+                (cancelled)="closeEditor()"
               />
             }
           }
@@ -396,6 +399,8 @@ export class SourcePageComponent {
   /** The route parameter, bound as an input by the router. */
   readonly sourceId = input.required<string>();
 
+  private readonly injector = inject(Injector);
+  private readonly document = inject(DOCUMENT);
   protected readonly editing = signal(false);
   protected readonly changeError = signal<string | null>(null);
   private readonly localAnnouncement = signal('');
@@ -627,8 +632,19 @@ export class SourcePageComponent {
   }
 
   protected finishEdit(): void {
-    this.editing.set(false);
+    this.closeEditor();
     void this.reload();
+  }
+
+  /** The editor and its buttons go away, so focus returns to the control that opened it. */
+  protected closeEditor(): void {
+    this.editing.set(false);
+    afterNextRender(
+      () => {
+        this.document.querySelector<HTMLElement>('[data-testid="edit-text-list"]')?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   /**

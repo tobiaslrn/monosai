@@ -30,6 +30,7 @@ let nextPopupId = 0;
     '(beforetoggle)': 'onBeforeToggle($event)',
     '(toggle)': 'onToggle()',
     '(keydown)': 'onKeydown($event)',
+    '(focusout)': 'onFocusOut($event)',
   },
 })
 export class PopupDirective {
@@ -82,6 +83,21 @@ export class PopupDirective {
 
   private isNativeOpen(): boolean {
     return this.element.matches(':popover-open');
+  }
+
+  /**
+   * A menu is left by Tab as well as by choosing: focus moving on to the page
+   * closes it rather than leaving it open over whatever took the focus.
+   */
+  protected onFocusOut(event: FocusEvent): void {
+    const target = event.relatedTarget;
+    if (!this.menu() || !(target instanceof Node) || this.element.contains(target)) {
+      return;
+    }
+    if (target instanceof Element && target.closest(`[popovertarget="${this.id}"]`) !== null) {
+      return;
+    }
+    this.hide();
   }
 
   protected onKeydown(event: KeyboardEvent): void {
