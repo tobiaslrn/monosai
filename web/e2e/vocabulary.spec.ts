@@ -233,6 +233,25 @@ test.describe('vocabulary', () => {
     await expectNoSeriousAccessibilityViolations(page);
   });
 
+  test('resets the meaning field when the note type changes', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'desktop AnkiConnect path');
+    test.setTimeout(120_000);
+    await stubAnkiConnect(page, {
+      ...ankiAnswers(['食べる']),
+      modelNames: ['Basic', 'Vocab'],
+      modelFieldNames: (request: { readonly params?: Readonly<Record<string, unknown>> }) =>
+        request.params?.['modelName'] === 'Vocab' ? ['Word', 'Gloss'] : ['Expression', 'Meaning'],
+    });
+    await openVocabulary(page);
+    await addLiveAnki(page, false);
+    const draft = page.getByRole('region', { name: 'Review Anki source' });
+    await draft.getByLabel('Note type').selectOption('Basic');
+    await draft.getByLabel('Meaning field').selectOption('Meaning');
+    await draft.getByLabel('Note type').selectOption('Vocab');
+    await expect(draft.getByLabel('Meaning field')).toHaveValue('');
+    await expect(draft.getByLabel('Meaning field')).toHaveJSProperty('selectedIndex', 0);
+  });
+
   test('browses, filters, expands, and follows a meaning-mapped Anki entry @smoke @mobile', async ({
     page,
   }) => {

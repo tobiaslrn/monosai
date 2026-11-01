@@ -19,7 +19,7 @@ import { technicalCode } from '../../domain/shared/errors';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.component';
 import { ANKI_LINKS } from './anki-links';
-import { connectFailureCopy } from './anki-error-copy';
+import { connectFailureCopy, NOTHING_SAVED } from './anki-error-copy';
 
 /** What the sheet is showing. Anki has no panel of its own: pressing it just tries. */
 type AddMode = 'closed' | 'choices' | 'anki';
@@ -91,11 +91,12 @@ type AddMode = 'closed' | 'choices' | 'anki';
                   @if (paragraph.link; as link) {
                     <a [href]="link.href" target="_blank" rel="noopener noreferrer">{{
                       link.text
-                    }}</a>
+                    }}</a
+                    >{{ paragraph.after }}
                   }
-                  {{ paragraph.after }}
                 </p>
               }
+              <p class="mn-hint">{{ unchanged }}</p>
               <details class="mn-disclosure advanced-details">
                 <summary><span class="summary-label">Advanced details</span></summary>
                 @if (copy.offersPort) {
@@ -403,6 +404,7 @@ export class AddWordsComponent {
   private readonly packageImport = inject(PackageImportStore);
   protected readonly platform = inject(HOST_PLATFORM);
   protected readonly links = ANKI_LINKS;
+  protected readonly unchanged = NOTHING_SAVED;
 
   /** The one sentence naming what has to be installed for the Anki row to work. */
   protected readonly ankiSubtitle =

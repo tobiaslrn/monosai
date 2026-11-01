@@ -193,7 +193,11 @@ const STALE_REASONS: Record<StaleReason, string> = {
 
           <div class="rule"></div>
 
-          @if (source.kind !== 'text-list') {
+          @if (source.kind === 'anki-package') {
+            <p class="mn-hint">{{ mappingSummary(source) }}</p>
+
+            <div class="rule"></div>
+          } @else if (source.kind !== 'text-list') {
             <details class="mn-disclosure" (toggle)="onMappingToggle($event, source)">
               <summary>
                 <span class="summary-label">{{ mappingSummary(source) }}</span>

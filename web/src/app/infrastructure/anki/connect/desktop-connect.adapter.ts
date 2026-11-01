@@ -50,7 +50,7 @@ export class DesktopConnectAdapter implements AnkiVocabularyProvider {
     if (permission.value.requireApiKey === true) {
       return err(
         ankiError(
-          'permission-denied',
+          'api-key-required',
           'This AnkiConnect installation requires an API key, which Monosai does not support. Use an Anki package instead.',
         ),
       );

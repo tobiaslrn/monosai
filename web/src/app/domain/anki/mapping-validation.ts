@@ -25,6 +25,12 @@ function staleReasonOf(mapping: SourceMapping, catalog: AnkiCatalog): StaleReaso
   if (!noteType.fieldNames.includes(mapping.expressionFieldName)) {
     return 'field-missing';
   }
+  if (
+    mapping.meaningFieldName !== undefined &&
+    !noteType.fieldNames.includes(mapping.meaningFieldName)
+  ) {
+    return 'field-missing';
+  }
   return null;
 }
 

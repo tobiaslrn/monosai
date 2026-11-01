@@ -103,6 +103,16 @@ export const ERROR_CODE_GROUPS: readonly ErrorCodeGroup[] = [
     lead: 'Monosai only ever reads from Anki.',
     entries: [
       {
+        code: 'anki/ankidroid-not-installed',
+        cause: 'The bridge could not find AnkiDroid on this device.',
+        fix: 'Get AnkiDroid 2.24 or newer, open your collection, then connect again.',
+      },
+      {
+        code: 'anki/ankidroid-permission-denied',
+        cause: 'AnkiDroid has not granted the bridge access to your collection.',
+        fix: 'Open Monosai Bridge, grant AnkiDroid access, then connect again.',
+      },
+      {
         code: 'anki/not-running',
         cause: 'Monosai could not reach AnkiConnect on this computer.',
         fix: 'Open Anki, then test the connection again.',
@@ -127,6 +137,11 @@ export const ERROR_CODE_GROUPS: readonly ErrorCodeGroup[] = [
         code: 'anki/permission-denied',
         cause: 'AnkiConnect did not grant Monosai permission.',
         fix: "Allow Monosai in AnkiConnect's settings, then test again.",
+      },
+      {
+        code: 'anki/api-key-required',
+        cause: 'AnkiConnect requires an API key, which Monosai does not support.',
+        fix: 'Export a package from Anki and import it here instead, or turn the API key off in the AnkiConnect settings.',
       },
       {
         code: 'anki/origin-not-allowed',
