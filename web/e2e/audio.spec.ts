@@ -386,18 +386,28 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await page.getByRole('button', { name: 'Delete audio…', exact: true }).click();
     const confirmation = page.getByRole('alertdialog', { name: 'Delete audio for this story?' });
     await expect(confirmation).toBeVisible();
+    // The dialog's modal hides the page root from the accessibility tree, so the
+    // player is looked up including hidden elements.
+    await expect(
+      page.getByRole('region', { name: 'Story audio', includeHidden: true }),
+    ).toBeVisible();
 
+    // The player is fixed over the bottom edge and the docked dialog's buttons
+    // sit within its rows on a phone, so only the dialog being in front of it
+    // keeps them reachable.
     const actions = [
       confirmation.getByRole('button', { name: 'Cancel', exact: true }),
       confirmation.getByRole('button', { name: 'Delete audio', exact: true }),
     ];
     for (const action of actions) {
-      const reachable = await action.evaluate((button) => {
+      const coveredBy = await action.evaluate((button) => {
         const box = button.getBoundingClientRect();
         const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-        return top !== null && button.contains(top);
+        return top !== null && button.contains(top)
+          ? null
+          : (top?.closest('[class]')?.getAttribute('class') ?? 'nothing');
       });
-      expect(reachable, 'nothing covers the action').toBe(true);
+      expect(coveredBy, 'the action is the topmost element at its centre').toBeNull();
     }
 
     await actions[0]?.click();
