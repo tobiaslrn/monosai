@@ -2,6 +2,8 @@ import {
   DOCUMENT,
   ChangeDetectionStrategy,
   Component,
+  Injector,
+  afterNextRender,
   computed,
   inject,
   signal,
@@ -97,7 +99,12 @@ function formatBytes(bytes: number | null): string {
             </p>
 
             @if (resetStage() === 'idle') {
-              <button type="button" class="mn-button mn-button--danger" (click)="beginReset()">
+              <button
+                type="button"
+                class="mn-button mn-button--danger"
+                data-testid="begin-reset"
+                (click)="beginReset()"
+              >
                 Delete all Monosai data
               </button>
             } @else {
@@ -109,11 +116,19 @@ function formatBytes(bytes: number | null): string {
                   type="button"
                   class="mn-button mn-button--danger"
                   [disabled]="storage.action() === 'resetting'"
+                  data-testid="confirm-reset"
                   (click)="confirmReset()"
                 >
                   Yes, delete everything
                 </button>
-                <button type="button" class="mn-button" (click)="cancelReset()">Cancel</button>
+                <button
+                  type="button"
+                  class="mn-button"
+                  data-testid="cancel-reset"
+                  (click)="cancelReset()"
+                >
+                  Cancel
+                </button>
               </div>
             }
           </div>
@@ -145,6 +160,7 @@ function formatBytes(bytes: number | null): string {
 export class StorageSectionComponent {
   private readonly document = inject(DOCUMENT);
   private readonly dialog = inject(Dialog);
+  private readonly injector = inject(Injector);
   private readonly playback = inject(AudioPlaybackStore);
   protected readonly storage = inject(StorageStore);
   protected readonly compression = inject(AudioCompressionStore);
@@ -260,10 +276,22 @@ export class StorageSectionComponent {
 
   protected beginReset(): void {
     this.resetStage.set('confirming');
+    this.focusAfterRender('cancel-reset');
   }
 
   protected cancelReset(): void {
     this.resetStage.set('idle');
+    this.focusAfterRender('begin-reset');
+  }
+
+  /** The control that pressed is replaced, so focus follows to what takes its place. */
+  private focusAfterRender(testId: string): void {
+    afterNextRender(
+      () => {
+        this.document.querySelector<HTMLElement>(`[data-testid="${testId}"]`)?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   protected confirmReset(): void {

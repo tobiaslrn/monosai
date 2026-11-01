@@ -8,6 +8,7 @@ import {
   input,
   resource,
   signal,
+  viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -398,6 +399,7 @@ export class ReadingLevelPageComponent implements OnChanges {
 
   /** Whether the section is drafting a pasted list. Nothing is saved until Add source. */
   protected readonly textDraft = signal(false);
+  private readonly addWords = viewChild(AddWordsComponent);
 
   /**
    * One live region for what the page's work is doing. An import in progress
@@ -505,6 +507,7 @@ export class ReadingLevelPageComponent implements OnChanges {
 
   protected closeTextDraft(): void {
     this.textDraft.set(false);
+    this.addWords()?.focusToggle();
   }
 
   protected retryLanguage(): void {
