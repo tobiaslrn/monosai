@@ -440,6 +440,36 @@ describe('PlaybackNavigator', () => {
       expect(bed.player.played).toHaveLength(0);
     });
 
+    it('returns a finished reading to idle at the sentence it was moved to', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      await bed.navigator.startAt(sentences[SENTENCE_COUNT - 1]!.id);
+      bed.player.finishClip();
+      await settle();
+      expect(bed.store.status()).toBe('ended');
+
+      await bed.navigator.seekTo(3);
+
+      expect(bed.store.currentSentenceId()).toBe(sentences[2]!.id);
+      expect(bed.store.status()).toBe('idle');
+    });
+
+    it('plays from the sentence a finished reading was moved to', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      await bed.navigator.startAt(sentences[SENTENCE_COUNT - 1]!.id);
+      bed.player.finishClip();
+      await settle();
+      await bed.navigator.seekTo(3);
+
+      await bed.navigator.play();
+
+      expect(bed.store.currentSentenceId()).toBe(sentences[2]!.id);
+      expect(bed.store.status()).toBe('playing');
+    });
+
     /** A hole is somewhere the drag passes over, not somewhere it lands. */
     it('snaps to the nearest sentence that has a clip', async () => {
       const sentences = orderedSentences(bed.draft);
