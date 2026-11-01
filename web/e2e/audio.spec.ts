@@ -376,6 +376,35 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(scrolledBox?.y).toBeCloseTo(initialBox?.y ?? 0, 0);
   });
 
+  test('keeps a docked confirmation clear of the open player @smoke @mobile', async ({ page }) => {
+    await prepareReading(page);
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page);
+
+    await openReaderMenu(page);
+    await page.getByRole('button', { name: 'Delete audio…', exact: true }).click();
+    const confirmation = page.getByRole('alertdialog', { name: 'Delete audio for this story?' });
+    await expect(confirmation).toBeVisible();
+
+    const actions = [
+      confirmation.getByRole('button', { name: 'Cancel', exact: true }),
+      confirmation.getByRole('button', { name: 'Delete audio', exact: true }),
+    ];
+    for (const action of actions) {
+      const reachable = await action.evaluate((button) => {
+        const box = button.getBoundingClientRect();
+        const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return top !== null && button.contains(top);
+      });
+      expect(reachable, 'nothing covers the action').toBe(true);
+    }
+
+    await actions[0]?.click();
+    await expect(confirmation).toHaveCount(0);
+    await expect(audioPlayer(page)).toBeVisible();
+  });
+
   test('fails fast, keeps the clips that arrived, and retries only the rest @smoke', async ({
     page,
   }) => {

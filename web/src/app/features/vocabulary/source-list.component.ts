@@ -200,11 +200,14 @@ export class SourceListComponent {
     // Each row's number is its source's last complete read. The active
     // snapshot is part of the key as well, because re-reading one source
     // changes its cache without changing the list the rows come from. The
-    // loader runs untracked, so nothing it reads can bring it back.
+    // loader runs untracked, so nothing it reads can bring it back. An automatic
+    // read that found the same words moves the revision alone, and its rows
+    // still have a new number and date.
     resource({
       params: () => ({
         ids: this.sources().map((source) => source.id),
         snapshot: this.history.active(),
+        revision: this.automatic?.committedRevision() ?? null,
       }),
       loader: ({ params }) =>
         this.standings.load(params.ids).catch((error: unknown) => {

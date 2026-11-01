@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { snapshotFixture } from '../../../testing/persistence-fixtures';
 import type { AutomaticAnkiSyncStatus } from '../../application/vocabulary/automatic-anki-sync.coordinator';
 import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/automatic-anki-sync.coordinator';
@@ -11,7 +11,7 @@ function render(initial: AutomaticAnkiSyncStatus) {
   const status = signal<AutomaticAnkiSyncStatus>(initial);
   const coordinator = {
     status: status.asReadonly(),
-    trigger: () => Promise.resolve(),
+    trigger: vi.fn((..._args: readonly boolean[]) => Promise.resolve()),
   };
   TestBed.configureTestingModule({
     imports: [VocabularySyncBannerComponent],
@@ -22,7 +22,7 @@ function render(initial: AutomaticAnkiSyncStatus) {
   });
   const fixture = TestBed.createComponent(VocabularySyncBannerComponent);
   fixture.detectChanges();
-  return { fixture, status, element: fixture.nativeElement as HTMLElement };
+  return { fixture, status, coordinator, element: fixture.nativeElement as HTMLElement };
 }
 
 describe('VocabularySyncBannerComponent', () => {
@@ -48,6 +48,25 @@ describe('VocabularySyncBannerComponent', () => {
     expect(toast?.getAttribute('role')).toBe('status');
     expect(toast?.getAttribute('aria-live')).toBe('polite');
     expect(toast?.textContent).toContain('Vocabulary updated');
+  });
+
+  it('reports a banner retry that updates through the toast', () => {
+    const { element, fixture, status, coordinator } = render({
+      kind: 'attention',
+      message: 'Anki refused.',
+    });
+
+    element.querySelector<HTMLButtonElement>('.banner button')?.click();
+    // The coordinator marks only a read whose control reports for itself.
+    expect(coordinator.trigger).toHaveBeenCalledExactlyOnceWith(true);
+
+    status.set({
+      kind: 'updated',
+      snapshot: snapshotFixture(21).snapshot,
+      requested: false,
+    });
+    fixture.detectChanges();
+    expect(element.querySelector('[data-testid="vocabulary-sync-toast"]')).not.toBeNull();
   });
 
   it('raises no toast for a read the learner started', () => {

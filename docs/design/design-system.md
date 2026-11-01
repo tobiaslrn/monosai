@@ -1083,7 +1083,9 @@ under that field, not a notice.
 **Toasts are for work the learner did not trigger**: a background vocabulary
 refresh that changed something, an update becoming available. That is the whole
 of their remit. A toast for an action the user just took reports a result
-somewhere other than where they are looking.
+somewhere other than where they are looking. Retry on the vocabulary sync banner
+is the one exception: the button leaves with the banner, so the toast is the only
+report of an update it brought in.
 
 Every state change that is visible has a screen-reader equivalent, whether or
 not it is expressed in words on screen. The player normally prints no status

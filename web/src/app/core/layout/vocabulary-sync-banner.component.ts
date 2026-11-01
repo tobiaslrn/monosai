@@ -111,7 +111,11 @@ export class VocabularySyncBannerComponent {
     return vocabularyCountLabel(count);
   }
 
+  /**
+   * Not marked as the learner's own read: this button goes away with the banner,
+   * so the toast is the only thing left to report the result.
+   */
   protected retry(): void {
-    void this.coordinator?.trigger(true, true);
+    void this.coordinator?.trigger(true);
   }
 }
