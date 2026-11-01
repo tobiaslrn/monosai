@@ -3,6 +3,9 @@ import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
+import { PreparationStore } from '../../application/enrichment/preparation.store';
+import type { LayerProgress } from '../../application/enrichment/layer-progress';
+import { aiError } from '../../domain/ai/ai-error';
 import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
 import { ExceptionPolicyStore } from '../../application/settings/exception-policy.store';
 import { StoryPlotStore } from '../../application/generation/story-plot.store';
@@ -35,9 +38,11 @@ describe('GeneratePageComponent', () => {
   let bed: GenerationTestBed;
   const online = signal(true);
   const sources = signal<readonly unknown[]>([]);
+  const laneProgress = signal<LayerProgress>({ kind: 'idle' });
 
   beforeEach(() => {
     sources.set([]);
+    laneProgress.set({ kind: 'idle' });
     jobs = new FakeGenerationJobsStore();
     online.set(true);
     bed = configureGenerationTestBed({
@@ -48,6 +53,7 @@ describe('GeneratePageComponent', () => {
         // particular: what is under test is which address it goes to.
         provideRouter([{ path: '**', children: [] }]),
         { provide: GenerationJobsStore, useValue: jobs },
+        { provide: PreparationStore, useValue: { progressFor: () => laneProgress() } },
         { provide: NETWORK_STATUS, useValue: { isOnline: online } },
         {
           provide: SourceMappingStore,
@@ -167,7 +173,9 @@ describe('GeneratePageComponent', () => {
 
     const panel = page.querySelector('[data-testid="missing-job"]');
     expect(panel?.textContent).toContain('no longer running');
-    expect(panel?.textContent).toContain('Nothing was saved');
+    expect(panel?.textContent).not.toContain('Nothing was saved');
+    expect(panel?.textContent).not.toContain('This generation is no longer running.');
+    expect(panel?.querySelector('.mn-button--primary')?.textContent.trim()).toBe('Go to library');
     expect(page.querySelector('mn-story-form')).toBeNull();
     expect(page.querySelector('[data-testid="generation-screen"]')).toBeNull();
   });
@@ -441,5 +449,42 @@ describe('GeneratePageComponent', () => {
     expect(page.querySelector('[data-testid="open-story"]')?.getAttribute('href')).toBe(
       '/reader/reading-1',
     );
+  });
+
+  it('names the layers the lane is making, and drops the line once none is', async () => {
+    const run = new FakeGenerationRun({ kind: 'writing' });
+    jobs.setJobs([fakeGenerationJob(JOB_ID, run)]);
+    const fixture = TestBed.createComponent(GeneratePageComponent);
+    fixture.componentRef.setInput('jobId', JOB_ID);
+    fixture.detectChanges();
+    const built = buildReading({ id: 'reading-1', title: 'ねこの一日', kind: 'generated' }).reading;
+    if (built.kind !== 'generated') {
+      throw new Error('The fixture must build a generated story.');
+    }
+    const saved = { ...built, preparationTargets: ['english', 'grammar'] as const };
+    laneProgress.set({ kind: 'queued', readingId: saved.id });
+    run.set({ kind: 'saved', reading: saved });
+    fixture.detectChanges();
+    const page = fixture.nativeElement as HTMLElement;
+    const line = (): string | undefined =>
+      page.querySelector('[data-testid="saved-preparation"]')?.textContent.trim();
+    expect(line()).toBe('Preparing English and grammar notes.');
+
+    laneProgress.set({ kind: 'idle' });
+    fixture.detectChanges();
+    expect(line()).toBeUndefined();
+  });
+
+  it('ends a provider failure with the retry wording, not the settings test wording', async () => {
+    const run = new FakeGenerationRun({
+      kind: 'failed',
+      during: 'writing',
+      error: aiError('credit-exhausted', 'story-generation', 'x'),
+    });
+    jobs.setJobs([fakeGenerationJob(JOB_ID, run)]);
+    const page = await render(JOB_ID);
+    const text = page.querySelector('mn-error-screen')?.textContent ?? '';
+    expect(text).toContain('Add credit on openrouter.ai, then try again.');
+    expect(text).not.toContain('test again');
   });
 });
