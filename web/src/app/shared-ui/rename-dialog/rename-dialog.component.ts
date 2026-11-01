@@ -116,7 +116,6 @@ export async function openRenameDialog(
   const ref = dialog.open<string | null, RenameDialogData>(RenameDialogComponent, {
     data,
     ariaLabelledBy: 'mn-rename-title',
-    ariaDescribedBy: 'mn-rename-message',
     hasBackdrop: true,
   });
   const result = await new Promise<string | null | undefined>((resolve) => {
