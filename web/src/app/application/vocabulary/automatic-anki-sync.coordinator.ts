@@ -10,7 +10,7 @@ import { CLOCK, VOCABULARY_SOURCE_REPOSITORY } from '../shared/repository-tokens
 import type { Clock } from '../../domain/shared/clock';
 import { AnkiSourceReader, isTransientAnkiFailure } from './anki-source-reader';
 import { SnapshotHistoryStore } from './snapshot-history.store';
-import { VocabularySyncService } from './vocabulary-sync.service';
+import { VocabularySyncService, type PreparedVocabularySync } from './vocabulary-sync.service';
 
 const COOLDOWN_MS = 60_000;
 const START_DELAY_MS = 1_500;
@@ -58,6 +58,8 @@ export class AutomaticAnkiSyncCoordinator {
   private followUp: Promise<void> | null = null;
   private hidden = false;
   private learnerRequested = false;
+  /** The newest commit that said nothing new compared with what the history store holds. */
+  private unchangedRevision: string | null = null;
 
   readonly status = this.statusSignal.asReadonly();
 
@@ -210,16 +212,11 @@ export class AutomaticAnkiSyncCoordinator {
     // Published for every commit, including one whose word list is identical:
     // what those words proved about recent study is exactly what changed.
     this.revisionSignal.set(committed.value.revision);
-    // What the open screens read the words from. Every read commits a new
-    // revision, so only a commit with different words moves it: reloading for
-    // the rest would re-mark an open reader for nothing on every return. A
-    // revision other than the prepared one means a conflict rebuilt the commit
-    // on another tab's words, which the comparison in `prepared` never saw.
-    if (
-      prepared.value.vocabularyChanged ||
-      committed.value.revision !== prepared.value.commit.snapshot.revision
-    ) {
+    if (this.historyIsBehind(prepared.value, committed.value)) {
+      this.unchangedRevision = null;
       await this.history.load();
+    } else {
+      this.unchangedRevision = committed.value.revision;
     }
     if (!prepared.value.vocabularyChanged) {
       this.statusSignal.set({ kind: 'idle' });
@@ -241,6 +238,37 @@ export class AutomaticAnkiSyncCoordinator {
       }
     }, SUCCESS_VISIBLE_MS);
   }
+
+  /**
+   * Whether the open screens would read something out of date from the history
+   * store after this commit.
+   *
+   * Every read commits a new revision, so a revision alone cannot answer this:
+   * reloading for each one would re-mark an open reader for nothing on every
+   * return. What matters is whether the commit was built on what this tab holds,
+   * directly or through commits that added nothing, and then said nothing new.
+   * Another tab's commit breaks that chain, and `vocabularyChanged` cannot see it
+   * because it compares against storage. So does a conflict, which rebuilt the
+   * commit under a revision other than the prepared one.
+   */
+  private historyIsBehind(
+    prepared: PreparedVocabularySync,
+    committed: VocabularySnapshot,
+  ): boolean {
+    const held = this.history.active();
+    const builtOn = prepared.commit.expectedRevision;
+    return (
+      held === null ||
+      prepared.vocabularyChanged ||
+      committed.revision !== prepared.commit.snapshot.revision ||
+      (builtOn !== held.revision && builtOn !== this.unchangedRevision) ||
+      !sameWarnings(held.stats.sourceWarnings, committed.stats.sourceWarnings)
+    );
+  }
+}
+
+function sameWarnings(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((warning, index) => warning === right[index]);
 }
 
 function distinctProviderKinds(

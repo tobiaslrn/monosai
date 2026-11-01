@@ -13,6 +13,7 @@ import { ANKI_PROVIDER_FACTORY } from '../shared/anki-tokens';
 import { AutomaticAnkiSyncCoordinator } from './automatic-anki-sync.coordinator';
 import { SnapshotHistoryStore } from './snapshot-history.store';
 import { unmeasuredBasis } from '../../domain/anki/practice-evidence';
+import { vocabularySourceId } from '../../domain/shared/ids';
 
 describe('AutomaticAnkiSyncCoordinator', () => {
   let beds: VocabularyTestBed;
@@ -81,10 +82,45 @@ describe('AutomaticAnkiSyncCoordinator', () => {
     const load = vi.spyOn(history, 'load');
     const before = coordinator.committedRevision();
 
+    // More than once: the store now holds an older revision of the same content.
+    await coordinator.trigger(true);
     await coordinator.trigger(true);
 
     expect(coordinator.committedRevision()).not.toBe(before);
     expect(load).not.toHaveBeenCalled();
+  });
+
+  it('catches up with words another tab committed although this read found the same', async () => {
+    configureAutomaticSource();
+    const history = TestBed.inject(SnapshotHistoryStore);
+    await coordinator.trigger(true);
+    await coordinator.trigger(true);
+    const stored = beds.vocabulary.snapshots[0]!;
+    beds.vocabulary.snapshots[0] = { ...stored, revision: 'other-tab' };
+
+    await coordinator.trigger(true);
+
+    expect(coordinator.status().kind).toBe('idle');
+    expect(history.active()?.revision).toBe(coordinator.committedRevision());
+  });
+
+  it('reloads for a warning that changed while the words stayed the same', async () => {
+    const source = configureAutomaticSource();
+    const history = TestBed.inject(SnapshotHistoryStore);
+    await coordinator.trigger(true);
+    expect(history.active()?.stats.sourceWarnings).toEqual([]);
+    const unread = {
+      ...source,
+      id: vocabularySourceId('not-read-yet'),
+      label: 'Unread',
+      automaticSync: false,
+    };
+    beds.mappings.stored.set(unread.id, unread);
+
+    await coordinator.trigger(true);
+
+    expect(coordinator.status().kind).toBe('idle');
+    expect(history.active()?.stats.sourceWarnings).toEqual(['Unread has not been read yet.']);
   });
 
   it('marks an update the learner asked for, and only that one', async () => {
