@@ -49,9 +49,16 @@ again. No background service can promise to survive Force stop.
 
 ## Build and verify
 
-Use Java 21, Android SDK platform 36 and the committed Gradle wrapper. Android
-Studio can open this directory directly. Set `ANDROID_HOME` or an ignored
-`local.properties` with `sdk.dir`. From this directory:
+Use Java 21, Android SDK platform 36 and the committed Gradle wrapper. The build needs
+Java 21 to 24: the unit tests run Robolectric at SDK 36 on the Gradle daemon's JDK, and
+the wrapper's Gradle 8.14 stops at 24. The daemon uses `org.gradle.java.home` when it is
+set (in `~/.gradle/gradle.properties`, or `GRADLE_USER_HOME`, then in this directory's
+`gradle.properties`), otherwise `JAVA_HOME`, otherwise `java` on `PATH`.
+`npm run bridge:verify` checks that JDK first and stops with its version if it is
+unsupported (Android Studio's bundled JDK may be newer). It never switches the JDK:
+set `JAVA_HOME` for that command alone. Android Studio can open this directory
+directly. Set `ANDROID_HOME` or an ignored `local.properties` with `sdk.dir`. From this
+directory:
 
 ```sh
 ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug :app:runtimeLicenses

@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
+import { checkJdk } from './jdk.mjs';
 
 const windows = process.platform === 'win32';
 const tasks = [
@@ -9,6 +10,11 @@ const tasks = [
   ':app:lintDebug',
   ':app:runtimeLicenses',
 ];
+const jdkProblem = checkJdk();
+if (jdkProblem) {
+  console.error(jdkProblem);
+  process.exit(1);
+}
 const notices = spawnSync(process.execPath, ['scripts/licenses/check-licenses.mjs'], {
   stdio: 'inherit',
 });

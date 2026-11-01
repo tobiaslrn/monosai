@@ -29,7 +29,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-      - run: node --test scripts/bridge/release-version.test.mjs
+      - run: node --test scripts/bridge/release-version.test.mjs scripts/bridge/jdk.test.mjs
       - run: node scripts/bridge/icons.mjs --check
       - name: Generate the bundled dependency licence notice
         run: node scripts/licenses/check-licenses.mjs
