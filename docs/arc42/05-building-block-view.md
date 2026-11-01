@@ -280,7 +280,10 @@ element it is placed in. Each carries its own styles; the player styles only wha
 The reader's window is not the shared virtual list. Paragraphs are loaded from
 storage by position, a few at a time and asynchronously, around an anchor and
 within a bound ([ADR 0011](../decisions/0011-paragraph-window-bounds.md)); the
-shared list ranges over items it already holds by key.
+shared list ranges over items it already holds by key. It widens, within that bound,
+when a screen shows more paragraphs than the usual window, so neither edge of the
+screen is a spacer. A new layout scrolls back to the passage that was at the middle of
+the screen, and a focused word that leaves the window hands focus to a word on the screen.
 
 ### Whitebox: the shared virtual list
 

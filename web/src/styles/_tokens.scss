@@ -139,7 +139,7 @@
   --reader-line-height-plain: 2.1;
   --reader-line-height-ruby: 2.6;
   --reader-paragraph-gap: 2.25rem;
-  --reader-measure: 36em;
+  --reader-measure: calc(36 * var(--reader-font-size));
   /* Every non-reader page and the application bar share this column. */
   --page-measure: 60rem;
 

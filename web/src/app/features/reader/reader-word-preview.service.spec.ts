@@ -45,6 +45,20 @@ describe('ReaderWordPreviewService', () => {
     vi.useRealTimers();
   });
 
+  it('shows nothing for a focus the learner did not ask to look up', () => {
+    preview.withoutPreview(() => {
+      preview.show(activation, template, viewContainerRef);
+    });
+    vi.advanceTimersByTime(PREVIEW_DELAY_MS);
+
+    expect(preview.word()).toBeNull();
+    expect(popover.open).not.toHaveBeenCalled();
+
+    preview.show(activation, template, viewContainerRef);
+    vi.advanceTimersByTime(PREVIEW_DELAY_MS);
+    expect(popover.open).toHaveBeenCalledTimes(1);
+  });
+
   it('marks the word at once and opens its card after a pause', () => {
     preview.show(activation, template, viewContainerRef);
     expect(preview.word()).toEqual({ sentenceId: 's1', tokenId: 't1' });

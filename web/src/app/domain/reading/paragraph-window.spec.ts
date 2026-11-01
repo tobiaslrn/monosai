@@ -6,9 +6,35 @@ import {
   paragraphSpacers,
   windowAround,
   windowContains,
+  windowCovering,
   windowEnd,
   type ParagraphWindowState,
 } from './paragraph-window';
+
+describe('windowCovering', () => {
+  it('is the usual window when the screen fits inside it', () => {
+    expect(windowCovering(9, 10, 11, 100)).toEqual(windowAround(10, 100));
+  });
+
+  it('reaches back to the first paragraph on the screen', () => {
+    expect(windowCovering(0, 4, 8, 100)).toEqual({ first: 0, count: 9 });
+  });
+
+  it('reaches on to the last paragraph on the screen', () => {
+    expect(windowCovering(10, 14, 19, 100)).toEqual({ first: 10, count: 10 });
+  });
+
+  it('stays within the reading', () => {
+    expect(windowCovering(95, 97, 99, 100)).toEqual({ first: 94, count: 6 });
+  });
+
+  it('keeps the middle of a screen that shows more than the bound', () => {
+    const window = windowCovering(0, 50, 99, 100);
+    expect(window.count).toBe(MAXIMUM_MOUNTED_PARAGRAPHS);
+    expect(windowContains(window, 50)).toBe(true);
+    expect(window.first).toBe(43);
+  });
+});
 
 describe('windowAround', () => {
   it('centres the window on the anchor', () => {

@@ -111,6 +111,29 @@ export function windowAround(
 }
 
 /**
+ * The window for what a screen shows: the usual window around its middle,
+ * widened only when the screen shows more paragraphs than that. A screen taller
+ * than the bound keeps its middle.
+ */
+export function windowCovering(
+  firstVisible: number,
+  middle: number,
+  lastVisible: number,
+  totalParagraphs: number,
+  radius = WINDOW_RADIUS,
+  maximum = MAXIMUM_MOUNTED_PARAGRAPHS,
+): ParagraphWindowState {
+  const around = windowAround(middle, totalParagraphs, radius);
+  const first = Math.max(0, Math.min(firstVisible, around.first));
+  const end = Math.min(totalParagraphs, Math.max(lastVisible + 1, windowEnd(around)));
+  if (end - first <= maximum) {
+    return { first, count: end - first };
+  }
+  const centred = middle - Math.floor(maximum / 2);
+  return { first: Math.max(0, Math.min(centred, totalParagraphs - maximum)), count: maximum };
+}
+
+/**
  * Grows the window towards an edge the learner reached, trimming the far side
  * once the window would exceed its bound. Returns the same state when there is
  * nothing further to mount, so callers can skip a redundant load.

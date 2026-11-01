@@ -82,6 +82,11 @@ export class ReaderGeometryService {
    */
   readonly sheetScrollReserve = computed(() => `${String(this.sheetReserve())}px`);
 
+  /** Where the sticky bar ends on the screen: anything above this is hidden by it. */
+  barBottom(): number {
+    return this.bar()?.getBoundingClientRect().bottom ?? 0;
+  }
+
   /** Whether the page heading has scrolled beneath the bar, which then carries it. */
   private readonly titleTuckedSignal = signal(false);
   readonly titleTucked = this.titleTuckedSignal.asReadonly();
