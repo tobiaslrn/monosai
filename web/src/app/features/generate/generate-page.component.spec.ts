@@ -451,7 +451,7 @@ describe('GeneratePageComponent', () => {
     );
   });
 
-  it('names the layers the lane is making, and drops the line once none is', async () => {
+  it('names the layers the lane is making, and drops the line once none is', () => {
     const run = new FakeGenerationRun({ kind: 'writing' });
     jobs.setJobs([fakeGenerationJob(JOB_ID, run)]);
     const fixture = TestBed.createComponent(GeneratePageComponent);
