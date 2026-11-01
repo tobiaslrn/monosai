@@ -172,6 +172,72 @@ describe('AutomaticAnkiSyncCoordinator', () => {
     expect(beds.vocabulary.commitCount).toBe(2);
   });
 
+  it('reports a banner retry even when no word changed', async () => {
+    configureAutomaticSource();
+    await coordinator.trigger(true);
+    await coordinator.trigger(true);
+    // The same read, unflagged, is silent.
+    expect(coordinator.status()).toEqual({ kind: 'idle' });
+    const commits = beds.vocabulary.commitCount;
+
+    await coordinator.retry();
+
+    expect(beds.vocabulary.commitCount).toBe(commits + 1);
+    expect(coordinator.status()).toMatchObject({ kind: 'updated', requested: false });
+  });
+
+  it('keeps the report of a retry from leaking into later background reads', async () => {
+    configureAutomaticSource();
+    await coordinator.trigger(true);
+    await coordinator.retry();
+
+    await coordinator.trigger(true);
+
+    expect(coordinator.status()).toEqual({ kind: 'idle' });
+  });
+
+  it('reports a retry that joins a background read already running', async () => {
+    configureAutomaticSource();
+    await coordinator.trigger(true);
+    await coordinator.trigger(true);
+
+    const background = coordinator.trigger(true);
+    await Promise.all([background, coordinator.retry()]);
+
+    expect(coordinator.status()).toMatchObject({ kind: 'updated', requested: false });
+  });
+
+  it('keeps the banner up when a retry meets a transient failure', async () => {
+    configureAutomaticSource();
+    await coordinator.trigger(true);
+    providerFactory = () =>
+      new FakeAnkiProvider(CONTRACT_COLLECTION, {
+        kind: 'desktop-connect',
+        probeError: ankiError('not-running', 'Anki is not running.'),
+      });
+
+    await coordinator.retry();
+
+    expect(coordinator.status()).toMatchObject({ kind: 'attention' });
+  });
+
+  it('does not carry a failed retry over to the next background read', async () => {
+    configureAutomaticSource();
+    await coordinator.trigger(true);
+    await coordinator.trigger(true);
+    providerFactory = () =>
+      new FakeAnkiProvider(CONTRACT_COLLECTION, {
+        kind: 'desktop-connect',
+        probeError: ankiError('not-running', 'Anki is not running.'),
+      });
+    await coordinator.retry();
+    providerFactory = () => new FakeAnkiProvider(CONTRACT_COLLECTION, { kind: 'desktop-connect' });
+
+    await coordinator.trigger(true);
+
+    expect(coordinator.status()).toEqual({ kind: 'idle' });
+  });
+
   it('commits scheduling-only changes without showing an update', async () => {
     const source = configureAutomaticSource();
 
@@ -256,6 +322,22 @@ describe('AutomaticAnkiSyncCoordinator', () => {
       await coordinator.trigger();
 
       expect(beds.vocabulary.commitCount).toBe(afterReturn);
+    });
+
+    it('keeps the report of a retry when they return while it runs', async () => {
+      configureAutomaticSource();
+      await coordinator.trigger(true);
+      await coordinator.trigger(true);
+      goHidden();
+
+      const retrying = coordinator.retry();
+      await Promise.all([retrying, coordinator.resume()]);
+
+      expect(coordinator.status()).toMatchObject({ kind: 'updated', requested: false });
+
+      // Neither read leaves the report behind for the next background one.
+      await coordinator.trigger(true);
+      expect(coordinator.status()).toEqual({ kind: 'idle' });
     });
 
     it('queues exactly one follow-up behind a read that began before they returned', async () => {

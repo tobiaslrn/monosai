@@ -113,9 +113,10 @@ export class VocabularySyncBannerComponent {
 
   /**
    * Not marked as the learner's own read: this button goes away with the banner,
-   * so the toast is the only thing left to report the result.
+   * so the toast is the only thing left to report the result, and the
+   * coordinator raises it even when no word changed.
    */
   protected retry(): void {
-    void this.coordinator?.trigger(true);
+    void this.coordinator?.retry();
   }
 }

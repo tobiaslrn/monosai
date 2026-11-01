@@ -5,13 +5,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { snapshotFixture } from '../../../testing/persistence-fixtures';
 import type { AutomaticAnkiSyncStatus } from '../../application/vocabulary/automatic-anki-sync.coordinator';
 import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/automatic-anki-sync.coordinator';
+import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.component';
 
 function render(initial: AutomaticAnkiSyncStatus) {
   const status = signal<AutomaticAnkiSyncStatus>(initial);
   const coordinator = {
     status: status.asReadonly(),
-    trigger: vi.fn((..._args: readonly boolean[]) => Promise.resolve()),
+    retry: vi.fn(() => Promise.resolve()),
   };
   TestBed.configureTestingModule({
     imports: [VocabularySyncBannerComponent],
@@ -48,6 +49,9 @@ describe('VocabularySyncBannerComponent', () => {
     expect(toast?.getAttribute('role')).toBe('status');
     expect(toast?.getAttribute('aria-live')).toBe('polite');
     expect(toast?.textContent).toContain('Vocabulary updated');
+    expect(toast?.textContent).toContain(
+      vocabularyCountLabel(snapshotFixture(21).snapshot.uniqueEntryCount),
+    );
   });
 
   it('reports a banner retry that updates through the toast', () => {
@@ -58,7 +62,7 @@ describe('VocabularySyncBannerComponent', () => {
 
     element.querySelector<HTMLButtonElement>('.banner button')?.click();
     // The coordinator marks only a read whose control reports for itself.
-    expect(coordinator.trigger).toHaveBeenCalledExactlyOnceWith(true);
+    expect(coordinator.retry).toHaveBeenCalledOnce();
 
     status.set({
       kind: 'updated',

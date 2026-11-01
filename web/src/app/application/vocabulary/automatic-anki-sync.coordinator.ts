@@ -58,6 +58,8 @@ export class AutomaticAnkiSyncCoordinator {
   private followUp: Promise<void> | null = null;
   private hidden = false;
   private learnerRequested = false;
+  /** A retry from the attention banner, which has to hear back even when no word changed. */
+  private retryRequested = false;
   /** The newest commit that said nothing new compared with what the history store holds. */
   private unchangedRevision: string | null = null;
 
@@ -118,12 +120,21 @@ export class AutomaticAnkiSyncCoordinator {
     if (this.followUp !== null) {
       return this.followUp;
     }
+    // The flag is cleared when the running read settles, before this follow-up
+    // starts, so a retry in progress has to be remembered now.
+    const retrying = this.retryRequested;
     this.followUp = running
-      .then(() => this.trigger(true))
+      .then(() => (retrying ? this.retry() : this.trigger(true)))
       .finally(() => {
         this.followUp = null;
       });
     return this.followUp;
+  }
+
+  /** Reads again for the learner who pressed Retry now; the result is always reported. */
+  retry(): Promise<void> {
+    this.retryRequested = true;
+    return this.trigger(true);
   }
 
   trigger(force = false, byLearner = false): Promise<void> {
@@ -141,6 +152,7 @@ export class AutomaticAnkiSyncCoordinator {
     this.inFlight = this.run().finally(() => {
       this.inFlight = null;
       this.learnerRequested = false;
+      this.retryRequested = false;
     });
     return this.inFlight;
   }
@@ -166,7 +178,11 @@ export class AutomaticAnkiSyncCoordinator {
       );
       if (!refreshed.ok) {
         this.statusSignal.set({
-          kind: isTransientAnkiFailure(refreshed.error) ? 'waiting' : 'attention',
+          // A retry came from the banner, which only attention keeps on screen.
+          kind:
+            isTransientAnkiFailure(refreshed.error) && !this.retryRequested
+              ? 'waiting'
+              : 'attention',
           message: `${refreshed.error.message} Your current vocabulary was kept.`,
         });
         return;
@@ -218,7 +234,7 @@ export class AutomaticAnkiSyncCoordinator {
     } else {
       this.unchangedRevision = committed.value.revision;
     }
-    if (!prepared.value.vocabularyChanged) {
+    if (!prepared.value.vocabularyChanged && !this.retryRequested) {
       this.statusSignal.set({ kind: 'idle' });
       return;
     }
