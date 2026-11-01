@@ -33,6 +33,16 @@ describe('resolveMappings', () => {
     expect(resolution.stale[0]!.reason).toBe('field-missing');
   });
 
+  it('marks a vanished meaning field stale', () => {
+    const resolution = resolveMappings([mappingFor({ meaningFieldName: 'Gone' })], CATALOG);
+    expect(resolution.stale[0]!.reason).toBe('field-missing');
+  });
+
+  it('resolves a mapping whose meaning field exists', () => {
+    const resolution = resolveMappings([mappingFor({ meaningFieldName: 'Meaning' })], CATALOG);
+    expect(resolution.resolved).toHaveLength(1);
+  });
+
   it('ignores disabled mappings entirely', () => {
     const resolution = resolveMappings([mappingFor({ deckName: 'Gone', enabled: false })], CATALOG);
     expect(resolution.resolved).toHaveLength(0);

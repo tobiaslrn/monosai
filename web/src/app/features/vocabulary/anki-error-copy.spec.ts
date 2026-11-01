@@ -59,6 +59,13 @@ describe('ANKI_ERROR_COPY', () => {
     );
   });
 
+  it('names the API key and points to a package when AnkiConnect requires one', () => {
+    const copy = connectFailureCopy('desktop', ankiError('api-key-required', 'x'), 8765);
+
+    expect(copy.headline).toContain('API key');
+    expect(copy.paragraphs[0]!.before.toLowerCase()).toContain('package');
+  });
+
   it('does not offer the package path to a failed package import', () => {
     expect(ANKI_ERROR_COPY['package-unreadable'].primaryAction.toLowerCase()).not.toContain(
       'export a package from anki and import it here',

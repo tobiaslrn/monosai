@@ -75,7 +75,7 @@ describe('DesktopConnectAdapter', () => {
 
     expect(probed.ok).toBe(false);
     if (probed.ok) return;
-    expect(probed.error.code).toBe('permission-denied');
+    expect(probed.error.code).toBe('api-key-required');
     expect(probed.error.message).toContain('API key');
   });
 

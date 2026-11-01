@@ -26,7 +26,7 @@ const USE_PACKAGE = 'Export a package from Anki and import it here instead.';
 const TRY_AGAIN = 'Try again.';
 
 /**
- * English for all twenty-two Anki failures.
+ * English for all every Anki failure.
  *
  * The specification requires the UI to preserve every distinction the error
  * model makes, so this is exhaustive by type: adding a variant to
@@ -87,6 +87,13 @@ export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
     whatDidNot: NOTHING_SAVED,
     primaryAction: 'Allow Monosai in the AnkiConnect settings, then test the connection again.',
     escape: USE_PACKAGE,
+  },
+  'api-key-required': {
+    heading: 'AnkiConnect needs an API key',
+    whatFailed: 'AnkiConnect requires an API key, which Monosai does not support.',
+    whatDidNot: NOTHING_SAVED,
+    primaryAction: USE_PACKAGE,
+    escape: 'Or turn the API key off in the AnkiConnect settings and connect again.',
   },
   'origin-not-allowed': {
     heading: 'Anki refused this address',

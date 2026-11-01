@@ -170,10 +170,7 @@ export class PackageImportStore {
     }
     if (probed.value.limitations.some((limitation) => limitation.code === 'no-review-history')) {
       this.fail(
-        ankiError(
-          'package-review-data-missing',
-          'Nothing in this package has been reviewed. Export the deck again with scheduling information included, then share it.',
-        ),
+        ankiError('package-review-data-missing', 'Nothing in this package has been reviewed.'),
         operation,
       );
       return;

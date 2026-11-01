@@ -38,7 +38,7 @@ import { AnkiConnectionStore } from '../../application/vocabulary/anki-connectio
             ><span>Note type</span>
             <select
               [ngModel]="store.selection().noteTypeName"
-              (ngModelChange)="store.change({ noteTypeName: $event, expressionFieldName: '' })"
+              (ngModelChange)="store.changeNoteType($event)"
               [disabled]="store.refresh.isBusy() && !store.preview()"
             >
               <option value="">Choose a note type</option>

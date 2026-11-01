@@ -157,6 +157,18 @@ describe('SourcePageComponent', () => {
     );
   });
 
+  it('states what an imported file reads as a plain line, with no disclosure to open', async () => {
+    const file = mappingFor({ id: vocabularySourceId('33333333-3333-4333-8333-333333333333') });
+    beds.mappings.stored.set(file.id, file);
+    await TestBed.inject(SourceMappingStore).load();
+    const { element } = await render(file.id);
+
+    expect(element.querySelector('details.mn-disclosure')).toBeNull();
+    expect(element.textContent).toContain(
+      `Reading the ${file.expressionFieldName} field of ${file.noteTypeName}`,
+    );
+  });
+
   it('asks before removing a source, and keeps it when the answer is no', async () => {
     const { element, fixture } = await render(TEXT_LIST.id);
 

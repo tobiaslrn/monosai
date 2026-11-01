@@ -87,6 +87,16 @@ export class AnkiConnectionStore {
     this.selection.update((current) => ({ ...current, ...patch }));
   }
 
+  /** The fields belong to the note type, so the old note type's choices go with it. */
+  changeNoteType(noteTypeName: string): void {
+    this.refresh.discard();
+    this.selection.update(({ meaningFieldName: _meaning, ...current }) => ({
+      ...current,
+      noteTypeName,
+      expressionFieldName: '',
+    }));
+  }
+
   async prepare(): Promise<void> {
     if (!this.valid() || this.refresh.isBusy()) return;
     const source = this.sources.draft({
