@@ -34,6 +34,7 @@ import {
   ReadingJobLifecycle,
   countsFor,
   enqueueOutcome,
+  settleWorkers,
   unavailable,
   type PlanOutcome,
   type ReadingJobProgress,
@@ -400,7 +401,10 @@ export class GrammarJobStore {
       publish('saving');
     };
 
-    await Promise.all(batches.map((batch) => runBatch(batch)));
+    await settleWorkers(
+      batches.map((batch) => runBatch(batch)),
+      run.controller,
+    );
 
     if (outcome.storage !== null) {
       this.lifecycle.fail(context.readingId, outcome.storage, counts);

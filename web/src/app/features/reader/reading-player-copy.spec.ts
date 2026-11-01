@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
-import { aiError } from '../../domain/ai/ai-error';
+import type { LayerError } from '../../application/enrichment/layer-progress';
+import { aiError, type AiErrorCode } from '../../domain/ai/ai-error';
+import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import { readingId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
 import {
@@ -105,6 +107,61 @@ describe('stoppedRunLine', () => {
       'Trying again produced nothing',
     );
   });
+});
+
+describe('stoppedRunLine when a retry is gone', () => {
+  const exhausted = (error: LayerError): AudioJobProgress => ({
+    kind: 'failed',
+    readingId: READING,
+    counts: COUNTS,
+    error,
+    canRetry: false,
+  });
+  const provider = (code: AiErrorCode): LayerError => ({
+    source: 'provider',
+    error: aiError(code, 'tts-synthesis', 'No.'),
+  });
+
+  it.each<AiErrorCode>(['authentication', 'credit-exhausted', 'offline'])(
+    'suggests no other voice or model when the failure is %s',
+    (code) => {
+      const line = stoppedRunLine(exhausted(provider(code)), 4, 13);
+      expect(line).toContain('Trying again produced nothing, so it is no longer offered.');
+      expect(line).not.toContain('voice or model');
+    },
+  );
+
+  it('suggests no other voice or model when saving failed', () => {
+    const line = stoppedRunLine(
+      exhausted({ source: 'storage', error: storageError('unknown', 'No.') }),
+      4,
+      13,
+    );
+    expect(line).not.toContain('voice or model');
+  });
+
+  it('suggests no other voice or model when the speech code would not load', () => {
+    const line = stoppedRunLine(
+      exhausted({
+        source: 'provider',
+        error: aiError('unknown', 'tts-synthesis', 'No.', {
+          detail: { issueCode: SPEECH_CODE_UNAVAILABLE },
+        }),
+      }),
+      4,
+      13,
+    );
+    expect(line).not.toContain('voice or model');
+  });
+
+  it.each<AiErrorCode>(['audio-invalid', 'malformed-response', 'model-not-found', 'unknown'])(
+    'still suggests another voice or model when the failure is %s',
+    (code) => {
+      expect(stoppedRunLine(exhausted(provider(code)), 4, 13)).toContain(
+        'a different voice or model may read these sentences',
+      );
+    },
+  );
 });
 
 describe('stoppedRunFailure', () => {

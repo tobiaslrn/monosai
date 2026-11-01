@@ -1,8 +1,10 @@
 import { DOCUMENT, inject, type Provider } from '@angular/core';
 import { LOGGER, type Logger } from '../../application/shared/diagnostics';
 import { AUDIO_DECODER, SPEECH_ENCODER } from '../../application/shared/ai-tokens';
-import type { SpeechEncoder } from '../../domain/audio/speech-encoder';
+import { speechEncodeError, type SpeechEncoder } from '../../domain/audio/speech-encoder';
+import { err } from '../../domain/shared/result';
 import { createAudioDecoder } from '../openrouter/audio-decode';
+import { retryOnRejection, untilAborted } from './lazy-load';
 
 /**
  * Binds the audio ports.
@@ -28,8 +30,7 @@ export function provideAudioEncoding(): Provider[] {
       provide: SPEECH_ENCODER,
       useFactory: (): SpeechEncoder => {
         const logger = inject<Logger>(LOGGER);
-        let client: Promise<SpeechEncoder> | null = null;
-        const load = async (): Promise<SpeechEncoder> => {
+        const load = retryOnRejection(async (): Promise<SpeechEncoder> => {
           const { SpeechEncoderClient, speechEncoderChannel } =
             await import('./speech-encoder.client');
           const worker = new Worker(
@@ -42,11 +43,19 @@ export function provideAudioEncoding(): Provider[] {
             }),
             logger,
           );
-        };
+        });
         return {
           encode: async (input, signal) => {
-            client ??= load();
-            return (await client).encode(input, signal);
+            let client: SpeechEncoder;
+            try {
+              client = await untilAborted(load(), signal);
+            } catch (error: unknown) {
+              if (signal?.aborted === true) {
+                return err(speechEncodeError('cancelled', 'The encode was cancelled.'));
+              }
+              throw error;
+            }
+            return client.encode(input, signal);
           },
         };
       },

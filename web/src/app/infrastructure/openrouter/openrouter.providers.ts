@@ -96,6 +96,7 @@ export function provideOpenRouter(): Provider[] {
               decoder,
               encoder,
             ),
+          () => view?.navigator.onLine ?? true,
         );
       },
     },

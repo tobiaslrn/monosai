@@ -9,6 +9,12 @@ import type {
   SpeechStyle,
 } from './speech-instructions';
 
+/**
+ * `detail.issueCode` of a synthesis that failed because Monosai's own speech code
+ * could not be loaded, which no choice of voice or model has any bearing on.
+ */
+export const SPEECH_CODE_UNAVAILABLE = 'speech-code-unavailable';
+
 /** One sentence's synthesis request, exactly as the cache key describes it. */
 export interface TtsRequest extends SpeechContext {
   /** The exact saved Japanese. Never a normalized or re-segmented variant. */

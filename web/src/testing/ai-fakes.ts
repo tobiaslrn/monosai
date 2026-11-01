@@ -215,6 +215,7 @@ export function openRouterHarness(options: HarnessOptions = {}): OpenRouterHarne
       return new OpenRouterTextToSpeechProvider(
         new OpenRouterTtsTester(client, decoder, encoder),
         () => Promise.resolve(new OpenRouterTtsSynthesizer(client, decoder, encoder)),
+        () => true,
       );
     })(),
   };
