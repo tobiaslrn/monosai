@@ -1,11 +1,13 @@
-import type { AiError } from '../../domain/ai/ai-error';
+import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { TtsConfig, TtsTest } from '../../domain/ai/model-test';
-import type {
-  AudioPayload,
-  TextToSpeechProvider,
-  TtsRequest,
+import {
+  SPEECH_CODE_UNAVAILABLE,
+  type AudioPayload,
+  type TextToSpeechProvider,
+  type TtsRequest,
 } from '../../domain/ai/text-to-speech-provider';
-import type { Result } from '../../domain/shared/result';
+import { err, type Result } from '../../domain/shared/result';
+import { retryOnRejection, untilAborted } from '../audio/lazy-load';
 import type { OpenRouterTtsSynthesizer } from './tts-synthesis.adapter';
 import type { OpenRouterTtsTester } from './tts-test.adapter';
 
@@ -25,19 +27,38 @@ export type TtsSynthesizerLoader = () => Promise<OpenRouterTtsSynthesizer>;
  * are already asynchronous so resolving it on first use costs nothing.
  */
 export class OpenRouterTextToSpeechProvider implements TextToSpeechProvider {
-  private synthesizer: OpenRouterTtsSynthesizer | null = null;
+  private readonly synthesizer: TtsSynthesizerLoader;
 
   constructor(
     private readonly tester: OpenRouterTtsTester,
-    private readonly loadSynthesizer: TtsSynthesizerLoader,
-  ) {}
+    loadSynthesizer: TtsSynthesizerLoader,
+    private readonly isOnline: () => boolean,
+  ) {
+    this.synthesizer = retryOnRejection(loadSynthesizer);
+  }
 
   testConfiguration(config: TtsConfig, signal?: AbortSignal): Promise<Result<TtsTest, AiError>> {
     return this.tester.testConfiguration(config, signal);
   }
 
   async synthesize(input: TtsRequest, signal: AbortSignal): Promise<Result<AudioPayload, AiError>> {
-    this.synthesizer ??= await this.loadSynthesizer();
-    return this.synthesizer.synthesize(input, signal);
+    try {
+      const synthesizer = await untilAborted(this.synthesizer(), signal);
+      return await synthesizer.synthesize(input, signal);
+    } catch {
+      // The port answers with a Result, and a chunk that cannot be fetched, the
+      // synthesizer's or the encoder's it calls, is what a first synthesis meets
+      // on a device with no connection.
+      if (signal.aborted) {
+        return err(aiError('cancelled', 'tts-synthesis', 'The request was cancelled.'));
+      }
+      return err(
+        this.isOnline()
+          ? aiError('unknown', 'tts-synthesis', 'The speech code could not be loaded.', {
+              detail: { issueCode: SPEECH_CODE_UNAVAILABLE },
+            })
+          : aiError('offline', 'tts-synthesis', 'The device is offline.'),
+      );
+    }
   }
 }

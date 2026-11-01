@@ -168,6 +168,25 @@ describe('AudioJobStore', () => {
     await destroyTestDatabase(bed.db);
   });
 
+  it('reports a refused key, not a stop or a crash, when a sibling worker then throws', async () => {
+    let answered = 0;
+    bed.provider.synthesizeWith = async () => {
+      answered += 1;
+      if (answered === 1) {
+        return err(aiError('authentication', 'tts-synthesis', 'Refused.'));
+      }
+      await hold();
+      throw new Error('boom');
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    expect(bed.store.progress()).toMatchObject({
+      kind: 'failed',
+      error: { source: 'provider', error: { code: 'authentication' } },
+    });
+  });
+
   it('synthesizes every sentence exactly once, and claims them in reading order', async () => {
     await bed.store.start(bed.draft.reading.id);
 

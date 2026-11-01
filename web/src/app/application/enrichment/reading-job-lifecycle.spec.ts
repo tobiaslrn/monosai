@@ -13,6 +13,7 @@ import { NOOP_LOGGER } from '../shared/diagnostics';
 import {
   ReadingJobLifecycle,
   countsFor,
+  settleWorkers,
   type PlanOutcome,
   type ReadingJobRun,
 } from './reading-job-lifecycle';
@@ -48,6 +49,8 @@ interface Bed {
   planDrained: boolean;
   /** What a run does with its row before it settles. */
   work: ((job: AssetJob) => Promise<void>) | null;
+  /** Runs at the start of `process`, for what a store does to its own run. */
+  onProcess: ((run: ReadingJobRun) => void) | null;
   plans: number;
   processed: number;
 }
@@ -92,6 +95,7 @@ async function configure(): Promise<Bed> {
 
   const process = async (context: Context, job: AssetJob, run: ReadingJobRun): Promise<void> => {
     bed.processed += 1;
+    bed.onProcess?.(run);
     const counts = countsFor(context.total, job);
     bed.lifecycle.publish({ kind: 'running', readingId: job.readingId, counts });
     if (bed.processGate !== null) await bed.processGate;
@@ -117,6 +121,7 @@ async function configure(): Promise<Bed> {
     sentenceIds: draft.sentences.slice(0, 3).map((sentence) => sentence.id),
     planDrained: false,
     work: null,
+    onProcess: null,
     planGate: null,
     processGate: null,
     plans: 0,
@@ -139,6 +144,107 @@ describe('ReadingJobLifecycle', () => {
   afterEach(async () => {
     await destroyTestDatabase(bed.db);
     vi.restoreAllMocks();
+  });
+
+  describe('a run that throws', () => {
+    it('ends failed with its row closed, rather than still saying running', async () => {
+      bed.work = () => Promise.reject(new TypeError('chunk'));
+
+      await bed.lifecycle.start(bed.reading);
+
+      expect(bed.lifecycle.progress()).toMatchObject({
+        kind: 'failed',
+        error: { source: 'provider', error: { code: 'unknown', cause: 'TypeError' } },
+      });
+      expect(await rowStates(bed.db)).toEqual(['failed']);
+    });
+
+    it('reports a plan that threw, when there is no row to close', async () => {
+      bed.planGate = Promise.reject(new Error('boom'));
+
+      await bed.lifecycle.start(bed.reading);
+
+      expect(bed.lifecycle.progress().kind).toBe('failed');
+      expect(await rowStates(bed.db)).toEqual([]);
+    });
+
+    it('ends cancelled when the learner had already stopped it', async () => {
+      const held = gate();
+      bed.processGate = held.opened;
+      bed.work = () => Promise.reject(new Error('boom'));
+      const run = bed.lifecycle.start(bed.reading);
+      await vi.waitFor(() => {
+        expect(bed.lifecycle.progress().kind).toBe('running');
+      });
+
+      bed.lifecycle.cancel(bed.reading);
+      held.open();
+      await run;
+
+      expect(bed.lifecycle.progress().kind).toBe('cancelled');
+      expect(await rowStates(bed.db)).toEqual(['cancelled']);
+    });
+
+    it('ends failed when only the run itself aborted before throwing', async () => {
+      bed.work = () => Promise.reject(new Error('boom'));
+      bed.onProcess = (run) => {
+        run.controller.abort();
+      };
+
+      await bed.lifecycle.start(bed.reading);
+
+      expect(bed.lifecycle.progress().kind).toBe('failed');
+      expect(await rowStates(bed.db)).toEqual(['failed']);
+    });
+
+    it('ignores progress published after the run ended', async () => {
+      bed.work = () => Promise.reject(new Error('boom'));
+      await bed.lifecycle.start(bed.reading);
+
+      bed.lifecycle.publish({
+        kind: 'running',
+        readingId: bed.reading,
+        counts: { total: 3, requested: 3, completed: 1, failed: 0 },
+      });
+
+      expect(bed.lifecycle.progress().kind).toBe('failed');
+    });
+
+    it('waits for every worker before passing on the first throw', async () => {
+      const controller = new AbortController();
+      const sibling = gate();
+      let settled = false;
+      const waiting = settleWorkers(
+        [
+          Promise.reject(new Error('first')),
+          sibling.opened.then(() => {
+            throw new Error('second');
+          }),
+        ],
+        controller,
+      ).catch((error: unknown) => {
+        settled = true;
+        return error;
+      });
+      await vi.waitFor(() => {
+        expect(controller.signal.aborted).toBe(true);
+      });
+      expect(settled).toBe(false);
+
+      sibling.open();
+
+      expect(await waiting).toMatchObject({ message: 'first' });
+    });
+
+    it('can run again afterwards', async () => {
+      bed.work = () => Promise.reject(new Error('boom'));
+      await bed.lifecycle.start(bed.reading);
+      bed.work = null;
+
+      await bed.lifecycle.start(bed.reading);
+
+      expect(bed.lifecycle.progress().kind).toBe('complete');
+    });
   });
 
   it('joins a run already in flight rather than starting a second', async () => {

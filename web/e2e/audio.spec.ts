@@ -295,6 +295,27 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(sentencePopover(page)).toBeVisible();
   });
 
+  test('a run pressed while offline says so, and Try again works once reconnected', async ({
+    page,
+    context,
+  }) => {
+    await prepareReading(page);
+    await openAudioPlayer(page);
+
+    await context.setOffline(true);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expect(playerStatus(page)).toContainText('This device is offline', {
+      timeout: 15_000,
+    });
+    await expect(
+      audioPlayer(page).getByRole('button', { name: 'Stop generating audio' }),
+    ).toHaveCount(0);
+
+    await context.setOffline(false);
+    await audioPlayer(page).getByRole('button', { name: 'Try again' }).click();
+    await expectAudioComplete(page);
+  });
+
   test('closing the player does not cancel generation', async ({ page }) => {
     await prepareReading(page, TEXT, { audioDelayMs: 2_000 });
     await openAudioPlayer(page);

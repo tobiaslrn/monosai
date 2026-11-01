@@ -3,6 +3,8 @@ import type {
   AudioJobCounts,
   AudioJobProgress,
 } from '../../application/enrichment/audio-job.store';
+import type { LayerError } from '../../application/enrichment/layer-progress';
+import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import type { PlaybackRate } from '../../domain/settings/settings';
 import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
 
@@ -68,12 +70,27 @@ export function stoppedRunLine(
       if (progress.counts.requested === 0) {
         return 'Audio could not be prepared.';
       }
-      const exhausted = progress.canRetry
-        ? ''
-        : ' Trying again produced nothing, so it is no longer offered: a different voice or model may read these sentences.';
+      const exhausted = progress.canRetry ? '' : exhaustedLine(progress.error);
       return `${readyLine(availableCount, sentenceCount)} ${attemptLine(progress.counts)}${exhausted}`;
     }
   }
+}
+
+/**
+ * Why a retry is gone. A voice or model is only suggested for a failure one could
+ * cure: a refused key, an empty account, a lost connection, a failed save and
+ * speech code that will not load fail the same way under any voice.
+ */
+function exhaustedLine(error: LayerError): string {
+  const anyVoiceFails =
+    error.source === 'storage' ||
+    error.error.code === 'authentication' ||
+    error.error.code === 'credit-exhausted' ||
+    error.error.code === 'offline' ||
+    error.error.detail?.issueCode === SPEECH_CODE_UNAVAILABLE;
+  return anyVoiceFails
+    ? ' Trying again produced nothing, so it is no longer offered.'
+    : ' Trying again produced nothing, so it is no longer offered: a different voice or model may read these sentences.';
 }
 
 /**

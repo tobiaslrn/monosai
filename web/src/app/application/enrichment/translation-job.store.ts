@@ -18,6 +18,7 @@ import {
   ReadingJobLifecycle,
   countsFor,
   enqueueOutcome,
+  settleWorkers,
   type ReadingJobProgress,
   type ReadingJobRun,
 } from './reading-job-lifecycle';
@@ -186,7 +187,7 @@ export class TranslationJobStore {
       counts = repaired.value.counts;
     }
     if (readyContext === null) return;
-    const tail = await this.runTail(readyContext, job, counts, signal);
+    const tail = await this.runTail(readyContext, job, counts, run);
     counts = tail.counts;
     if (tail.storage !== null) {
       this.lifecycle.fail(context.readingId, tail.storage, counts);
@@ -206,12 +207,13 @@ export class TranslationJobStore {
     context: TranslationJobContext,
     job: AssetJob,
     initialCounts: TranslationJobCounts,
-    signal: AbortSignal,
+    run: ReadingJobRun,
   ): Promise<{
     counts: TranslationJobCounts;
     error: AiError | null;
     storage: StorageError | null;
   }> {
+    const { signal } = run;
     const plan = context.plan as ReadyTranslationPlan;
     const missing = await this.translation.missingSentenceIds(context.readingId, context.cacheKeys);
     if (!missing.ok) return { counts: initialCounts, error: null, storage: missing.error };
@@ -332,10 +334,11 @@ export class TranslationJobStore {
         }
       }
     };
-    await Promise.all(
+    await settleWorkers(
       Array.from({ length: Math.min(MAX_ACTIVE_TRANSLATION_REQUESTS, batches.length) }, () =>
         worker(),
       ),
+      run.controller,
     );
     return { counts, error: firstError, storage };
   }

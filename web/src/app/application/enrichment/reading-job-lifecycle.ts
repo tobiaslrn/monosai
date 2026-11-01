@@ -82,6 +82,31 @@ function describe(error: unknown): string {
   return error instanceof Error ? error.name : typeof error;
 }
 
+/**
+ * Waits for every worker of a run, and only then passes on the first throw.
+ *
+ * The first throw aborts the rest so they unwind promptly. Passing it on sooner
+ * would end the run while they are still working: their progress would overwrite
+ * the ending, and a retry would overlap them.
+ */
+export async function settleWorkers(
+  workers: readonly Promise<void>[],
+  controller: AbortController,
+): Promise<void> {
+  const thrown: unknown[] = [];
+  await Promise.all(
+    workers.map((worker) =>
+      worker.catch((error: unknown) => {
+        thrown.push(error);
+        controller.abort();
+      }),
+    ),
+  );
+  if (thrown.length > 0) {
+    throw thrown[0];
+  }
+}
+
 const EMPTY_COUNTS: LayerCounts = { total: 0, requested: 0, completed: 0, failed: 0 };
 const IDLE = { kind: 'idle' } as const;
 
@@ -149,6 +174,8 @@ export class ReadingJobLifecycle<
   /** The row write that ends a parked run the learner stopped, until it settles. */
   private parkedClose: Promise<void> | null = null;
   private yieldFlag = false;
+  /** The learner's Stop, which a run's own fail-fast abort is not. */
+  private stopRequested = false;
 
   readonly progress = this.progressSignal.asReadonly();
 
@@ -226,6 +253,7 @@ export class ReadingJobLifecycle<
     this.controller = controller;
     // A yield is asked of the run that is working, never of the next one.
     this.yieldFlag = false;
+    this.stopRequested = false;
     const run = this.run({ readingId, controller, signal: controller.signal });
     this.activeRun = run;
     try {
@@ -238,7 +266,50 @@ export class ReadingJobLifecycle<
     }
   }
 
+  /**
+   * Whatever is thrown, the run ends here. A rejection that got past this would
+   * leave progress saying `running` with no worker behind it: a card stuck at
+   * "Generating" whose Stop has nothing to abort.
+   */
   private async run(run: ReadingJobRun): Promise<void> {
+    try {
+      await this.advance(run);
+    } catch (error: unknown) {
+      await this.crashed(run, error);
+    }
+  }
+
+  /** Closes the row a run that threw left open, then reports how it ended. */
+  private async crashed(run: ReadingJobRun, thrown: unknown): Promise<void> {
+    const { readingId, controller } = run;
+    const stopped = this.stopRequested;
+    // Anything still in flight belongs to a run that is over.
+    controller.abort();
+    const progress = this.progressSignal();
+    const counts = progress.kind === 'running' ? progress.counts : EMPTY_COUNTS;
+    const failure = aiError('unknown', this.options.task, 'The run stopped unexpectedly.', {
+      cause: describe(thrown),
+    });
+    try {
+      const { jobs, jobKind } = this.options;
+      const active = await jobs.findActive(readingId, jobKind);
+      const closed =
+        !active.ok || active.value === null
+          ? active
+          : await jobs.setState(active.value.id, stopped ? 'cancelled' : 'failed');
+      if (!closed.ok) {
+        this.fail(readingId, closed.error, counts);
+      } else if (stopped) {
+        this.cancelled(readingId, null, counts);
+      } else {
+        this.fail(readingId, failure, counts);
+      }
+    } catch {
+      this.fail(readingId, failure, counts);
+    }
+  }
+
+  private async advance(run: ReadingJobRun): Promise<void> {
     const { readingId } = run;
     this.options.onStart?.();
     this.progressSignal.set({ kind: 'preparing', readingId });
@@ -323,6 +394,7 @@ export class ReadingJobLifecycle<
       }
       return;
     }
+    this.stopRequested = true;
     this.controller?.abort();
   }
 
@@ -356,6 +428,10 @@ export class ReadingJobLifecycle<
 
   /** Publishes a working run's progress. */
   publish(progress: Extract<ReadingJobProgress<Running, Failure>, { kind: 'running' }>): void {
+    // A worker outliving its run's ending must not reopen it.
+    if (!this.isRunning()) {
+      return;
+    }
     this.progressSignal.set(progress);
   }
 

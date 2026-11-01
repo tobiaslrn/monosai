@@ -20,6 +20,7 @@ import {
   ReadingJobLifecycle,
   countsFor,
   enqueueOutcome,
+  settleWorkers,
   unavailable,
   type PlanOutcome,
   type ReadingJobProgress,
@@ -576,7 +577,18 @@ export class AudioJobStore {
       publish();
     };
 
-    await Promise.all(wanted.map((sentence) => readSentence(sentence)));
+    try {
+      await settleWorkers(
+        wanted.map((sentence) => readSentence(sentence)),
+        controller,
+      );
+    } catch (thrown: unknown) {
+      // A refusal that already stopped the run is what ended it, and is reported
+      // below; a worker that threw while unwinding from it changes nothing.
+      if (outcome.failure === null) {
+        throw thrown;
+      }
+    }
 
     // The failure wins over the abort it caused, so a run that stopped because
     // a request was refused is never reported as one the learner stopped.
