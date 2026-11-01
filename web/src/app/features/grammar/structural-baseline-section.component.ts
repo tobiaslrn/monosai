@@ -98,6 +98,7 @@ interface CategoryGroup {
 
     h3 {
       display: flex;
+      flex-wrap: wrap;
       gap: var(--space-2);
       align-items: baseline;
       margin: 0 0 var(--space-2);
@@ -128,8 +129,12 @@ interface CategoryGroup {
       min-width: 0;
     }
 
+    /* A word longer than the line breaks only as a last resort. */
     .name {
       font-weight: var(--weight-semibold);
+      overflow-wrap: break-word;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .forms {

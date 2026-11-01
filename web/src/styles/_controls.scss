@@ -17,7 +17,7 @@
 :where(.mn-control, .mn-field input, .mn-field textarea, .mn-field select) {
   width: 100%;
   min-height: var(--touch-target);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) min(var(--space-3), 12px);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
   background: var(--surface-raised);
@@ -47,7 +47,8 @@
 
 :where(select.mn-control, .mn-field select) {
   appearance: none;
-  padding-inline-end: calc(var(--space-6) + var(--space-1));
+  /* The arrow is placed in pixels, so large text must not widen the room kept for it. */
+  padding-inline-end: min(calc(var(--space-6) + var(--space-1)), 36px);
   background-image:
     linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
     linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);

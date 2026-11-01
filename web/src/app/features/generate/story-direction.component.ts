@@ -184,6 +184,11 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       flex: none;
     }
 
+    /* Large text puts the value on its own line instead of cutting it off. */
+    .axis > summary {
+      flex-wrap: wrap;
+    }
+
     .axis-value {
       min-width: 0;
       margin-inline-start: auto;
@@ -216,7 +221,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 
     .chips button {
       max-width: 100%;
-      overflow-wrap: anywhere;
+      overflow-wrap: break-word;
       white-space: normal;
     }
 

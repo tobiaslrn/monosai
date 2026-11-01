@@ -49,9 +49,9 @@
  */
 .mn-list-row--overview .mn-list-row__link {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(min-content, 1fr) auto;
   grid-template-rows: auto auto;
-  gap: 0.125rem var(--space-3);
+  gap: 0.125rem min(var(--space-3), 12px);
 }
 
 .mn-list-row--overview .mn-list-row__leading,
@@ -71,6 +71,7 @@
 .mn-list-row--overview .mn-list-row__title {
   grid-column: 2;
   align-self: center;
+  overflow-wrap: break-word;
 }
 
 .mn-list-row--overview .mn-list-row__meta {
@@ -89,18 +90,18 @@
 .mn-list-row--overview .mn-list-row__trailing .mn-status-pill {
   flex: 0 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 .mn-list-row__link {
   display: flex;
   flex: 1 1 auto;
-  gap: var(--space-3);
+  gap: min(var(--space-3), 12px);
   align-items: center;
   min-width: 0;
   min-height: var(--row-min-height);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) min(var(--space-3), 12px);
   border-radius: inherit;
   color: var(--text-primary);
   text-decoration: none;
@@ -237,5 +238,48 @@
   .mn-list-row,
   .mn-list-row__link {
     transition: none;
+  }
+}
+
+/*
+ * Large text leaves no room beside a title, so a word is never broken to fit:
+ * the badge takes its own line and the title the full width under it. An
+ * overview row's value also drops to a line of its own, under the title.
+ */
+.mn-list-row {
+  container-type: inline-size;
+}
+
+@container (max-width: 16em) {
+  .mn-list-row__link {
+    flex-wrap: wrap;
+  }
+
+  .mn-list-row__leading {
+    flex: 0 0 100%;
+    justify-content: flex-start;
+  }
+
+  .mn-list-row--overview .mn-list-row__link:has(.mn-status-pill) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mn-list-row--overview
+    .mn-list-row__link:has(.mn-status-pill)
+    :is(.mn-list-row__leading, .mn-list-row__title, .mn-list-row__trailing, .mn-list-row__meta) {
+    grid-column: 1;
+  }
+
+  .mn-list-row--overview .mn-list-row__link:has(.mn-status-pill) .mn-list-row__title {
+    grid-row: 2;
+  }
+
+  .mn-list-row--overview .mn-list-row__link:has(.mn-status-pill) .mn-list-row__trailing {
+    grid-row: 3;
+    justify-self: start;
+  }
+
+  .mn-list-row--overview .mn-list-row__link:has(.mn-status-pill) .mn-list-row__meta {
+    grid-row: 4;
   }
 }

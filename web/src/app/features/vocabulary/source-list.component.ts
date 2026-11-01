@@ -138,6 +138,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
 
     .footer {
       display: flex;
+      flex-wrap: wrap;
       gap: var(--space-3);
       align-items: center;
       min-height: 3.5rem;
@@ -148,7 +149,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
     }
 
     .footer-text {
-      flex: 1;
+      flex: 1 1 min(100%, 12em);
       min-width: 0;
     }
 

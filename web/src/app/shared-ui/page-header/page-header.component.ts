@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  viewChild,
+  type ElementRef,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { IconComponent } from '../icon/icon.component';
@@ -17,7 +28,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, IconComponent, WordmarkComponent],
   template: `
-    <header class="head" [class.head--home]="home()">
+    <header #bar class="head" [class.head--home]="home()">
       @if (backTo(); as target) {
         @if (stepsBack()) {
           <button
@@ -176,11 +187,16 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
       min-width: 0;
     }
 
+    /* A long heading wraps, so large text never cuts it off. */
     h1 {
       margin: 0;
-      overflow: hidden;
       font-size: var(--text-page-title);
       line-height: var(--leading-tight);
+      overflow-wrap: anywhere;
+    }
+
+    .titles--home h1 {
+      overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
     }
@@ -206,6 +222,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
 })
 export class PageHeaderComponent {
   private readonly navigation = inject(NavigationHistoryService);
+  private readonly bar = viewChild.required<ElementRef<HTMLElement>>('bar');
   readonly heading = input.required<string>();
   /** Omitted only by the Library, which is where every other page goes back to. */
   readonly backTo = input<string | null>(null);
@@ -226,6 +243,33 @@ export class PageHeaderComponent {
     const target = this.backTo();
     return target !== null && this.navigation.canPopTo(target);
   });
+
+  constructor() {
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      if (typeof ResizeObserver === 'undefined') {
+        return;
+      }
+      const root = document.documentElement;
+      const bar = this.bar().nativeElement;
+      // At large text the bar is tall enough to hide a focused control behind
+      // it, so scrolling to focus keeps clear of it. At normal size nothing changes.
+      const keepFocusBelow = (): void => {
+        const large = parseFloat(getComputedStyle(root).fontSize) > 16;
+        if (large) {
+          root.style.scrollPaddingTop = `${String(bar.offsetHeight)}px`;
+        } else {
+          root.style.removeProperty('scroll-padding-top');
+        }
+      };
+      const observer = new ResizeObserver(keepFocusBelow);
+      observer.observe(bar);
+      destroyRef.onDestroy(() => {
+        observer.disconnect();
+        root.style.removeProperty('scroll-padding-top');
+      });
+    });
+  }
 
   protected goBack(fallback: string): void {
     void this.navigation.backOrNavigate(fallback);

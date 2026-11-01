@@ -1177,6 +1177,15 @@ These are not aspirations; a change that breaks one of them is a regression.
 
 - Text is resizable by browser zoom **and** by font-size preference, to 200%,
   without loss of content or function.
+  A page heading other than the home wordmark wraps instead of ending in an
+  ellipsis; a control in a settings row takes a line of its own once the row is
+  too narrow for it; an end-slot value wraps; in a list row the badge, then the
+  title, then an overview row's value each take a line once the row is too narrow
+  to hold them side by side, so a word is not broken to fit. The `narrow-screen`
+  e2e spec holds this for Settings, Generate, What you can read, Help, the
+  Library and a source that could not be read, at 320px with 200% text, 320px
+  with 100% and 393px with 150%. Only a long name in a list row, which ends after
+  two lines, and a model name at normal size may still end in an ellipsis.
 - Native semantics first. A button is a `button`, a disclosure is
   `details`/`summary`, a link navigates. ARIA supplements native elements; it
   does not replace them.

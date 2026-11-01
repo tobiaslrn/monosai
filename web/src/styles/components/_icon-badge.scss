@@ -4,8 +4,8 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: min(2.25rem, 40px);
+  height: min(2.25rem, 40px);
   border-radius: 50%;
   background: var(--action-primary-soft);
   color: var(--action-primary);

@@ -380,6 +380,7 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
 
     .setting-heading {
       display: flex;
+      flex-wrap: wrap;
       gap: var(--space-3);
       align-items: baseline;
       justify-content: space-between;
@@ -478,6 +479,10 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
     .strictness {
       padding-top: var(--space-2);
       border-top: 1px solid var(--border-subtle);
+    }
+
+    .strictness > summary {
+      flex-wrap: wrap;
     }
 
     .summary-value {

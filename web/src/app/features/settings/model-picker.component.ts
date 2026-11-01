@@ -198,6 +198,17 @@ import { PopupDirective, PopupTriggerDirective } from '../../shared-ui/popup/pop
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    /* On a line of its own, the full model name wraps rather than being cut. */
+    @container (max-width: 16em) {
+      .trigger--compact > span:first-child {
+        text-align: start;
+      }
+      .trigger--compact strong {
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+        white-space: normal;
+      }
+    }
     /* Nothing chosen yet is a prompt, not a value; it should not read as one. */
     .trigger--unset strong {
       color: var(--text-secondary);

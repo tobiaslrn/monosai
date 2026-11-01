@@ -262,6 +262,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
      * and gap around a closed fold's hidden body drew an empty band under it.
      */
     .fold {
+      container-type: inline-size;
       gap: 0;
       padding: 0;
       overflow: clip;
@@ -288,6 +289,10 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
 
     .fold-icon {
       flex: none;
+    }
+
+    .fold > summary {
+      flex-wrap: wrap;
     }
 
     .summary-label {
@@ -320,6 +325,13 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     .fold-body {
       padding: var(--space-4);
       border-top: 1px solid var(--border-subtle);
+    }
+
+    /* Gutters grow with the text, so a long word keeps the room it needs. */
+    @container (max-width: 16em) {
+      .fold-body {
+        padding-inline: var(--space-2);
+      }
     }
 
     .assets-failed {

@@ -253,13 +253,47 @@
   }
 }
 
-@container (max-width: 14rem) {
+/* Narrow or large text: the control takes a line of its own, the full row wide. */
+@container (max-width: 16em) {
   .mn-settings-row {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .mn-settings-row__end {
-    justify-self: start;
+    justify-self: stretch;
+  }
+
+  /* Rem-based gutters grow with the text, so the control gets the width back. */
+  .mn-settings-row,
+  .mn-settings-group > .mn-settings-row {
+    padding-inline: var(--space-2);
+  }
+
+  .mn-settings-card > .mn-settings-group {
+    margin: var(--space-1);
+  }
+
+  .mn-settings-subrows {
+    padding-inline: var(--space-2);
+  }
+
+  .mn-settings-row :where(select.mn-control, input.mn-control),
+  .mn-settings-row mn-token-budget-field,
+  .mn-settings-row mn-model-picker {
+    width: 100%;
+  }
+
+  .mn-settings-row__end > .mn-settings-value {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-align: start;
+    white-space: normal;
+  }
+
+  .mn-settings-row .mn-segmented--joined {
+    grid-auto-flow: row;
+    width: 100%;
+    border-radius: var(--radius-card);
   }
 
   .mn-settings-row .mn-actions {
