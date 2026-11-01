@@ -50,6 +50,16 @@ describe('VocabularySyncBannerComponent', () => {
     expect(toast?.textContent).toContain('Vocabulary updated');
   });
 
+  it('raises no toast for a read the learner started', () => {
+    const { element } = render({
+      kind: 'updated',
+      snapshot: snapshotFixture(21).snapshot,
+      requested: true,
+    });
+
+    expect(element.querySelector('[data-testid="vocabulary-sync-toast"]')).toBeNull();
+  });
+
   it('keeps actionable errors visible with recovery actions', () => {
     const { element } = render({ kind: 'attention', message: 'The Anki mapping is stale.' });
 

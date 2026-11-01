@@ -25,13 +25,13 @@ describe('VocabularyFilterSheetComponent', () => {
     media.restore();
   });
 
-  function open(): {
+  function open(query: BrowseQuery = DEFAULT_BROWSE_QUERY): {
     readonly ref: DialogRef<BrowseQuery | undefined>;
     readonly closed: (BrowseQuery | undefined)[];
     readonly sheet: HTMLElement;
   } {
     const data: VocabularyFilterSheetData = {
-      query: DEFAULT_BROWSE_QUERY,
+      query,
       entries: [],
       sources: [],
     };
@@ -97,6 +97,19 @@ describe('VocabularyFilterSheetComponent', () => {
     expect(closed).toEqual([]);
     endSlide(sheet);
     expect(closed).toEqual([DEFAULT_BROWSE_QUERY]);
+  });
+
+  it('keeps the search text when Reset clears the sheet fields', () => {
+    const { closed, sheet } = open({ ...DEFAULT_BROWSE_QUERY, search: 'neko' });
+
+    [...sheet.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.textContent.trim() === 'Reset')!
+      .click();
+    detect();
+    sheet.querySelector<HTMLButtonElement>('.mn-button--primary')!.click();
+    endSlide(sheet);
+
+    expect(closed).toEqual([{ ...DEFAULT_BROWSE_QUERY, search: 'neko' }]);
   });
 
   it('discards the draft when the handle dismisses it', () => {

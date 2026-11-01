@@ -295,6 +295,6 @@ export class SourceListComponent {
 
   protected syncAgain(): void {
     this.manual.dismiss();
-    void this.automatic?.trigger(true);
+    void this.automatic?.trigger(true, true).then(() => this.history.load());
   }
 }

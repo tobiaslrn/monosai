@@ -321,7 +321,7 @@ export class VocabularyFilterSheetComponent {
   }
 
   protected reset(): void {
-    this.draft.set(DEFAULT_BROWSE_QUERY);
+    this.draft.set({ ...DEFAULT_BROWSE_QUERY, search: this.draft().search });
   }
 
   private update(patch: Partial<BrowseQuery>): void {

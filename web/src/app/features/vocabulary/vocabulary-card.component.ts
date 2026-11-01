@@ -60,6 +60,9 @@ export class VocabularyCardComponent {
     if (this.history.lastFailure() !== null) {
       return 'Words unavailable';
     }
+    if (!this.history.loaded()) {
+      return '';
+    }
     const snapshot = this.history.active();
     const sources = this.mappings.sources();
     // Removing the last source leaves an empty snapshot behind, which is the
@@ -84,7 +87,11 @@ export class VocabularyCardComponent {
     if (this.history.lastFailure() !== null) {
       return 'Your saved words could not be read.';
     }
-    if (this.history.active() === null && this.mappings.sources().length > 0) {
+    if (
+      this.history.loaded() &&
+      this.history.active() === null &&
+      this.mappings.sources().length > 0
+    ) {
       return 'Nothing has been read yet';
     }
     return null;
