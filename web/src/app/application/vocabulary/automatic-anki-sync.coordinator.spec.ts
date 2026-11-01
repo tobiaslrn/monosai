@@ -11,6 +11,7 @@ import { ankiError } from '../../domain/anki/anki-error';
 import type { AnkiVocabularyProvider } from '../../domain/anki/anki-provider';
 import { ANKI_PROVIDER_FACTORY } from '../shared/anki-tokens';
 import { AutomaticAnkiSyncCoordinator } from './automatic-anki-sync.coordinator';
+import { SnapshotHistoryStore } from './snapshot-history.store';
 import { unmeasuredBasis } from '../../domain/anki/practice-evidence';
 
 describe('AutomaticAnkiSyncCoordinator', () => {
@@ -60,6 +61,30 @@ describe('AutomaticAnkiSyncCoordinator', () => {
     expect(coordinator.status().kind).toBe('updated');
     expect(beds.vocabulary.commitCount).toBe(1);
     expect(beds.mappings.caches.get(source.id)?.entries.length).toBeGreaterThan(0);
+  });
+
+  it('brings a commit with new words to the active snapshot', async () => {
+    configureAutomaticSource();
+    const history = TestBed.inject(SnapshotHistoryStore);
+    await history.load();
+    expect(history.active()).toBeNull();
+
+    await coordinator.trigger(true);
+
+    expect(history.active()?.revision).toBe(coordinator.committedRevision());
+  });
+
+  it('leaves the active snapshot alone when a read found the same words', async () => {
+    configureAutomaticSource();
+    const history = TestBed.inject(SnapshotHistoryStore);
+    await coordinator.trigger(true);
+    const load = vi.spyOn(history, 'load');
+    const before = coordinator.committedRevision();
+
+    await coordinator.trigger(true);
+
+    expect(coordinator.committedRevision()).not.toBe(before);
+    expect(load).not.toHaveBeenCalled();
   });
 
   it('marks an update the learner asked for, and only that one', async () => {

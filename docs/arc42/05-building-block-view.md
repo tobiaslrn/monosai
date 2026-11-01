@@ -444,7 +444,9 @@ never legitimately contain.
 hidden-to-visible transition reads once past the ordinary cooldown, because the answers just given
 are the reason the learner came back; the focus event that follows joins that read instead of
 starting another, and a read that began before the return gets exactly one follow-up queued behind
-it. Every successful commit publishes its revision, whether or not the word list changed.
+it. Every successful commit publishes its revision, whether or not the word list changed. A commit
+that changed the words also reloads `SnapshotHistoryStore`, which is how an open reader re-marks its
+mounted window; one that did not leaves the store alone, so an unchanged read re-marks nothing.
 
 ### Reader additions to word lists
 

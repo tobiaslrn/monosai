@@ -44,6 +44,7 @@ describe('SourceListComponent', () => {
   let beds: VocabularyTestBed;
   let anki: SourceMapping;
   const status = signal<AutomaticAnkiSyncStatus>({ kind: 'idle' });
+  const committedRevision = signal<string | null>(null);
   const trigger = vi.fn((): Promise<void> => {
     status.set({ kind: 'checking' });
     return new Promise<void>(() => undefined);
@@ -51,13 +52,14 @@ describe('SourceListComponent', () => {
 
   beforeEach(async () => {
     status.set({ kind: 'idle' });
+    committedRevision.set(null);
     trigger.mockClear();
     beds = configureVocabularyTestBed();
     TestBed.configureTestingModule({
       providers: [
         {
           provide: AutomaticAnkiSyncCoordinator,
-          useValue: { status: status.asReadonly(), trigger },
+          useValue: { status: status.asReadonly(), committedRevision, trigger },
         },
       ],
     });
@@ -190,6 +192,18 @@ describe('SourceListComponent', () => {
     const { element } = await render();
 
     expect(element.querySelector('[data-testid="source-attention"]')).toBeNull();
+  });
+
+  it('re-reads its rows after an automatic read that found the same words', async () => {
+    cacheWords(['one']);
+    const { fixture, element } = await render();
+    expect(rows(element)[0]?.textContent).toContain('1 word');
+
+    cacheWords(['one', 'two']);
+    committedRevision.set('after-read');
+    await settle(fixture);
+
+    expect(rows(element)[0]?.textContent).toContain('2 words');
   });
 
   it('keeps Try now enabled and busy while the retry runs, and ignores another press', async () => {

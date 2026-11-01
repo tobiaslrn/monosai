@@ -4,14 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLOCK, READING_REPOSITORY } from '../shared/repository-tokens';
 import { fixedClock } from '../../domain/shared/clock';
 import { readingId, snapshotId, vocabularyItemId } from '../../domain/shared/ids';
-import { ok, type Result } from '../../domain/shared/result';
+import { err, ok, type Result } from '../../domain/shared/result';
 import { storageError } from '../../domain/storage/storage-error';
 import {
   buildReading,
   FakeReadingRepository,
   type FakeReadingRows,
 } from '../../../testing/reading-repository-fake';
-import type { LanguageError } from '../../domain/language/language-error';
+import { languageError, type LanguageError } from '../../domain/language/language-error';
 import type { TokenValidation } from '../../domain/reading/validation';
 import { SnapshotHistoryStore } from '../vocabulary/snapshot-history.store';
 import { ReaderStore } from './reader.store';
@@ -24,6 +24,7 @@ import {
 /** Stub that skips the settings/vocabulary dependency chain entirely. */
 class StubVocabularyClassificationService {
   status: VocabularyStatus = VOCABULARY_NOT_CONFIGURED;
+  failure: LanguageError | null = null;
   calls = 0;
   pending = 0;
   private gate: Promise<void> | null = null;
@@ -43,13 +44,14 @@ class StubVocabularyClassificationService {
   async classify(): Promise<Result<VocabularyStatus, LanguageError>> {
     this.calls += 1;
     const status = this.status;
+    const failure = this.failure;
     const gate = this.gate;
     if (gate !== null) {
       this.gate = null;
       this.pending += 1;
       await gate;
     }
-    return ok(status);
+    return failure === null ? ok(status) : err(failure);
   }
 
   invalidate(): void {
@@ -432,6 +434,61 @@ describe('ReaderStore', () => {
         expect(category(reader)).toBe('anki-exact');
         expect(classifier.calls).toBeGreaterThanOrEqual(3);
       });
+    });
+
+    it('classifies the next reading again when a revision passes during the old one', async () => {
+      const { rows, classifier } = arrange();
+      const second = repository.add(buildReading({ id: 'r2' }));
+      classifier.status = classifiedAs(rows, missing, 'a');
+      const reader = store();
+      await reader.open(rows.reading.id);
+
+      // The run for the first reading is still out while the second one opens
+      // against rev-2, and then the revision moves on again.
+      classifier.hold();
+      moveTo('rev-2');
+      await vi.waitFor(() => {
+        expect(classifier.pending).toBe(1);
+      });
+      classifier.status = classifiedAs(second, missing, 'a');
+      await reader.open(second.reading.id);
+      expect(category(reader)).toBe('not-in-snapshot');
+
+      classifier.status = classifiedAs(second, known, 'a');
+      moveTo('rev-3');
+      classifier.release();
+
+      await vi.waitFor(() => {
+        expect(category(reader)).toBe('anki-exact');
+      });
+    });
+
+    it('keeps a late failure for the old reading away from the next one', async () => {
+      const { rows, classifier } = arrange();
+      const second = repository.add(buildReading({ id: 'r2' }));
+      classifier.status = classifiedAs(rows, missing, 'a');
+      const reader = store();
+      await reader.open(rows.reading.id);
+
+      classifier.hold();
+      classifier.failure = languageError('unknown', 'Late failure.');
+      moveTo('rev-2');
+      await vi.waitFor(() => {
+        expect(classifier.pending).toBe(1);
+      });
+      classifier.failure = null;
+      classifier.status = classifiedAs(second, known, 'a');
+      await reader.open(second.reading.id);
+      const settled = classifier.calls;
+      classifier.release();
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve);
+      });
+
+      expect(reader.languageError()).toBeNull();
+      expect(reader.vocabulary().kind).toBe('classified');
+      expect(category(reader)).toBe('anki-exact');
+      expect(classifier.calls).toBe(settled);
     });
   });
 

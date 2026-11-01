@@ -9,6 +9,7 @@ import {
 import { CLOCK, VOCABULARY_SOURCE_REPOSITORY } from '../shared/repository-tokens';
 import type { Clock } from '../../domain/shared/clock';
 import { AnkiSourceReader, isTransientAnkiFailure } from './anki-source-reader';
+import { SnapshotHistoryStore } from './snapshot-history.store';
 import { VocabularySyncService } from './vocabulary-sync.service';
 
 const COOLDOWN_MS = 60_000;
@@ -45,6 +46,7 @@ export class AutomaticAnkiSyncCoordinator {
   private readonly repository = inject(VOCABULARY_SOURCE_REPOSITORY);
   private readonly reader = inject(AnkiSourceReader);
   private readonly sync = inject(VocabularySyncService);
+  private readonly history = inject(SnapshotHistoryStore);
   private readonly clock = inject<Clock>(CLOCK);
   private readonly view = inject(DOCUMENT).defaultView;
 
@@ -208,6 +210,17 @@ export class AutomaticAnkiSyncCoordinator {
     // Published for every commit, including one whose word list is identical:
     // what those words proved about recent study is exactly what changed.
     this.revisionSignal.set(committed.value.revision);
+    // What the open screens read the words from. Every read commits a new
+    // revision, so only a commit with different words moves it: reloading for
+    // the rest would re-mark an open reader for nothing on every return. A
+    // revision other than the prepared one means a conflict rebuilt the commit
+    // on another tab's words, which the comparison in `prepared` never saw.
+    if (
+      prepared.value.vocabularyChanged ||
+      committed.value.revision !== prepared.value.commit.snapshot.revision
+    ) {
+      await this.history.load();
+    }
     if (!prepared.value.vocabularyChanged) {
       this.statusSignal.set({ kind: 'idle' });
       return;

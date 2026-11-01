@@ -304,6 +304,12 @@ export class ReaderStore {
         const result = await this.classification.classify(
           sentences.map((entry) => ({ sentenceId: entry.sentence.id, tokens: entry.tokens })),
         );
+        // Another reading can take over while this one is out, and the calls it
+        // makes meanwhile are dropped. What this one found belongs to the reading
+        // it was for, so nothing of it is applied and the loop looks again.
+        const replaced = (): boolean =>
+          this.statusSignal() !== 'ready' || this.readingSignal()?.id !== reading.id;
+        if (replaced()) continue;
         if (!result.ok) {
           // Same report as a failed load; the next revision change tries again.
           this.vocabularySignal.set(VOCABULARY_NOT_CONFIGURED);
@@ -311,7 +317,7 @@ export class ReaderStore {
           return;
         }
         const next = await this.withStoryEvidence(result.value, sentenceIds);
-        if (this.readingSignal()?.id !== reading.id) return;
+        if (replaced()) continue;
         if (this.paragraphsSignal() !== mounted) {
           // The window moved while classifying; go round again for the new one.
           continue;
