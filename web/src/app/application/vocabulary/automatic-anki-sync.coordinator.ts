@@ -19,7 +19,12 @@ const SUCCESS_VISIBLE_MS = 8_000;
 export type AutomaticAnkiSyncStatus =
   | { readonly kind: 'idle' }
   | { readonly kind: 'checking' }
-  | { readonly kind: 'updated'; readonly snapshot: VocabularySnapshot }
+  | {
+      readonly kind: 'updated';
+      readonly snapshot: VocabularySnapshot;
+      /** The learner asked for this read, so the control they pressed reports it. */
+      readonly requested?: boolean;
+    }
   | { readonly kind: 'waiting'; readonly message: string }
   | { readonly kind: 'attention'; readonly message: string };
 
@@ -50,6 +55,7 @@ export class AutomaticAnkiSyncCoordinator {
   private inFlight: Promise<void> | null = null;
   private followUp: Promise<void> | null = null;
   private hidden = false;
+  private learnerRequested = false;
 
   readonly status = this.statusSignal.asReadonly();
 
@@ -116,7 +122,10 @@ export class AutomaticAnkiSyncCoordinator {
     return this.followUp;
   }
 
-  trigger(force = false): Promise<void> {
+  trigger(force = false, byLearner = false): Promise<void> {
+    if (byLearner) {
+      this.learnerRequested = true;
+    }
     if (this.inFlight !== null) {
       return this.inFlight;
     }
@@ -127,6 +136,7 @@ export class AutomaticAnkiSyncCoordinator {
     this.lastAttemptAt = now;
     this.inFlight = this.run().finally(() => {
       this.inFlight = null;
+      this.learnerRequested = false;
     });
     return this.inFlight;
   }
@@ -202,7 +212,11 @@ export class AutomaticAnkiSyncCoordinator {
       this.statusSignal.set({ kind: 'idle' });
       return;
     }
-    this.statusSignal.set({ kind: 'updated', snapshot: committed.value });
+    this.statusSignal.set({
+      kind: 'updated',
+      snapshot: committed.value,
+      requested: this.learnerRequested,
+    });
     this.view?.setTimeout(() => {
       const status = this.statusSignal();
       if (

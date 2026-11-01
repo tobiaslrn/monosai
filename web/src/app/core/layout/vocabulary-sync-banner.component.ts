@@ -11,15 +11,17 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
     @if (coordinator?.status(); as status) {
       @switch (status.kind) {
         @case ('updated') {
-          <aside
-            class="toast"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-            data-testid="vocabulary-sync-toast"
-          >
-            Vocabulary updated · {{ wordCount(status.snapshot.uniqueEntryCount) }}
-          </aside>
+          @if (!status.requested) {
+            <aside
+              class="toast"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              data-testid="vocabulary-sync-toast"
+            >
+              Vocabulary updated · {{ wordCount(status.snapshot.uniqueEntryCount) }}
+            </aside>
+          }
         }
         @case ('attention') {
           <aside class="banner attention" role="status" aria-live="polite" aria-atomic="true">
@@ -110,6 +112,6 @@ export class VocabularySyncBannerComponent {
   }
 
   protected retry(): void {
-    void this.coordinator?.trigger(true);
+    void this.coordinator?.trigger(true, true);
   }
 }

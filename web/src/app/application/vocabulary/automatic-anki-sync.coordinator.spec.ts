@@ -62,6 +62,20 @@ describe('AutomaticAnkiSyncCoordinator', () => {
     expect(beds.mappings.caches.get(source.id)?.entries.length).toBeGreaterThan(0);
   });
 
+  it('marks an update the learner asked for, and only that one', async () => {
+    configureAutomaticSource();
+
+    await coordinator.trigger(true, true);
+    expect(coordinator.status()).toMatchObject({ kind: 'updated', requested: true });
+  });
+
+  it('leaves a background update unmarked', async () => {
+    configureAutomaticSource();
+
+    await coordinator.trigger(true);
+    expect(coordinator.status()).toMatchObject({ kind: 'updated', requested: false });
+  });
+
   it('hides a successful automatic update after its presentation window', async () => {
     vi.useFakeTimers();
     configureAutomaticSource();
