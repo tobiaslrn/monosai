@@ -34,6 +34,11 @@ import { describeEnrichmentFailure, enrichmentNeedsSettings } from './enrichment
       display: block;
       align-self: stretch;
     }
+
+    /* An empty slot must not add a flex gap to the card around it. */
+    :host:empty {
+      display: none;
+    }
   `,
 })
 export class AidFailureComponent {

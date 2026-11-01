@@ -72,6 +72,21 @@ export interface UnknownWord {
       />
 
       <!--
+        The way out when the clipboard is not available or refuses. The
+        sentence is printed as plain, selectable Japanese so it can be taken by
+        hand, and the Copy button above stays exactly as it was, because a
+        clipboard that failed once often works on the next press.
+      -->
+      @if (copyStatus() === 'failed') {
+        <section class="copy-fallback" aria-labelledby="mn-sentence-copy-fallback">
+          <p class="mn-notice mn-notice--error" id="mn-sentence-copy-fallback" role="alert">
+            Copy failed. The sentence is unchanged — select it here, or try Copy again.
+          </p>
+          <p class="copy-source" lang="ja">{{ sentenceText() }}</p>
+        </section>
+      }
+
+      <!--
         The two warnings the page marks, said in words. A learner who pressed a
         sentence because something in it was underlined should find out what,
         without hunting for the underline that sent them here.
@@ -120,21 +135,6 @@ export interface UnknownWord {
         the width evenly and reach the touch target without stretching into
         full-width bars.
       -->
-      <!--
-        The way out when the clipboard is not available or refuses. The
-        sentence is printed as plain, selectable Japanese so it can be taken by
-        hand, and the Copy button above stays exactly as it was, because a
-        clipboard that failed once often works on the next press.
-      -->
-      @if (copyStatus() === 'failed') {
-        <section class="copy-fallback" aria-labelledby="mn-sentence-copy-fallback">
-          <p class="mn-notice mn-notice--error" id="mn-sentence-copy-fallback" role="alert">
-            Copy failed. The sentence is unchanged — select it here, or try Copy again.
-          </p>
-          <p class="copy-source" lang="ja">{{ sentenceText() }}</p>
-        </section>
-      }
-
       <div class="tray mn-popover-foot mn-actions mn-actions--fill">
         <button type="button" class="mn-button" (click)="copySentence()">
           <mn-icon [name]="copyStatus() === 'copied' ? 'check' : 'copy'" [size]="18" />
