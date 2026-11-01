@@ -12,6 +12,7 @@ import { Router, RouterLink } from '@angular/router';
 import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import { StoryPlotStore } from '../../application/generation/story-plot.store';
+import { PreparationStore } from '../../application/enrichment/preparation.store';
 import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
 import {
   allPrerequisitesMet,
@@ -33,7 +34,7 @@ import {
   NavigationHistoryService,
   navigationOriginState,
 } from '../../core/routing/navigation-history.service';
-import { aiErrorCopy } from '../../shared-ui/ai-error/ai-error-copy';
+import { aiErrorAction, aiErrorCopy } from '../../shared-ui/ai-error/ai-error-copy';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { NotFoundPanelComponent } from '../../shared-ui/not-found/not-found-panel.component';
@@ -111,10 +112,10 @@ function formatList(items: readonly string[]): string {
           data-testid="missing-job"
           heading="This generation is no longer running"
           [explanation]="missingJobExplanation"
-          primaryLink="/generate"
-          primaryLabel="Start a new story"
-          secondaryLink="/library"
-          secondaryLabel="Go to library"
+          primaryLink="/library"
+          primaryLabel="Go to library"
+          secondaryLink="/generate"
+          secondaryLabel="Start a new story"
         />
       } @else if (savedReading(); as reading) {
         <section class="result-screen" aria-label="Saved story details">
@@ -301,6 +302,7 @@ export class GeneratePageComponent implements OnChanges {
   readonly jobId = input<string | undefined>(undefined);
 
   protected readonly jobs = inject(GenerationJobsStore);
+  private readonly lane = inject(PreparationStore);
   protected readonly draft = inject(GenerationDraftStore);
   private readonly plots = inject(StoryPlotStore);
   protected readonly textModel = inject(TextModelStore);
@@ -325,7 +327,7 @@ export class GeneratePageComponent implements OnChanges {
   protected readonly missingJob = computed(() => this.jobId() !== undefined && this.job() === null);
 
   protected readonly missingJobExplanation = [
-    'This generation is no longer running. Nothing was saved.',
+    'It ended with its tab. A story that had already finished is in your library.',
   ];
 
   protected readonly state = computed<GenerationState>(() => this.job()?.store.state() ?? IDLE);
@@ -446,15 +448,22 @@ export class GeneratePageComponent implements OnChanges {
   });
 
   /**
-   * What is still being made for the story, or null when nothing was asked for.
+   * What the lane is still making for the story, or null when nothing is.
    *
    * The story is in the library the moment its Japanese is valid; the layers it
    * declares are prepared afterwards and appear in the reader as they land, so
    * this says that rather than reporting counts that are all zero.
    */
   protected readonly preparingLabel = computed(() => {
-    const targets = this.savedReading()?.preparationTargets ?? [];
-    const named = targets.map((target) => PREPARATION_LABELS[target]);
+    const reading = this.savedReading();
+    if (reading === null) {
+      return null;
+    }
+    const working = reading.preparationTargets.filter((target) => {
+      const kind = this.lane.progressFor(reading.id, target).kind;
+      return kind === 'queued' || kind === 'preparing' || kind === 'running';
+    });
+    const named = working.map((target) => PREPARATION_LABELS[target]);
     return named.length === 0 ? null : `Preparing ${formatList(named)}.`;
   });
 
@@ -479,7 +488,7 @@ export class GeneratePageComponent implements OnChanges {
       };
     }
     return state.error.domain === 'ai'
-      ? aiErrorCopy(state.error)
+      ? { ...aiErrorCopy(state.error), primaryAction: aiErrorAction(state.error, 'reader') }
       : {
           heading: 'The story could not be finished',
           whatFailed: state.error.message,
