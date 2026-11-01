@@ -43,6 +43,13 @@ export class GenerationDraftStore {
   private readonly stepSignal = signal<GenerationStep>(1);
   private readonly directionSignal = signal<StoryDirection>(EMPTY_STORY_DIRECTION);
 
+  /**
+   * When the last step button was pressed, in input time. It is kept here
+   * because starting a story replaces the form's page with the run's, and the
+   * second tap of a double tap must still find the first.
+   */
+  lastStepPressAt = Number.NEGATIVE_INFINITY;
+
   readonly sentenceCount = this.sentenceCountSignal.asReadonly();
   readonly specialInstructions = this.instructionsSignal.asReadonly();
   readonly step = this.stepSignal.asReadonly();

@@ -593,3 +593,104 @@ test.describe('generating in the background', () => {
     await expect(page.getByTestId('plot-text').first()).not.toHaveText(FIRST_PLOT);
   });
 });
+
+test.describe('taps on a phone', () => {
+  test.use({ storageState: GENERATION_READY_STATE });
+  test.skip(({ isMobile }) => !isMobile, 'real touch input needs the touch project');
+
+  /** A finger on the middle of the button where it is now; the layout moves between steps. */
+  async function tapOn(page: Page, testId: string): Promise<void> {
+    const box = await page.getByTestId(testId).boundingBox();
+    if (box === null) {
+      throw new Error(`${testId} is not on screen`);
+    }
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+  }
+
+  async function openWithPlotRecord(page: Page) {
+    await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
+    const recorded = await stubOpenRouter(page, { generation: { stories: [STRICT_STORY] } });
+    await openGenerate(page);
+    await page.getByTestId('story-length').fill('0');
+    await expect(page.getByTestId('wizard-next')).toBeEnabled();
+    return recorded;
+  }
+
+  test('a double tap on Next stops on Direction and drafts nothing @mobile', async ({ page }) => {
+    test.setTimeout(SETUP_TIMEOUT);
+    const recorded = await openWithPlotRecord(page);
+
+    await tapOn(page, 'wizard-next');
+    await tapOn(page, 'wizard-next');
+
+    await expect(page.getByRole('heading', { name: 'Direction', level: 2 })).toBeVisible();
+    // eslint-disable-next-line no-restricted-syntax -- a request that should not happen shows only over elapsed time
+    await page.waitForTimeout(700);
+    await expect(page.getByRole('heading', { name: 'Direction', level: 2 })).toBeVisible();
+    expect(recorded.plotRequests).toHaveLength(0);
+  });
+
+  test('three quick taps on Next still stop on Direction @mobile', async ({ page }) => {
+    test.setTimeout(SETUP_TIMEOUT);
+    const recorded = await openWithPlotRecord(page);
+
+    await tapOn(page, 'wizard-next');
+    // eslint-disable-next-line no-restricted-syntax -- the spacing of the taps is what is exercised
+    await page.waitForTimeout(130);
+    await tapOn(page, 'wizard-next');
+    // eslint-disable-next-line no-restricted-syntax -- the spacing of the taps is what is exercised
+    await page.waitForTimeout(130);
+    await tapOn(page, 'wizard-next');
+
+    // eslint-disable-next-line no-restricted-syntax -- a request that should not happen shows only over elapsed time
+    await page.waitForTimeout(700);
+    await expect(page.getByRole('heading', { name: 'Direction', level: 2 })).toBeVisible();
+    expect(recorded.plotRequests).toHaveLength(0);
+  });
+
+  test('two taps on Next at a normal pace both advance @mobile', async ({ page }) => {
+    test.setTimeout(SETUP_TIMEOUT);
+    const recorded = await openWithPlotRecord(page);
+
+    await tapOn(page, 'wizard-next');
+    await expect(page.getByRole('heading', { name: 'Direction', level: 2 })).toBeVisible();
+    // eslint-disable-next-line no-restricted-syntax -- the pace between two presses is what is exercised
+    await page.waitForTimeout(700);
+    await tapOn(page, 'wizard-next');
+
+    await expect(page.getByTestId('plot-option')).toHaveCount(3);
+    expect(recorded.plotRequests).toHaveLength(1);
+  });
+
+  test('a double tap on Generate story leaves the run going @mobile', async ({ page }) => {
+    test.setTimeout(SETUP_TIMEOUT);
+    await page.setViewportSize({ width: 360, height: 560 });
+    await prepareGeneration(page, { generation: { stories: [STRICT_STORY] } });
+    // The story never answers, so the run is still there to be stopped by a stray tap.
+    await stubOpenRouter(page, { chat: { kind: 'hang' } });
+    await openGenerate(page);
+    await page.getByTestId('story-length').fill('0');
+    await reachPlots(page);
+    // eslint-disable-next-line no-restricted-syntax -- a tap straight after the last press is a double tap by design
+    await page.waitForTimeout(700);
+
+    const box = await page.getByTestId('generate').boundingBox();
+    if (box === null) {
+      throw new Error('Generate story is not on screen');
+    }
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.touchscreen.tap(x, y);
+    // eslint-disable-next-line no-restricted-syntax -- the spacing of the taps is what is exercised
+    await page.waitForTimeout(200);
+    await page.touchscreen.tap(x, y);
+
+    await expect(page.getByTestId('cancel-generation')).toBeVisible({ timeout: 30_000 });
+    // eslint-disable-next-line no-restricted-syntax -- a stop that should not happen shows only over elapsed time
+    await page.waitForTimeout(700);
+    await expect(page.getByTestId('cancel-generation')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Generation stopped', level: 2 })).toHaveCount(
+      0,
+    );
+  });
+});

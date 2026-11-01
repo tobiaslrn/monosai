@@ -12,7 +12,10 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
-import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
+import {
+  GenerationDraftStore,
+  type GenerationStep,
+} from '../../application/generation/generation-draft.store';
 import {
   STORY_LENGTH_RELIABILITY_WARNING_SENTENCES,
   STORY_SENTENCE_COUNTS,
@@ -269,14 +272,16 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
 
     <div class="action-bar mn-stack">
       <div class="mn-actions">
-        @if (draft.step() < 3) {
+        <!-- A press names the step this button was drawn for, not the step now. -->
+        @let shownStep = draft.step();
+        @if (shownStep < 3) {
           <button
             type="button"
             class="mn-button mn-button--primary"
             data-testid="wizard-next"
             [disabled]="disabled() || !canContinue()"
             [attr.aria-describedby]="!canContinue() ? 'mn-generate-disabled-reason' : null"
-            (click)="next.emit($event.detail)"
+            (click)="next.emit(shownStep)"
           >
             Next
           </button>
@@ -287,7 +292,7 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
             data-testid="generate"
             [disabled]="disabled() || !canGenerate()"
             [attr.aria-describedby]="!canGenerate() ? 'mn-generate-disabled-reason' : null"
-            (click)="generate.emit($event.detail)"
+            (click)="generate.emit(shownStep)"
           >
             <mn-icon name="generate" [size]="18" />
             <span>Generate story</span>
@@ -541,9 +546,9 @@ export class StoryFormComponent {
   readonly preparationTargets = input<readonly PreparationLayer[]>(['english', 'grammar']);
   readonly audioReadiness = input<ConfigurationReadiness>('incomplete');
 
-  /** Both carry the click count, so a repeat of a double tap can be told from a press. */
-  readonly next = output<number>();
-  readonly generate = output<number>();
+  /** Both carry the step the pressed button was drawn for. */
+  readonly next = output<GenerationStep>();
+  readonly generate = output<GenerationStep>();
   readonly ankiWordPriorityModeChanged = output<AnkiWordPriorityMode>();
   readonly recentFocusSizeChanged = output<RecentFocusSize>();
   readonly vocabularyStrictnessChanged = output<VocabularyStrictness>();

@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
   computed,
   inject,
   input,
@@ -10,7 +11,10 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
-import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
+import {
+  GenerationDraftStore,
+  type GenerationStep,
+} from '../../application/generation/generation-draft.store';
 import { StoryPlotStore } from '../../application/generation/story-plot.store';
 import { PreparationStore } from '../../application/enrichment/preparation.store';
 import { GenerationJobsStore } from '../../application/generation/generation-jobs.store';
@@ -43,6 +47,17 @@ import { GenerationWaitComponent } from './generation-wait.component';
 import { PrerequisitePanelComponent } from './prerequisite-panel.component';
 import { StoryFormComponent } from './story-form.component';
 import { ExceptionPolicyFieldComponent } from './exception-policy-field.component';
+
+/**
+ * How soon after one press's finger lifts the next finger-down still counts as
+ * the second tap of a double tap. Android waits 300 ms for it, measured the
+ * same way: from the first tap's release to the second tap's touch.
+ */
+const DOUBLE_TAP_MS = 300;
+
+/** The controls a double tap must not carry from one step to the next. */
+const STEP_CONTROLS =
+  '[data-testid="wizard-next"], [data-testid="generate"], [data-testid="cancel-generation"], mn-page-header .back';
 
 /** What the screen shows when it is not attached to a run. */
 const IDLE: GenerationState = { kind: 'idle' };
@@ -318,6 +333,11 @@ export class GeneratePageComponent implements OnChanges {
   protected readonly navigation = inject(NavigationHistoryService);
   protected readonly generateOriginState = navigationOriginState('/generate');
 
+  /** A story is being started: its request is sent and the screen is moving on. */
+  private starting = false;
+  /** The last finger-down. */
+  private touchedAt: { readonly time: number; readonly type: string } | null = null;
+
   /** The addressed job, or null on the plain form and after it has ended. */
   protected readonly job = computed(() => {
     const id = this.jobId();
@@ -525,6 +545,7 @@ export class GeneratePageComponent implements OnChanges {
     void this.grammar.load();
     void this.snapshots.load();
 
+    this.guardRepeatedPresses();
     inject(DestroyRef).onDestroy(() => {
       // Leaving no longer stops the run — that is the point. It only stops
       // being the watched one, and a story already saved has nothing left to
@@ -555,19 +576,75 @@ export class GeneratePageComponent implements OnChanges {
    * are one step in the learner's history, so Back from the wait screen goes
    * where they came from instead of to a form they have already submitted.
    */
-  protected generate(clicks: number): void {
-    if (clicks <= 1) {
-      void this.startGeneration();
+  protected generate(shownStep: GenerationStep): void {
+    if (shownStep !== this.draft.step() || this.starting) {
+      return;
     }
+    void this.startGeneration();
   }
 
-  protected next(clicks: number): void {
-    // The second tap of a double tap arrives after the screen has redrawn for
-    // the first, on a button that now means the next step. The click count
-    // tells it apart from a separate press, which the browser counts as one.
-    if (clicks <= 1) {
-      void this.advance();
+  protected next(shownStep: GenerationStep): void {
+    // A second tap during a slow navigation reaches the form again, now at the
+    // words, so it waits for the story to be on its way.
+    if (shownStep !== this.draft.step() || this.starting) {
+      return;
     }
+    void this.advance();
+  }
+
+  /**
+   * Stops the second tap of a double tap from acting on the screen the first
+   * one drew.
+   *
+   * The first tap redraws the screen and the second lands on whatever now sits
+   * under the finger: Next for the following step, Back for the one before, or
+   * the way out of the page. The browser's click count cannot tell it from a
+   * new press on a phone, so a touch is judged by when the finger came down
+   * against when the last press was released. Both are times the
+   * input was made, so a slow main thread that handles them late does not
+   * change the answer. A mouse repeat carries its count; a press with
+   * neither, such as a keyboard or a screen reader, always acts.
+   */
+  private guardRepeatedPresses(): void {
+    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    const remember = (event: Event): void => {
+      const touch = event as PointerEvent;
+      this.touchedAt = { time: touch.timeStamp, type: touch.pointerType };
+    };
+    const judge = (event: Event): void => {
+      const click = event as MouseEvent;
+      if (!(click.target instanceof Element) || click.target.closest(STEP_CONTROLS) === null) {
+        return;
+      }
+      const repeated = this.isRepeatedPress(click);
+      // Every press starts the window, ignored ones included, so a burst of
+      // taps counts as one press until the fingers pause.
+      this.draft.lastStepPressAt = click.timeStamp;
+      if (repeated) {
+        click.stopPropagation();
+        click.preventDefault();
+      }
+    };
+    host.addEventListener('pointerdown', remember, true);
+    host.addEventListener('click', judge, true);
+    inject(DestroyRef).onDestroy(() => {
+      host.removeEventListener('pointerdown', remember, true);
+      host.removeEventListener('click', judge, true);
+    });
+  }
+
+  private isRepeatedPress(click: MouseEvent): boolean {
+    if (click.detail === 0) {
+      return false;
+    }
+    const type =
+      'pointerType' in click ? (click as PointerEvent).pointerType : this.touchedAt?.type;
+    if (type === 'touch' || type === 'pen') {
+      return (
+        this.touchedAt !== null && this.touchedAt.time - this.draft.lastStepPressAt < DOUBLE_TAP_MS
+      );
+    }
+    return click.detail > 1;
   }
 
   /**
@@ -603,6 +680,18 @@ export class GeneratePageComponent implements OnChanges {
   }
 
   private async startGeneration(): Promise<void> {
+    // Set before anything can wait, and released on every way out, so a second
+    // press cannot send a second paid request and a failed start can be tried
+    // again.
+    this.starting = true;
+    try {
+      await this.startStory();
+    } finally {
+      this.starting = false;
+    }
+  }
+
+  private async startStory(): Promise<void> {
     if (this.draft.step() !== 3 || !this.canGenerate()) return;
     const chosen = this.plots.chosenPlot(this.draft.direction());
     if (chosen === null) return;

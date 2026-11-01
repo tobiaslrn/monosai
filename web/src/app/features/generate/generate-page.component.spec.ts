@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { signal } from '@angular/core';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import { PreparationStore } from '../../application/enrichment/preparation.store';
 import type { LayerProgress } from '../../application/enrichment/layer-progress';
@@ -87,6 +87,10 @@ describe('GeneratePageComponent', () => {
     });
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   async function renderFixture(jobId?: string) {
     const fixture = TestBed.createComponent(GeneratePageComponent);
     if (jobId !== undefined) {
@@ -107,7 +111,10 @@ describe('GeneratePageComponent', () => {
     }
   }
 
-  /** A click on the named button; `clicks` is the browser's count for a quick repeat. */
+  /**
+   * A click on the named button. Its count is 1 unless said otherwise: a phone
+   * may report 1 for both taps of a double tap, so nothing here may rely on it.
+   */
   function press(page: HTMLElement, testId: string, clicks = 1): void {
     const button = page.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`);
     if (button === null) {
@@ -272,59 +279,330 @@ describe('GeneratePageComponent', () => {
     expect(draft.direction().selected.mood).toEqual(['Cozy']);
   });
 
-  it('takes a double press of Next as one press', async () => {
-    const fixture = await renderFixture();
-    const page = fixture.nativeElement as HTMLElement;
-    const draft = TestBed.inject(GenerationDraftStore);
+  describe('a double tap, whatever click count the browser reports', () => {
+    type Input = 'touch' | 'pen' | 'mouse' | 'keyboard';
 
-    // The screen redraws for the first press before the second tap arrives, so
-    // the second lands on a Next that now belongs to the Direction step.
-    press(page, 'wizard-next');
-    fixture.detectChanges();
-    press(page, 'wizard-next', 2);
-    await settle(fixture);
+    /**
+     * One press as the browser reports it: a finger down at `down`, and the
+     * click it ends in at `up`, both stamped with the time of the input. The
+     * count is 1 throughout, since a phone may report that for both taps.
+     */
+    function tap(
+      page: HTMLElement,
+      selector: string,
+      input: Input,
+      down: number,
+      up: number,
+      detail = 1,
+    ): void {
+      const target = page.querySelector(selector);
+      if (target === null) {
+        throw new Error(`nothing matches ${selector}`);
+      }
+      const pointerType = input === 'keyboard' ? '' : input;
+      const stamped = <E extends Event>(event: E, at: number): E => {
+        Object.defineProperty(event, 'timeStamp', { value: at });
+        return event;
+      };
+      if (input !== 'keyboard') {
+        target.dispatchEvent(
+          stamped(new PointerEvent('pointerdown', { bubbles: true, pointerType }), down),
+        );
+      }
+      target.dispatchEvent(
+        stamped(
+          new PointerEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            pointerType,
+            detail: input === 'keyboard' ? 0 : detail,
+          }),
+          up,
+        ),
+      );
+    }
 
-    expect(draft.step()).toBe(2);
-    expect(bed.provider.generationCalls.plots).toBe(0);
-  });
+    const NEXT = '[data-testid="wizard-next"]';
+    const GENERATE = '[data-testid="generate"]';
+    const BACK = '[data-testid="step-back"]';
 
-  it('takes a second Next that is a separate press as a new press', async () => {
-    bed.provider.plotQueue.push(ok(['One plot.', 'Two plot.', 'Three plot.']));
-    sources.set([{}]);
-    const fixture = await renderFixture();
-    const page = fixture.nativeElement as HTMLElement;
-    const draft = TestBed.inject(GenerationDraftStore);
+    async function reachForm() {
+      bed.provider.plotQueue.push(ok(['One plot.', 'Two plot.', 'Three plot.']));
+      sources.set([{}]);
+      const fixture = await renderFixture();
+      return { fixture, page: fixture.nativeElement as HTMLElement };
+    }
 
-    press(page, 'wizard-next');
-    fixture.detectChanges();
-    press(page, 'wizard-next');
-    await settle(fixture);
+    async function reachGenerate() {
+      const { fixture, page } = await reachForm();
+      tap(page, NEXT, 'touch', 0, 60);
+      await settle(fixture);
+      tap(page, NEXT, 'touch', 1_000, 1_060);
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        expect(page.querySelectorAll('[data-testid="plot-option"]')).toHaveLength(3);
+      });
+      return { fixture, page };
+    }
 
-    expect(draft.step()).toBe(3);
-  });
+    const step = () => TestBed.inject(GenerationDraftStore).step();
 
-  it('starts one story from a double press of Generate', async () => {
-    bed.provider.plotQueue.push(ok(['One plot.', 'Two plot.', 'Three plot.']));
-    const fixture = await renderFixture();
-    const page = fixture.nativeElement as HTMLElement;
-    sources.set([{}]);
-    press(page, 'wizard-next');
-    await settle(fixture);
-    press(page, 'wizard-next');
-    await vi.waitFor(() => {
+    it('takes two touch taps on Next, the screen redrawn between them, as one press', async () => {
+      const { fixture, page } = await reachForm();
+
+      tap(page, NEXT, 'touch', 0, 60);
       fixture.detectChanges();
-      expect(page.querySelectorAll('[data-testid="plot-option"]')).toHaveLength(3);
+      tap(page, NEXT, 'touch', 200, 260);
+      await settle(fixture);
+
+      expect(step()).toBe(2);
+      expect(bed.provider.generationCalls.plots).toBe(0);
     });
 
-    // The redraw after the first tap puts Next on the words where Generate was.
-    press(page, 'generate');
-    fixture.detectChanges();
-    press(page, 'wizard-next', 2);
-    await settle(fixture);
+    it('judges by when the fingers touched, not when a busy page got to the taps', async () => {
+      const { fixture, page } = await reachForm();
 
-    expect(jobs.started).toHaveLength(1);
-    expect(TestBed.inject(GenerationDraftStore).step()).toBe(1);
-    expect(bed.provider.generationCalls.plots).toBe(1);
+      // The page handled both long after the fingers were off the glass; only
+      // the times on the events say that the taps were 200 ms apart.
+      tap(page, NEXT, 'touch', 0, 60);
+      fixture.detectChanges();
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      tap(page, NEXT, 'touch', 260, 320);
+      await settle(fixture);
+
+      expect(step()).toBe(2);
+      expect(bed.provider.generationCalls.plots).toBe(0);
+    });
+
+    it('takes a second tap before the screen has redrawn for the first as one press', async () => {
+      const { fixture, page } = await reachForm();
+
+      // Far enough apart to be two presses; what makes it a repeat is that the
+      // button it landed on was drawn for the step already left.
+      tap(page, NEXT, 'touch', 0, 60);
+      tap(page, NEXT, 'touch', 900, 960);
+      await settle(fixture);
+
+      expect(step()).toBe(2);
+      expect(bed.provider.generationCalls.plots).toBe(0);
+    });
+
+    it('takes two touch taps at a normal pace as two presses', async () => {
+      const { fixture, page } = await reachForm();
+
+      tap(page, NEXT, 'touch', 0, 60);
+      await settle(fixture);
+      tap(page, NEXT, 'touch', 400, 460);
+      await settle(fixture);
+
+      expect(step()).toBe(3);
+      expect(bed.provider.generationCalls.plots).toBe(1);
+    });
+
+    it('takes quick mouse and keyboard presses as separate presses', async () => {
+      const { fixture, page } = await reachForm();
+
+      tap(page, NEXT, 'mouse', 0, 5);
+      await settle(fixture);
+      tap(page, NEXT, 'mouse', 10, 15);
+      await settle(fixture);
+      expect(step()).toBe(3);
+
+      TestBed.inject(GenerationDraftStore).setStep(1);
+      await settle(fixture);
+      tap(page, NEXT, 'keyboard', 20, 20);
+      await settle(fixture);
+      tap(page, NEXT, 'keyboard', 21, 21);
+      await settle(fixture);
+      expect(step()).toBe(3);
+    });
+
+    it('takes a mouse double click as one press', async () => {
+      const { fixture, page } = await reachForm();
+
+      tap(page, NEXT, 'mouse', 0, 5, 1);
+      fixture.detectChanges();
+      tap(page, NEXT, 'mouse', 10, 15, 2);
+      await settle(fixture);
+
+      expect(step()).toBe(2);
+    });
+
+    it('starts one story, and the Next that takes Generate’s place does not move the form', async () => {
+      const { fixture, page } = await reachGenerate();
+
+      tap(page, GENERATE, 'touch', 2_000, 2_060);
+      fixture.detectChanges();
+      tap(page, NEXT, 'touch', 2_200, 2_260);
+      await settle(fixture);
+
+      expect(jobs.started).toHaveLength(1);
+      expect(step()).toBe(1);
+      expect(bed.provider.generationCalls.plots).toBe(1);
+    });
+
+    it('starts one story from a second Generate tap before the screen has redrawn', async () => {
+      const { fixture, page } = await reachGenerate();
+
+      tap(page, GENERATE, 'touch', 2_000, 2_060);
+      tap(page, GENERATE, 'touch', 3_000, 3_060);
+      await settle(fixture);
+
+      expect(jobs.started).toHaveLength(1);
+    });
+
+    it('lets Generate be pressed again after a start that did not go ahead', async () => {
+      const { fixture, page } = await reachGenerate();
+      vi.spyOn(jobs, 'start').mockReturnValueOnce(null);
+
+      tap(page, GENERATE, 'touch', 2_000, 2_060);
+      await settle(fixture);
+      expect(step()).toBe(3);
+      tap(page, GENERATE, 'touch', 3_000, 3_060);
+      await settle(fixture);
+
+      expect(jobs.started).toHaveLength(1);
+      expect(step()).toBe(1);
+    });
+
+    it('keeps Next still while the story is still moving the screen on', async () => {
+      const { fixture, page } = await reachGenerate();
+      let arrive: (reached: boolean) => void = () => undefined;
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockReturnValue(
+        new Promise<boolean>((resolve) => {
+          arrive = resolve;
+        }),
+      );
+
+      tap(page, GENERATE, 'touch', 2_000, 2_060);
+      await settle(fixture);
+      // A separate press, long after, while the navigation is still pending.
+      tap(page, NEXT, 'touch', 5_000, 5_060);
+      await settle(fixture);
+      expect(step()).toBe(1);
+
+      arrive(true);
+      await settle(fixture);
+      tap(page, NEXT, 'touch', 6_000, 6_060);
+      await settle(fixture);
+      expect(step()).toBe(2);
+    });
+
+    it('takes a second Next while the exceptions are still saving as one press', async () => {
+      const { fixture, page } = await reachForm();
+      TestBed.inject(ExceptionPolicyStore).setDraft('Allow proper nouns for the cat.');
+      let finish: () => void = () => undefined;
+      const saving = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      const update = bed.policy.updateExceptionPolicy.bind(bed.policy);
+      const spy = vi
+        .spyOn(bed.policy, 'updateExceptionPolicy')
+        .mockImplementation(async (policy) => {
+          await saving;
+          return update(policy);
+        });
+
+      tap(page, NEXT, 'touch', 0, 60);
+      fixture.detectChanges();
+      tap(page, NEXT, 'touch', 900, 960);
+      finish();
+      await settle(fixture);
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(step()).toBe(2);
+    });
+
+    it('lets Next be pressed again after the exceptions failed to save', async () => {
+      const { fixture, page } = await reachForm();
+      TestBed.inject(ExceptionPolicyStore).setDraft('Allow proper nouns for the cat.');
+      vi.spyOn(TestBed.inject(ExceptionPolicyStore), 'save').mockResolvedValueOnce(false);
+
+      tap(page, NEXT, 'touch', 0, 60);
+      await settle(fixture);
+      expect(step()).toBe(1);
+      tap(page, NEXT, 'touch', 900, 960);
+      await settle(fixture);
+
+      expect(step()).toBe(2);
+    });
+
+    it('takes two taps on Back as one press', async () => {
+      const { fixture, page } = await reachForm();
+      TestBed.inject(GenerationDraftStore).setStep(3);
+      fixture.detectChanges();
+
+      tap(page, BACK, 'touch', 0, 60);
+      fixture.detectChanges();
+      tap(page, BACK, 'touch', 200, 260);
+      await settle(fixture);
+
+      expect(step()).toBe(2);
+    });
+
+    it('does not carry a second tap on Back out of the page', async () => {
+      const { fixture, page } = await reachForm();
+      TestBed.inject(GenerationDraftStore).setStep(2);
+      fixture.detectChanges();
+      const leave = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+
+      tap(page, BACK, 'touch', 0, 60);
+      fixture.detectChanges();
+      // The step button is now the way back to the library, under the finger.
+      tap(page, '[aria-label="Back to library"]', 'touch', 200, 260);
+      await settle(fixture);
+
+      expect(step()).toBe(1);
+      expect(leave).not.toHaveBeenCalled();
+
+      tap(page, '[aria-label="Back to library"]', 'touch', 900, 960);
+      expect(leave).toHaveBeenCalledTimes(1);
+    });
+
+    it('takes a burst of three taps as one press, not one press and a half', async () => {
+      const { fixture, page } = await reachForm();
+
+      tap(page, NEXT, 'touch', 0, 10);
+      fixture.detectChanges();
+      tap(page, NEXT, 'touch', 165, 175);
+      fixture.detectChanges();
+      tap(page, NEXT, 'touch', 330, 340);
+      await settle(fixture);
+
+      expect(step()).toBe(2);
+      expect(bed.provider.generationCalls.plots).toBe(0);
+    });
+
+    it('takes a pen like a finger', async () => {
+      const { fixture, page } = await reachForm();
+
+      tap(page, NEXT, 'pen', 0, 60);
+      fixture.detectChanges();
+      tap(page, NEXT, 'pen', 200, 260);
+      await settle(fixture);
+
+      expect(step()).toBe(2);
+    });
+
+    it('leaves the story it started running when the second tap lands on Cancel', async () => {
+      const { fixture, page } = await reachGenerate();
+      const run = new FakeGenerationRun({ kind: 'writing' });
+      jobs.setJobs([fakeGenerationJob(JOB_ID, run)]);
+
+      tap(page, GENERATE, 'touch', 2_000, 2_060);
+      await settle(fixture);
+      // The run's screen is a new page, with Cancel where Generate was.
+      const watching = await renderFixture(JOB_ID);
+      const screen = watching.nativeElement as HTMLElement;
+      const CANCEL = '[data-testid="cancel-generation"]';
+      tap(screen, CANCEL, 'touch', 2_200, 2_260);
+      await settle(watching);
+      expect(run.cancelled).toHaveLength(0);
+
+      tap(screen, CANCEL, 'touch', 3_000, 3_060);
+      await settle(watching);
+      expect(run.cancelled).toHaveLength(1);
+    });
   });
 
   it('saves exceptions that were typed but not saved before leaving the words', async () => {
