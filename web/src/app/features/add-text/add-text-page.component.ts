@@ -72,6 +72,7 @@ import { TextInputStepComponent } from './text-input-step.component';
             type="button"
             class="mn-button mn-button--primary"
             [disabled]="!store.canSave()"
+            [attr.aria-busy]="store.isBusy() ? 'true' : null"
             (click)="save()"
           >
             {{ store.duplicates().length > 0 ? 'Add another copy' : 'Add story' }}

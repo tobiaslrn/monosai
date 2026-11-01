@@ -88,7 +88,8 @@ export class ImportStore {
     return draft !== null && unanalyzedSentences(draft).length > 0;
   });
 
-  readonly canSave = computed(() => validateImportText(this.rawTextSignal()).ok && !this.isBusy());
+  /** Whether the text can be saved at all. Pressing while busy is ignored by `save()`, not disabled. */
+  readonly canSave = computed(() => validateImportText(this.rawTextSignal()).ok);
 
   /**
    * Whether leaving would lose work. A successful save clears it, so the guard

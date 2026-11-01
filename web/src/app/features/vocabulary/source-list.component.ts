@@ -80,7 +80,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
           <button
             type="button"
             class="mn-button mn-button--ghost"
-            [disabled]="syncing()"
+            [attr.aria-busy]="syncing() ? 'true' : null"
             (click)="syncAgain()"
             data-testid="attention-retry"
           >
@@ -96,7 +96,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
               type="button"
               class="mn-icon-button sync"
               [class.is-busy]="syncing()"
-              [disabled]="syncing()"
+              [attr.aria-busy]="syncing() ? 'true' : null"
               aria-label="Read Anki again"
               title="Read Anki again"
               (click)="syncAgain()"
@@ -294,6 +294,9 @@ export class SourceListComponent {
   }
 
   protected syncAgain(): void {
+    if (this.syncing()) {
+      return;
+    }
     this.manual.dismiss();
     void this.automatic?.trigger(true, true).then(() => this.history.load());
   }

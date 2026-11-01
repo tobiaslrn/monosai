@@ -56,10 +56,13 @@ function formatBytes(bytes: number | null): string {
             <button
               type="button"
               class="mn-button"
-              [disabled]="storage.action() !== 'idle'"
+              [disabled]="
+                storage.action() !== 'idle' && storage.action() !== 'requesting-persistence'
+              "
+              [attr.aria-busy]="storage.action() === 'requesting-persistence' ? 'true' : null"
               (click)="requestPersistence()"
             >
-              Protect
+              {{ storage.action() === 'requesting-persistence' ? 'Protecting…' : 'Protect' }}
             </button>
           }
         </mn-settings-row>
@@ -237,6 +240,9 @@ export class StorageSectionComponent {
   }
 
   protected requestPersistence(): void {
+    if (this.storage.action() !== 'idle') {
+      return;
+    }
     void this.storage.requestPersistence();
   }
 
