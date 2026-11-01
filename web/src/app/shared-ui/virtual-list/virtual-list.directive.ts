@@ -30,6 +30,9 @@ export class VirtualItemDirective {
 /** Before any items have arrived, so the first set always starts fresh. */
 const NO_GENERATION = Symbol('no generation');
 
+/** What the CDK puts on the root element while a dialog blocks page scroll. */
+const SCROLL_BLOCK_CLASS = 'cdk-global-scrollblock';
+
 /**
  * Window-scroll virtualization for a list of variable-height rows.
  *
@@ -68,6 +71,7 @@ export class VirtualListDirective<T extends VirtualListItem> implements OnChange
   private readonly slots = contentChildren(VirtualItemDirective, { descendants: true });
   private model: VariableHeightVirtualListModel<T> | null = null;
   private lastGeneration: unknown = NO_GENERATION;
+  private refreshPending = false;
   private readonly rangeSignal = signal<VirtualListRange>(EMPTY_VIRTUAL_RANGE);
   private readonly visibleItemsSignal = signal<readonly T[]>([]);
 
@@ -101,8 +105,22 @@ export class VirtualListDirective<T extends VirtualListItem> implements OnChange
       });
     });
 
+    const blockObserver =
+      typeof MutationObserver === 'undefined'
+        ? null
+        : new MutationObserver(() => {
+            if (this.refreshPending) {
+              this.refresh();
+            }
+          });
+    blockObserver?.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
     inject(DestroyRef).onDestroy(() => {
       resizeObserver?.disconnect();
+      blockObserver?.disconnect();
     });
   }
 
@@ -135,9 +153,17 @@ export class VirtualListDirective<T extends VirtualListItem> implements OnChange
 
   protected refresh(): void {
     const model = this.model;
+    // While a dialog blocks page scroll the document is pinned and scrollY reads
+    // 0, so the range would be computed for the top of the list. The refresh is
+    // kept and runs when the block lifts, scroll event or not.
     if (model === null) {
       return;
     }
+    if (document.documentElement.classList.contains(SCROLL_BLOCK_CLASS)) {
+      this.refreshPending = true;
+      return;
+    }
+    this.refreshPending = false;
     const documentTop = this.host.getBoundingClientRect().top + window.scrollY;
     const localScrollTop = Math.max(0, window.scrollY - documentTop);
     const localViewportBottom = Math.max(

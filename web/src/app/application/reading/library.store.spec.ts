@@ -6,7 +6,7 @@ import { storageError } from '../../domain/storage/storage-error';
 import { FakeReadingMutationChannel } from '../../../testing/reading-mutation-channel-fake';
 import { buildReading, FakeReadingRepository } from '../../../testing/reading-repository-fake';
 import { CLOCK, READING_MUTATION_CHANNEL, READING_REPOSITORY } from '../shared/repository-tokens';
-import { LibraryStore } from './library.store';
+import { LIBRARY_PAGE_SIZE, LibraryStore } from './library.store';
 
 /**
  * The shelf as two tabs see it.
@@ -70,6 +70,30 @@ describe('LibraryStore across tabs', () => {
       expect(store.items().map((reading) => reading.id)).toEqual(['r2']);
     });
     expect(store.announcement()).toBe('Reading one was deleted in another tab.');
+  });
+
+  it('keeps the loaded pages when it deletes a reading', async () => {
+    for (let index = 0; index < 30; index += 1) {
+      repository.add(
+        buildReading({
+          id: `bulk-${String(index)}`,
+          title: `Bulk ${String(index)}`,
+          createdAt: 1_600_000_000_000 + index,
+        }),
+      );
+    }
+    await store.load();
+    await store.loadMore();
+    const loaded = store.items().length;
+    expect(loaded).toBeGreaterThan(LIBRARY_PAGE_SIZE);
+    const total = store.totalReadings();
+    const doomed = store.items()[LIBRARY_PAGE_SIZE + 1]!.id;
+
+    await store.delete(doomed);
+
+    expect(store.items()).toHaveLength(loaded - 1);
+    expect(store.items().some((reading) => reading.id === doomed)).toBe(false);
+    expect(store.totalReadings()).toBe(total - 1);
   });
 
   it('leaves the shelf alone for a reading it was not showing', () => {

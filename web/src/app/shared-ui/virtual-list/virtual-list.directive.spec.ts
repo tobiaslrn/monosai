@@ -246,4 +246,22 @@ describe('VirtualListDirective', () => {
 
     expect(spacer('.bottom')).toBe(90 * 50);
   });
+
+  it('holds a refresh while a dialog blocks page scroll and runs it when the block lifts', async () => {
+    const root = document.documentElement;
+    root.classList.add('cdk-global-scrollblock');
+    try {
+      scrollTo(1000);
+      expect(mounted()[0]).toBe('row-0');
+
+      root.classList.remove('cdk-global-scrollblock');
+      await Promise.resolve();
+      await Promise.resolve();
+      fixture.detectChanges();
+
+      expect(mounted()[0]).toBe('row-18');
+    } finally {
+      root.classList.remove('cdk-global-scrollblock');
+    }
+  });
 });
