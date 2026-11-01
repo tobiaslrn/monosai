@@ -62,6 +62,20 @@ describe('TextListSourceComponent', () => {
     field.dispatchEvent(new Event('input'));
   }
 
+  it('counts the lines without Japanese in the right number and groups large counts', () => {
+    const { fixture, element, words } = render();
+    const notice = () =>
+      [...element.querySelectorAll('[role="status"]')].map((node) => node.textContent).join(' ');
+
+    type(words, 'abc\n猫');
+    fixture.detectChanges();
+    expect(notice()).toContain('1 line does not appear to contain Japanese');
+
+    type(words, Array.from({ length: 1200 }, (_value, index) => `word${index}`).join('\n'));
+    fixture.detectChanges();
+    expect(notice()).toContain('1,200 lines do not appear to contain Japanese');
+  });
+
   it('opens with the source it was given', () => {
     const { name, words } = render();
 

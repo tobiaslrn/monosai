@@ -2,7 +2,7 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 import type { LibraryFilter, Reading } from '../../domain/reading/reading';
 import type { ReadingId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
-import { formatCount } from '../../domain/shared/locale';
+import { formatCountOf } from '../../domain/shared/locale';
 import { CLOCK, READING_REPOSITORY } from '../shared/repository-tokens';
 import { ReadingMutationsService } from './reading-mutations.service';
 
@@ -119,7 +119,7 @@ export class LibraryStore {
     this.filterSignal.set(filter);
     await this.load();
     this.announce(
-      `${formatCount(this.itemsSignal().length)} readings shown${this.hasMoreSignal() ? ', more available' : ''}.`,
+      `${formatCountOf(this.itemsSignal().length, 'reading')} shown${this.hasMoreSignal() ? ', more available' : ''}.`,
     );
   }
 

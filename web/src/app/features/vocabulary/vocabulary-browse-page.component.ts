@@ -146,6 +146,7 @@ interface VirtualVocabularyEntry {
             </section>
           } @else {
             <div class="list-region">
+              <h2 class="mn-visually-hidden">Words</h2>
               <div class="columns" aria-hidden="true">
                 <span>Word</span>
                 <span>Difficulty</span>
@@ -210,6 +211,23 @@ interface VirtualVocabularyEntry {
     .search-field input {
       min-height: 3rem;
       padding-inline-start: 2.75rem;
+    }
+
+    /*
+     * The browser draws its own clear control in its default blue on Android.
+     * Draw it instead as a cross in the field's own text colour, so it follows the theme.
+     */
+    .search-field input::-webkit-search-cancel-button {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 1.25rem;
+      height: 1.25rem;
+      background-color: var(--text-secondary);
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
+        center / contain no-repeat;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
+        center / contain no-repeat;
+      cursor: pointer;
     }
 
     /*

@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { ankiError, type AnkiError } from '../../domain/anki/anki-error';
 import type { VocabularySourceId } from '../../domain/shared/ids';
+import { formatCountOf } from '../../domain/shared/locale';
 import type { AnkiVocabularySource } from '../../domain/vocabulary/vocabulary-source';
 import { supportsManualSync } from '../../domain/vocabulary/vocabulary-source';
 import { VOCABULARY_SOURCE_REPOSITORY } from '../shared/repository-tokens';
@@ -164,7 +165,7 @@ export class ManualSourceSyncStore {
       uniqueEntryCount: committed.value.uniqueEntryCount,
     });
     this.announcement.set(
-      `Synced ${source.label}. Your vocabulary has ${String(committed.value.uniqueEntryCount)} unique expressions.`,
+      `Synced ${source.label}. Your vocabulary has ${formatCountOf(committed.value.uniqueEntryCount, 'unique expression')}.`,
     );
   }
 

@@ -92,6 +92,11 @@ import { AlphaNoticeService } from './alpha-notice.service';
       .main {
         padding: 0 var(--space-6) var(--space-6);
       }
+
+      /* The banner is already the column's width here, so it needs no inset of its own. */
+      .intro-error {
+        padding-inline: 0;
+      }
     }
   `,
 })

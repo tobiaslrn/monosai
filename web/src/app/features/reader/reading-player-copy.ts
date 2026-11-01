@@ -6,6 +6,7 @@ import type {
 import type { LayerError } from '../../application/enrichment/layer-progress';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import type { PlaybackRate } from '../../domain/settings/settings';
+import { formatCountOf } from '../../domain/shared/locale';
 import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
 
 /**
@@ -102,7 +103,7 @@ function exhaustedLine(error: LayerError): string {
  * different things under one form of words.
  */
 function readyLine(availableCount: number, sentenceCount: number): string {
-  return `Stopped with ${String(availableCount)} of ${String(sentenceCount)} sentences ready.`;
+  return `Stopped with ${String(availableCount)} of ${formatCountOf(sentenceCount, 'sentence')} ready.`;
 }
 
 /** What this attempt did, said as an attempt rather than as the reading. */
@@ -127,9 +128,10 @@ export function stoppedRunFailure(progress: AudioJobProgress): string | null {
 /** What is still missing, when there is an offer to prepare it. */
 export function offerLabel(availableCount: number, sentenceCount: number): string {
   if (availableCount === 0) {
-    return `${String(sentenceCount)} ${sentenceCount === 1 ? 'sentence' : 'sentences'}`;
+    return formatCountOf(sentenceCount, 'sentence');
   }
-  return `${String(availableCount)} of ${String(sentenceCount)} sentences have audio`;
+  const verb = sentenceCount === 1 ? 'has' : 'have';
+  return `${String(availableCount)} of ${formatCountOf(sentenceCount, 'sentence')} ${verb} audio`;
 }
 
 /** Where the reading is, for the hidden live region. */
@@ -153,7 +155,9 @@ export function positionLabel(position: {
   if (position.current > 0) {
     return `Sentence ${String(position.current)} of ${total}`;
   }
-  return position.settled ? `${total} sentences ready` : 'Not playing';
+  return position.settled
+    ? `${formatCountOf(position.sentenceCount, 'sentence')} ready`
+    : 'Not playing';
 }
 
 /** What the slider's value means, since its number alone says nothing. */
@@ -172,5 +176,5 @@ export function playbackSpeedLabel(rate: PlaybackRate): string {
 }
 
 export function playbackSpeedAriaLabel(rate: PlaybackRate): string {
-  return `Reading speed, ${String(rate)} times`;
+  return `Reading speed, ${String(rate)} ${rate === 1 ? 'time' : 'times'}`;
 }

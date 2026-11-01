@@ -30,6 +30,7 @@ import { AppSettingsStore } from '../../application/settings/app-settings.store'
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
 import { jobId } from '../../domain/shared/ids';
+import { formatCountOf } from '../../domain/shared/locale';
 import {
   NavigationHistoryService,
   navigationOriginState,
@@ -372,7 +373,9 @@ export class GeneratePageComponent implements OnChanges {
 
   protected readonly snapshotSummary = computed(() => {
     const active = this.snapshots.active();
-    return active === null ? 'No words yet' : `${String(active.uniqueEntryCount)} reviewed words`;
+    return active === null
+      ? 'No words yet'
+      : formatCountOf(active.uniqueEntryCount, 'reviewed word');
   });
 
   /** The form, rather than a run, is what the screen is showing. */

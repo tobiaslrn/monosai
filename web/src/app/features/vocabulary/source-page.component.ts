@@ -32,7 +32,7 @@ import type { StaleReason } from '../../domain/anki/mapping-validation';
 import type { VocabularySourceId } from '../../domain/shared/ids';
 import { vocabularySourceId } from '../../domain/shared/ids';
 import {
-  formatCount,
+  formatCountOf,
   formatDate,
   formatList,
   formatRelativeDay,
@@ -473,7 +473,7 @@ export class SourcePageComponent {
 
   protected summary(source: VocabularySource): string {
     const standing = this.standings.standingFor(source.id);
-    const words = standing === null ? 'not read yet' : `${formatCount(standing.entryCount)} words`;
+    const words = standing === null ? 'not read yet' : formatCountOf(standing.entryCount, 'word');
     return `${this.origin(source)} · ${words}`;
   }
 

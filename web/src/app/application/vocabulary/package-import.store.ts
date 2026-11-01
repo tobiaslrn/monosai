@@ -16,6 +16,7 @@ import {
 import type { Result } from '../../domain/shared/result';
 import type { VocabularySourceId } from '../../domain/shared/ids';
 import { vocabularySourceId } from '../../domain/shared/ids';
+import { formatCountOf } from '../../domain/shared/locale';
 import { SHARED_PACKAGE_INBOX } from '../../domain/platform/shared-package-inbox.port';
 import { storageError, type StorageError } from '../../domain/storage/storage-error';
 import type { DeckScope, SourceMapping } from '../../domain/vocabulary/source-mapping';
@@ -437,10 +438,9 @@ export class PackageImportStore {
         uniqueExpressions: committed.value.uniqueEntryCount,
       },
     });
+    const expressions = formatCountOf(committed.value.uniqueEntryCount, 'unique expression');
     this.announce(
-      `${plan.replaces === null ? 'Added' : 'Replaced'} ${stored.deckName}. Your vocabulary now has ${String(
-        committed.value.uniqueEntryCount,
-      )} unique expressions.`,
+      `${plan.replaces === null ? 'Added' : 'Replaced'} ${stored.deckName}. Your vocabulary now has ${expressions}.`,
     );
   }
 

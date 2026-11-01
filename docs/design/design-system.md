@@ -714,8 +714,8 @@ The player also carries one compact text control for local reading speed. It
 shows `1×`, `0.9×`, or `0.8×` and cycles forward on each press. It sits
 beside the mode control, keeps the same touch target and ghost-button treatment,
 and exposes the full accessible name — for example, “Reading speed, 0.8 times”.
-It changes playback immediately and never starts regeneration. Stored clips whose
-pace is already baked remain at `1×`.
+At `1×` it reads “Reading speed, 1 time”. It changes playback immediately and
+never starts regeneration. Stored clips whose pace is already baked remain at `1×`.
 
 ### Reader gestures and details
 

@@ -1026,9 +1026,9 @@ describe('ReadingPlayerComponent', () => {
       const fixture = render();
       let element = fixture.nativeElement as HTMLElement;
 
-      expect(control(element, 'Reading speed, 1 times')?.textContent.trim()).toBe('1×');
+      expect(control(element, 'Reading speed, 1 time')?.textContent.trim()).toBe('1×');
 
-      control(element, 'Reading speed, 1 times')?.click();
+      control(element, 'Reading speed, 1 time')?.click();
       fixture.detectChanges();
       element = fixture.nativeElement as HTMLElement;
       expect(store.calls).toEqual(['setPlaybackRate:0.9']);

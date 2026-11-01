@@ -177,6 +177,7 @@ describe('VocabularyRefreshStore', () => {
         duplicateOccurrences: 1,
         uniqueExpressions: 3,
       });
+      expect(store.announcement()).toBe('Found 3 unique expressions. Confirm to save them.');
     });
 
     it('strips markup from the expressions it prepared', async () => {
