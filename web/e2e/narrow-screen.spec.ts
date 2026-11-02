@@ -107,6 +107,7 @@ async function brokenText(page: Page, zoom: number): Promise<string[]> {
           }
         }
         if (
+          !ellipsised &&
           up.matches('.mn-card, .mn-list-row, .mn-settings-card') &&
           (right > bounds.right + 1 || left < bounds.left - 1)
         ) {

@@ -27,11 +27,11 @@ import { PopupDirective, PopupTriggerDirective } from '../../shared-ui/popup/pop
         [disabled]="disabled()"
       >
         <span>
-          <strong>{{
-            (selected()?.name ?? selectedLabel() ?? selectedId()) ||
-              fallbackLabel() ||
-              placeholder()
-          }}</strong>
+          <strong>
+            @for (part of shownParts(); track $index) {
+              <ng-container>{{ part }}<wbr /></ng-container>
+            }
+          </strong>
           @if (selected(); as model) {
             <small>{{ model.modelId }}</small>
           }
@@ -200,6 +200,10 @@ import { PopupDirective, PopupTriggerDirective } from '../../shared-ui/popup/pop
     }
     /* On a line of its own, the full model name wraps rather than being cut. */
     @container (max-width: 16em) {
+      .trigger--compact {
+        padding-inline: min(var(--space-2), 8px);
+        gap: min(var(--space-3), 8px);
+      }
       .trigger--compact > span:first-child {
         text-align: start;
       }
@@ -362,6 +366,14 @@ export class ModelPickerComponent {
   protected readonly selected = computed(
     () => this.models().find((model) => model.modelId === this.selectedId()) ?? null,
   );
+  /** The shown name in pieces split after each slash, the one place a vendor path may wrap. */
+  protected readonly shownParts = computed(() => {
+    const chosen = this.selected()?.name ?? this.selectedLabel() ?? this.selectedId();
+    const shown = [chosen, this.fallbackLabel(), this.placeholder()].find(
+      (label) => label !== null && label !== '',
+    );
+    return (shown ?? '').split(/(?<=\/)/);
+  });
   protected readonly matches = computed(() => {
     const query = this.query().trim().toLocaleLowerCase();
     if (query === '') return this.models();

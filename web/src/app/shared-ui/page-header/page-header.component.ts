@@ -175,7 +175,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
     /* The title keeps room to read; at large text the trailing action drops to its own line. */
     .titles {
       flex: 1;
-      min-width: 5rem;
+      min-width: min(min-content, 100%);
     }
 
     /* The home bar leads with a wordmark, not a title that needs room to read. */
@@ -192,7 +192,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
       margin: 0;
       font-size: var(--text-page-title);
       line-height: var(--leading-tight);
-      overflow-wrap: anywhere;
+      overflow-wrap: break-word;
     }
 
     .titles--home h1 {

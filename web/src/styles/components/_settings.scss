@@ -266,15 +266,15 @@
   /* Rem-based gutters grow with the text, so the control gets the width back. */
   .mn-settings-row,
   .mn-settings-group > .mn-settings-row {
-    padding-inline: var(--space-2);
+    padding-inline: min(var(--space-2), 8px);
   }
 
   .mn-settings-card > .mn-settings-group {
-    margin: var(--space-1);
+    margin: min(var(--space-1), 4px);
   }
 
   .mn-settings-subrows {
-    padding-inline: var(--space-2);
+    padding-inline: min(var(--space-2), 8px);
   }
 
   .mn-settings-row :where(select.mn-control, input.mn-control),

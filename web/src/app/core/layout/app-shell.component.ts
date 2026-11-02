@@ -66,7 +66,7 @@ import { AlphaNoticeService } from './alpha-notice.service';
     /* No top padding: each page's sticky top bar starts at the viewport edge. */
     .main {
       min-width: 0;
-      padding: 0 var(--space-4) var(--space-6);
+      padding: 0 min(var(--space-4), 16px) var(--space-6);
       /* Clip stray paint without turning this sticky ancestor into a scrollport. */
       overflow-x: clip;
     }
