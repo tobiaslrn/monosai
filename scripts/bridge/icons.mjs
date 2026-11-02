@@ -17,8 +17,8 @@ import { createRequire } from 'node:module';
  * byte equality would fail in CI against bitmaps built on another machine.
  */
 
-const mascotPath = 'web/data/brand/monosai-icon.png';
-const res = 'android-bridge/app/src/main/res';
+const mascotPath = 'apps/web/data/brand/monosai-icon.png';
+const res = 'apps/android/app/src/main/res';
 const lockPath = 'scripts/bridge/icons.lock.json';
 const check = process.argv.includes('--check');
 
@@ -204,7 +204,7 @@ const composition = JSON.stringify({
 async function render(mascot) {
   // Playwright lives in the web workspace; the repository root has no install
   // of its own, which is why `npm run format` reaches into it the same way.
-  const { chromium } = createRequire(`${process.cwd()}/web/package.json`)('@playwright/test');
+  const { chromium } = createRequire(`${process.cwd()}/apps/web/package.json`)('@playwright/test');
   const sourceUrl = `data:image/png;base64,${mascot.toString('base64')}`;
   const executablePath = process.env['MONOSAI_CHROMIUM_EXECUTABLE'];
   const browser = await chromium.launch(executablePath ? { executablePath } : {});

@@ -1,20 +1,20 @@
-/web/dist
-/web/coverage
-/web/.angular
-/web/playwright-report
-/web/test-results
-/web/package-lock.json
+/apps/web/dist
+/apps/web/coverage
+/apps/web/.angular
+/apps/web/playwright-report
+/apps/web/test-results
+/apps/web/package-lock.json
 docs
 .claude
 .agents
 README.md
 
 # Generated language assets and their reviewed sources: byte-for-byte output of
-# web/scripts/assets/build-language-assets.mjs, whose digests are recorded in
+# apps/web/scripts/assets/build-language-assets.mjs, whose digests are recorded in
 # the shipped manifest. Reformatting them would break every integrity check.
-/web/public/assets/language
-/web/data/language
-/web/.asset-cache
+/apps/web/public/assets/language
+/apps/web/data/language
+/apps/web/.asset-cache
 /protocol/fixtures
-/android-bridge/**/build
-/android-bridge/.gradle
+/apps/android/**/build
+/apps/android/.gradle

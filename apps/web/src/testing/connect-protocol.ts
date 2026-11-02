@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import * as z from 'zod';
 import { connectEnvelopeSchema } from '../app/infrastructure/anki/connect/connect-response.schema';
 
-const directory = resolve(process.cwd(), '../protocol/fixtures');
+const directory = resolve(process.cwd(), '../../protocol/fixtures');
 const requestSchema = z.object({
   action: z.string(),
   version: z.literal(6),

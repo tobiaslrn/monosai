@@ -37,10 +37,10 @@ fi
 
 # Warms the npm cache, which the snapshot keeps even though the session's clone
 # is fresh. The SessionStart hook installs against that warm cache in seconds.
-npm --prefix "$REPO/web" install --no-audit --no-fund || true
+npm --prefix "$REPO/apps/web" install --no-audit --no-fund || true
 
 # Needs cdn.playwright.dev on the allowlist. The browser lands in
 # /opt/pw-browsers, outside the repository, so the snapshot keeps it.
-npm --prefix "$REPO/web" exec -- playwright install --with-deps chromium || true
+npm --prefix "$REPO/apps/web" exec -- playwright install --with-deps chromium || true
 
 exit 0

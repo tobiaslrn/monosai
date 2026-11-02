@@ -1,6 +1,6 @@
 name: Release Android bridge
 
-# The bridge publishes itself. `android-bridge/version.txt` is the source of
+# The bridge publishes itself. `apps/android/version.txt` is the source of
 # truth: every push to `main` asks whether that version already has a release,
 # publishes it if it does not, and fails loudly if the APK's own sources moved
 # on without the version moving with them. Nobody has to push a tag, and a user
@@ -75,7 +75,7 @@ jobs:
             contract=$(git show "$previous:protocol/contract.txt" | tr -d '\n')
           fi
           node scripts/bridge/release-version.mjs --guard \
-            "$(git show "$previous:android-bridge/version.txt" | tr -d '\n')" "$contract"
+            "$(git show "$previous:apps/android/version.txt" | tr -d '\n')" "$contract"
 
       # A published version whose APK sources have moved is the failure this
       # whole workflow exists to prevent: the release people download would no
@@ -88,12 +88,12 @@ jobs:
         run: |
           set -euo pipefail
           changed=$(git diff --name-only "$BRIDGE_TAG" HEAD -- \
-            android-bridge/app/src/main android-bridge/app/build.gradle.kts \
-            android-bridge/build.gradle.kts android-bridge/settings.gradle.kts \
-            android-bridge/gradle android-bridge/gradle.properties \
+            apps/android/app/src/main apps/android/app/build.gradle.kts \
+            apps/android/build.gradle.kts apps/android/settings.gradle.kts \
+            apps/android/gradle apps/android/gradle.properties \
             protocol)
           if [ -n "$changed" ]; then
-            echo "::error::The bridge APK changed since $BRIDGE_TAG was published. Raise android-bridge/version.txt so the new build reaches Releases."
+            echo "::error::The bridge APK changed since $BRIDGE_TAG was published. Raise apps/android/version.txt so the new build reaches Releases."
             printf '%s\n' "$changed"
             exit 1
           fi
@@ -108,11 +108,11 @@ jobs:
         run: |
           node scripts/bridge/icons.mjs --check
           node scripts/licenses/check-licenses.mjs
-          cd android-bridge
+          cd apps/android
           ./gradlew :app:testDebugUnitTest :app:lintDebug :app:runtimeLicenses
       - name: Check the resolved APK dependency graph and licences
         if: steps.decide.outputs.needed == 'true'
-        run: node scripts/licenses/check-licenses.mjs --check --gradle-report android-bridge/app/build/reports/runtime-dependencies.json
+        run: node scripts/licenses/check-licenses.mjs --check --gradle-report apps/android/app/build/reports/runtime-dependencies.json
 
       - name: Check that signing material is configured
         id: signing
@@ -129,7 +129,7 @@ jobs:
 
       - name: Sign the release APK
         if: steps.signing.outputs.ready == 'true'
-        working-directory: android-bridge
+        working-directory: apps/android
         env:
           BRIDGE_KEYSTORE_BASE64: ${{ secrets.BRIDGE_KEYSTORE_BASE64 }}
           BRIDGE_STORE_PASSWORD: ${{ secrets.BRIDGE_STORE_PASSWORD }}
@@ -152,5 +152,5 @@ jobs:
           set -euo pipefail
           gh release create "$BRIDGE_TAG" "$RUNNER_TEMP/monosai-bridge.apk" \
             --target "$GITHUB_SHA" --title "Monosai Bridge $BRIDGE_VERSION_NAME" \
-            --notes-file android-bridge/release-notes.md --latest
+            --notes-file apps/android/release-notes.md --latest
           echo "::notice::Published $BRIDGE_TAG."

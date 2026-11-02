@@ -2,7 +2,7 @@
 
 Optional live vocabulary access from the Monosai PWA to AnkiDroid. This is a small
 native listener, not a WebView or a second web build. All first-party code is ISC
-under the [root licence](../LICENSE). No source from AnkiconnectAndroid or
+under the [root licence](../../LICENSE). No source from AnkiconnectAndroid or
 AnkiDroid's GPL implementation is included. URI/column names follow AnkiDroid's
 [public API contract](https://github.com/ankidroid/Anki-Android/blob/9f579c10bb151146728220729c510acbbd8faba7/api/src/main/java/com/ichi2/anki/FlashCardsContract.kt),
 pinned to 2.24.1. That contract publishes column names of its own, which are not
@@ -31,7 +31,7 @@ it. The shipped allowed origins are `https://tobiaslrn.github.io` and
 no path or wildcard. A linked worktree serves on its own port, so testing a real
 bridge from one needs that origin added here. No collection read is performed for
 a refused origin.
-See [the protocol](../protocol/actions.md) for preflight and denial semantics.
+See [the protocol](../../protocol/actions.md) for preflight and denial semantics.
 
 ## Staying available and battery use
 

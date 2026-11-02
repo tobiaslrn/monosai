@@ -26,13 +26,13 @@ val bridgeVersion: BridgeVersion by lazy {
 }
 
 /**
- * The loopback contract version in `../protocol/contract.txt`, which the web app
+ * The loopback contract version in `../../protocol/contract.txt`, which the web app
  * negotiates against. It is deliberately not the release version: it moves only
  * when the contract gains something a caller cannot discover by probing, so a
  * release that only fixes behaviour leaves it alone.
  */
 val bridgeContract: Int by lazy {
-    val file = rootProject.file("../protocol/contract.txt")
+    val file = rootProject.file("../../protocol/contract.txt")
     val text = file.readText()
     check(Regex("^[^\\n]+\\n$").matches(text)) { "${file.name} must hold one contract version and a newline" }
     val digits = text.dropLast(1)
@@ -76,7 +76,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     testOptions { unitTests.isIncludeAndroidResources = true }
-    sourceSets.getByName("test").resources.srcDir("../../protocol")
+    sourceSets.getByName("test").resources.srcDir("../../../protocol")
     sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/notices"))
     packaging { resources.excludes += setOf("META-INF/INDEX.LIST", "META-INF/DEPENDENCIES") }
 }
@@ -94,9 +94,9 @@ dependencies {
 dependencyLocking { lockAllConfigurations() }
 
 // The dependency report is generated, never committed: `npm run licenses:build`.
-val dependencyLicenses = rootProject.file("../build/third-party-licenses.md")
+val dependencyLicenses = rootProject.file("../../build/third-party-licenses.md")
 val distributionNotices by tasks.registering(Copy::class) {
-    from(rootProject.file("../LICENSE"), dependencyLicenses)
+    from(rootProject.file("../../LICENSE"), dependencyLicenses)
     into(layout.buildDirectory.dir("generated/notices"))
     doFirst {
         check(dependencyLicenses.isFile) { "Run `npm run licenses:build` from the repository root first." }

@@ -18,7 +18,7 @@
     "allow": [
       "Bash(npm test:*)",
       "Bash(npm run:*)",
-      "Bash(npm --prefix web run:*)",
+      "Bash(npm --prefix apps/web run:*)",
       "Bash(npm ci:*)",
       "Bash(npm install:*)",
       "Bash(npx playwright:*)",

@@ -6,10 +6,10 @@ _why_ an interface looks and behaves the way it does.
 
 It deliberately carries **no values**. There are no hex codes, no pixel counts,
 no type scale, and no component API here, because a document that repeats them
-goes stale the first time one is tuned. Values live in `web/src/styles/_tokens.scss`,
-the named thresholds in `web/src/styles/_breakpoints.scss`, the form fields in
-`web/src/styles/_controls.scss`, and one file per shared primitive in
-`web/src/styles/components/`; this document
+goes stale the first time one is tuned. Values live in `apps/web/src/styles/_tokens.scss`,
+the named thresholds in `apps/web/src/styles/_breakpoints.scss`, the form fields in
+`apps/web/src/styles/_controls.scss`, and one file per shared primitive in
+`apps/web/src/styles/components/`; this document
 names the _roles_ those tokens fill and the rules that govern their use. When
 these disagree, this document describes the intent and the tokens describe the
 current state — reconcile by changing the tokens.
@@ -19,7 +19,7 @@ described by the screen's own code, and the structure it sits in is described by
 [the architecture documentation](../arc42/README.md).
 
 It governs Monosai's native Android bridge as well as the PWA. The bridge cannot
-read the PWA's custom properties, so `android-bridge/app/src/main/res/values/`
+read the PWA's custom properties, so `apps/android/app/src/main/res/values/`
 transcribes the same roles under the same names, with `values-night/` carrying the
 dark palette. That transcription is a copy and drifts like any copy: a token
 changed here is changed in both places, in the same commit. What the bridge does
@@ -211,22 +211,22 @@ pairs rather than a compressed prose line, so they remain easy to scan.
 Shared classes own the visual role they name. Feature styles may position a
 primitive or add state-specific placement, but they do not redefine its
 silhouette, palette, type, or interaction treatment. The source of each role is
-kept beside the tokens in `web/src/styles/components/`:
+kept beside the tokens in `apps/web/src/styles/components/`:
 
 | Role        | Use                                                                                                                          | Source                                                                   |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Button      | Reversible, primary, quiet, danger, and icon-only actions                                                                    | [`_button.scss`](../../web/src/styles/components/_button.scss)           |
-| Card        | One raised surface; `mn-inset` is its borderless sunken group                                                                | [`_card.scss`](../../web/src/styles/components/_card.scss)               |
-| Notice      | A soft, named status or warning beside the thing it describes                                                                | [`_notice.scss`](../../web/src/styles/components/_notice.scss)           |
-| Status      | A non-pressable compact state such as Ready or Unread                                                                        | [`_status.scss`](../../web/src/styles/components/_status.scss)           |
-| Facts       | Read-only label/value pairs                                                                                                  | [`_facts.scss`](../../web/src/styles/components/_facts.scss)             |
-| Segmented   | One native choice out of a small, stable set                                                                                 | [`_segmented.scss`](../../web/src/styles/components/_segmented.scss)     |
-| Option card | One of several options read before choosing, as a native radio in a card                                                     | [`_option-card.scss`](../../web/src/styles/components/_option-card.scss) |
-| Popup       | A native popover hanging from its control: a menu, a picker, a small form                                                    | [`_popup.scss`](../../web/src/styles/components/_popup.scss)             |
-| List row    | One shelf destination with leading, title, meta, trailing, and menu slots; `mn-list-group` gives rows one pair of card edges | [`_list-row.scss`](../../web/src/styles/components/_list-row.scss)       |
-| Page frame  | The centred non-reader measure, stacks, and action rows                                                                      | [`_layout.scss`](../../web/src/styles/components/_layout.scss)           |
-| Text        | Secondary text and sentence-case group titles                                                                                | [`_text.scss`](../../web/src/styles/components/_text.scss)               |
-| Icon badge  | A meaningful leading icon for a row or card                                                                                  | [`_icon-badge.scss`](../../web/src/styles/components/_icon-badge.scss)   |
+| Button      | Reversible, primary, quiet, danger, and icon-only actions                                                                    | [`_button.scss`](../../apps/web/src/styles/components/_button.scss)           |
+| Card        | One raised surface; `mn-inset` is its borderless sunken group                                                                | [`_card.scss`](../../apps/web/src/styles/components/_card.scss)               |
+| Notice      | A soft, named status or warning beside the thing it describes                                                                | [`_notice.scss`](../../apps/web/src/styles/components/_notice.scss)           |
+| Status      | A non-pressable compact state such as Ready or Unread                                                                        | [`_status.scss`](../../apps/web/src/styles/components/_status.scss)           |
+| Facts       | Read-only label/value pairs                                                                                                  | [`_facts.scss`](../../apps/web/src/styles/components/_facts.scss)             |
+| Segmented   | One native choice out of a small, stable set                                                                                 | [`_segmented.scss`](../../apps/web/src/styles/components/_segmented.scss)     |
+| Option card | One of several options read before choosing, as a native radio in a card                                                     | [`_option-card.scss`](../../apps/web/src/styles/components/_option-card.scss) |
+| Popup       | A native popover hanging from its control: a menu, a picker, a small form                                                    | [`_popup.scss`](../../apps/web/src/styles/components/_popup.scss)             |
+| List row    | One shelf destination with leading, title, meta, trailing, and menu slots; `mn-list-group` gives rows one pair of card edges | [`_list-row.scss`](../../apps/web/src/styles/components/_list-row.scss)       |
+| Page frame  | The centred non-reader measure, stacks, and action rows                                                                      | [`_layout.scss`](../../apps/web/src/styles/components/_layout.scss)           |
+| Text        | Secondary text and sentence-case group titles                                                                                | [`_text.scss`](../../apps/web/src/styles/components/_text.scss)               |
+| Icon badge  | A meaningful leading icon for a row or card                                                                                  | [`_icon-badge.scss`](../../apps/web/src/styles/components/_icon-badge.scss)   |
 
 The shared page-header component supplies every non-reader top bar on the same
 `--page-measure` as the page frame. The reader remains outside this primitive
@@ -329,9 +329,9 @@ do not replace the character count here.
 
 ### Building the controls
 
-A control is built once, as a shared Angular primitive in `web/src/app/shared-ui/`,
+A control is built once, as a shared Angular primitive in `apps/web/src/app/shared-ui/`,
 and every screen composes it rather than writing its markup again. The primitive
-draws on the shared style in `web/src/styles/`; a feature places it and never
+draws on the shared style in `apps/web/src/styles/`; a feature places it and never
 re-skins it. The primitives, and what each is the way to build:
 
 - **`mn-segmented-control`** — one choice out of a few whose labels say it all,
@@ -497,7 +497,7 @@ shelf is for choosing what to open rather than for configuring each entry.
 A switch is also the control for a **single standing decision** that changes
 something the moment it is flipped — whether a vocabulary source counts. That is
 not a group and carries no fieldset, but it is the same control: one appearance,
-`mn-switch` in [`_controls.scss`](../../web/src/styles/_controls.scss), wherever an
+`mn-switch` in [`_controls.scss`](../../apps/web/src/styles/_controls.scss), wherever an
 independent outcome is turned on or off.
 
 The track uses the sunken surface at rest and the action colour when selected.
@@ -934,7 +934,7 @@ leaves accelerating (`--ease-exit`); what runs without being asked eases in and
 out (`--ease-ambient`). A transition names its easing, never the browser's
 default, and a component picks a token rather than writing a duration or a
 curve. Keyframes shared across component files live in
-[`_motion.scss`](../../web/src/styles/_motion.scss); one used only by a
+[`_motion.scss`](../../apps/web/src/styles/_motion.scss); one used only by a
 shared primitive stays in that primitive's partial.
 
 **Only paint properties animate.** Opacity, transform, colour, and clip move
@@ -1049,7 +1049,7 @@ the other is what produced `31.8.2026, 17:26:40` beside `72 unique expressions`
 on the same page, and a `50,000` character limit on a browser that writes
 `50.000`.
 
-The formatters live in `web/src/app/domain/shared/locale.ts` and nothing else
+The formatters live in `apps/web/src/app/domain/shared/locale.ts` and nothing else
 formats a number or a date:
 
 - **A count** is grouped: `3,118 characters`, `50,000 characters`. The singular

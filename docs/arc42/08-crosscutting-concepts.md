@@ -255,10 +255,10 @@ learner activates the new version from a banner. See
 
 [`docs/design-system.md`](../design/design-system.md) is the authority for structure, controls, colour,
 units, motion, voice, and state. It holds rules and intent. The values live in
-`web/src/styles/_tokens.scss`, the form fields in `web/src/styles/_controls.scss`, and each shared
+`apps/web/src/styles/_tokens.scss`, the form fields in `apps/web/src/styles/_controls.scss`, and each shared
 primitive — button, card and inset, notice, status pill, facts, stack and actions, segmented control,
 list row, page frame, and icon badge — in its own file under
-`web/src/styles/components/`. The shared page-header component owns the title structure, while
+`apps/web/src/styles/components/`. The shared page-header component owns the title structure, while
 components compose the style classes and keep only placement in their own styles. The static style
 audit extracts Angular inline style blocks and applies the same token and primitive-ownership rules
 to them. A change that departs from the design system changes that document first, in the same
@@ -278,7 +278,7 @@ component styles placement and never recolours a shared control's states. Busy i
 `aria-busy='true'`: the control keeps its fill, stays in its place, and is never removed or swapped
 while it works, so focus survives the work. The audio player's job-in-progress check
 (`isAudioRunInProgress`) counts a parked `paused` run as still going. The static style audit
-also rejects any `:hover` selector, in a component or in `web/src/styles/`, that does not name the
+also rejects any `:hover` selector, in a component or in `apps/web/src/styles/`, that does not name the
 `data-pointer='mouse'` guard, so hover stays a mouse-only state.
 
 Two rules from it reach into the code directly: colour is never the only carrier of meaning, and

@@ -31,7 +31,7 @@ export async function connectAnki(page: Page): Promise<void> {
 }
 
 export async function stubAndroidBridge(page: Page): Promise<void> {
-  const fixtures = join(process.cwd(), '..', 'protocol', 'fixtures');
+  const fixtures = join(process.cwd(), '..', '..', 'protocol', 'fixtures');
   const actions = [
     'version',
     'requestPermission',

@@ -10,7 +10,7 @@ runs:
       with:
         node-version-file: .nvmrc
         cache: npm
-        cache-dependency-path: web/package-lock.json
+        cache-dependency-path: apps/web/package-lock.json
     - run: npm ci
-      working-directory: web
+      working-directory: apps/web
       shell: bash

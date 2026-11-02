@@ -4,7 +4,7 @@ import test from 'node:test';
 import { checkJdk, parseJavaMajor, readGradleJavaHome } from './jdk.mjs';
 
 const banner = (v) => `openjdk version "${v}" 2026-01-01\nOpenJDK Runtime Environment`;
-const base = { windows: false, homedir: '/home/u', projectDir: '/repo/android-bridge' };
+const base = { windows: false, homedir: '/home/u', projectDir: '/repo/apps/android' };
 const files = (map) => (file) => map[file.replaceAll('\\', '/')] ?? null;
 
 test('reads the major version from both numbering schemes', () => {
@@ -63,12 +63,12 @@ test('uses java.exe on Windows and strips quotes from JAVA_HOME', () => {
 
 test('org.gradle.java.home decides the daemon JDK even when JAVA_HOME is on 25', () => {
   const run = (java) => (java.includes('jdk21') ? banner('21.0.2') : banner('25.0.2'));
-  const read = files({ '/repo/android-bridge/gradle.properties': 'org.gradle.java.home=/jdk21' });
+  const read = files({ '/repo/apps/android/gradle.properties': 'org.gradle.java.home=/jdk21' });
   assert.equal(checkJdk({ ...base, env: { JAVA_HOME: '/jbr25' }, run, read }), null);
 });
 
 test('a bad org.gradle.java.home is reported by name', () => {
-  const read = files({ '/repo/android-bridge/gradle.properties': 'org.gradle.java.home=/jdk25' });
+  const read = files({ '/repo/apps/android/gradle.properties': 'org.gradle.java.home=/jdk25' });
   const message = checkJdk({ ...base, env: {}, run: () => banner('25.0.2'), read });
   assert.match(message, /org\.gradle\.java\.home \(\/jdk25\) is Java 25/);
 });
@@ -79,7 +79,7 @@ test('the Gradle user home overrides the project, and honours GRADLE_USER_HOME',
   const read = files({
     '/custom/gradle.properties': 'org.gradle.java.home=/user-jdk',
     '/home/u/.gradle/gradle.properties': 'org.gradle.java.home=/default-jdk',
-    '/repo/android-bridge/gradle.properties': 'org.gradle.java.home=/project-jdk',
+    '/repo/apps/android/gradle.properties': 'org.gradle.java.home=/project-jdk',
   });
   checkJdk({ ...base, env: { GRADLE_USER_HOME: '/custom' }, run, read });
   checkJdk({ ...base, env: {}, run, read });

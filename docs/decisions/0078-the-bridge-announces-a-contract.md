@@ -38,7 +38,7 @@ handshake, and the floor can be set without stranding anyone. That will never be
 `protocol/contract.txt` holds a single integer: the loopback contract version. Gradle reads
 it into `BuildConfig.CONTRACT_VERSION` the same way it reads `version.txt`, and the web app
 declares the same number as `KNOWN_BRIDGE_CONTRACT`, kept equal by a test. It is not the
-release version: comparing `android-bridge/version.txt` here would give the web app opinions
+release version: comparing `apps/android/version.txt` here would give the web app opinions
 about release numbering, and a patch release would read as a change in what the bridge can
 do. It is not AnkiConnect's `6`, which belongs to a protocol Monosai does not own.
 

@@ -1,26 +1,26 @@
 # Compiled output
-/web/dist
+/apps/web/dist
 /tmp
-/web/out-tsc
-/web/coverage
+/apps/web/out-tsc
+/apps/web/coverage
 /build
 
 # Node
 /node_modules
-/web/node_modules
+/apps/web/node_modules
 npm-debug.log
 
 # Angular
 /.angular/
-/web/.angular/cache
+/apps/web/.angular/cache
 .sass-cache/
 
 # Playwright
-/web/test-results/
-/web/playwright-report/
-/web/blob-report/
-/web/playwright/.cache/
-/web/playwright/.auth/
+/apps/web/test-results/
+/apps/web/playwright-report/
+/apps/web/blob-report/
+/apps/web/playwright/.cache/
+/apps/web/playwright/.auth/
 /.playwright-cli/
 
 # IDEs and editors
@@ -31,13 +31,13 @@ npm-debug.log
 # System files
 .DS_Store
 Thumbs.db
-/web/.asset-cache
+/apps/web/.asset-cache
 .claude/settings.local.json
 
 # Android bridge build and local signing material
-/android-bridge/.gradle/
-/android-bridge/.kotlin/
-/android-bridge/**/build/
-/android-bridge/local.properties
+/apps/android/.gradle/
+/apps/android/.kotlin/
+/apps/android/**/build/
+/apps/android/local.properties
 *.jks
 *.keystore

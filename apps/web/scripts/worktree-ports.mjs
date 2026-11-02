@@ -8,7 +8,7 @@ export const BASE_PORTS = Object.freeze({ dev: 4200, e2e: 4210, pwa: 4300 });
 const SLOT_COUNT = 3000;
 const FIRST_WORKTREE_PORT = 20_000;
 const PORTS_PER_SLOT = 3;
-const CHECKOUT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const CHECKOUT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /**
  * Picks the ports of a checkout so parallel worktrees never contend for one.

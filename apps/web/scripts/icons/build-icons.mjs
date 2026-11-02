@@ -63,7 +63,7 @@ async function main() {
   await mkdir(ICONS_OUTPUT_DIR, { recursive: true });
 
   // Unset everywhere but a sandbox whose Chromium is not the pinned build;
-  // see web/playwright.chromium.ts for why that override exists at all.
+  // see apps/web/playwright.chromium.ts for why that override exists at all.
   const executablePath = process.env['MONOSAI_CHROMIUM_EXECUTABLE'];
   const browser = await chromium.launch(executablePath ? { executablePath } : {});
   try {

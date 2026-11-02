@@ -31,7 +31,7 @@ somewhere else.
 
 ## Decision
 
-`android-bridge/version.txt` holds one bounded `MAJOR.MINOR.PATCH` and is the source of
+`apps/android/version.txt` holds one bounded `MAJOR.MINOR.PATCH` and is the source of
 truth. Gradle reads it for `versionCode` and `versionName`, so every build — debug,
 release, on a bench or in CI — reports the version it actually is. The tag is derived from
 the file rather than the file from the tag.
@@ -66,7 +66,7 @@ their platform semantics; only their appearance is Monosai's.
 - A change to the APK's sources without a version bump turns `main` red. That is deliberate:
   the alternative is a Releases page quietly serving an older bridge than the one in `main`.
 - The repository's Releases page carries the bridge and is where a learner is sent.
-  `web/src/app/features/vocabulary/anki-links.ts` already points there.
+  `apps/web/src/app/features/vocabulary/anki-links.ts` already points there.
 - The bridge carries no design dependency on the PWA build: its resources are its own
   transcription, and `docs/design/design-system.md` remains the one authority for both.
 - Two Monosai icons can be told apart in a launcher, in the themed icon set, and on the

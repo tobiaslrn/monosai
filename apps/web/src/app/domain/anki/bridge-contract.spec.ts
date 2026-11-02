@@ -10,7 +10,7 @@ import {
 
 describe('the declared contract', () => {
   it('is the one both sides build against', () => {
-    const declared = readFileSync(resolve(process.cwd(), '../protocol/contract.txt'), 'utf8');
+    const declared = readFileSync(resolve(process.cwd(), '../../protocol/contract.txt'), 'utf8');
     expect(declared).toBe(`${String(KNOWN_BRIDGE_CONTRACT)}\n`);
   });
 

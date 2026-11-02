@@ -36,7 +36,7 @@ export function vocabularySyncedLabel(createdAt: number, now: number): string {
  * It is the preset's own name, lowercased for mid-sentence use, rather than a
  * second wording of the same ladder: the level chooser, Settings, and this line
  * name a level identically, and there is still no JLPT level in it
- * ([ADR 0008](../../../../../docs/decisions/0008-grammar-profile-presets.md)).
+ * ([ADR 0008](../../../../../../docs/decisions/0008-grammar-profile-presets.md)).
  * Null while no preset has loaded, so the clause is dropped rather than guessed.
  */
 export function readingLevelName(presetName: string | undefined): string | null {

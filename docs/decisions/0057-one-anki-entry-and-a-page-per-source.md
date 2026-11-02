@@ -15,7 +15,7 @@ source was stale.
 
 **One Anki entry.** `HOST_PLATFORM` is decided once at the shell edge from the
 user agent and injected as a port
-([`domain/platform/host-platform.ts`](../../web/src/app/domain/platform/host-platform.ts)),
+([`domain/platform/host-platform.ts`](../../apps/web/src/app/domain/platform/host-platform.ts)),
 so a test pins it instead of pretending to be a browser. Desktop and Android get
 the adapter that can work there and the sentence naming what has to be
 installed; iOS gets the row disabled, saying so, beside a link to Anki's export

@@ -11,7 +11,7 @@ const NAMES = new Map([
 ]);
 
 export async function gradlePackages(reportPath) {
-  const path = 'android-bridge/runtime-dependencies.json';
+  const path = 'apps/android/runtime-dependencies.json';
   const records = JSON.parse(await readFile(path, 'utf8'));
   if (!Array.isArray(records) || records.length === 0)
     throw new Error('Empty Gradle licence report');
@@ -19,7 +19,7 @@ export async function gradlePackages(reportPath) {
     const resolved = JSON.parse(await readFile(reportPath, 'utf8'));
     if (!isDeepStrictEqual(records, resolved)) {
       throw new Error(
-        'Gradle runtime graph or licences changed; regenerate android-bridge/runtime-dependencies.json and licences',
+        'Gradle runtime graph or licences changed; regenerate apps/android/runtime-dependencies.json and licences',
       );
     }
   }

@@ -15,7 +15,7 @@ function modifiedAt(path) {
   return statSync(path, { throwIfNoEntry: false })?.mtimeMs;
 }
 
-const requiredNode = readFileSync(resolve(WEB, '../.nvmrc'), 'utf8').trim().replace(/^v/, '');
+const requiredNode = readFileSync(resolve(WEB, '../../.nvmrc'), 'utf8').trim().replace(/^v/, '');
 if (process.versions.node !== requiredNode) {
   process.stderr.write(
     `worktree-setup: .nvmrc pins Node ${requiredNode}, running ${process.versions.node}\n`,

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Spacing, radii and the touch-target floor from web/src/styles/_tokens.scss.
+  Spacing, radii and the touch-target floor from apps/web/src/styles/_tokens.scss.
   Spacing is dp because Android scales fonts, not layout; text sizes are sp
   wherever they appear, so the OS font-size setting still moves everything.
 -->

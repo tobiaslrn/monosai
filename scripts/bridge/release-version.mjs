@@ -2,7 +2,7 @@ import { appendFile, readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 /** The one place the bridge's version is written down. */
-export const VERSION_PATH = 'android-bridge/version.txt';
+export const VERSION_PATH = 'apps/android/version.txt';
 
 export const releaseTag = (name) => `bridge-v${name}`;
 
