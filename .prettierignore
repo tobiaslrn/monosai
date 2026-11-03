@@ -18,3 +18,10 @@ README.md
 /protocol/fixtures
 /apps/android/**/build
 /apps/android/.gradle
+
+# Generated: the engine contract types (ts-rs, via `cargo xtask wasm`) and the
+# wasm-bindgen glue. `cargo xtask check` compares the committed types byte for byte.
+/apps/web/src/app/engine/api
+/apps/web/src/generated
+/target
+/.tools

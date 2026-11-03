@@ -66,6 +66,9 @@ From slice 0 on, every Rust change follows the
 guide is in the repository before slice 0 starts, so the first crate is
 already written to it.
 
+The outcome of every check of an unproven assumption is recorded in the
+architecture document, section 20.
+
 ---
 
 ## 2. Before starting
@@ -145,8 +148,8 @@ empty engine boots in a worker, and Angular talks to it.
    - `rust-toolchain.toml`, `rustfmt.toml`, `.cargo/config.toml`,
      `clippy.toml`, `deny.toml`.
    - `.gitignore`: `/target`, `/.tools`, `apps/web/src/generated/`.
-4. **Create `xtask`** with `new-crate` (kinds `pure`, `handle`, `glue`),
-   `check`, `check-layers`, `test`, `wasm`. Use `cargo metadata` (via the
+4. **Create `xtask`** with `new-crate` (kinds `pure`, `sync`, `handle`,
+   `glue`), `check`, `check-layers`, `test`, `wasm`, `tools`. Use `cargo metadata` (via the
    `cargo_metadata` crate) for `check-layers` and `test --changed`.
    `check-layers` enforces the group rules and the pure-crate dependency
    allowlist.
@@ -238,6 +241,9 @@ pure rules, handles, SQLite repository, migration, store, events.
    delete their Dexie repositories and the TS OpenRouter client parts they no
    longer use.
 9. On first launch, delete the old `monosai` IndexedDB database. Log it once.
+10. The refusal screen gains its "take over" button: the second tab steals the
+    engine lock (Web Locks `steal`), and the tab that loses it stops its engine
+    and shows the refusal screen itself.
 
 ### Done when
 

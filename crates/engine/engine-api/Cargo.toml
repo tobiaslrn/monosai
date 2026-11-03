@@ -1,0 +1,27 @@
+[package]
+name = "monosai-engine-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[package.metadata.monosai]
+kind = "pure"
+
+[lib]
+doctest = false
+
+[features]
+# TypeScript declarations of the wire types, exported by `cargo xtask wasm`.
+ts = ["dep:ts-rs"]
+
+[dependencies]
+serde = { workspace = true, features = ["derive", "std"] }
+ts-rs = { workspace = true, optional = true, features = ["serde-compat"] }
+
+[dev-dependencies]
+serde_json = { workspace = true, features = ["std"] }
+
+[lints]
+workspace = true

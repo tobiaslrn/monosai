@@ -1,0 +1,55 @@
+# cargo-deny: licences, advisories, bans, and sources of every Rust dependency.
+# Run through `cargo xtask check`.
+
+[graph]
+# The targets anything is built for: the engine on the web, the bridge on
+# Android, and native builds for tests and tooling.
+targets = [
+  "wasm32-unknown-unknown",
+  "aarch64-linux-android",
+  "x86_64-linux-android",
+  "x86_64-unknown-linux-gnu",
+  "x86_64-pc-windows-msvc",
+]
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+# The same permissive set the npm licence check allows, plus the licences
+# common Rust crates use alongside them.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "0BSD",
+  "CC0-1.0",
+  "Unicode-3.0",
+  "Zlib",
+]
+confidence-threshold = 0.93
+# The list is the policy, not an inventory of what the graph uses today.
+unused-allowed-license = "allow"
+
+[licenses.private]
+# The workspace's own crates are unpublished and carry the repository licence.
+ignore = true
+
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+# Internal crates depend on each other by path; none is published.
+allow-wildcard-paths = true
+skip = [
+  { crate = "syn@2", reason = "ts-rs-macros still builds on syn 2; only xtask's type export uses it" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

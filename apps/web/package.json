@@ -84,6 +84,7 @@
     "@types/sql.js": "^1.4.11",
     "@vitest/coverage-v8": "^5.0.5",
     "angular-eslint": "^22.6.0",
+    "binaryen": "^132.0.0",
     "eslint": "^10.13.0",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",

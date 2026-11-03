@@ -485,6 +485,7 @@ disallowed-methods = [
   { path = "serde_json::from_str", reason = "parse only in boundary modules" },
   { path = "serde_json::from_slice", reason = "parse only in boundary modules" },
   { path = "serde_json::from_value", reason = "parse only in boundary modules" },
+  { path = "serde_wasm_bindgen::from_value", reason = "parse only in boundary modules" },
 ]
 ```
 

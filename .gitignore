@@ -41,3 +41,8 @@ Thumbs.db
 /apps/android/local.properties
 *.jks
 *.keystore
+
+# Rust
+/target
+/.tools
+/apps/web/src/generated/
