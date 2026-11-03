@@ -18,8 +18,8 @@
   },
   "scripts": {
     "start": "node scripts/start.mjs",
-    "build": "ng build",
-    "build:pages": "ng build --configuration pages --stats-json",
+    "build": "cargo xtask wasm --release && ng build",
+    "build:pages": "cargo xtask wasm --release && ng build --configuration pages --stats-json",
     "test": "ng test",
     "test:coverage": "ng test --coverage",
     "typecheck": "npm run typecheck:app && npm run typecheck:e2e",

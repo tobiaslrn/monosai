@@ -6,6 +6,8 @@ import { GenerationSettingsStore } from '../../application/settings/generation-s
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import { StorageFailure } from '../../domain/storage/storage-error';
+import { ENGINE_CLIENT } from '../../engine/engine-client';
+import { EngineFailure } from '../../engine/engine-failure';
 import {
   MonosaiDatabase,
   assertStoredSchemaNotNewer,
@@ -14,14 +16,16 @@ import { mapStorageFailure } from '../../infrastructure/persistence/storage-erro
 import { INITIALIZATION_STEP, type InitializationStep } from './initialization-step';
 
 /**
- * Startup sequence: open the database (running migrations transactionally),
- * then load settings. Navigation renders only after both succeed; a failure
+ * Startup sequence: boot the engine, open the database (running migrations
+ * transactionally), then load settings. The engine goes first: while another
+ * tab's engine owns the data, this tab stops before it touches anything. Navigation renders only after both succeed; a failure
  * routes to the recovery screen instead of deleting data or reloading.
  */
 export function provideInitializationSteps() {
   return {
     provide: INITIALIZATION_STEP,
     useFactory: (): readonly InitializationStep[] => {
+      const engine = inject(ENGINE_CLIENT);
       const database = inject(MonosaiDatabase);
       const settings = inject(AppSettingsStore);
       const credential = inject(CredentialStore);
@@ -32,6 +36,15 @@ export function provideInitializationSteps() {
       let watching = false;
 
       return [
+        {
+          name: 'engine',
+          run: async () => {
+            const result = await engine.call({ type: 'ping' });
+            if (!result.ok) {
+              throw new EngineFailure(result.error);
+            }
+          },
+        },
         {
           name: 'database',
           run: async () => {

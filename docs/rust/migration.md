@@ -171,9 +171,9 @@ empty engine boots in a worker, and Angular talks to it.
      shows the "open in another tab" screen on refusal.
    - Vitest: a fake `EngineClient` for store tests.
 8. **Build integration.**
-   - `npm start`, `npm test`, `npm run build`, `build-if-stale.mjs` run
-     `cargo xtask wasm` first and include `crates/` and `Cargo.lock` in their
-     inputs.
+   - `npm start`, `npm run build`, `build-if-stale.mjs` run `cargo xtask wasm`
+     first and include `crates/` and `Cargo.lock` in their inputs. `npm test`
+     needs no Rust build: the contract types are committed.
    - Add the engine wasm to `ngsw-config.json`'s prefetch group.
    - Measure the engine wasm and add a gzip budget for it to
      `bundle-budgets.json`.

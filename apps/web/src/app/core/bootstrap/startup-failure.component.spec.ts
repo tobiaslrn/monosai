@@ -75,6 +75,23 @@ describe('StartupFailureComponent', () => {
     button.click();
   }
 
+  it('says another tab has Monosai open and offers only a reload', () => {
+    const fixture = TestBed.createComponent(StartupFailureComponent);
+    fixture.componentRef.setInput('failure', {
+      error: {
+        domain: 'engine',
+        code: 'open-in-another-tab',
+        message: 'Monosai is open in another tab',
+      },
+      resetMayHelp: false,
+    });
+    fixture.detectChanges();
+
+    expect(element(fixture).textContent).toContain('Monosai is open in another tab');
+    expect(element(fixture).textContent).not.toContain('could not start');
+    expect(labels(fixture)).toEqual(['Reload']);
+  });
+
   it('offers only a retry when the data is not the problem', () => {
     expect(labels(render(false))).toEqual(['Try again']);
   });

@@ -88,6 +88,11 @@ async function main() {
   const initialGzipBytes = initial.reduce((sum, chunk) => sum + chunk.gzipBytes, 0);
   const largestLazyGzipBytes = lazy[0]?.gzipBytes ?? 0;
 
+  const engineBytes = await readFile(join(DIST_DIR, 'assets/engine/engine_bg.wasm')).catch(
+    () => null,
+  );
+  const engineGzipBytes = engineBytes === null ? 0 : gzipSync(engineBytes).length;
+
   const report = [
     toTable(initial, 'Initial chunks'),
     '',
@@ -96,6 +101,8 @@ async function main() {
     toTable(lazy, 'Lazy chunks'),
     '',
     `**Largest lazy chunk (gzip): ${formatKb(largestLazyGzipBytes)}**`,
+    '',
+    `**Engine module (gzip): ${formatKb(engineGzipBytes)}**`,
     '',
   ].join('\n');
 
@@ -119,6 +126,13 @@ async function main() {
   if (largestLazyGzipBytes > budgets.largestLazyChunk.maxGzipBytes) {
     failures.push(
       `largest lazy chunk gzip ${String(largestLazyGzipBytes)}B exceeds budget ${String(budgets.largestLazyChunk.maxGzipBytes)}B`,
+    );
+  }
+  if (engineBytes === null) {
+    failures.push('the engine module assets/engine/engine_bg.wasm is missing from the build');
+  } else if (engineGzipBytes > budgets.engineWasm.maxGzipBytes) {
+    failures.push(
+      `engine module gzip ${String(engineGzipBytes)}B exceeds budget ${String(budgets.engineWasm.maxGzipBytes)}B`,
     );
   }
   if (failures.length > 0) {

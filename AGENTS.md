@@ -13,13 +13,16 @@ It stores everything in the browser, only reads from Anki, and uses the learner'
 - Before changing structure, layers, persistence, or external boundaries: read
   [docs/arc42](docs/arc42/) and [docs/decisions](docs/decisions/).
 - Before changing either side of `protocol/contract.txt`: read `apps/android/README.md`.
+- Before writing Rust: read [the Rust style guide](docs/rust/style.md). New crates only via
+  `cargo xtask new-crate`; dependencies only in `[workspace.dependencies]`.
 - Before changing CI or a build gate: read
   [the deployment view](docs/arc42/07-deployment-view.md) and
   [the quality requirements](docs/arc42/10-quality-requirements.md).
 
 ## Verifying
 
-- Before committing: `npm test`. Browser-visible changes: also `npm run e2e`.
+- Before committing: `npm test`. Browser-visible changes: also `npm run e2e`. Rust changes:
+  `cargo xtask check` and `cargo xtask test` (`cargo xtask tools` installs what they need).
 - Judge visual changes only from screenshots you opened, in light and dark, at desktop and
   Android size:
   1. `npm run build:pages`
@@ -49,7 +52,8 @@ It stores everything in the browser, only reads from Anki, and uses the learner'
 
 # Code rules
 
-- Committed Dexie schema versions are immutable. Schema changes add a new version, with a
+- Rust lints are overridden only with `#[expect(lint, reason = "…")]`, never `#[allow]`.
+- Committed Dexie schema versions and committed SQL migrations are immutable. Schema changes add a new version, with a
   transactional upgrade when records change shape or meaning.
 - Never silently reset or lose local data; migration failures offer explicit recovery.
 - Validate external, stored, imported, and AI-generated data at runtime.

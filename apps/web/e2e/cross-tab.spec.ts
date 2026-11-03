@@ -3,57 +3,26 @@ import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import { importReading, SAMPLE_TEXT } from './reading';
 
 /**
- * Two tabs on one local database.
- *
- * A local-first application has no server to tell the other tab anything, so
- * the second tab used to go on rendering a reading the first had deleted —
- * heading, tokens, and cached aids all live — until it was navigated away and
- * back. See ADR 0042.
+ * One engine owns the origin's data at a time, so a second tab says so instead
+ * of starting, and starts once the first is gone.
  */
-test.describe('two tabs on one library', () => {
-  test('a reading deleted in one tab stops being shown in the other', async ({ context }) => {
+test.describe('a second tab', () => {
+  test('says Monosai is open in another tab, and starts after the first closes @smoke', async ({
+    context,
+  }) => {
     const first = await context.newPage();
-    await importReading(first, SAMPLE_TEXT, 'Cross-tab reading');
-    const readerUrl = first.url();
-
-    const second = await context.newPage();
-    await second.goto(readerUrl);
-    await expect(second.getByRole('heading', { name: 'Cross-tab reading' })).toBeVisible();
-
     await first.goto('./#/library');
-    const card = first.locator('mn-reading-card').filter({ hasText: 'Cross-tab reading' });
-    await card.getByRole('button', { name: 'Actions for Cross-tab reading' }).click();
-    await card.getByRole('menuitem', { name: 'Delete' }).click();
-    await first.getByRole('button', { name: 'Delete permanently' }).click();
-    // The row, not the words: both tabs name the reading as they announce it.
-    await expect(
-      first.locator('mn-reading-card').filter({ hasText: 'Cross-tab reading' }),
-    ).toHaveCount(0);
-
-    // No reload in the second tab: it must correct itself.
-    await expect(second).toHaveURL(/#\/library/);
-    await expect(second.getByRole('heading', { name: 'Cross-tab reading' })).toHaveCount(0);
-  });
-
-  test('a library in another tab drops the row without being reloaded', async ({ context }) => {
-    const first = await context.newPage();
-    await importReading(first, SAMPLE_TEXT, 'Shelf reading');
-    await first.goto('./#/library');
+    await expect(first.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
 
     const second = await context.newPage();
     await second.goto('./#/library');
-    await expect(second.getByText('Shelf reading')).toBeVisible();
+    await expect(second.getByText('Monosai is open in another tab')).toBeVisible();
+    await expect(second.getByRole('button', { name: 'Reload' })).toBeEnabled();
+    await expectNoSeriousAccessibilityViolations(second);
 
-    const card = first.locator('mn-reading-card').filter({ hasText: 'Shelf reading' });
-    await card.getByRole('button', { name: 'Actions for Shelf reading' }).click();
-    await card.getByRole('menuitem', { name: 'Delete' }).click();
-    await first.getByRole('button', { name: 'Delete permanently' }).click();
-
-    await expect(
-      second.locator('mn-reading-card').filter({ hasText: 'Shelf reading' }),
-    ).toHaveCount(0);
-    // The other tab says why the row went, rather than silently dropping it.
-    await expect(second.getByRole('status')).toContainText('Shelf reading');
+    await first.close();
+    await second.getByRole('button', { name: 'Reload' }).click();
+    await expect(second.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
   });
 });
 

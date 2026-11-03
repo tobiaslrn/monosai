@@ -31,6 +31,7 @@ import { provideOpenRouter } from './infrastructure/openrouter/openrouter.provid
 import { providePersistence } from './infrastructure/persistence/persistence.providers';
 import { providePwa } from './infrastructure/pwa/pwa.providers';
 import { readBuildInfo } from './core/diagnostics/build-info';
+import { provideEngine } from './engine/engine.providers';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -59,6 +60,7 @@ export const appConfig: ApplicationConfig = {
         });
       },
     },
+    provideEngine(),
     providePersistence(),
     provideLanguage(),
     provideAnki(),

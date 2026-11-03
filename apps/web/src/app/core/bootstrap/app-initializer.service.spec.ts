@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import { StorageFailure, storageError } from '../../domain/storage/storage-error';
+import { EngineFailure } from '../../engine/engine-failure';
 import { AppInitializerService } from './app-initializer.service';
 import { INITIALIZATION_STEP, type InitializationStep } from './initialization-step';
 
@@ -107,6 +108,30 @@ describe('AppInitializerService', () => {
       });
     },
   );
+
+  it('reports an engine refusal as it is, with no reset to offer', async () => {
+    const error = {
+      domain: 'engine',
+      code: 'open-in-another-tab',
+      message: 'Monosai is open in another tab',
+    } as const;
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: INITIALIZATION_STEP,
+          useValue: [step('engine', () => Promise.reject(new EngineFailure(error)))],
+        },
+      ],
+    });
+    const service = TestBed.inject(AppInitializerService);
+
+    await service.run();
+
+    expect(service.state()).toEqual({
+      status: 'failed',
+      failure: { error, resetMayHelp: false },
+    });
+  });
 
   it('can retry after a failure', async () => {
     let attempts = 0;

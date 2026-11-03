@@ -26,6 +26,10 @@ const INPUTS = [
   'package-lock.json',
   'tsconfig.app.json',
   'tsconfig.json',
+  // The engine, built into the app by `cargo xtask wasm`.
+  '../../crates',
+  '../../Cargo.lock',
+  '../../Cargo.toml',
 ];
 
 function digestInputs() {

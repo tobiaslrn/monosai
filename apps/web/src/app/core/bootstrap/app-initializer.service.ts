@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { describeThrown, safeErrorTypeOf } from '../../domain/shared/errors';
 import { StorageFailure, resetMayRecover } from '../../domain/storage/storage-error';
+import { EngineFailure } from '../../engine/engine-failure';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../../application/shared/diagnostics';
 import { INITIALIZATION_STEP } from './initialization-step';
 import type { BootstrapFailure, InitializationState } from './initialization-state';
@@ -9,6 +10,9 @@ import type { BootstrapFailure, InitializationState } from './initialization-sta
 function bootstrapFailureFrom(thrown: unknown): BootstrapFailure {
   if (thrown instanceof StorageFailure) {
     return { error: thrown.storageError, resetMayHelp: resetMayRecover(thrown.storageError) };
+  }
+  if (thrown instanceof EngineFailure) {
+    return { error: thrown.error, resetMayHelp: false };
   }
   return {
     error: {

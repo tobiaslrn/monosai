@@ -41,6 +41,11 @@
                 "glob": "sql-wasm.wasm",
                 "input": "node_modules/sql.js/dist",
                 "output": "assets/sqlite"
+              },
+              {
+                "glob": "{engine.js,engine_bg.wasm}",
+                "input": "src/generated/engine",
+                "output": "assets/engine"
               }
             ],
             "styles": ["src/styles.scss"],

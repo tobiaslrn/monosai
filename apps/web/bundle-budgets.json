@@ -4,5 +4,8 @@
   },
   "largestLazyChunk": {
     "maxGzipBytes": 100000
+  },
+  "engineWasm": {
+    "maxGzipBytes": 100000
   }
 }

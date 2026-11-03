@@ -513,10 +513,12 @@ pub enum   Outbound { Response(Response), Event(Event) }          // tag = "kind
 
 ### 7.2 Transport
 
-- `apps/web/src/app/engine/engine.worker.js` is a tiny JS shim: it loads
+- `apps/web/src/app/engine/engine.worker.ts` is a tiny shim: it loads
   `engine-wasm`, creates one `EngineHandle` with an event callback, and passes
-  each incoming message to `handle.handle(msg)`. It is plain JavaScript, so
-  type-checking the app never needs the generated glue.
+  each incoming message to `handle.handle(msg)`. The wasm-bindgen glue is
+  copied to `assets/engine/` with the module and imported by URL, checked for
+  the two functions the shim calls, so building and type-checking the app
+  never need the generated files.
 - `EngineClient` (main thread) assigns request ids, keeps a pending map, turns
   replies into `Result`-shaped promises, exposes `events$`, and sends `Cancel`
   when an `AbortSignal` fires.
@@ -887,8 +889,10 @@ overflow-checks = true   # overflow is a bug and stops, rather than wrapping sil
 
 ### 17.6 Angular integration
 
-- `npm start` / `npm test` / `npm run build` call `cargo xtask wasm` first
-  (skipped when inputs are unchanged).
+- `npm start` and `npm run build` call `cargo xtask wasm` first (skipped when
+  inputs are unchanged); `build-if-stale.mjs` counts `crates/` and
+  `Cargo.lock` as inputs. `npm test` needs no Rust build, since the contract
+  types are committed.
 - The engine wasm is in the service worker's prefetch group (offline start);
   the language wasm is in a lazy group under a versioned URL.
 - `bundle-budgets.json` gains a gzip budget for the engine wasm.
@@ -899,8 +903,8 @@ overflow-checks = true   # overflow is a bug and stops, rather than wrapping sil
 
 | Job       | Steps                                                                                                    |
 | --------- | -------------------------------------------------------------------------------------------------------- |
-| `static`  | Prettier, ESLint, Stylelint, `tsc`, `xtask check`, licences                                              |
-| `rust`    | `xtask test`, `wasm-bindgen-test` in headless Chrome, coverage thresholds                                |
+| `static`  | Prettier, ESLint, Stylelint, `tsc`, licences                                                             |
+| `rust`    | `xtask check`, `xtask test`, `xtask test --wasm` in a headless Chrome worker, coverage thresholds        |
 | `build`   | `xtask wasm --release`, `ng build`, verify dist and budgets. The one artifact                            |
 | `e2e`     | Playwright smoke/full against the artifact                                                               |
 | `pwa`     | Offline suite against the artifact                                                                       |

@@ -1,6 +1,7 @@
 import {
   DOCUMENT,
   ChangeDetectionStrategy,
+  computed,
   Component,
   inject,
   input,
@@ -31,12 +32,18 @@ const EXPORT_URL_LIFETIME_MS = 60_000;
   imports: [ErrorScreenComponent],
   template: `
     <mn-error-screen
-      heading="Monosai could not start"
-      [description]="failure().error.message"
+      [heading]="openElsewhere() ? 'Monosai is open in another tab' : 'Monosai could not start'"
+      [description]="
+        openElsewhere() ? 'Only one tab can use Monosai at a time.' : failure().error.message
+      "
       [dataStatus]="resetFailed() ? null : 'Your saved stories have not been changed.'"
     >
       <ng-container data-actions>
-        @if (failure().error.code === 'newer-version') {
+        @if (openElsewhere()) {
+          <button type="button" class="mn-button mn-button--primary" (click)="reloadHere()">
+            Reload
+          </button>
+        } @else if (failure().error.code === 'newer-version') {
           <button
             type="button"
             class="mn-button mn-button--primary"
@@ -104,6 +111,13 @@ export class StartupFailureComponent {
   readonly failure = input.required<BootstrapFailure>();
   readonly retry = output();
 
+  /** Another tab's engine owns the data; this tab can only start once that one is gone. */
+  protected readonly openElsewhere = computed(
+    () =>
+      this.failure().error.domain === 'engine' &&
+      this.failure().error.code === 'open-in-another-tab',
+  );
+
   /** After a reset that reported failure, nothing can promise the stories are untouched. */
   protected readonly resetFailed = signal(false);
 
@@ -113,6 +127,11 @@ export class StartupFailureComponent {
   protected tryAgain(): void {
     this.storage.clearFailure();
     this.retry.emit();
+  }
+
+  /** The engine decides whether it may start only when it boots, so only a reload asks again. */
+  protected reloadHere(): void {
+    this.document.defaultView?.location.reload();
   }
 
   /** Retrying in this page cannot get past a newer database; only a newer build can. */
