@@ -80,6 +80,21 @@ jobs:
         run: npm run format:check
         continue-on-error: true
 
+  # The Rust workspace: the style guide's lint set and layer rules, native
+  # tests, and the wasm tests in a headless Chrome worker, where the engine runs.
+  rust:
+    name: Rust engine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust
+      - run: cargo xtask check
+      - run: cargo xtask test
+      - name: Wasm tests in a Chrome dedicated worker
+        run: CHROMEDRIVER="$CHROMEWEBDRIVER/chromedriver" cargo xtask test --wasm
+        env:
+          WASM_BINDGEN_USE_DEDICATED_WORKER: '1'
+
   unit:
     name: Unit and integration tests
     runs-on: ubuntu-latest
@@ -105,6 +120,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
+      - uses: ./.github/actions/rust
       - name: Build the GitHub Pages bundle
         run: npm run build:pages -- --define MONOSAI_BUILD_COMMIT='"${{ github.sha }}"'
       - name: Add the SPA deep-link fallback
@@ -215,12 +231,13 @@ jobs:
   gate:
     name: All checks
     if: always()
-    needs: [static, unit, build, bridge, e2e, e2e-pwa]
+    needs: [static, rust, unit, build, bridge, e2e, e2e-pwa]
     runs-on: ubuntu-latest
     steps:
       - name: Report each job's result
         run: |
           echo "static:  ${{ needs.static.result }}"
+          echo "rust:    ${{ needs.rust.result }}"
           echo "unit:    ${{ needs.unit.result }}"
           echo "build:   ${{ needs.build.result }}"
           echo "bridge:  ${{ needs.bridge.result }}"
