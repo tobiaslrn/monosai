@@ -52,7 +52,7 @@ export function checkJdk({
   run = runJava,
   read = readFile,
   homedir = os.homedir(),
-  projectDir = path.resolve('android-bridge'),
+  projectDir = path.resolve('apps/android'),
 } = {}) {
   const userHome = env.GRADLE_USER_HOME?.trim() || path.join(homedir, '.gradle');
   const configured =

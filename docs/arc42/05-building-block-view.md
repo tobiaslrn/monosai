@@ -8,7 +8,7 @@ renamed, the layer a concern belongs to does not.
 ### Overview diagram
 
 An arrow means "may import". The linter enforces exactly these arrows, from the `layerZones` list in
-[`eslint.config.js`](../../web/eslint.config.js), which is the authority for them. Any other import fails
+[`eslint.config.js`](../../apps/web/eslint.config.js), which is the authority for them. Any other import fails
 the build.
 
 ```mermaid
@@ -18,7 +18,7 @@ flowchart TB
     sharedui["shared-ui/<br/>reusable presentation"]
     application["application/<br/>use cases, stores, ports"]
     infrastructure["infrastructure/<br/>adapters"]
-    workers["web/src/workers/<br/>tokenizer, package reader, speech encoder"]
+    workers["apps/web/src/workers/<br/>tokenizer, package reader, speech encoder"]
     domain["domain/<br/>types, rules, port interfaces"]
 
     core --> features
@@ -59,7 +59,7 @@ the providers, and owns the shell and the router, so it must be allowed to see e
 | **`features/`**        | One folder per screen, lazily loaded                                                                     | Route definitions in `core/routing/`                                          |
 | **`core/`**            | Composition root, ordered startup, application shell, routing, platform services                         | The application config, which is the only place the layers are wired together |
 | **`shared-ui/`**       | Presentation components used by more than one screen. Holds no use case                                  | Component selectors                                                           |
-| **`web/src/workers/`** | Work that must not block the main thread                                                                 | A versioned message protocol, validated on both sides                         |
+| **`apps/web/src/workers/`** | Work that must not block the main thread                                                                 | A versioned message protocol, validated on both sides                         |
 
 The shared presentation layer owns the common native-popover sheet surface:
 anchored placement on wide screens, bottom-sheet placement on narrow screens,
@@ -160,7 +160,7 @@ three.
 
 ### Whitebox: the Android bridge
 
-`android-bridge/app/` is a separate native artifact, never a wrapper for `web/`.
+`apps/android/app/` is a separate native artifact, never a wrapper for `apps/web/`.
 Its Activity owns Start/Stop, permission, exact allowed origins and update UI.
 The foreground service owns Ktor CIO and optional boot restart. HTTP owns origin
 and PNA handling, input limits and envelope serialization. Its router can call

@@ -35,16 +35,16 @@ jobs:
         run: node scripts/licenses/check-licenses.mjs
       - name: Test, assemble, lint and resolve production licences
         run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug :app:runtimeLicenses
-        working-directory: android-bridge
+        working-directory: apps/android
       - name: Check the resolved APK dependency graph and licences
-        run: node scripts/licenses/check-licenses.mjs --check --gradle-report android-bridge/app/build/reports/runtime-dependencies.json
+        run: node scripts/licenses/check-licenses.mjs --check --gradle-report apps/android/app/build/reports/runtime-dependencies.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: bridge-debug
           path: |
-            android-bridge/app/build/outputs/apk/debug/*.apk
-            android-bridge/app/build/reports
+            apps/android/app/build/outputs/apk/debug/*.apk
+            apps/android/app/build/reports
           if-no-files-found: ignore
 
   # Cheap checks first so an obvious break reports in seconds. Ordered by cost:
@@ -67,18 +67,33 @@ jobs:
         run: npm run licenses:check
       - name: Repository script tests
         run: npm run scripts:test
-        working-directory: web
+        working-directory: apps/web
       - name: Dependency audit (production)
         run: npm audit --omit=dev --audit-level=high
-        working-directory: web
+        working-directory: apps/web
       - run: npm run typecheck
       - run: npm run lint
       - name: Component style token and selector check
         run: npm run stylelint
-        working-directory: web
+        working-directory: apps/web
       - name: Formatting check (advisory)
         run: npm run format:check
         continue-on-error: true
+
+  # The Rust workspace: the style guide's lint set and layer rules, native
+  # tests, and the wasm tests in a headless Chrome worker, where the engine runs.
+  rust:
+    name: Rust engine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust
+      - run: cargo xtask check
+      - run: cargo xtask test
+      - name: Wasm tests in a Chrome dedicated worker
+        run: CHROMEDRIVER="$CHROMEWEBDRIVER/chromedriver" cargo xtask test --wasm
+        env:
+          WASM_BINDGEN_USE_DEDICATED_WORKER: '1'
 
   unit:
     name: Unit and integration tests
@@ -92,7 +107,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: coverage
-          path: web/coverage
+          path: apps/web/coverage
           retention-days: 7
           if-no-files-found: ignore
 
@@ -105,6 +120,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
+      - uses: ./.github/actions/rust
       - name: Build the GitHub Pages bundle
         run: npm run build:pages -- --define MONOSAI_BUILD_COMMIT='"${{ github.sha }}"'
       - name: Add the SPA deep-link fallback
@@ -117,7 +133,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: pages-dist
-          path: web/dist/monosai/browser
+          path: apps/web/dist/monosai/browser
           retention-days: 7
 
   e2e:
@@ -135,7 +151,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: pages-dist
-          path: web/dist/monosai/browser
+          path: apps/web/dist/monosai/browser
       - uses: ./.github/actions/playwright-browsers
       - name: Critical journeys
         if: github.event_name == 'pull_request'
@@ -152,7 +168,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: blob-report-${{ matrix.shard }}
-          path: web/blob-report
+          path: apps/web/blob-report
           retention-days: 1
           if-no-files-found: ignore
 
@@ -169,10 +185,10 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           pattern: blob-report-*
-          path: web/blob-report
+          path: apps/web/blob-report
           merge-multiple: true
       - name: Merge the shard reports
-        working-directory: web
+        working-directory: apps/web
         run: |
           if [ -z "$(ls -A blob-report 2>/dev/null)" ]; then
             echo "No shard reports were produced; nothing to merge."
@@ -182,7 +198,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: playwright-report
-          path: web/playwright-report
+          path: apps/web/playwright-report
           retention-days: 7
           if-no-files-found: ignore
 
@@ -196,7 +212,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: pages-dist
-          path: web/dist/monosai/browser
+          path: apps/web/dist/monosai/browser
       - uses: ./.github/actions/playwright-browsers
       - name: Offline reload, installability, and base path
         run: npm run e2e:pwa
@@ -206,7 +222,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report-pwa
-          path: web/playwright-report
+          path: apps/web/playwright-report
           retention-days: 7
           if-no-files-found: ignore
 
@@ -215,12 +231,13 @@ jobs:
   gate:
     name: All checks
     if: always()
-    needs: [static, unit, build, bridge, e2e, e2e-pwa]
+    needs: [static, rust, unit, build, bridge, e2e, e2e-pwa]
     runs-on: ubuntu-latest
     steps:
       - name: Report each job's result
         run: |
           echo "static:  ${{ needs.static.result }}"
+          echo "rust:    ${{ needs.rust.result }}"
           echo "unit:    ${{ needs.unit.result }}"
           echo "build:   ${{ needs.build.result }}"
           echo "bridge:  ${{ needs.bridge.result }}"
@@ -260,11 +277,11 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: pages-dist
-          path: web/dist/monosai/browser
+          path: apps/web/dist/monosai/browser
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: web/dist/monosai/browser
+          path: apps/web/dist/monosai/browser
       - id: deployment
         uses: actions/deploy-pages@v5
       - name: Post-deploy smoke test

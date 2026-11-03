@@ -5,7 +5,7 @@ version: 2
 # than leaving the next contributor to discover it.
 updates:
   - package-ecosystem: npm
-    directory: /web
+    directory: /apps/web
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

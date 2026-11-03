@@ -3,7 +3,7 @@
 Date: 2026-08-17
 Status: Accepted; the Angular version amended below
 
-> Amended on 2026-10-25. The application is on Angular 22 (`web/package.json` pins
+> Amended on 2026-10-25. The application is on Angular 22 (`apps/web/package.json` pins
 > `@angular/core` `^22.2.3`, with `"node": ">=24"`). The move this record anticipated
 > under Consequences happened as a version bump, as predicted. The title and the sentences
 > below that name Angular 21.2 are kept as the record of what was decided on 2026-08-17.
@@ -31,7 +31,7 @@ worker, and the CDK.
   behaviour with Playwright end-to-end tests.
 - Use hash-based routing and a `/monosai/` base href for GitHub Pages.
 - Compute build identity from a source constant (kept in sync with
-  `web/package.json` by a unit test) plus a `--define MONOSAI_BUILD_COMMIT` value
+  `apps/web/package.json` by a unit test) plus a `--define MONOSAI_BUILD_COMMIT` value
   supplied by CI.
 
 ## Consequences

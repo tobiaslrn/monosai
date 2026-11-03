@@ -139,8 +139,9 @@ monosai/
 │  │  ├─ src/app/core/        startup, shell, routing
 │  │  ├─ src/app/state/       thin signal stores (replaces application/)
 │  │  ├─ src/app/engine/      EngineClient, worker shim, events
+│  │  ├─ src/app/engine/api/  TS types of the engine contract, written by ts-rs (committed)
 │  │  ├─ src/app/platform/    playback, MediaSession, Intl formatting, SW integration
-│  │  ├─ src/generated/       (gitignored) TS types + JS glue from wasm-bindgen/tsify
+│  │  ├─ src/generated/       (gitignored) JS glue and modules from wasm-bindgen
 │  │  └─ e2e/ e2e-pwa/        Playwright journeys
 │  └─ android/                Gradle project (today's android-bridge/), Kotlin shell only
 ├─ xtask/                     build, codegen, layer checks, affected tests, crate template
@@ -164,13 +165,14 @@ crate's `Cargo.toml` is a few lines; everything shared comes from the
 workspace. Internal crates are listed in `[workspace.dependencies]` by path,
 and members depend on them with `.workspace = true`.
 
-Each crate is one of three kinds:
+Each crate is one of four kinds, declared as
+`[package.metadata.monosai] kind`:
 
 - **pure**: no I/O, no async, no clock, no logging. Tested with values.
 - **sync**: deterministic and never async, but works through an in-process
   SQLite transaction or in-memory database. Tested against in-memory SQLite.
 - **handle**: owns one kind of effect behind a concrete type (style guide §4).
-- **workflow / glue**: composes the two.
+- **glue**: composes the others: the workflows in `app/*` and the engine.
 
 ### 4.1 `kernel/` — shared vocabulary (pure)
 
@@ -208,7 +210,7 @@ take a `Timestamp` or an `Id<K>`.
 
 | Crate       | Kind   | Responsibility                                                                                                     | Notable deps                          |
 | ----------- | ------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
-| `platform`  | handle | `Clock` (now, sleep), `Ids`, `Locks` (Web Locks), `OpusEncoder` (WebCodecs), `Collator` (`Intl.Collator`), storage persistence | `web-sys`, `js-sys`, `getrandom` (wasm cfg) |
+| `platform`  | handle | `Clock` (now, sleep), `Ids`, `Locks` (Web Locks on wasm, an in-process table natively and under `test-util`), `OpusEncoder` (WebCodecs), `Collator` (`Intl.Collator`), storage persistence | `web-sys`, `js-sys`, `getrandom` (wasm cfg) |
 | `transport` | handle | `Transport`: HTTP over `fetch` with streamed, capped reads and abort on drop; a loopback client for native contract tests; a scripted transport for tests | `web-sys`, `wasm-bindgen-futures` (wasm cfg), `hyper-util` (`loopback` feature) |
 
 ### 4.4 `store/` — persistence
@@ -273,9 +275,9 @@ handles it needs, in the fixed order from the style guide. It reads through
 
 | Crate           | Kind          | Responsibility                                                                                                      | Notable deps                         |
 | --------------- | ------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `engine-api`    | pure          | **The UI contract.** Calls, replies, events, view models, error DTO. Types only                                     | `serde`, `serde_bytes`, `tsify` (feature `ts`) |
+| `engine-api`    | pure          | **The UI contract.** Calls, replies, events, view models, error DTO. Types only                                     | `serde`, `serde_bytes`, `ts-rs` (feature `ts`) |
 | `engine`        | glue          | `Engine`: owns the handles, dispatches calls to workflows, drives the job scheduler, maps outcomes to view models and events, maps errors to `ErrorDto`. Platform-neutral | everything above                     |
-| `engine-wasm`   | glue (cdylib) | Worker entry: `#[wasm_bindgen] struct EngineHandle`, message (de)serialization, `tracing` subscriber, construction of the wasm handles | `wasm-bindgen`, `serde-wasm-bindgen`, `tracing-subscriber` |
+| `engine-wasm`   | glue (cdylib) | Worker entry: `#[wasm_bindgen] struct EngineHandle`, message (de)serialization, `tracing` subscriber, construction of the wasm handles. The exported shell sits in its own module under `#[expect(clippy::disallowed_types)]`, because wasm-bindgen's generated code for it uses `Rc` | `wasm-bindgen`, `serde-wasm-bindgen`, `tracing-subscriber` |
 | `language-wasm` | glue (cdylib) | The lazily loaded language module: exports `tokenize` and `lookup`                                                 | `tokenizer`, `ipadic`, `dictionary`  |
 
 ### 4.11 `bridge/` — the Android bridge's Rust half
@@ -319,20 +321,20 @@ flowchart BT
 | `sys/*`, `store/*`, `ai/*`, `anki/*`, `japanese/*`, `audio/*` | `kernel/*`, `domain/*`, each other without cycles            |
 | `app/*`                                                  | `kernel/*`, `domain/*`, the groups above; never another `app/*`   |
 | `engine/*`                                               | anything except `bridge/*`                                        |
-| `bridge/*`                                               | `anki/anki-wire`, `kernel/*`                                      |
+| `bridge/*`                                               | `anki/anki-wire`, `kernel/*`, other `bridge/*`                    |
 
 External-dependency rules, enforced the same way:
 
 | External crate                                  | Allowed only in                                                                  |
 | ----------------------------------------------- | -------------------------------------------------------------------------------- |
-| `web-sys`, `js-sys`, `wasm-bindgen*`            | `sys/*`, `store/sqlite` (wasm cfg), `japanese/analyzer` (wasm cfg), `engine/*-wasm` |
+| `web-sys`, `js-sys`, `wasm-bindgen*`, `serde-wasm-bindgen` | `sys/*`, `store/sqlite` (wasm cfg), `japanese/analyzer` (wasm cfg), `engine/*-wasm` |
 | `rusqlite`, `sqlite-wasm-rs`                    | `store/sqlite`                                                                   |
 | `lindera`                                       | `japanese/tokenizer`                                                             |
 | `html5ever`                                     | `anki/anki-markup`                                                               |
 | `symphonia`                                     | `audio/audio-codec`                                                              |
 | `hyper*`, `tokio`                               | `bridge/bridge-http`, `sys/transport` (`loopback` feature)                       |
 | `uniffi`                                        | `bridge/bridge-ffi`                                                              |
-| `tsify`                                         | `engine/engine-api`                                                              |
+| `ts-rs`                                         | `engine/engine-api` (feature `ts`)                                               |
 | `schemars`                                      | `ai/task-*`                                                                      |
 | `tracing-subscriber`                            | `engine/engine-wasm`, dev-dependencies                                           |
 | `futures`                                       | handles, `app/*`, `engine/*`                                                     |
@@ -341,7 +343,7 @@ External-dependency rules, enforced the same way:
 `domain/*`, and every crate marked *pure* in section 4 may use only `serde`
 (wire crates, `cache-key`, and the optional `serde` feature of `kernel/*`), `thiserror`, `uuid`, `unicode-*`, `blake3`,
 `postcard`, `miniz_oxide`, `html5ever`, `symphonia`, `schemars`, `lindera`,
-each where listed above. They have no `futures`, no `tracing`, and no handle
+`ts-rs`, each where listed above. They have no `futures`, no `tracing`, and no handle
 crate, so they have nothing to await and nothing to log. *Sync* crates may
 additionally depend on `store/sqlite` (and `anki-package` on `ruzstd`).
 
@@ -355,8 +357,12 @@ single `test-util` feature (M-TEST-UTIL). Features are additive.
 
 - `cargo xtask check-layers` reads `cargo metadata`, maps each package to its
   folder group and kind, and fails on any edge not in the tables above.
-- `cargo hack check --each-package` builds every crate on its own, so a crate
-  cannot use a feature that only another crate declared.
+- `cargo hack check --workspace` builds every crate on its own, natively and
+  for `wasm32-unknown-unknown`, so a crate cannot use a feature that only
+  another crate declared.
+- `check-layers` also requires every dependency to come from
+  `[workspace.dependencies]` and every manifest to inherit the workspace lints
+  and package fields.
 - `cargo deny check bans` keeps duplicate versions and banned crates out.
 - There is deliberately no `workspace-hack` crate: unifying features across the
   workspace would undo the per-package check.
@@ -459,7 +465,7 @@ subscriber registry.
 ```rust
 // crates/engine/engine-api/src/lib.rs (sketch)
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(tsify::Tsify))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum Call {
     // queries
@@ -485,7 +491,14 @@ pub enum   Event    { ReadingChanged { id: ReadingId }, JobProgress(JobProgress)
 
 pub struct ErrorDto { pub domain: ErrorDomain, pub code: String, pub message: String,
                       pub detail: Option<ErrorDetail> }
+
+// What crosses the worker boundary, in each direction
+pub enum   Inbound  { Request(Request), Cancel(Cancel) }          // tag = "kind"
+pub enum   Outbound { Response(Response), Event(Event) }          // tag = "kind"
 ```
+
+- A call without parameters is a braced variant (`Ping {}`): serde checks an
+  internally tagged enum for unknown fields only in variants with braces.
 
 - Every variant's payload is its own struct with `deny_unknown_fields`, and
   every field with rules is a validating newtype. Together they replace Zod.
@@ -500,14 +513,19 @@ pub struct ErrorDto { pub domain: ErrorDomain, pub code: String, pub message: St
 
 ### 7.2 Transport
 
-- `apps/web/src/app/engine/engine.worker.ts` is a tiny JS shim: it loads
+- `apps/web/src/app/engine/engine.worker.ts` is a tiny shim: it loads
   `engine-wasm`, creates one `EngineHandle` with an event callback, and passes
-  each incoming message to `handle.handle(msg)`.
+  each incoming message to `handle.handle(msg)`. The wasm-bindgen glue is
+  copied to `assets/engine/` with the module and imported by URL, checked for
+  the two functions the shim calls, so building and type-checking the app
+  never need the generated files.
 - `EngineClient` (main thread) assigns request ids, keeps a pending map, turns
   replies into `Result`-shaped promises, exposes `events$`, and sends `Cancel`
   when an `AbortSignal` fires.
-- Types come from `tsify` (`import type` only), so the main thread never loads
-  the engine's wasm.
+- Types come from `ts-rs` (`import type` only), so the main thread never loads
+  the engine's wasm. They are committed in `src/app/engine/api/`, rewritten by
+  `cargo xtask wasm`, and `cargo xtask check` fails when they are stale, so
+  `tsc`, ESLint, and Vitest need no Rust build.
 
 ### 7.3 Stores
 
@@ -557,7 +575,8 @@ transport state of the player) stays in TS stores and never touches the engine.
 OPFS sync access handles are exclusive. The engine takes a Web Lock through
 `Locks` before it opens the database. A second tab does not get the lock and
 shows "Monosai is open in another tab", with a button to take over (the first
-tab is told to close its engine). The cross-tab mutation channel no longer
+tab is told to close its engine). The refusal exists since slice 0; the
+take-over button comes with the database in slice 1. The cross-tab mutation channel no longer
 exists.
 
 ### 8.4 Storage persistence
@@ -814,7 +833,8 @@ No test mocks the project's own code; the only test doubles are the
 xtask = "run --package xtask --"
 
 [target.wasm32-unknown-unknown]
-rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
+# The Web Locks bindings of web-sys are still marked unstable.
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"', '--cfg', 'web_sys_unstable_apis']
 
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld"
@@ -834,7 +854,7 @@ opt-level = "z"
 lto = "fat"
 codegen-units = 1
 panic = "abort"
-strip = true
+strip = "debuginfo"     # wasm-bindgen reads `target_features`, which stripping symbols removes
 overflow-checks = true   # overflow is a bug and stops, rather than wrapping silently
 ```
 
@@ -859,17 +879,20 @@ overflow-checks = true   # overflow is a bug and stops, rather than wrapping sil
 
 | Command                          | Does                                                                                                                                                       |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `xtask wasm [--release]`         | Builds `engine-wasm` and `language-wasm`, runs `wasm-bindgen --target web`, `wasm-opt`, writes `apps/web/src/generated/` and versioned assets with digests |
+| `xtask wasm [--release]`         | Builds `engine-wasm` and `language-wasm`, runs `wasm-bindgen --target web`, `wasm-opt` (release), writes `apps/web/src/generated/` and versioned assets with digests, and rewrites the contract types in `apps/web/src/app/engine/api/` |
 | `xtask android [--release]`      | `cargo ndk` for both ABIs into `apps/android/app/src/main/jniLibs/`, uniffi Kotlin bindings                                                                |
-| `xtask check`                    | fmt, clippy (`-D warnings`), layer rules, `cargo hack check --each-package`, deny, shear                                                                   |
-| `xtask test [--changed]`         | nextest (+ affected selection)                                                                                                                             |
-| `xtask new-crate <group>/<name> --kind pure\|handle\|glue` | Creates a crate from the template: workspace inheritance, crate doc skeleton, `tests/it/main.rs`, `test-util` feature for handles |
+| `xtask check`                    | fmt, clippy (`-D warnings`, natively and for wasm32), layer rules, `cargo hack check --workspace` (both targets), deny, shear, contract types current        |
+| `xtask test [--changed] [--wasm]` | nextest (+ affected selection); `--wasm` runs the `wasm-bindgen-test` suites, in Node or, with `WASM_BINDGEN_USE_DEDICATED_WORKER`, in a Chrome worker      |
+| `xtask tools [--list]`           | Installs the pinned cargo tools into `.tools/`, or lists them for CI                                                                                       |
+| `xtask new-crate <group>/<name> --kind pure\|sync\|handle\|glue` | Creates a crate from the template: workspace inheritance, kind, crate doc skeleton, `tests/it/main.rs`, `test-util` feature for handles |
 | `xtask fixtures`                 | Regenerates Anki and provider fixtures                                                                                                                     |
 
 ### 17.6 Angular integration
 
-- `npm start` / `npm test` / `npm run build` call `cargo xtask wasm` first
-  (skipped when inputs are unchanged).
+- `npm start` and `npm run build` call `cargo xtask wasm` first (skipped when
+  inputs are unchanged); `build-if-stale.mjs` counts `crates/` and
+  `Cargo.lock` as inputs. `npm test` needs no Rust build, since the contract
+  types are committed.
 - The engine wasm is in the service worker's prefetch group (offline start);
   the language wasm is in a lazy group under a versioned URL.
 - `bundle-budgets.json` gains a gzip budget for the engine wasm.
@@ -880,8 +903,8 @@ overflow-checks = true   # overflow is a bug and stops, rather than wrapping sil
 
 | Job       | Steps                                                                                                    |
 | --------- | -------------------------------------------------------------------------------------------------------- |
-| `static`  | Prettier, ESLint, Stylelint, `tsc`, `xtask check`, licences                                              |
-| `rust`    | `xtask test`, `wasm-bindgen-test` in headless Chrome, coverage thresholds                                |
+| `static`  | Prettier, ESLint, Stylelint, `tsc`, licences                                                             |
+| `rust`    | `xtask check`, `xtask test`, `xtask test --wasm` in a headless Chrome worker, coverage thresholds        |
 | `build`   | `xtask wasm --release`, `ng build`, verify dist and budgets. The one artifact                            |
 | `e2e`     | Playwright smoke/full against the artifact                                                               |
 | `pwa`     | Offline suite against the artifact                                                                       |
@@ -924,3 +947,13 @@ fallback is the planned way out.
 | SQLite deserialize for package collections                                                                    | Slice 3    | Write the bytes to a temporary in-memory VFS file                        |
 | uniffi callback interfaces from a tokio thread; uniffi-generated code under the lint set                      | Slice 3    | A Kotlin-side executor and a channel; `bridge-ffi` declares its own lint table |
 | Chrome's local-network access rules for a public origin calling loopback                                     | Slice 3    | Document the permission prompt in setup                                  |
+
+### Outcomes
+
+| Question | Outcome |
+| --- | --- |
+| Lint set on wasm-bindgen output | **Partly failed** (slice 0). `unsafe_code = "deny"` and every other lint pass. `disallowed_types` fires on the `Rc` in the code `#[wasm_bindgen]` generates for an exported struct, and an `expect` on the struct does not reach it. The exported `EngineHandle` therefore sits alone in `engine-wasm`'s `export` module, which carries one `#[expect(clippy::disallowed_types, reason = "…")]`; the rest of the crate is linted in full and has no `allow` |
+| TypeScript types of the contract | **Decided for ts-rs** (slice 0). tsify's derive needs `wasm-bindgen` in `engine-api`, which the dependency rules forbid, and its types exist only after a wasm build. ts-rs writes committed files; `deny_unknown_fields` reaches every inbound payload, which a test checks by adding a field to every object of every payload |
+| `rust-lld` on Windows | **Passes** (slice 0): the workspace builds, tests, and links with `linker = "rust-lld"` |
+| Engine wasm size | Slice 0: 191,621 bytes, 81,443 gzip after `wasm-opt -Oz`. The `tracing-subscriber` fmt layer is about 21 KB of the gzip size. Budget in `apps/web/bundle-budgets.json` |
+| Web Locks in tests | `wasm-bindgen-test` runs in Node unless told otherwise, and Node does not stay alive for the timer behind `AbortSignal.timeout`: a suite waiting only on it ends early yet exits successfully. Tests that wait on a lock also keep a plain timer running, and `xtask test --wasm` fails when a suite starts without reporting a result |

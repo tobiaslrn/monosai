@@ -1,0 +1,116 @@
+[workspace]
+members = ["crates/*/*", "xtask"]
+resolver = "3"
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+license = "PolyForm-Noncommercial-1.0.0"
+rust-version = "1.99"
+publish = false
+
+[workspace.dependencies]
+monosai-engine = { path = "crates/engine/engine" }
+monosai-engine-api = { path = "crates/engine/engine-api" }
+monosai-kernel = { path = "crates/kernel/kernel" }
+monosai-platform = { path = "crates/sys/platform" }
+
+# External crates
+anyhow = { version = "1.0.104", default-features = false, features = ["std"] }
+cargo_metadata = { version = "0.23.1", default-features = false }
+futures = { version = "0.3.34", default-features = false }
+js-sys = { version = "0.3.107", default-features = false }
+serde = { version = "1.0.229", default-features = false }
+serde-wasm-bindgen = { version = "0.6.5", default-features = false }
+serde_json = { version = "1.0.154", default-features = false }
+thiserror = { version = "2.0.21", default-features = false }
+toml = { version = "1.1.8", default-features = false, features = ["parse", "serde", "std"] }
+tracing = { version = "0.1.44", default-features = false }
+tracing-subscriber = { version = "0.3.23", default-features = false }
+ts-rs = { version = "12.0.1", default-features = false }
+wasm-bindgen = { version = "0.2.130", default-features = false }
+wasm-bindgen-futures = { version = "0.4.80", default-features = false }
+wasm-bindgen-test = { version = "0.3.80", default-features = false }
+web-sys = { version = "0.3.107", default-features = false }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+elided_lifetimes_in_paths = "warn"
+let_underscore_drop = "warn"
+unused_must_use = "deny"
+ambiguous_negative_literals = "warn"
+redundant_imports = "warn"
+redundant_lifetimes = "warn"
+trivial_numeric_casts = "warn"
+unused_lifetimes = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+
+[workspace.lints.clippy]
+correctness = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+complexity = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+# panics
+unwrap_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+missing_assert_message = "warn"
+indexing_slicing = "warn"
+string_slice = "warn"
+as_conversions = "warn"
+
+# explicitness
+wildcard_enum_match_arm = "warn"
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+clone_on_ref_ptr = "warn"
+map_err_ignore = "warn"
+unused_result_ok = "warn"
+let_underscore_must_use = "warn"
+if_then_some_else_none = "warn"
+redundant_type_annotations = "warn"
+renamed_function_params = "warn"
+iter_over_hash_type = "warn"
+mod_module_files = "warn"
+assertions_on_result_states = "warn"
+deref_by_slicing = "warn"
+empty_drop = "warn"
+empty_enum_variants_with_brackets = "warn"
+empty_structs_with_brackets = "warn"
+fn_to_numeric_cast_any = "warn"
+semicolon_outside_block = "warn"
+too_long_first_doc_paragraph = "warn"
+
+# output
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+
+# message templates in tracing
+literal_string_with_formatting_args = "allow"
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+# Dependencies are optimised so tests that tokenize or query SQLite run fast;
+# the workspace's own code stays quick to rebuild.
+opt-level = 2
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+# wasm-bindgen reads the `target_features` section that stripping symbols
+# removes; `wasm-opt` drops the remaining names from what ships.
+strip = "debuginfo"
+# Overflow is a bug and stops, rather than wrapping silently.
+overflow-checks = true

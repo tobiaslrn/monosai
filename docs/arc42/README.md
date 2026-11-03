@@ -48,4 +48,4 @@ decision — not when the code inside a building block changes.
 - **[Design system](../design/design-system.md)** — the authority for structure, controls, colour, units,
   motion, voice, and state. Read it before you change anything visual.
 - **The in-app guide** — the documentation for users, not for architects. It lives in
-  `web/src/app/features/help` and is described in [ADR 0079](../decisions/0079-help-is-a-hub-of-topics.md).
+  `apps/web/src/app/features/help` and is described in [ADR 0079](../decisions/0079-help-is-a-hub-of-topics.md).

@@ -36,14 +36,14 @@ flowchart TB
 | Infrastructure element | Building blocks it runs | Why here |
 | --- | --- | --- |
 | **Main thread** | `core/`, `features/`, `application/`, most of `infrastructure/` | The user interface and every use case |
-| **Language worker** | `web/src/workers/language/` | The tokenizer is WebAssembly and the dictionary index is large. Neither may block the reader. See [ADR 0005](../decisions/0005-tokenizer-selection.md) |
-| **Package worker** | `web/src/workers/package/` | Reading a package means unzipping and then querying SQLite. Both are slow, and both handle untrusted input. See [ADR 0016](../decisions/0016-anki-package-parsing.md) |
+| **Language worker** | `apps/web/src/workers/language/` | The tokenizer is WebAssembly and the dictionary index is large. Neither may block the reader. See [ADR 0005](../decisions/0005-tokenizer-selection.md) |
+| **Package worker** | `apps/web/src/workers/package/` | Reading a package means unzipping and then querying SQLite. Both are slow, and both handle untrusted input. See [ADR 0016](../decisions/0016-anki-package-parsing.md) |
 | **Service worker** | Monosai's own worker, wrapping the framework's | Offline shell, asset caching, and the Android share target. Monosai's worker handles the share `POST` and hands everything else to the framework's worker unchanged. See [ADR 0036](../decisions/0036-android-package-share-target.md) |
 | **IndexedDB** | Every Dexie repository | All learner data. Survives a reload and a reinstall of the shell |
 | **Cache Storage** | Shell, icons, language assets, share inbox | Makes the offline start possible, and is where a shared package waits |
 | **GitHub Pages** | The built artifact | Static hosting, no server logic, served under an application base path |
 | **Anki on the same device** | None. External | The vocabulary source. Reached over loopback HTTP, never over the internet |
-| **Monosai Bridge** | `android-bridge/app/` | Idle foreground listener, query-only ContentProvider access, optional boot restart. No polling or wake locks; no notification permission request |
+| **Monosai Bridge** | `apps/android/app/` | Idle foreground listener, query-only ContentProvider access, optional boot restart. No polling or wake locks; no notification permission request |
 | **The AI service** | None. External | Text and speech, paid by the learner |
 
 Quality properties of this topology: the browser holds every piece of learner data, so there is
@@ -63,9 +63,9 @@ unchanged checkout to fail the byte-for-byte reproducibility check after a runne
 
 Parallel local worktrees do not share a port. The main checkout and CI use 4200, 4210 and 4300 for
 the development server, the end-to-end suite and the PWA suite;
-[`worktree-ports.mjs`](../../web/scripts/worktree-ports.mjs) gives each linked worktree a stable set
+[`worktree-ports.mjs`](../../apps/web/scripts/worktree-ports.mjs) gives each linked worktree a stable set
 derived from its path, and so a browser origin of its own. A local end-to-end run rebuilds only when
-[`build-if-stale.mjs`](../../web/scripts/build-if-stale.mjs) finds a changed input; CI still builds
+[`build-if-stale.mjs`](../../apps/web/scripts/build-if-stale.mjs) finds a changed input; CI still builds
 once and passes the artifact on.
 
 ```mermaid
@@ -105,7 +105,7 @@ joining the gate, which is why there is exactly one required status check.
 The independent `bridge` job uses Java 21 and the Gradle wrapper for JVM tests,
 debug APK assembly and a verified runtime licence report; it joins `gate` without
 depending on the web build. The one-build rule above concerns the Pages artifact.
-`bridge-release.yml` runs on every push to `main`. `android-bridge/version.txt` is
+`bridge-release.yml` runs on every push to `main`. `apps/android/version.txt` is
 the bridge's version: when it names a version with no release, the workflow tests
 and checks licences before decoding signing secrets, then signs a release APK,
 creates `bridge-v<version>` from that commit and publishes it to GitHub Releases;

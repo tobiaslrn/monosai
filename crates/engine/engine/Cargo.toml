@@ -1,0 +1,28 @@
+[package]
+name = "monosai-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[package.metadata.monosai]
+kind = "glue"
+
+[lib]
+doctest = false
+
+[dependencies]
+futures = { workspace = true, features = ["std"] }
+monosai-engine-api.workspace = true
+monosai-kernel.workspace = true
+monosai-platform.workspace = true
+thiserror.workspace = true
+tracing = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+futures = { workspace = true, features = ["executor"] }
+monosai-platform = { workspace = true, features = ["test-util"] }
+
+[lints]
+workspace = true

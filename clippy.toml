@@ -1,0 +1,25 @@
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-indexing-slicing-in-tests = true
+allow-dbg-in-tests = true
+allow-print-in-tests = true
+
+disallowed-types = [
+  { path = "std::rc::Rc", reason = "only inside handle types" },
+  { path = "std::sync::Arc", reason = "only inside handle types" },
+  { path = "std::cell::RefCell", reason = "only inside handle types" },
+  { path = "std::cell::Cell", reason = "only inside handle types" },
+  { path = "std::sync::Mutex", reason = "only inside handle types" },
+  { path = "std::sync::RwLock", reason = "only inside handle types" },
+]
+
+disallowed-methods = [
+  { path = "std::time::SystemTime::now", reason = "use the Clock handle" },
+  { path = "std::time::Instant::now", reason = "use the Clock handle" },
+  { path = "std::thread::sleep", reason = "use Clock::sleep" },
+  { path = "getrandom::fill", reason = "use the Ids handle" },
+  { path = "serde_json::from_str", reason = "parse only in boundary modules" },
+  { path = "serde_json::from_slice", reason = "parse only in boundary modules" },
+  { path = "serde_json::from_value", reason = "parse only in boundary modules" },
+  { path = "serde_wasm_bindgen::from_value", reason = "parse only in boundary modules" },
+]

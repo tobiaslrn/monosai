@@ -1,8 +1,0 @@
-{
-  "initial": {
-    "maxGzipBytes": 260000
-  },
-  "largestLazyChunk": {
-    "maxGzipBytes": 100000
-  }
-}

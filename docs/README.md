@@ -13,7 +13,7 @@ What is in this directory is for anyone changing the code.
 | [Decisions](decisions/) | Why it is that way, one record per decision |
 | [Design system](design/design-system.md) | The authority for structure, controls, colour, units, motion, voice, and state |
 | [Mascot](design/mascot.md) | The mark and how it is used |
-| [Android bridge](../android-bridge/README.md) | What the companion app is, how to install it, and how it is built |
+| [Android bridge](../apps/android/README.md) | What the companion app is, how to install it, and how it is built |
 | [AGENTS.md](../AGENTS.md) | Conventions for human and agent contributors |
 
 The dependency licence report is generated at build time and is not committed:

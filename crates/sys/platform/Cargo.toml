@@ -1,0 +1,48 @@
+[package]
+name = "monosai-platform"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[package.metadata.monosai]
+kind = "handle"
+
+[lib]
+doctest = false
+
+[features]
+# Test implementations of the handle, enabled only from [dev-dependencies].
+test-util = []
+
+[dependencies]
+monosai-kernel.workspace = true
+thiserror.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+futures = { workspace = true, features = ["std"] }
+js-sys.workspace = true
+wasm-bindgen = { workspace = true, features = ["std"] }
+wasm-bindgen-futures = { workspace = true, features = ["std"] }
+web-sys = { workspace = true, features = [
+  "AbortSignal",
+  "DomException",
+  "Lock",
+  "LockManager",
+  "LockMode",
+  "LockOptions",
+] }
+
+[dev-dependencies]
+futures = { workspace = true, features = ["executor"] }
+monosai-platform = { workspace = true, features = ["test-util"] }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+js-sys.workspace = true
+wasm-bindgen = { workspace = true, features = ["std"] }
+wasm-bindgen-futures = { workspace = true, features = ["std"] }
+wasm-bindgen-test = { workspace = true, features = ["std"] }
+
+[lints]
+workspace = true

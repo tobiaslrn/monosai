@@ -1,0 +1,10 @@
+[alias]
+xtask = "run --package xtask --"
+
+[target.wasm32-unknown-unknown]
+# `getrandom` reaches the browser's crypto through wasm-bindgen. The Web Locks
+# bindings in `web-sys` are still marked unstable and need the second flag.
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"', '--cfg', 'web_sys_unstable_apis']
+
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"

@@ -19,14 +19,14 @@ const notices = spawnSync(process.execPath, ['scripts/licenses/check-licenses.mj
   stdio: 'inherit',
 });
 if (notices.status !== 0) process.exit(notices.status ?? 1);
-const wrapper = path.resolve('android-bridge', windows ? 'gradlew.bat' : 'gradlew');
+const wrapper = path.resolve('apps/android', windows ? 'gradlew.bat' : 'gradlew');
 const result = windows
   ? spawnSync(`"${wrapper}" ${tasks.join(' ')}`, {
-      cwd: 'android-bridge',
+      cwd: 'apps/android',
       stdio: 'inherit',
       shell: true,
     })
-  : spawnSync(wrapper, tasks, { cwd: 'android-bridge', stdio: 'inherit' });
+  : spawnSync(wrapper, tasks, { cwd: 'apps/android', stdio: 'inherit' });
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
 const licenses = spawnSync(
@@ -35,7 +35,7 @@ const licenses = spawnSync(
     'scripts/licenses/check-licenses.mjs',
     '--check',
     '--gradle-report',
-    'android-bridge/app/build/reports/runtime-dependencies.json',
+    'apps/android/app/build/reports/runtime-dependencies.json',
   ],
   { stdio: 'inherit' },
 );

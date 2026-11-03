@@ -6,8 +6,8 @@ The third-party Android bridge lacks three required actions, including card revi
 evidence, and has incompatible origin, preflight and unknown-action behavior.
 The Android provider also existed behind selection and draft paths forcing desktop.
 
-Ship fresh Kotlin in `android-bridge/`, with a nested `app/` Gradle module, beside
-the unchanged `web/` PWA artifact. `protocol/` owns the eight-action contract and
+Ship fresh Kotlin in `apps/android/`, with a nested `app/` Gradle module, beside
+the unchanged `apps/web/` PWA artifact. `protocol/` owns the eight-action contract and
 golden fixtures. Ktor CIO serves loopback HTTP; query classes use AnkiDroid's public
 ContentProvider. AnkiDroid 2.24+ is required and review support is probed. The
 router allowlist and provider port expose no writes despite the combined database

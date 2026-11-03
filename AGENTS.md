@@ -12,19 +12,22 @@ It stores everything in the browser, only reads from Anki, and uses the learner'
   `develop`.
 - Before changing structure, layers, persistence, or external boundaries: read
   [docs/arc42](docs/arc42/) and [docs/decisions](docs/decisions/).
-- Before changing either side of `protocol/contract.txt`: read `android-bridge/README.md`.
+- Before changing either side of `protocol/contract.txt`: read `apps/android/README.md`.
+- Before writing Rust: read [the Rust style guide](docs/rust/style.md). New crates only via
+  `cargo xtask new-crate`; dependencies only in `[workspace.dependencies]`.
 - Before changing CI or a build gate: read
   [the deployment view](docs/arc42/07-deployment-view.md) and
   [the quality requirements](docs/arc42/10-quality-requirements.md).
 
 ## Verifying
 
-- Before committing: `npm test`. Browser-visible changes: also `npm run e2e`.
+- Before committing: `npm test`. Browser-visible changes: also `npm run e2e`. Rust changes:
+  `cargo xtask check` and `cargo xtask test` (`cargo xtask tools` installs what they need).
 - Judge visual changes only from screenshots you opened, in light and dark, at desktop and
   Android size:
   1. `npm run build:pages`
-  2. Add a throwaway `@smoke @mobile` spec in `web/e2e` that saves to `test-results/`.
-  3. From `web`: `MONOSAI_PREBUILT_DIST=true npx playwright test --grep @<tag>`
+  2. Add a throwaway `@smoke @mobile` spec in `apps/web/e2e` that saves to `test-results/`.
+  3. From `apps/web`: `MONOSAI_PREBUILT_DIST=true npx playwright test --grep @<tag>`
   4. Delete the spec before committing.
 
 ## Committing and pushing
@@ -44,12 +47,13 @@ It stores everything in the browser, only reads from Anki, and uses the learner'
 - Linked worktrees get their own ports, so `.claude/launch.json`'s 4200 is wrong there: run
   `npm start` and open the URL it prints.
 - `npm run worktree:setup` installs what a new worktree lacks.
-- `npm run e2e` reuses a current build; from `web`, `node scripts/build-if-stale.mjs --force`
+- `npm run e2e` reuses a current build; from `apps/web`, `node scripts/build-if-stale.mjs --force`
   rebuilds it.
 
 # Code rules
 
-- Committed Dexie schema versions are immutable. Schema changes add a new version, with a
+- Rust lints are overridden only with `#[expect(lint, reason = "…")]`, never `#[allow]`.
+- Committed Dexie schema versions and committed SQL migrations are immutable. Schema changes add a new version, with a
   transactional upgrade when records change shape or meaning.
 - Never silently reset or lose local data; migration failures offer explicit recovery.
 - Validate external, stored, imported, and AI-generated data at runtime.

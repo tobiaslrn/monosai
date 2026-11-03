@@ -20,7 +20,7 @@ REPO="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}
 log() { printf 'session-start: %s\n' "$1"; }
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != 'true' ]; then
-  node "$REPO/web/scripts/worktree-setup.mjs" || log 'worktree setup failed; run npm run worktree:setup'
+  node "$REPO/apps/web/scripts/worktree-setup.mjs" || log 'worktree setup failed; run npm run worktree:setup'
   exit 0
 fi
 
@@ -55,18 +55,18 @@ use_required_node() {
 }
 
 install_dependencies() {
-  if [ -d "$REPO/web/node_modules" ]; then
+  if [ -d "$REPO/apps/web/node_modules" ]; then
     return 0
   fi
   log 'installing web dependencies'
-  npm --prefix "$REPO/web" install --no-audit --no-fund >/dev/null
+  npm --prefix "$REPO/apps/web" install --no-audit --no-fund >/dev/null
 }
 
 # Playwright refuses to launch a build other than the one it pins, and the
 # sandbox cannot download that build, so point it at the browser the sandbox
 # does provide. Skipped the moment the pinned build is actually present.
 select_chromium() {
-  local playwright="$REPO/web/node_modules/.bin/playwright" expected
+  local playwright="$REPO/apps/web/node_modules/.bin/playwright" expected
   [ -x "$playwright" ] && [ -x "$SANDBOX_CHROMIUM" ] || return 0
 
   expected="$("$playwright" install chromium --dry-run 2>/dev/null |
