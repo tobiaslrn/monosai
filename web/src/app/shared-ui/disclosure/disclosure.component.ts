@@ -102,11 +102,13 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
       gap: var(--space-3);
       min-width: 0;
       padding: var(--space-2) var(--space-4) var(--space-3);
+      overflow-wrap: anywhere;
       border-top: 1px solid var(--border-subtle);
     }
 
     mn-disclosure > .mn-disclosure__details > .mn-disclosure__body--rows {
       gap: 0;
+      overflow-wrap: normal;
       padding: 0 var(--space-4) var(--space-2) var(--space-7);
       border-top: 0;
     }

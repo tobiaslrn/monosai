@@ -1,5 +1,11 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, ViewEncapsulation } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  input,
+  output,
+  ViewEncapsulation,
+} from '@angular/core';
 import { RouterLink, type NavigationExtras, type UrlTree } from '@angular/router';
 import { IconComponent } from '../icon/icon.component';
 import type { IconName } from '../icon/icon-set';
@@ -30,6 +36,9 @@ let nextRowId = 0;
  *     <button mnButton="danger" type="button">Delete all</button>
  *   </mn-row>
  *
+ * A row that does something here rather than leading away is an `action`: one
+ * native button, pressed with `(pressed)`, such as a choice in a sheet.
+ *
  * The end block is pinned to the inline end and centred on the title block.
  * When the row is too narrow for both, it moves below the title whole. A link
  * row is one native link named by its title and described by its meta; the
@@ -46,7 +55,7 @@ let nextRowId = 0;
   host: {
     '[class.mn-row--card]': "surface() === 'card'",
     '[class.mn-row--muted]': "surface() === 'muted'",
-    '[class.mn-row--link]': 'link() !== null',
+    '[class.mn-row--link]': 'link() !== null || action()',
   },
   template: `
     <ng-template #body>
@@ -78,6 +87,18 @@ let nextRowId = 0;
       >
         <ng-container [ngTemplateOutlet]="body" />
       </a>
+    } @else if (action()) {
+      <button
+        type="button"
+        class="mn-row__main"
+        [disabled]="disabled()"
+        [attr.data-testid]="testId()"
+        [attr.aria-labelledby]="titleId"
+        [attr.aria-describedby]="metaId"
+        (click)="pressed.emit()"
+      >
+        <ng-container [ngTemplateOutlet]="body" />
+      </button>
     } @else {
       <div class="mn-row__main" [attr.data-testid]="testId()">
         <ng-container [ngTemplateOutlet]="body" />
@@ -104,8 +125,8 @@ let nextRowId = 0;
       background: var(--surface-sunken);
     }
 
-    /* Hover is a mouse state, and only a destination takes it (ADR 0082). */
-    :where(html[data-pointer='mouse']) mn-row.mn-row--link:where(:hover) {
+    /* Hover is a mouse state, and only a destination or an action takes it (ADR 0082). */
+    :where(html[data-pointer='mouse']) mn-row.mn-row--link:where(:hover):not(:has(> :disabled)) {
       background: var(--surface-sunken);
     }
 
@@ -125,7 +146,20 @@ let nextRowId = 0;
       padding-inline: min(var(--space-3), 12px);
     }
 
-    mn-row > a.mn-row__main:focus-visible {
+    mn-row > button.mn-row__main {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      font: inherit;
+      text-align: start;
+      cursor: pointer;
+    }
+
+    mn-row > button.mn-row__main:disabled {
+      cursor: default;
+    }
+
+    mn-row > :is(a, button).mn-row__main:focus-visible {
       outline: 3px solid var(--focus-ring);
       outline-offset: -3px;
     }
@@ -230,6 +264,10 @@ export class RowComponent {
   readonly surface = input<RowSurface>('plain');
   /** A meaningful origin or kind, drawn as the shared icon badge. */
   readonly icon = input<IconName | null>(null);
-  /** For durable tests: on the link, or on the row's body when there is none. */
+  /** The row is a button; `pressed` answers it. */
+  readonly action = input(false);
+  readonly disabled = input(false);
+  readonly pressed = output<void>();
+  /** For durable tests: on the link or button, or on the row's body when there is none. */
   readonly testId = input<string | null>(null);
 }

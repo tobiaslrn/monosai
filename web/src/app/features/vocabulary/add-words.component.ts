@@ -16,7 +16,13 @@ import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-
 import { isValidAnkiConnectPort } from '../../domain/settings/settings';
 import { HOST_PLATFORM } from '../../domain/platform/host-platform';
 import { technicalCode } from '../../domain/shared/errors';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
+import { FieldComponent } from '../../shared-ui/field/field.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { ClusterComponent, StackComponent } from '../../shared-ui/layout/layout';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
+import { RowComponent } from '../../shared-ui/row/row.component';
 import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.component';
 import { ANKI_LINKS } from './anki-links';
 import { connectFailureCopy, NOTHING_SAVED } from './anki-error-copy';
@@ -42,66 +48,75 @@ type AddMode = 'closed' | 'choices' | 'anki';
     '(document:pointerdown)': 'onDocumentPointerDown($event)',
     '(document:keydown.escape)': 'closeMenuOnEscape($event)',
   },
-  imports: [IconComponent, SheetPopoverComponent],
+  imports: [
+    ButtonDirective,
+    ClusterComponent,
+    DisclosureComponent,
+    FieldComponent,
+    IconComponent,
+    NoticeComponent,
+    RowComponent,
+    SheetPopoverComponent,
+    StackComponent,
+  ],
   template: `
-    <div class="add-words">
+    <mn-cluster justify="end">
       <button
         #toggle
         type="button"
-        class="mn-button mn-button--ghost"
+        mnButton="ghost"
         aria-haspopup="dialog"
         aria-controls="mn-add-words-menu"
         [attr.aria-expanded]="mode() === 'choices' || mode() === 'anki'"
         popovertarget="mn-add-words-menu"
         data-testid="add-words"
+        [style.anchor-name]="anchorName"
       >
         <mn-icon name="add" [size]="18" /> Add source
       </button>
+    </mn-cluster>
 
-      <mn-sheet-popover
-        #menu
-        class="menu"
-        id="mn-add-words-menu"
-        popover
-        role="dialog"
-        aria-label="Add words"
-        anchorName="--mn-add-words-anchor"
-        [modal]="true"
-        (toggle)="onMenuToggle($event)"
-        (closed)="dismiss()"
-      >
-        @if (mode() === 'anki') {
-          <div class="sheet-head">
-            <button
-              type="button"
-              class="mn-icon-button"
-              aria-label="Back to the list of sources"
-              (click)="mode.set('choices')"
-            >
-              <mn-icon name="back" />
-            </button>
-            <h3>Anki</h3>
-          </div>
-          @if (failure(); as copy) {
-            <div class="sheet-pad" role="alert" data-testid="anki-connect-failed">
-              <p class="headline">{{ copy.headline }}</p>
-              @for (paragraph of copy.paragraphs; track $index) {
-                <p class="mn-hint">
-                  {{ paragraph.before }}
-                  @if (paragraph.link; as link) {
-                    <a [href]="link.href" target="_blank" rel="noopener noreferrer">{{
-                      link.text
-                    }}</a
-                    >{{ paragraph.after }}
-                  }
-                </p>
-              }
-              <p class="mn-hint">{{ unchanged }}</p>
-              <details class="mn-disclosure advanced-details">
-                <summary><span class="summary-label">Advanced details</span></summary>
-                @if (copy.offersPort) {
-                  <label class="mn-field port">
-                    <span>Port</span>
+    <mn-sheet-popover
+      #menu
+      id="mn-add-words-menu"
+      role="dialog"
+      aria-label="Add words"
+      [anchorName]="anchorName"
+      [modal]="true"
+      (toggle)="onMenuToggle($event)"
+      (closed)="dismiss()"
+    >
+      @if (mode() === 'anki') {
+        <mn-cluster>
+          <button
+            type="button"
+            mnButton="icon"
+            aria-label="Back to the list of sources"
+            (click)="mode.set('choices')"
+          >
+            <mn-icon name="back" />
+          </button>
+          <h3>Anki</h3>
+        </mn-cluster>
+        @if (failure(); as copy) {
+          <mn-stack [gap]="2" role="alert" data-testid="anki-connect-failed">
+            <p>
+              <strong>{{ copy.headline }}</strong>
+            </p>
+            @for (paragraph of copy.paragraphs; track $index) {
+              <p class="mn-hint">
+                {{ paragraph.before }}
+                @if (paragraph.link; as link) {
+                  <a [href]="link.href" target="_blank" rel="noopener noreferrer">{{ link.text }}</a
+                  >{{ paragraph.after }}
+                }
+              </p>
+            }
+            <p class="mn-hint">{{ unchanged }}</p>
+            <mn-disclosure heading="Advanced details" tone="quiet">
+              @if (copy.offersPort) {
+                <mn-cluster>
+                  <mn-field label="Port">
                     <input
                       type="number"
                       inputmode="numeric"
@@ -114,286 +129,109 @@ type AddMode = 'closed' | 'choices' | 'anki';
                       (input)="setPortDraft($event)"
                       data-testid="anki-connect-port"
                     />
-                  </label>
-                }
-                @if (failureDetail(); as detail) {
-                  <p class="code-line detail">{{ detail }}</p>
-                }
-                <p class="code-line">
-                  {{ failureCode() }} ·
-                  <a [href]="links.troubleshooting" target="_blank" rel="noopener noreferrer"
-                    >troubleshooting</a
-                  >
-                </p>
-              </details>
-            </div>
-            <div class="sheet-foot">
-              <button
-                type="button"
-                class="mn-button mn-button--primary"
-                [disabled]="refresh.isBusy() || !portValid()"
-                (click)="connectAnki()"
-                data-testid="anki-retry"
-              >
-                Try again
-              </button>
-            </div>
-          } @else {
-            <div class="sheet-pad">
-              <p role="status">{{ connectingLabel() }}</p>
-            </div>
-          }
-        } @else {
-          <div class="sheet-intro">
-            <h3 class="sheet-title">Add words</h3>
-          </div>
-          <div class="choices">
-            @if (platform === 'ios') {
-              <button type="button" class="choice" disabled data-testid="choose-anki">
-                <span class="mn-icon-badge" aria-hidden="true">
-                  <mn-icon name="anki-source" [size]="18" />
-                </span>
-                <span class="choice-main">
-                  <strong>Connect to Anki</strong>
-                  <span class="choice-hint"
-                    >iOS cannot be read directly — export a file instead</span
-                  >
-                </span>
-              </button>
-              <p class="mn-hint aside">
-                <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
-                  >How to export from Anki</a
+                  </mn-field>
+                </mn-cluster>
+              }
+              @if (failureDetail(); as detail) {
+                <p class="mn-hint">{{ detail }}</p>
+              }
+              <p class="mn-hint">
+                {{ failureCode() }} ·
+                <a [href]="links.troubleshooting" target="_blank" rel="noopener noreferrer"
+                  >troubleshooting</a
                 >
               </p>
-            } @else {
-              <button
-                type="button"
-                class="choice"
-                [disabled]="refresh.isBusy()"
-                (click)="chooseAnki()"
-                data-testid="choose-anki"
-              >
-                <span class="mn-icon-badge" aria-hidden="true">
-                  <mn-icon name="anki-source" [size]="18" />
-                </span>
-                <span class="choice-main">
-                  <strong>Connect to Anki</strong>
-                  <span class="choice-hint">{{ ankiSubtitle }}</span>
-                </span>
-                <mn-icon class="chevron" name="chevron-right" />
-              </button>
-            }
+            </mn-disclosure>
+          </mn-stack>
+          <mn-cluster justify="end">
             <button
               type="button"
-              class="choice"
-              [disabled]="refresh.isBusy() || packageBusy()"
-              (click)="packageInput.click()"
-              data-testid="choose-package"
+              mnButton="primary"
+              [disabled]="refresh.isBusy() || !portValid()"
+              (click)="connectAnki()"
+              data-testid="anki-retry"
             >
-              <span class="mn-icon-badge" aria-hidden="true">
-                <mn-icon name="file" [size]="18" />
-              </span>
-              <span class="choice-main">
-                <strong>Import from Anki</strong>
-                <span class="choice-hint">{{ fileSubtitle }}</span>
-              </span>
-              <mn-icon class="chevron" name="chevron-right" />
+              Try again
             </button>
-            <button
-              type="button"
-              class="choice"
-              (click)="chooseTextList()"
-              data-testid="add-text-source"
-            >
-              <span class="mn-icon-badge" aria-hidden="true">
-                <mn-icon name="word-list" [size]="18" />
-              </span>
-              <span class="choice-main">
-                <strong>Add a word list</strong>
-                <span class="choice-hint">One word per line</span>
-              </span>
-              <mn-icon class="chevron" name="chevron-right" />
-            </button>
-          </div>
-          <p class="sheet-note">
-            <mn-icon class="mn-lead" name="info" [size]="18" />
-            <span>Your sources stay separate. Duplicate words are counted once.</span>
-          </p>
-          <button type="button" class="mn-button" (click)="dismiss()">Cancel</button>
+          </mn-cluster>
+        } @else {
+          <p role="status">{{ connectingLabel() }}</p>
         }
-      </mn-sheet-popover>
-      <input
-        #packageInput
-        class="file-input"
-        type="file"
-        aria-label="Choose Anki package"
-        aria-hidden="true"
-        tabindex="-1"
-        accept=".apkg,.colpkg"
-        [disabled]="refresh.isBusy() || packageBusy()"
-        (change)="choosePackage($event)"
-        data-testid="package-input"
-      />
-    </div>
-  `,
-  styles: `
-    :host {
-      position: relative;
-      display: block;
-    }
-
-    .add-words {
-      display: grid;
-      justify-items: end;
-      gap: var(--space-2);
-    }
-
-    .add-words > .mn-button {
-      anchor-name: --mn-add-words-anchor;
-    }
-
-    .sheet-intro {
-      display: grid;
-      gap: var(--space-1);
-    }
-
-    .sheet-title {
-      margin: 0;
-      font-size: var(--text-2xl);
-      letter-spacing: -0.01em;
-    }
-
-    .sheet-head {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-    }
-
-    .sheet-head h3 {
-      flex: 1;
-      margin: 0;
-    }
-
-    .sheet-pad {
-      display: grid;
-      gap: var(--space-2);
-    }
-
-    .sheet-foot {
-      display: flex;
-      justify-content: flex-end;
-    }
-
-    .sheet-pad p {
-      margin: 0;
-    }
-
-    .headline {
-      font-weight: var(--weight-semibold);
-    }
-
-    .code-line {
-      margin-top: var(--space-2);
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .advanced-details {
-      border-top: 1px solid var(--border-subtle);
-    }
-
-    .detail {
-      overflow-wrap: anywhere;
-    }
-
-    .aside {
-      margin: 0;
-      padding: 0 var(--space-2);
-    }
-
-    .port {
-      max-width: 9rem;
-      margin-top: var(--space-2);
-    }
-
-    .choices {
-      display: grid;
-      gap: var(--space-2);
-    }
-
-    /* A row, not a menu item: it says what it is and what it needs, then opens. */
-    .choice {
-      display: flex;
-      gap: var(--space-3);
-      align-items: center;
-      width: 100%;
-      min-height: 4.5rem;
-      padding: var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-raised);
-      color: var(--text-primary);
-      font: inherit;
-      text-align: left;
-      cursor: pointer;
-    }
-
-    .choice-main {
-      display: grid;
-      flex: 1;
-      gap: 0.15rem;
-      min-width: 0;
-    }
-
-    .choice-main strong {
-      font-size: var(--text-lg);
-      font-weight: var(--weight-semibold);
-    }
-
-    .choice-hint {
-      color: var(--action-primary-text);
-      font-size: var(--text-sm);
-    }
-
-    .choice .chevron {
-      flex: none;
-      color: var(--text-secondary);
-    }
-
-    :host-context(html[data-pointer='mouse']) .choice:hover:not(:disabled) {
-      background: var(--surface-sunken);
-    }
-
-    .choice:disabled {
-      cursor: default;
-    }
-
-    .choice:disabled .choice-hint {
-      color: var(--text-secondary);
-    }
-
-    .sheet-note {
-      display: flex;
-      gap: var(--space-2);
-      align-items: flex-start;
-      margin: 0;
-      padding-top: var(--space-3);
-      border-top: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .sheet-note + .mn-button {
-      width: 100%;
-    }
-
-    .file-input {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      opacity: 0;
-      pointer-events: none;
-    }
+      } @else {
+        <h3>Add words</h3>
+        <mn-stack [gap]="2">
+          @if (platform === 'ios') {
+            <mn-row
+              surface="card"
+              icon="anki-source"
+              heading="Connect to Anki"
+              testId="choose-anki"
+              [action]="true"
+              [disabled]="true"
+            >
+              <span mn-row-meta>iOS cannot be read directly — export a file instead</span>
+            </mn-row>
+            <p class="mn-hint">
+              <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
+                >How to export from Anki</a
+              >
+            </p>
+          } @else {
+            <mn-row
+              surface="card"
+              icon="anki-source"
+              heading="Connect to Anki"
+              testId="choose-anki"
+              [action]="true"
+              [disabled]="refresh.isBusy()"
+              (pressed)="chooseAnki()"
+            >
+              <span mn-row-meta>{{ ankiSubtitle }}</span>
+              <mn-icon name="chevron-right" />
+            </mn-row>
+          }
+          <mn-row
+            surface="card"
+            icon="file"
+            heading="Import from Anki"
+            testId="choose-package"
+            [action]="true"
+            [disabled]="refresh.isBusy() || packageBusy()"
+            (pressed)="packageInput.click()"
+          >
+            <span mn-row-meta>{{ fileSubtitle }}</span>
+            <mn-icon name="chevron-right" />
+          </mn-row>
+          <mn-row
+            surface="card"
+            icon="word-list"
+            heading="Add a word list"
+            testId="add-text-source"
+            [action]="true"
+            (pressed)="chooseTextList()"
+          >
+            <span mn-row-meta>One word per line</span>
+            <mn-icon name="chevron-right" />
+          </mn-row>
+        </mn-stack>
+        <mn-notice icon="info"
+          >Your sources stay separate. Duplicate words are counted once.</mn-notice
+        >
+        <button type="button" mnButton (click)="dismiss()">Cancel</button>
+      }
+    </mn-sheet-popover>
+    <input
+      #packageInput
+      class="mn-visually-hidden"
+      type="file"
+      aria-label="Choose Anki package"
+      aria-hidden="true"
+      tabindex="-1"
+      accept=".apkg,.colpkg"
+      [disabled]="refresh.isBusy() || packageBusy()"
+      (change)="choosePackage($event)"
+      data-testid="package-input"
+    />
   `,
 })
 export class AddWordsComponent {
@@ -404,6 +242,7 @@ export class AddWordsComponent {
   private readonly packageImport = inject(PackageImportStore);
   protected readonly platform = inject(HOST_PLATFORM);
   protected readonly links = ANKI_LINKS;
+  protected readonly anchorName = '--mn-add-words-anchor';
   protected readonly unchanged = NOTHING_SAVED;
 
   /** The one sentence naming what has to be installed for the Anki row to work. */

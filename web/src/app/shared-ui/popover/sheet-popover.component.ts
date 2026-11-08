@@ -29,6 +29,7 @@ interface NativePopoverElement extends Omit<HTMLElement, 'hidePopover' | 'showPo
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SheetHandleComponent],
   host: {
+    popover: 'auto',
     '[class.is-sheet]': 'isMobile()',
     '[class.is-dragging]': 'dragOffset() > 0',
     '[style.transform]': 'dragTransform()',
@@ -111,7 +112,11 @@ interface NativePopoverElement extends Omit<HTMLElement, 'hidePopover' | 'showPo
       }
     }
 
-    :host([data-modal])::backdrop {
+    /*
+     * Only the docked sheet dims the page. Hanging from its control on a wide
+     * screen, the panel is a popup like any other, and the page stays in view.
+     */
+    :host(.is-sheet[data-modal])::backdrop {
       background-color: var(--backdrop-scrim);
     }
 
@@ -155,7 +160,7 @@ export class SheetPopoverComponent {
   readonly anchorName = input.required<string>();
   /** Names the action for keyboard and assistive technology users. */
   readonly closeLabel = input('Close');
-  /** Adds the native popover backdrop for a modal sheet. */
+  /** Dims the page behind the sheet when it is docked on a phone. */
   readonly modal = input(false);
   /** Emitted when the handle answers a dismissal gesture. */
   readonly closed = output<void>();

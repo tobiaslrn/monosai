@@ -1,4 +1,4 @@
-import { Directive, input } from '@angular/core';
+import { Directive, ElementRef, HostAttributeToken, inject, input } from '@angular/core';
 
 export type ButtonVariant = 'default' | 'primary' | 'ghost' | 'danger' | 'icon' | 'icon-primary';
 
@@ -10,6 +10,10 @@ export type ButtonVariant = 'default' | 'primary' | 'ghost' | 'danger' | 'icon' 
  *   <button type="button" mnButton="primary">Save</button>
  *   <a mnButton="ghost" routerLink="/help">Help</a>
  *   <button type="button" mnButton="icon" aria-label="More"><mn-icon name="overflow" /></button>
+ *
+ * A variant written as a plain attribute is drawn from the moment the element
+ * exists, not one pass later: a button that first painted unstyled would fade
+ * from the browser's grey to its own colour.
  *
  * The silhouettes are defined once in `styles/components/_button.scss`, which
  * the screens not yet built from primitives still use directly.
@@ -29,12 +33,36 @@ export class ButtonDirective {
   /** An empty attribute (`mnButton`) is the default, reversible action. */
   readonly mnButton = input<ButtonVariant | ''>('');
 
+  constructor() {
+    const written = inject(new HostAttributeToken('mnButton'), { optional: true });
+    if (written !== null) {
+      const element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+      element.classList.add(...classesOf((written as ButtonVariant | '') || 'default'));
+    }
+  }
+
   protected variant(): ButtonVariant {
     return this.mnButton() || 'default';
   }
 
   protected isIcon(): boolean {
-    const variant = this.variant();
-    return variant === 'icon' || variant === 'icon-primary';
+    return isIconVariant(this.variant());
   }
+}
+
+function isIconVariant(variant: ButtonVariant): boolean {
+  return variant === 'icon' || variant === 'icon-primary';
+}
+
+function classesOf(variant: ButtonVariant): readonly string[] {
+  const base = isIconVariant(variant) ? 'mn-icon-button' : 'mn-button';
+  const modifier = {
+    default: null,
+    primary: 'mn-button--primary',
+    ghost: 'mn-button--ghost',
+    danger: 'mn-button--danger',
+    icon: null,
+    'icon-primary': 'mn-icon-button--primary',
+  }[variant];
+  return modifier === null ? [base] : [base, modifier];
 }

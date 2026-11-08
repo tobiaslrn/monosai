@@ -356,7 +356,8 @@ re-skins it. The primitives, and what each is the way to build:
   Escape, Escape and closing it from code hand focus back to the control (a press
   outside has already moved it), the top layer keeps it above any card that clips, and no instance registers a listener, which is what lets one sit in
   every row of a virtualised shelf. A menu adds focus on its first item and the
-  arrow keys. The reader's floating surfaces and sheets are a different thing and
+  arrow keys. A panel that hangs from a control never dims the page: only a sheet
+  docked to a phone's bottom edge draws the scrim. The reader's floating surfaces and sheets are a different thing and
   stay on `PopoverService`, because they own gestures and docking that a menu does
   not have ([ADR 0083](../decisions/0083-floating-panels-are-native-popovers.md)).
 

@@ -44,7 +44,6 @@ import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.com
     <mn-sheet-popover
       #panel
       id="mn-reader-menu-panel"
-      popover
       class="panel"
       role="dialog"
       aria-label="Story options"
