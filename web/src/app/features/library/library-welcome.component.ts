@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { formatCount } from '../../domain/shared/locale';
 import { GENERATION_SNAPSHOT_MINIMUM } from '../../domain/vocabulary/snapshot';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { StackComponent } from '../../shared-ui/layout/layout';
+import { ProseComponent } from '../../shared-ui/prose/prose.component';
+import { RowComponent } from '../../shared-ui/row/row.component';
 
 /**
  * The Library before there is anything on it.
@@ -22,120 +24,45 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 @Component({
   selector: 'mn-library-welcome',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent],
+  imports: [IconComponent, ProseComponent, RowComponent, StackComponent],
   template: `
-    <section class="welcome" aria-labelledby="mn-welcome-heading">
-      <h2 id="mn-welcome-heading">Monosai writes Japanese you can actually read.</h2>
+    <section aria-labelledby="mn-welcome-heading">
+      <mn-stack [gap]="4">
+        <mn-prose>
+          <h2 id="mn-welcome-heading">Monosai writes Japanese you can actually read.</h2>
+          <p mn-lead>
+            Monosai builds readable stories from at least {{ minimumWords }} words from Anki, an
+            Anki package, or a pasted list. Paste Japanese text to add readings, spacing, and a
+            dictionary.
+          </p>
+          <p>Everything stays on this device.</p>
+        </mn-prose>
 
-      <p class="lede">
-        Monosai builds readable stories from at least {{ minimumWords }} words from Anki, an Anki
-        package, or a pasted list. Paste Japanese text to add readings, spacing, and a dictionary.
-      </p>
-
-      <p class="local">Everything stays on this device.</p>
-
-      <div class="choices">
-        <a class="choice" routerLink="/reading-level" fragment="words" [state]="libraryOriginState">
-          <mn-icon name="vocabulary" [size]="20" />
-          <span>
-            <strong>Add a word list</strong>
-          </span>
-        </a>
-        <a class="choice" routerLink="/add" [state]="libraryOriginState">
-          <mn-icon name="add" [size]="20" />
-          <span>
-            <strong>Paste Japanese text</strong>
-          </span>
-        </a>
-      </div>
+        <mn-stack [gap]="2">
+          <mn-row
+            surface="card"
+            heading="Add a word list"
+            icon="vocabulary"
+            link="/reading-level"
+            fragment="words"
+            [state]="libraryOriginState"
+            testId="welcome-choice"
+          >
+            <mn-icon name="chevron-right" [size]="18" />
+          </mn-row>
+          <mn-row
+            surface="card"
+            heading="Paste Japanese text"
+            icon="add"
+            link="/add"
+            [state]="libraryOriginState"
+            testId="welcome-choice"
+          >
+            <mn-icon name="chevron-right" [size]="18" />
+          </mn-row>
+        </mn-stack>
+      </mn-stack>
     </section>
-  `,
-  styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
-    .welcome {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-4);
-      max-width: 42rem;
-    }
-
-    h2 {
-      margin: 0;
-      font-family: var(--font-ui);
-      font-size: var(--text-2xl);
-      font-weight: var(--weight-bold);
-      letter-spacing: -0.02em;
-      line-height: var(--leading-tight);
-    }
-
-    .lede,
-    .local {
-      margin: 0;
-      color: var(--text-secondary);
-      line-height: var(--leading-relaxed);
-    }
-
-    .local {
-      color: var(--text-primary);
-    }
-
-    .choices {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--space-3);
-      margin-top: var(--space-2);
-    }
-
-    .choice {
-      display: flex;
-      gap: var(--space-3);
-      align-items: flex-start;
-      min-width: 0;
-      padding: var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-raised);
-      color: var(--text-primary);
-      text-decoration: none;
-    }
-
-    :host-context(html[data-pointer='mouse']) .choice:hover {
-      border-color: var(--border-strong);
-      background: var(--surface-sunken);
-    }
-
-    .choice mn-icon {
-      flex: none;
-      color: var(--action-primary);
-    }
-
-    .choice span {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-1);
-      min-width: 0;
-    }
-
-    .choice strong {
-      font-weight: var(--weight-semibold);
-    }
-
-    .choice small {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      line-height: var(--leading-snug);
-    }
-
-    @media (max-width: breakpoints.$narrow-max) {
-      h2 {
-        font-size: var(--text-2xl);
-      }
-
-      .choices {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
   `,
 })
 export class LibraryWelcomeComponent {

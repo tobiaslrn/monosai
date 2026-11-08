@@ -34,7 +34,7 @@ export function buildLongImportFixture(paragraphCount = 200): {
 
 /** Fills the import form and waits for the direct-save action to be ready. */
 export async function pasteAndContinue(page: Page, text: string): Promise<void> {
-  await page.getByLabel('Japanese text').fill(text);
+  await page.getByRole('textbox', { name: 'Japanese text' }).fill(text);
   await expect(page.getByRole('button', { name: 'Add story' })).toBeEnabled({
     timeout: 60_000,
   });
@@ -49,7 +49,7 @@ export async function saveAndOpenReader(page: Page): Promise<void> {
 /** Imports one reading and returns to the library. */
 export async function importReading(page: Page, text: string, title?: string): Promise<void> {
   await page.goto('./#/add');
-  await page.getByLabel('Japanese text').fill(text);
+  await page.getByRole('textbox', { name: 'Japanese text' }).fill(text);
   if (title !== undefined) {
     await page.getByLabel('Title (optional)').fill(title);
   }

@@ -179,7 +179,7 @@ describe('LibraryPageComponent', () => {
   }
 
   function newReadingButton(fixture: Awaited<ReturnType<typeof render>>): HTMLButtonElement | null {
-    return element(fixture).querySelector<HTMLButtonElement>('.shelf-head button');
+    return element(fixture).querySelector<HTMLButtonElement>('[data-testid="new-story"]');
   }
 
   /** Enough readings that the filter chips are worth showing. */
@@ -212,9 +212,9 @@ describe('LibraryPageComponent', () => {
     expect(element(fixture).textContent).toContain('an Anki package, or a pasted list');
     expect(element(fixture).textContent).toContain('Everything stays on this device.');
     expect(
-      [...element(fixture).querySelectorAll<HTMLAnchorElement>('.choice')].map((link) =>
-        link.getAttribute('href'),
-      ),
+      [
+        ...element(fixture).querySelectorAll<HTMLAnchorElement>('[data-testid="welcome-choice"]'),
+      ].map((link) => link.getAttribute('href')),
     ).toEqual(['/reading-level#words', '/add']);
     expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(0);
   });
@@ -248,7 +248,7 @@ describe('LibraryPageComponent', () => {
     newReadingButton(fixture)?.click();
     await settle(fixture);
 
-    const menu = document.querySelector('mn-new-reading-menu');
+    const menu = document.querySelector('mn-menu[aria-label="New story"]');
     const links = [...(menu?.querySelectorAll('a') ?? [])];
     expect(links.map((link) => link.textContent.trim())).toEqual(['Paste text', 'Write with AI']);
     expect(links.map((link) => link.getAttribute('href'))).toEqual(['/add', '/generate']);
@@ -298,7 +298,7 @@ describe('LibraryPageComponent', () => {
     repository.readings = manyReadings(36);
     const fixture = await render();
 
-    const firstItem = element(fixture).querySelector<HTMLLIElement>('.reading-list li');
+    const firstItem = element(fixture).querySelector<HTMLLIElement>('.mn-list-group li');
     expect(firstItem?.getAttribute('aria-posinset')).toBe('1');
     expect(firstItem?.getAttribute('aria-setsize')).toBe('-1');
   });
@@ -325,9 +325,9 @@ describe('LibraryPageComponent', () => {
         return text.includes('Pasted') && !text.includes('Micro');
       }),
     ).toBe(true);
-    expect(element(fixture).querySelector('.virtual-spacer')?.getAttribute('style')).toContain(
-      'height: 0px',
-    );
+    expect(
+      element(fixture).querySelector('[data-virtual-spacer]')?.getAttribute('style'),
+    ).toContain('height: 0px');
   });
 
   it('keeps long card titles available for wrapping instead of truncating them', async () => {
@@ -401,8 +401,8 @@ describe('LibraryPageComponent', () => {
     ];
     const fixture = await render();
 
-    const groups = [...element(fixture).querySelectorAll('.date-group h2')].map((heading) =>
-      heading.textContent.trim(),
+    const groups = [...element(fixture).querySelectorAll('[data-testid="date-group"] h2')].map(
+      (heading) => heading.textContent.trim(),
     );
     expect(groups).toEqual(['Today', 'Yesterday', 'Earlier this week']);
   });
@@ -699,7 +699,9 @@ describe('LibraryPageComponent', () => {
     ]);
     const fixture = await render();
 
-    element(fixture).querySelector<HTMLButtonElement>('.dismiss')?.click();
+    element(fixture)
+      .querySelector<HTMLButtonElement>('[data-testid="dismiss-generation"]')
+      ?.click();
     await settle(fixture);
 
     expect(jobs.dismissed.map(String)).toEqual(['job-3']);
@@ -712,7 +714,9 @@ describe('LibraryPageComponent', () => {
     jobs.setJobs([fakeGenerationJob('job-4', new FakeGenerationRun({ kind: 'writing' }))]);
     const fixture = await render();
 
-    element(fixture).querySelector<HTMLButtonElement>('.dismiss')?.click();
+    element(fixture)
+      .querySelector<HTMLButtonElement>('[data-testid="dismiss-generation"]')
+      ?.click();
     await settle(fixture);
 
     const dialog = document.querySelector('.cdk-overlay-container');

@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+  ViewEncapsulation,
+} from '@angular/core';
 
 /**
  * The layout primitives. A feature places blocks with these and never writes
@@ -21,13 +27,12 @@ const spaceToken = (step: Space): string => `var(--space-${String(step)})`;
 @Component({
   selector: 'mn-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[class.page--narrow]': "measure() === 'narrow'" },
+  host: { '[class.page--narrow]': "measure() === 'narrow'", '[style.gap]': 'gapValue()' },
   template: `<ng-content />`,
   styles: `
     :host {
       display: flex;
       flex-direction: column;
-      gap: var(--space-5);
       width: 100%;
       max-width: var(--page-measure);
       margin-inline: auto;
@@ -40,6 +45,9 @@ const spaceToken = (step: Space): string => `var(--space-${String(step)})`;
 export class PageComponent {
   /** `narrow` for a page of settings rows, whose controls should stay near their labels. */
   readonly measure = input<'default' | 'narrow'>('default');
+  /** The rail between blocks; a home screen that is one composition draws them closer. */
+  readonly gap = input<Space>(5);
+  protected readonly gapValue = computed(() => spaceToken(this.gap()));
 }
 
 /** A vertical run of blocks with one gap between them. */
@@ -72,35 +80,50 @@ export type ClusterJustify = 'start' | 'end' | 'between';
  * A row of items that wraps as a whole: buttons acting together, chips, a
  * label with its badge. An item never shrinks below its own content, so a
  * button label is never broken across two lines.
+ *
+ * `fill="narrow"` shares the row equally between the items on a screen
+ * narrower than the wide layout, such as a set of filters a thumb has to hit.
+ * That reaches the projected items, so the styles are global, rooted at the
+ * element.
  */
 @Component({
   selector: 'mn-cluster',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
   host: {
     '[style.gap]': 'gapValue()',
     '[class.cluster--end]': "justify() === 'end'",
     '[class.cluster--between]': "justify() === 'between'",
+    '[class.cluster--fill-narrow]': "fill() === 'narrow'",
   },
   template: `<ng-content />`,
   styles: `
-    :host {
+    @use '../../../styles/breakpoints' as breakpoints;
+
+    mn-cluster {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: flex-start;
       min-width: 0;
     }
-    :host(.cluster--end) {
+    mn-cluster.cluster--end {
       justify-content: flex-end;
     }
-    :host(.cluster--between) {
+    mn-cluster.cluster--between {
       justify-content: space-between;
+    }
+    @media (max-width: breakpoints.$wide-max) {
+      mn-cluster.cluster--fill-narrow > * {
+        flex: 1 1 min(100%, 6rem);
+      }
     }
   `,
 })
 export class ClusterComponent {
   readonly gap = input<Space>(2);
   readonly justify = input<ClusterJustify>('start');
+  readonly fill = input<'none' | 'narrow'>('none');
   protected readonly gapValue = computed(() => spaceToken(this.gap()));
 }
 

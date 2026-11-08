@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import type { GenerationJob } from '../../application/generation/generation-jobs.store';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
+import { ButtonDirective } from '../../shared-ui/button/button';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { generationWaitCopy } from '../generate/generation-wait.component';
@@ -18,7 +19,7 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
 @Component({
   selector: 'mn-generation-job-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, ListRowComponent],
+  imports: [ButtonDirective, IconComponent, ListRowComponent],
   template: `
     <mn-list-row
       variant="muted"
@@ -38,8 +39,9 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
       </span>
       <span mn-list-row-menu>
         <button
+          mnButton="icon"
           type="button"
-          class="mn-icon-button dismiss"
+          data-testid="dismiss-generation"
           [attr.aria-label]="dismissLabel()"
           (click)="dismissRequested.emit(job())"
         >

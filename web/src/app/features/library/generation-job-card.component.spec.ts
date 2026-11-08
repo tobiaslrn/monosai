@@ -55,15 +55,15 @@ describe('GenerationJobCardComponent', () => {
 
   it('names what its one control does now', () => {
     const running = render(new FakeGenerationRun({ kind: 'writing' })).nativeElement as HTMLElement;
-    expect(running.querySelector('.dismiss')?.getAttribute('aria-label')).toBe(
-      'Stop writing A cat visits the market',
-    );
+    expect(
+      running.querySelector('[data-testid="dismiss-generation"]')?.getAttribute('aria-label'),
+    ).toBe('Stop writing A cat visits the market');
 
     const stopped = render(new FakeGenerationRun({ kind: 'cancelled', during: 'writing' }))
       .nativeElement as HTMLElement;
-    expect(stopped.querySelector('.dismiss')?.getAttribute('aria-label')).toBe(
-      'Dismiss A cat visits the market',
-    );
+    expect(
+      stopped.querySelector('[data-testid="dismiss-generation"]')?.getAttribute('aria-label'),
+    ).toBe('Dismiss A cat visits the market');
   });
 
   it('emits the job when its control is used', () => {
@@ -73,14 +73,16 @@ describe('GenerationJobCardComponent', () => {
       dismissed.push(job.id);
     });
 
-    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.dismiss')?.click();
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('[data-testid="dismiss-generation"]')
+      ?.click();
 
     expect(dismissed).toEqual([JOB_ID]);
   });
 
   it('keeps the dismiss button separate from the navigation link', () => {
     const page = render(new FakeGenerationRun({ kind: 'writing' })).nativeElement as HTMLElement;
-    const dismiss = page.querySelector<HTMLButtonElement>('.dismiss');
+    const dismiss = page.querySelector<HTMLButtonElement>('[data-testid="dismiss-generation"]');
 
     expect(dismiss?.closest('a')).toBeNull();
   });

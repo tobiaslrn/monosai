@@ -11,6 +11,10 @@ import type { Reading } from '../../domain/reading/reading';
 import type { LibraryDateGroup, LibraryDateGroupKey } from './library-date-groups';
 import { ReadingCardComponent } from './reading-card.component';
 import { LibraryStore } from '../../application/reading/library.store';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { ShelfHeadingComponent } from '../../shared-ui/group/shelf-heading.component';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
+import { PagingStatusComponent } from '../../shared-ui/paging-status/paging-status.component';
 import {
   VirtualItemDirective,
   VirtualListDirective,
@@ -94,10 +98,17 @@ function readingKey(id: string): string {
 @Component({
   selector: 'mn-library-virtual-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReadingCardComponent, VirtualListDirective, VirtualItemDirective],
+  imports: [
+    ButtonDirective,
+    NoticeComponent,
+    PagingStatusComponent,
+    ReadingCardComponent,
+    ShelfHeadingComponent,
+    VirtualListDirective,
+    VirtualItemDirective,
+  ],
   template: `
     <div
-      class="virtual-library"
       [mnVirtualList]="items()"
       [estimateHeight]="estimateHeight"
       [overscanPx]="overscanPx"
@@ -106,26 +117,25 @@ function readingKey(id: string): string {
       (nearEnd)="loadMore()"
     >
       <div
-        class="virtual-spacer"
         aria-hidden="true"
+        data-virtual-spacer="before"
         [style.height.px]="list().range().topSpacer"
       ></div>
 
       @for (group of visibleGroups(); track group.key) {
-        <section class="date-group" [attr.aria-labelledby]="group.headingId">
+        <section data-testid="date-group" [attr.aria-labelledby]="group.headingId">
           @if (group.headingVisible) {
-            <div
-              class="virtual-heading"
-              [class.is-first]="group.firstHeading"
+            <mn-shelf-heading
+              [heading]="group.label"
+              [headingId]="group.headingId"
+              [first]="group.firstHeading"
               [mnVirtualItem]="group.headingKey"
-            >
-              <h2 [id]="group.headingId" class="mn-group-title">{{ group.label }}</h2>
-            </div>
+            />
           } @else {
             <h2 class="mn-visually-hidden" [id]="group.headingId">{{ group.label }}</h2>
           }
 
-          <ul class="reading-list mn-list-group">
+          <ul class="mn-list-group">
             @for (item of group.readings; track item.key) {
               <li
                 [mnVirtualItem]="item.key"
@@ -145,99 +155,26 @@ function readingKey(id: string): string {
         </section>
       }
 
-      @if (store.loadingMore()) {
-        <p class="load-status" role="status" aria-live="polite">
-          <span class="loading-dot" aria-hidden="true"></span>
-          Loading more stories…
-        </p>
-      }
-
-      @if (store.loadMoreError(); as error) {
-        <section class="load-error mn-notice mn-notice--error" role="alert">
-          <div>
-            <p>More stories could not be loaded.</p>
-            <p>{{ error.message }}</p>
-          </div>
-          <button type="button" class="mn-button" (click)="retryLoadMore()">Try again</button>
-        </section>
+      @if (store.loadingMore() || store.loadMoreError() !== null) {
+        <mn-paging-status [loading]="store.loadingMore()" loadingLabel="Loading more stories…">
+          @if (store.loadMoreError(); as error) {
+            <mn-notice tone="error" role="alert">
+              <p>More stories could not be loaded.</p>
+              <p>{{ error.message }}</p>
+              <button mn-notice-action mnButton type="button" (click)="retryLoadMore()">
+                Try again
+              </button>
+            </mn-notice>
+          }
+        </mn-paging-status>
       }
 
       <div
-        class="virtual-spacer"
         aria-hidden="true"
+        data-virtual-spacer="after"
         [style.height.px]="list().range().bottomSpacer"
       ></div>
     </div>
-  `,
-  styles: `
-    :host {
-      display: block;
-      width: 100%;
-    }
-
-    .virtual-library {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .virtual-spacer {
-      width: 100%;
-      pointer-events: none;
-    }
-
-    .date-group {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .virtual-heading {
-      padding-block: var(--space-5) var(--space-2);
-    }
-
-    .virtual-heading.is-first {
-      padding-block-start: var(--space-2);
-    }
-
-    .reading-list {
-      width: 100%;
-    }
-
-    .load-status {
-      display: flex;
-      gap: var(--space-2);
-      align-items: center;
-      justify-content: center;
-      margin: var(--space-2) 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .loading-dot {
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: var(--radius-pill);
-      background: var(--action-primary);
-      animation: library-loading-pulse var(--motion-slow) var(--ease-ambient) infinite alternate;
-    }
-
-    .load-error {
-      margin: var(--space-2) 0;
-    }
-
-    @keyframes library-loading-pulse {
-      from {
-        opacity: 0.45;
-      }
-      to {
-        opacity: 1;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .loading-dot {
-        animation: none;
-      }
-    }
   `,
 })
 export class LibraryVirtualListComponent {

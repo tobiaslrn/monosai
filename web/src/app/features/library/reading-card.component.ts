@@ -14,7 +14,13 @@ import { formatCountOf, formatRelativeDay } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import type { IconName } from '../../shared-ui/icon/icon-set';
 import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
-import { PopupDirective, PopupTriggerDirective } from '../../shared-ui/popup/popup.directive';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { ClusterComponent } from '../../shared-ui/layout/layout';
+import {
+  MenuComponent,
+  MenuItemDirective,
+  MenuTriggerDirective,
+} from '../../shared-ui/menu/menu.component';
 
 /** What a story's length is called, in the words the generate form uses. */
 const FORM_LABELS: Readonly<Record<StoryForm, string>> = {
@@ -34,7 +40,15 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
 @Component({
   selector: 'mn-reading-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, ListRowComponent, PopupDirective, PopupTriggerDirective],
+  imports: [
+    ButtonDirective,
+    ClusterComponent,
+    IconComponent,
+    ListRowComponent,
+    MenuComponent,
+    MenuItemDirective,
+    MenuTriggerDirective,
+  ],
   template: `
     <mn-list-row
       [routerLink]="['/reader', reading().id]"
@@ -56,10 +70,10 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
         <span>{{ shapeLabel() }}</span>
         @if (hasAudio()) {
           <span aria-hidden="true">·</span>
-          <span class="audio-available" title="Audio">
+          <mn-cluster [gap]="1" title="Audio">
             <mn-icon name="audio" [size]="14" />
             <span class="mn-visually-hidden">Audio</span>
-          </span>
+          </mn-cluster>
         }
         <span class="mn-visually-hidden">{{ originLabel() }}, {{ lastReadLabel() }}</span>
       </span>
@@ -71,45 +85,31 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       }
       <span mn-list-row-menu>
         <button
+          mnButton="icon"
           type="button"
-          class="mn-icon-button"
           aria-haspopup="menu"
-          [mnPopupTrigger]="actions"
+          [mnMenuTrigger]="actions"
           [attr.aria-label]="'Actions for ' + reading().title"
           [attr.title]="'Actions for ' + reading().title"
         >
           <mn-icon name="overflow" [size]="20" />
         </button>
-        <div
-          mnPopup
-          #actions="mnPopup"
-          role="menu"
+        <mn-menu
+          #actions="mnMenu"
           [menu]="true"
           [attr.aria-label]="'Actions for ' + reading().title"
         >
-          <button type="button" role="menuitem" class="mn-menu-item" (click)="requestRename()">
+          <button mnMenuItem type="button" (click)="requestRename()">
             <mn-icon name="rename" [size]="18" />
             <span>Rename</span>
           </button>
-          <button
-            type="button"
-            role="menuitem"
-            class="mn-menu-item mn-menu-item--danger"
-            (click)="requestDelete()"
-          >
+          <button mnMenuItem="danger" type="button" (click)="requestDelete()">
             <mn-icon name="delete" [size]="18" />
             <span>Delete</span>
           </button>
-        </div>
+        </mn-menu>
       </span>
     </mn-list-row>
-  `,
-  styles: `
-    .audio-available {
-      display: inline-flex;
-      gap: var(--space-1);
-      align-items: center;
-    }
   `,
 })
 export class ReadingCardComponent {
@@ -119,7 +119,7 @@ export class ReadingCardComponent {
   readonly deleteRequested = output<Reading>();
   readonly renameRequested = output<Reading>();
 
-  private readonly actions = viewChild.required<PopupDirective>('actions');
+  private readonly actions = viewChild.required<MenuComponent>('actions');
 
   protected readonly characterLabel = computed(() =>
     formatCountOf(this.reading().characterCount, 'character'),

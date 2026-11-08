@@ -1,21 +1,18 @@
-import type { ElementRef, TemplateRef } from '@angular/core';
 import { formatList, startSentence } from '../../domain/shared/locale';
 import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
   Injector,
-  ViewContainerRef,
   afterNextRender,
   computed,
   effect,
   inject,
-  signal,
-  viewChild,
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { NavigationStart, Router, RouterLink } from '@angular/router';
 import { LibraryScrollMemoryService } from '../../core/routing/library-scroll-memory.service';
+import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { LibraryStore } from '../../application/reading/library.store';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
@@ -26,13 +23,20 @@ import type { LibraryFilter, Reading } from '../../domain/reading/reading';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { openRenameDialog } from '../../shared-ui/rename-dialog/rename-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { PopoverService } from '../../shared-ui/popover/popover.service';
-import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { CardComponent } from '../../shared-ui/card/card.component';
+import { ShelfHeadingComponent } from '../../shared-ui/group/shelf-heading.component';
+import { HeroComponent } from '../../shared-ui/hero/hero.component';
+import { ClusterComponent, PageComponent } from '../../shared-ui/layout/layout';
+import {
+  MenuComponent,
+  MenuItemDirective,
+  MenuTriggerDirective,
+} from '../../shared-ui/menu/menu.component';
 import {
   GenerationJobsStore,
   type GenerationJob,
 } from '../../application/generation/generation-jobs.store';
-import { NewReadingMenuComponent } from './new-reading-menu.component';
 import { GenerationJobCardComponent } from './generation-job-card.component';
 import { groupLibraryReadings } from './library-date-groups';
 import { LibraryStandingComponent } from './library-standing.component';
@@ -64,86 +68,103 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
+    ButtonDirective,
+    CardComponent,
+    ClusterComponent,
+    HeroComponent,
     IconComponent,
+    MenuComponent,
+    MenuItemDirective,
+    MenuTriggerDirective,
+    PageComponent,
     PageHeaderComponent,
-    ReaderPopoverComponent,
-    NewReadingMenuComponent,
+    ShelfHeadingComponent,
     GenerationJobCardComponent,
     LibraryStandingComponent,
     LibraryWelcomeComponent,
     LibraryVirtualListComponent,
   ],
   template: `
-    <div class="mn-page library-page">
+    <mn-page [gap]="3">
       <mn-page-header heading="Library" [home]="true" [showAlpha]="true">
-        <nav class="utilities" aria-label="Utilities">
-          <a class="mn-icon-button" routerLink="/help" aria-label="Help" title="Help">
-            <mn-icon name="help" />
-          </a>
-          <a class="mn-icon-button" routerLink="/settings" aria-label="Settings" title="Settings">
-            <mn-icon name="settings" />
-          </a>
+        <nav aria-label="Utilities">
+          <mn-cluster [gap]="1">
+            <a mnButton="icon" routerLink="/help" aria-label="Help" title="Help">
+              <mn-icon name="help" />
+            </a>
+            <a mnButton="icon" routerLink="/settings" aria-label="Settings" title="Settings">
+              <mn-icon name="settings" />
+            </a>
+          </mn-cluster>
         </nav>
       </mn-page-header>
 
       @if (store.status() === 'failed') {
-        <section class="mn-card" role="alert">
-          <h2>Your library could not be loaded</h2>
+        <mn-card heading="Your library could not be loaded" [level]="2" role="alert">
           <p class="mn-hint">{{ store.lastError()?.message }}</p>
-          <button type="button" class="mn-button" (click)="reload()">Try again</button>
-        </section>
+          <mn-cluster>
+            <button mnButton type="button" (click)="reload()">Try again</button>
+          </mn-cluster>
+        </mn-card>
       } @else {
-        <section
-          class="home-hero"
+        <mn-hero
+          role="region"
           aria-labelledby="mn-page-title"
-          [class.is-compact]="!isFirstRun()"
+          lightSrc="assets/home-reader.png"
+          darkSrc="assets/home-reader-dark.png"
+          [artWidth]="1254"
+          [artHeight]="1070"
+          [compact]="!isFirstRun()"
         >
           <mn-library-standing />
-          <div class="hero-art" aria-hidden="true">
-            <img
-              class="hero-art-light"
-              src="assets/home-reader.png"
-              alt=""
-              width="1254"
-              height="1070"
-            />
-            <img
-              class="hero-art-dark"
-              src="assets/home-reader-dark.png"
-              alt=""
-              width="1254"
-              height="1070"
-            />
-          </div>
-        </section>
+        </mn-hero>
 
-        <div class="shelf-head">
-          <button
-            type="button"
-            class="mn-button mn-button--primary"
-            #newReading
-            [attr.aria-expanded]="menuOpen()"
-            aria-haspopup="dialog"
-            (click)="openNewReading()"
+        <!--
+          The action sits directly below the invitation it acts on. Generating
+          is a branch of adding rather than a destination of its own: it
+          produces the same thing by a different route, and giving it equal
+          billing in a navigation bar was what made Monosai look like an AI
+          tool with a reader attached.
+        -->
+        <button
+          mnButton="primary"
+          type="button"
+          aria-haspopup="dialog"
+          data-testid="new-story"
+          [mnMenuTrigger]="newStory"
+        >
+          <mn-icon name="add" [size]="18" />
+          <span>Create a new story</span>
+        </button>
+        <mn-menu #newStory="mnMenu" role="dialog" aria-label="New story">
+          <a mnMenuItem routerLink="/add" [state]="libraryOriginState" (click)="newStory.hide()">
+            <mn-icon name="add" [size]="20" />
+            <span>Paste text</span>
+          </a>
+          <a
+            mnMenuItem
+            routerLink="/generate"
+            [state]="libraryOriginState"
+            (click)="newStory.hide()"
           >
-            <mn-icon name="add" [size]="18" />
-            <span>Create a new story</span>
-          </button>
-        </div>
+            <mn-icon name="generate" [size]="20" />
+            <span>Write with AI</span>
+          </a>
+        </mn-menu>
 
         @if (showsFilters()) {
-          <div class="filters" role="group" aria-label="Filter stories">
+          <mn-cluster fill="narrow" role="group" aria-label="Filter stories">
             @for (option of filters; track option.value) {
               <button
+                mnButton
                 type="button"
-                class="mn-button"
                 [attr.aria-pressed]="store.filter() === option.value"
                 (click)="setFilter(option.value)"
               >
                 {{ option.label }}
               </button>
             }
-          </div>
+          </mn-cluster>
         }
 
         <!--
@@ -152,9 +173,13 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           layout does not move when the story arrives.
         -->
         @if (generationJobs().length > 0) {
-          <section class="date-group" aria-labelledby="library-group-generating">
-            <h2 id="library-group-generating" class="mn-group-title">Story generations</h2>
-            <ul class="reading-list mn-list-group">
+          <section data-testid="date-group" aria-labelledby="library-group-generating">
+            <mn-shelf-heading
+              heading="Story generations"
+              headingId="library-group-generating"
+              [first]="true"
+            />
+            <ul class="mn-list-group">
               @for (job of generationJobs(); track job.id) {
                 <li>
                   <mn-generation-job-card [job]="job" (dismissRequested)="confirmDismiss($event)" />
@@ -178,150 +203,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       }
 
       <p class="mn-visually-hidden" role="status" aria-live="polite">{{ store.announcement() }}</p>
-    </div>
-
-    <ng-template #newReadingMenu>
-      <mn-reader-popover label="New story" (closed)="closeNewReading()">
-        <mn-new-reading-menu (chosen)="closeNewReading()" />
-      </mn-reader-popover>
-    </ng-template>
-  `,
-  styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
-    /* The home header, action, and every date group share the same rail. */
-    .library-page {
-      gap: var(--space-3);
-    }
-
-    .utilities {
-      display: flex;
-      gap: var(--space-1);
-    }
-
-    /*
-     * The standing and the illustration are one composition, so each sits on
-     * the other's axis: the sentence is centred in the hero and the picture is
-     * centred in it too, rather than both hanging from the top edge and
-     * drifting apart as the sentence grows a line.
-     *
-     * The hero hugs the illustration: its heights are the art's width in the
-     * art's own proportion, so the distance to the bar above is the page rail
-     * and nothing else. The art carried a sixth of its height as empty space
-     * above the drawing, which read as spacing no rule could reach; the file
-     * is cropped to the drawing instead.
-     */
-    .home-hero {
-      --hero-art-max: 16rem;
-
-      position: relative;
-      isolation: isolate;
-      display: flex;
-      align-items: center;
-      min-height: 12.8rem;
-      margin-block: var(--space-1) calc(var(--space-2) * -1);
-      padding-block: 0 var(--space-2);
-    }
-
-    .hero-art {
-      position: absolute;
-      z-index: -1;
-      inset-block: 0;
-      inset-inline-end: 0;
-      margin-block: auto;
-      width: 55%;
-      max-width: var(--hero-art-max);
-      height: auto;
-      aspect-ratio: 1254 / 1070;
-      overflow: hidden;
-      pointer-events: none;
-    }
-
-    .hero-art img {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-
-    .hero-art-dark {
-      display: none;
-    }
-
-    :host-context(html[data-theme='dark']) .hero-art-light {
-      display: none;
-    }
-
-    :host-context(html[data-theme='dark']) .hero-art-dark {
-      display: block;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :host-context(html:not([data-theme='light'])) .hero-art-light {
-        display: none;
-      }
-
-      :host-context(html:not([data-theme='light'])) .hero-art-dark {
-        display: block;
-      }
-    }
-
-    .home-hero mn-library-standing {
-      width: 57%;
-    }
-
-    /*
-     * Once there is a shelf, the hero steps back so the stories come up the
-     * screen. The art keeps its proportions; only its size changes.
-     */
-    .home-hero.is-compact {
-      min-height: 7.7rem;
-    }
-
-    .home-hero.is-compact {
-      --hero-art-max: 9rem;
-    }
-
-    /* The action sits directly below the invitation it acts on. */
-    .shelf-head {
-      display: block;
-    }
-
-    .shelf-head .mn-button {
-      width: 100%;
-    }
-
-    .filters {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-    }
-
-    .date-group {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      width: 100%;
-      min-width: 0;
-      padding-block-start: var(--space-2);
-    }
-
-    @media (max-width: breakpoints.$wide-max) {
-      .home-hero {
-        min-height: 10.7rem;
-      }
-
-      .home-hero mn-library-standing {
-        /* The sentence ends a gap short of wherever the art really begins. */
-        width: min(59%, calc(100% - min(55%, var(--hero-art-max)) - var(--space-3)));
-      }
-
-      .filters {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 6rem), 1fr));
-      }
-    }
+    </mn-page>
   `,
 })
 export class LibraryPageComponent {
@@ -329,8 +211,6 @@ export class LibraryPageComponent {
   private readonly clock = inject(CLOCK);
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
-  private readonly popover = inject(PopoverService);
-  private readonly viewContainerRef = inject(ViewContainerRef);
   private restorationCancelled = false;
   private restorationPosition: number | null = null;
   private restorationFrame: number | null = null;
@@ -340,13 +220,8 @@ export class LibraryPageComponent {
   private readonly scrollMemory = inject(LibraryScrollMemoryService);
   private readonly jobs = inject(GenerationJobsStore);
 
-  private readonly newReading = viewChild<ElementRef<HTMLElement>>('newReading');
-  private readonly newReadingMenu = viewChild.required<TemplateRef<unknown>>('newReadingMenu');
-
   protected readonly filters = FILTERS;
-
-  private readonly menuOpenSignal = signal(false);
-  protected readonly menuOpen = this.menuOpenSignal.asReadonly();
+  protected readonly libraryOriginState = navigationOriginState('/library');
 
   /** Chips are chrome until there are enough readings for filtering to help. */
   protected readonly showsFilters = computed(
@@ -400,7 +275,6 @@ export class LibraryPageComponent {
         this.restorationFrame = null;
       }
       navigationEvents.unsubscribe();
-      this.popover.close();
     });
   }
 
@@ -452,31 +326,6 @@ export class LibraryPageComponent {
     if (!this.store.loadingMore()) {
       void this.store.loadMore();
     }
-  }
-
-  /**
-   * Anchored to the button on desktop and docked as a sheet on a phone, using
-   * the same surface the reader's own popovers open in.
-   */
-  protected openNewReading(): void {
-    const origin = this.newReading()?.nativeElement;
-    if (origin === undefined) {
-      return;
-    }
-    this.menuOpenSignal.set(true);
-    this.popover.open({
-      origin,
-      template: this.newReadingMenu(),
-      viewContainerRef: this.viewContainerRef,
-      returnFocusTo: origin,
-      onClosed: () => {
-        this.menuOpenSignal.set(false);
-      },
-    });
-  }
-
-  protected closeNewReading(): void {
-    this.popover.close();
   }
 
   /**

@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LanguageStore } from '../../application/language/language.store';
 import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { CountingCountComponent } from '../../shared-ui/counting-count/counting-count.component';
+import { StandingComponent } from '../../shared-ui/standing/standing.component';
 import {
   readingLevelName,
   vocabularyCountLabel,
@@ -39,104 +39,37 @@ type StandingHeadline =
 @Component({
   selector: 'mn-library-standing',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, CountingCountComponent],
+  imports: [CountingCountComponent, StandingComponent],
   template: `
-    <a
-      class="standing"
-      routerLink="/reading-level"
+    <mn-standing
+      link="/reading-level"
       fragment="words"
       [state]="libraryOriginState"
-      data-testid="library-standing"
+      testId="library-standing"
     >
       @if (headline(); as line) {
-        <span class="headline">
-          @switch (line.kind) {
-            @case ('standing') {
-              @if (line.level !== null) {
-                <span
-                  >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" /> and
-                  read {{ line.level }}.</span
-                >
-              } @else {
-                <span
-                  >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" />.</span
-                >
-              }
-            }
-            @case ('plain') {
-              <span>{{ line.text }}</span>
+        @switch (line.kind) {
+          @case ('standing') {
+            @if (line.level !== null) {
+              <span
+                >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" /> and read
+                {{ line.level }}.</span
+              >
+            } @else {
+              <span
+                >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" />.</span
+              >
             }
           }
-        </span>
-        @if (detail(); as note) {
-          <span class="detail">{{ note }}</span>
+          @case ('plain') {
+            <span>{{ line.text }}</span>
+          }
         }
       }
-    </a>
-  `,
-  styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
-    :host {
-      display: block;
-      min-width: 0;
-    }
-
-    /*
-     * Two lines of space are held whether or not the read has answered yet, so
-     * nothing below moves when it does. A skeleton would be the alternative,
-     * and the design system rules those out.
-     */
-    .standing {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: var(--space-3);
-      min-height: 3.4rem;
-      min-width: 0;
-      color: var(--text-primary);
-      text-decoration: none;
-    }
-
-    .headline {
-      display: flex;
-      gap: var(--space-1);
-      align-items: center;
-      font-family: var(--font-ui);
-      font-size: var(--text-display);
-      font-weight: var(--weight-bold);
-      letter-spacing: -0.035em;
-      line-height: 1.04;
-    }
-
-    /*
-     * The sentence is the link, and it says so under a pointer and nowhere
-     * else. Marking the two facts permanently was tried: at display size two
-     * underlines read as heavier than the words they were under, and the level
-     * name has to stay breakable on a narrow screen, so the mark fragmented
-     * across lines instead of pointing anywhere.
-     */
-    :host-context(html[data-pointer='mouse']) .standing:hover .headline span {
-      text-decoration: underline;
-    }
-
-    .standing:focus-visible {
-      outline: 3px solid var(--focus-ring);
-      outline-offset: 4px;
-      border-radius: var(--radius-control);
-    }
-
-    .detail {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      line-height: var(--leading-snug);
-    }
-
-    @media (max-width: breakpoints.$narrow-max) {
-      .headline {
-        font-size: var(--text-2xl);
+      @if (detail(); as note) {
+        <span mn-standing-detail>{{ note }}</span>
       }
-    }
+    </mn-standing>
   `,
 })
 export class LibraryStandingComponent {

@@ -144,7 +144,7 @@ interface WebAppManifest {
 
 async function importReading(page: Page): Promise<void> {
   await page.goto('./#/add');
-  await page.getByLabel('Japanese text').fill(SAMPLE_TEXT);
+  await page.getByRole('textbox', { name: 'Japanese text' }).fill(SAMPLE_TEXT);
   const addReading = page.getByRole('button', { name: 'Add story' });
   await expect(addReading).toBeEnabled({
     timeout: 60_000,

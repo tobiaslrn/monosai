@@ -1388,7 +1388,7 @@ test.describe('scenario 2 — pasted text validation', () => {
   test('guards an unsaved import when navigating back', async ({ page }) => {
     await page.goto('./#/library');
     await page.getByRole('link', { name: /Paste Japanese text/ }).click();
-    await page.getByLabel('Japanese text').fill(SAMPLE_TEXT);
+    await page.getByRole('textbox', { name: 'Japanese text' }).fill(SAMPLE_TEXT);
 
     await page.getByRole('button', { name: 'Back to library' }).click();
     await expect(page.getByRole('alertdialog')).toContainText('Leave without saving?');
@@ -1412,7 +1412,7 @@ test.describe('scenario 2 — pasted text validation', () => {
     page,
   }) => {
     await page.goto('./#/add');
-    await page.getByLabel('Japanese text').fill('あ'.repeat(50_001));
+    await page.getByRole('textbox', { name: 'Japanese text' }).fill('あ'.repeat(50_001));
 
     await expect(page.getByText('50,001 of 50,000 characters')).toBeVisible();
     await expect(page.getByRole('alert')).toContainText('Remove 1 character to continue');
@@ -1422,7 +1422,7 @@ test.describe('scenario 2 — pasted text validation', () => {
 
   test('blocks empty input with an inline message @smoke', async ({ page }) => {
     await page.goto('./#/add');
-    await page.getByLabel('Japanese text').fill('   \n  ');
+    await page.getByRole('textbox', { name: 'Japanese text' }).fill('   \n  ');
 
     await expect(page.getByRole('button', { name: 'Add story' })).toBeDisabled();
   });
@@ -1526,8 +1526,8 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     );
 
     await page.goto('./#/library');
-    await expect(page.locator('.date-group')).toHaveCount(3);
-    await expect(page.locator('.date-group h2')).toHaveText([
+    await expect(page.locator('[data-testid="date-group"]')).toHaveCount(3);
+    await expect(page.locator('[data-testid="date-group"] h2')).toHaveText([
       'Today',
       'Yesterday',
       'Earlier this week',
@@ -1542,11 +1542,11 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);
 
-    const groups = await page.locator('.date-group').evaluateAll((sections) =>
+    const groups = await page.locator('[data-testid="date-group"]').evaluateAll((sections) =>
       sections.map((section) => {
         const bounds = section.getBoundingClientRect();
         // Each dated group is one pair of card edges; its rows sit inside them.
-        const cards = [...section.querySelectorAll('.reading-list')].map((card) => {
+        const cards = [...section.querySelectorAll('.mn-list-group')].map((card) => {
           const cardBounds = card.getBoundingClientRect();
           return { left: cardBounds.left, right: cardBounds.right };
         });

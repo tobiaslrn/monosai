@@ -80,6 +80,7 @@ let nextRowId = 0;
       <a
         class="mn-row__main"
         [routerLink]="target"
+        [fragment]="fragment()"
         [state]="state()"
         [attr.data-testid]="testId()"
         [attr.aria-labelledby]="titleId"
@@ -261,6 +262,7 @@ export class RowComponent {
   /** Where the row leads. A row without one is a settings row. */
   readonly link = input<readonly unknown[] | string | UrlTree | null>(null);
   readonly state = input<NavigationExtras['state']>(undefined);
+  readonly fragment = input<string | undefined>(undefined);
   readonly surface = input<RowSurface>('plain');
   /** A meaningful origin or kind, drawn as the shared icon badge. */
   readonly icon = input<IconName | null>(null);

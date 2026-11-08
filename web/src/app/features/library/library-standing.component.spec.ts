@@ -100,8 +100,8 @@ describe('LibraryStandingComponent', () => {
     const element = fixture.nativeElement as HTMLElement;
     const standing = element.querySelector<HTMLElement>('[data-testid="library-standing"]');
     return {
-      headline: standing?.querySelector('.headline')?.textContent.trim() ?? '',
-      detail: standing?.querySelector('.detail')?.textContent.trim() ?? '',
+      headline: standing?.querySelector('.mn-standing__headline')?.textContent.trim() ?? '',
+      detail: standing?.querySelector('.mn-standing__detail')?.textContent.trim() ?? '',
       height: standing === null ? '' : getComputedStyle(standing).minHeight,
     };
   }
@@ -196,7 +196,7 @@ describe('LibraryStandingComponent', () => {
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
     const element = render().nativeElement as HTMLElement;
 
-    expect(element.querySelector('.headline mn-icon')).toBeNull();
+    expect(element.querySelector('.mn-standing__headline mn-icon')).toBeNull();
   });
 
   it('is one link to the page that explains it', () => {

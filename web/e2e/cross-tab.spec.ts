@@ -87,7 +87,7 @@ test.describe('a link that is not a reading', () => {
 test.describe('Add text semantics', () => {
   test('exposes no tab pattern and passes an axe scan', async ({ page }) => {
     await page.goto('./#/add');
-    await expect(page.getByLabel('Japanese text')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Japanese text' })).toBeVisible();
 
     expect(await page.locator('[role="tabpanel"], [role="tab"], [role="tablist"]').count()).toBe(0);
     // The counter waits until the text is near its limit.
@@ -152,7 +152,7 @@ test.describe('a tab that lost its database', () => {
   }) => {
     const first = await context.newPage();
     await first.goto('./#/add');
-    await first.getByLabel('Japanese text').fill(SAMPLE_TEXT);
+    await first.getByRole('textbox', { name: 'Japanese text' }).fill(SAMPLE_TEXT);
     const second = await context.newPage();
     await second.goto('./#/library');
 
@@ -161,14 +161,14 @@ test.describe('a tab that lost its database', () => {
     const notice = first.getByRole('alert').filter({ hasText: 'can no longer save' });
     await expect(notice).toBeVisible();
     await expect(notice).not.toContainText('Waiting for current work');
-    await expect(first.getByLabel('Japanese text')).toHaveValue(SAMPLE_TEXT);
+    await expect(first.getByRole('textbox', { name: 'Japanese text' })).toHaveValue(SAMPLE_TEXT);
 
     await notice.getByRole('button', { name: 'Reload' }).click();
     const confirm = first.getByRole('alertdialog', { name: 'Reload and lose unsaved work?' });
     await expect(confirm).toContainText('An import draft is unsaved');
     await confirm.getByRole('button', { name: 'Stay here' }).click();
     await expect(confirm).toHaveCount(0);
-    await expect(first.getByLabel('Japanese text')).toHaveValue(SAMPLE_TEXT);
+    await expect(first.getByRole('textbox', { name: 'Japanese text' })).toHaveValue(SAMPLE_TEXT);
 
     await first.evaluate(() => {
       (window as unknown as { loadedBefore: boolean }).loadedBefore = true;

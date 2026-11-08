@@ -75,15 +75,20 @@ export class MenuTriggerDirective {
   readonly menu = input.required<MenuComponent>({ alias: 'mnMenuTrigger' });
 }
 
-/** One action in an `mn-menu`. */
+/**
+ * One action in an `mn-menu`, or one destination when it is a link. It is a
+ * `menuitem` only in a panel that is a menu; in a small dialog of choices a
+ * link stays a link.
+ */
 @Directive({
-  selector: 'button[mnMenuItem]',
+  selector: 'button[mnMenuItem], a[mnMenuItem]',
   host: {
-    role: 'menuitem',
     class: 'mn-menu-item',
+    '[attr.role]': "panel?.popup.menu() ? 'menuitem' : null",
     '[class.mn-menu-item--danger]': "mnMenuItem() === 'danger'",
   },
 })
 export class MenuItemDirective {
+  protected readonly panel = inject(MenuComponent, { optional: true });
   readonly mnMenuItem = input<'' | 'danger'>('');
 }
