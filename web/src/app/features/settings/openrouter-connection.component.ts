@@ -12,22 +12,32 @@ import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { PopupDirective, PopupTriggerDirective } from '../../shared-ui/popup/popup.directive';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { FieldComponent } from '../../shared-ui/field/field.component';
+import { ClusterComponent } from '../../shared-ui/layout/layout';
+import { MenuComponent, MenuTriggerDirective } from '../../shared-ui/menu/menu.component';
 import { ModelCatalogView } from './model-catalog-view';
 
 /** The OpenRouter key: where it stands, and connecting, replacing, or deleting it. */
 @Component({
   selector: 'mn-openrouter-connection',
-  host: { class: 'connection' },
+  host: { class: 'mn-settings-block' },
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, PopupDirective, PopupTriggerDirective],
+  imports: [
+    ButtonDirective,
+    ClusterComponent,
+    FieldComponent,
+    IconComponent,
+    MenuComponent,
+    MenuTriggerDirective,
+  ],
   template: `
     <button
       type="button"
       class="mn-settings-row mn-settings-row--interactive"
       data-testid="connect-openrouter"
       aria-haspopup="dialog"
-      [mnPopupTrigger]="connection"
+      [mnMenuTrigger]="connection"
     >
       <span class="mn-settings-row__label">
         <span class="mn-settings-row__title">OpenRouter key</span>
@@ -42,13 +52,7 @@ import { ModelCatalogView } from './model-catalog-view';
         <mn-icon class="mn-settings-chevron" name="chevron-right" [size]="18" />
       </span>
     </button>
-    <div
-      mnPopup
-      #connection="mnPopup"
-      class="mn-popup--start connection-menu"
-      role="dialog"
-      aria-label="OpenRouter connection"
-    >
+    <mn-menu #connection="mnMenu" [form]="true" role="dialog" aria-label="OpenRouter connection">
       @if (connection.isOpen()) {
         <!--
                 What OpenRouter is and where a key comes from, on the one screen
@@ -66,8 +70,7 @@ import { ModelCatalogView } from './model-catalog-view';
           rel="noopener noreferrer"
           >Get a key on openrouter.ai</a
         >
-        <label class="mn-field">
-          <span>{{ credential.isConfigured() ? 'Replace API key' : 'API key' }}</span>
+        <mn-field [label]="credential.isConfigured() ? 'Replace API key' : 'API key'">
           <input
             class="mn-control"
             type="password"
@@ -78,11 +81,11 @@ import { ModelCatalogView } from './model-catalog-view';
             [value]="keyDraft()"
             (input)="onKeyInput($event)"
           />
-        </label>
-        <div class="connection-actions mn-actions">
+        </mn-field>
+        <mn-cluster justify="end">
           <button
             type="button"
-            class="mn-button mn-button--primary"
+            mnButton="primary"
             data-testid="save-key"
             [disabled]="keyDraft().trim() === '' || credential.action() !== 'idle'"
             (click)="saveKey()"
@@ -90,31 +93,11 @@ import { ModelCatalogView } from './model-catalog-view';
             {{ credential.isConfigured() ? 'Replace key' : 'Connect' }}
           </button>
           @if (credential.isConfigured()) {
-            <button type="button" class="mn-button mn-button--danger" (click)="removeKey()">
-              Delete key
-            </button>
+            <button type="button" mnButton="danger" (click)="removeKey()">Delete key</button>
           }
-        </div>
+        </mn-cluster>
       }
-    </div>
-  `,
-  styles: `
-    :host {
-      display: block;
-    }
-    p {
-      margin: 0;
-    }
-    .connection-menu:popover-open {
-      display: grid;
-      gap: var(--space-3);
-      width: min(23rem, calc(100vw - 4 * var(--space-4)));
-      margin-inline-start: var(--space-4);
-      padding: var(--space-3);
-    }
-    .connection-actions {
-      justify-content: flex-end;
-    }
+    </mn-menu>
   `,
 })
 export class OpenRouterConnectionComponent {
@@ -132,7 +115,7 @@ export class OpenRouterConnectionComponent {
       ? 'Connected'
       : 'Key saved';
   });
-  private readonly connectionPanel = viewChild.required<PopupDirective>('connection');
+  private readonly connectionPanel = viewChild.required<MenuComponent>('connection');
 
   protected onKeyInput(event: Event): void {
     this.keyDraft.set((event.target as HTMLInputElement).value);

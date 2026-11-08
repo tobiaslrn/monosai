@@ -32,7 +32,7 @@ import type { ModelCapabilities, ModelCatalog } from '../../domain/ai/model-cata
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
 import { err, ok, type Result } from '../../domain/shared/result';
-import { ModelPickerComponent } from './model-picker.component';
+import { ModelPickerComponent } from '../../shared-ui/model-picker/model-picker.component';
 import { ModelsSectionComponent } from './models-section.component';
 
 const HASH: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };

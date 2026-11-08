@@ -14,7 +14,11 @@ let nextSectionId = 0;
  *
  * A card of `rows` gives up its padding: each direct child spans the card and a
  * hairline separates it from the one before. Otherwise the content runs in one
- * stack inside the card's padding.
+ * stack inside the card's padding. A notice placed among rows keeps its own
+ * border and sits inset from the card's edges.
+ *
+ * What answers the section as a whole, such as the result of an action in it,
+ * goes after the card with `mn-section-footer`.
  *
  * The hairline reaches projected children, so these styles are global and
  * rooted at the element; no selector names a class from outside the section.
@@ -32,6 +36,7 @@ let nextSectionId = 0;
       <div class="mn-section__card" [class.mn-section__card--rows]="rows()">
         <ng-content />
       </div>
+      <ng-content select="[mn-section-footer]" />
     </section>
   `,
   styles: `
@@ -93,8 +98,16 @@ let nextSectionId = 0;
       overflow: clip;
     }
 
-    mn-section > .mn-section__frame > .mn-section__card--rows > * + * {
+    mn-section > .mn-section__frame > .mn-section__card--rows > * + *:not(mn-notice) {
       border-top: 1px solid var(--border-subtle);
+    }
+
+    mn-section > .mn-section__frame > .mn-section__card--rows > mn-notice {
+      margin: var(--space-3);
+    }
+
+    mn-section > .mn-section__frame > .mn-section__card--rows > mn-notice + * {
+      border-top: 0;
     }
   `,
 })

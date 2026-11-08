@@ -15,9 +15,11 @@ import { CredentialStore } from '../../application/settings/credential.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { GroupHeaderComponent } from '../../shared-ui/group/group-header.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { ModelCatalogView } from './model-catalog-view';
-import { ModelPickerComponent } from './model-picker.component';
+import { ModelPickerComponent } from '../../shared-ui/model-picker/model-picker.component';
 
 /**
  * Every state the audio configuration can be in, as one surface has to say it.
@@ -38,41 +40,44 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     '[attr.data-readiness]': 'tts.readiness()',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ModelPickerComponent, SettingsRowComponent],
+  imports: [
+    FormsModule,
+    ButtonDirective,
+    GroupHeaderComponent,
+    ModelPickerComponent,
+    SettingsRowComponent,
+  ],
   template: `
-    <div class="mn-settings-group__header">
-      <h3 class="mn-group-title" id="mn-audio-model-label">Voice</h3>
-      <div class="head-status mn-actions">
-        <span
-          class="mn-status-pill"
-          [class.mn-status-pill--success]="tts.readiness() === 'ready'"
-          [class.mn-status-pill--danger]="audioStatus() === 'failed'"
-          data-testid="audio-readiness"
-          [title]="audioStatusTitle()"
-          >{{ audioStatusLabel() }}</span
+    <mn-group-header heading="Voice" headingId="mn-audio-model-label">
+      <span
+        class="mn-status-pill"
+        [class.mn-status-pill--success]="tts.readiness() === 'ready'"
+        [class.mn-status-pill--danger]="audioStatus() === 'failed'"
+        data-testid="audio-readiness"
+        [title]="audioStatusTitle()"
+        >{{ audioStatusLabel() }}</span
+      >
+      @if (tts.action() === 'testing') {
+        <button
+          type="button"
+          mnButton="ghost"
+          data-testid="cancel-tts-test"
+          (click)="tts.cancelTest()"
         >
-        @if (tts.action() === 'testing') {
-          <button
-            type="button"
-            class="mn-button mn-button--ghost"
-            data-testid="cancel-tts-test"
-            (click)="tts.cancelTest()"
-          >
-            Stop
-          </button>
-        } @else {
-          <button
-            type="button"
-            class="mn-button mn-button--ghost"
-            data-testid="test-tts"
-            [disabled]="tts.draft().modelId === '' || tts.draft().voiceId === ''"
-            (click)="testAudio()"
-          >
-            Preview
-          </button>
-        }
-      </div>
-    </div>
+          Stop
+        </button>
+      } @else {
+        <button
+          type="button"
+          mnButton="ghost"
+          data-testid="test-tts"
+          [disabled]="tts.draft().modelId === '' || tts.draft().voiceId === ''"
+          (click)="testAudio()"
+        >
+          Preview
+        </button>
+      }
+    </mn-group-header>
 
     <mn-settings-row label="Model">
       <mn-model-picker
@@ -165,19 +170,6 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
         preload="auto"
         (canplay)="playRequestedSample()"
       ></audio>
-    }
-  `,
-  styles: `
-    :host {
-      display: block;
-    }
-    h3,
-    p {
-      margin: 0;
-    }
-    .head-status {
-      flex: 0 1 auto;
-      justify-content: flex-end;
     }
   `,
 })

@@ -108,7 +108,7 @@ async function brokenText(page: Page, zoom: number): Promise<string[]> {
         }
         if (
           !ellipsised &&
-          up.matches('.mn-card, .mn-list-row, .mn-settings-card') &&
+          up.matches('.mn-card, .mn-list-row, .mn-section__card, mn-card, mn-row') &&
           (right > bounds.right + 1 || left < bounds.left - 1)
         ) {
           problems.add(`sticks out of ${label(up)}: ${where}`);

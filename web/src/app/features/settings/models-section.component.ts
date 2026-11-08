@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CredentialStore } from '../../application/settings/credential.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
-import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
+import { SectionComponent } from '../../shared-ui/section/section.component';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 import { ModelCatalogView } from './model-catalog-view';
 import { OpenRouterConnectionComponent } from './openrouter-connection.component';
 import { TextModelsComponent } from './text-models.component';
@@ -21,43 +22,33 @@ import { VoiceModelComponent } from './voice-model.component';
   selector: 'mn-models-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NoticeComponent,
     OpenRouterConnectionComponent,
-    SettingsSectionComponent,
+    SectionComponent,
     TextModelsComponent,
     VoiceModelComponent,
   ],
   providers: [ModelCatalogView],
   template: `
-    <mn-settings-section heading="AI">
-      <div class="mn-card mn-card--flush mn-settings-card">
-        <mn-openrouter-connection />
+    <mn-section heading="AI" [rows]="true">
+      <mn-openrouter-connection />
 
-        <!--
+      <!--
         Every control below needs a key. Drawn disabled before one existed,
         they read as values nobody had chosen; the connection comes first.
       -->
-        @if (credential.isConfigured()) {
-          <mn-text-models />
-          <mn-voice-model />
-        }
+      @if (credential.isConfigured()) {
+        <mn-text-models />
+        <mn-voice-model />
+      }
 
-        @if (text.testFailure(); as failure) {
-          <p class="mn-notice mn-notice--error mn-settings-notice" role="alert">
-            {{ failure.message }}
-          </p>
-        }
-        @if (tts.testFailure(); as failure) {
-          <p class="mn-notice mn-notice--error mn-settings-notice" role="alert">
-            {{ failure.message }}
-          </p>
-        }
-      </div>
-    </mn-settings-section>
-  `,
-  styles: `
-    p {
-      margin: 0;
-    }
+      @if (text.testFailure(); as failure) {
+        <mn-notice tone="error" role="alert">{{ failure.message }}</mn-notice>
+      }
+      @if (tts.testFailure(); as failure) {
+        <mn-notice tone="error" role="alert">{{ failure.message }}</mn-notice>
+      }
+    </mn-section>
   `,
 })
 export class ModelsSectionComponent {

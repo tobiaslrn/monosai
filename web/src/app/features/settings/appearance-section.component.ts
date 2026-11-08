@@ -6,7 +6,7 @@ import {
   type SegmentedOption,
 } from '../../shared-ui/segmented-control/segmented-control.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
-import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
+import { SectionComponent } from '../../shared-ui/section/section.component';
 
 const THEME_OPTIONS: readonly SegmentedOption<ThemeSetting>[] = [
   { value: 'system', label: 'System' },
@@ -18,21 +18,19 @@ const THEME_OPTIONS: readonly SegmentedOption<ThemeSetting>[] = [
 @Component({
   selector: 'mn-appearance-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SegmentedControlComponent, SettingsRowComponent, SettingsSectionComponent],
+  imports: [SegmentedControlComponent, SettingsRowComponent, SectionComponent],
   template: `
-    <mn-settings-section heading="Appearance">
-      <div class="mn-card mn-card--flush mn-settings-card">
-        <mn-settings-row label="Theme">
-          <mn-segmented-control
-            label="Theme"
-            [joined]="true"
-            [options]="themeOptions"
-            [value]="settings.theme()"
-            (valueChange)="selectTheme($event)"
-          />
-        </mn-settings-row>
-      </div>
-    </mn-settings-section>
+    <mn-section heading="Appearance" [rows]="true">
+      <mn-settings-row label="Theme">
+        <mn-segmented-control
+          label="Theme"
+          [joined]="true"
+          [options]="themeOptions"
+          [value]="settings.theme()"
+          (valueChange)="selectTheme($event)"
+        />
+      </mn-settings-row>
+    </mn-section>
   `,
 })
 export class AppearanceSectionComponent {

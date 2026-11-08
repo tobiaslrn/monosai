@@ -1,4 +1,4 @@
-/* Shared section, card-row, and disclosure layout for settings-like pages. */
+/* Shared card-row and group layout for settings-like pages. */
 .mn-settings-section {
   display: flex;
   flex-direction: column;
@@ -35,14 +35,6 @@
   display: none;
 }
 
-/* A settings card is a flush card whose children supply the row rhythm. */
-.mn-settings-card {
-  container-type: inline-size;
-  min-width: 0;
-  padding: 0;
-  overflow: clip;
-}
-
 .mn-settings-row {
   display: grid;
   grid-template-columns: minmax(min-content, 1fr) auto;
@@ -54,7 +46,6 @@
   color: inherit;
 }
 
-.mn-settings-card > * + *,
 .mn-settings-group > .mn-settings-row + .mn-settings-row,
 .mn-settings-subrows > .mn-settings-row + .mn-settings-row {
   border-top: 1px solid var(--border-subtle);
@@ -120,7 +111,14 @@
   transition: transform var(--motion-fast) var(--ease-standard);
 }
 
-.mn-settings-card > .mn-settings-group {
+/* A group's host is its feature component, so it is made a block here. */
+.mn-settings-group,
+.mn-settings-block {
+  display: block;
+  min-width: 0;
+}
+
+.mn-section__card--rows > .mn-settings-group {
   margin: var(--space-3);
   padding: 0;
   overflow: clip;
@@ -149,43 +147,20 @@
   padding-inline: var(--space-4);
 }
 
-.mn-settings-notice {
-  margin: var(--space-3);
-}
-
-.mn-settings-card > .mn-settings-notice,
-.mn-settings-notice + .mn-settings-group {
-  border-top: 0;
-}
-
-.mn-settings-details {
-  min-width: 0;
-}
-
-.mn-settings-details > summary {
-  list-style: none;
-  cursor: pointer;
-}
-
-.mn-settings-details > summary::-webkit-details-marker {
-  display: none;
-}
-
-.mn-settings-details[open] > summary .mn-settings-chevron {
-  transform: rotate(90deg);
-}
-
-.mn-settings-details__body {
-  padding: var(--space-2) var(--space-4) var(--space-3);
-  border-top: 1px solid var(--border-subtle);
-}
-
 .mn-settings-subrows {
   padding: 0 var(--space-4) var(--space-2) var(--space-7);
 }
 
 .mn-settings-subrows > .mn-settings-row {
   padding-inline: 0;
+}
+
+.mn-settings-group > mn-disclosure {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.mn-disclosure__body--rows .mn-settings-subrows {
+  padding-inline: var(--space-4) 0;
 }
 
 .mn-settings-feedback {
@@ -269,7 +244,7 @@
     padding-inline: min(var(--space-2), 8px);
   }
 
-  .mn-settings-card > .mn-settings-group {
+  .mn-section__card--rows > .mn-settings-group {
     margin: min(var(--space-1), 4px);
   }
 

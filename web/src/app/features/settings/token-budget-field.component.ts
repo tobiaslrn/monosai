@@ -11,6 +11,7 @@ import {
   MIN_STORY_TOKEN_BUDGET,
   isValidStoryTokenBudget,
 } from '../../domain/settings/settings';
+import { FieldComponent } from '../../shared-ui/field/field.component';
 
 let nextId = 0;
 
@@ -24,36 +25,27 @@ let nextId = 0;
 @Component({
   selector: 'mn-token-budget-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FieldComponent],
   template: `
-    <input
-      class="mn-control"
-      type="number"
-      inputmode="numeric"
-      [id]="id"
-      [min]="min"
-      [max]="maxValue()"
-      step="1"
-      [disabled]="disabled()"
-      [attr.data-testid]="testId()"
-      [attr.aria-labelledby]="labelledBy()"
-      [attr.aria-invalid]="invalid()"
-      [attr.aria-describedby]="invalid() ? errorId : null"
-      [value]="draft()"
-      (input)="onInput($event)"
-      (change)="commit()"
-    />
-    @if (invalid()) {
-      <p [id]="errorId" class="mn-field-error" role="alert">
-        Use a whole number between {{ min }} and {{ maxValue() }}.
-      </p>
-    }
-  `,
-  styles: `
-    :host {
-      display: grid;
-      gap: var(--space-1);
-      min-width: 0;
-    }
+    <mn-field [error]="invalid() ? errorMessage() : null" [errorId]="errorId">
+      <input
+        class="mn-control"
+        type="number"
+        inputmode="numeric"
+        [id]="id"
+        [min]="min"
+        [max]="maxValue()"
+        step="1"
+        [disabled]="disabled()"
+        [attr.data-testid]="testId()"
+        [attr.aria-labelledby]="labelledBy()"
+        [attr.aria-invalid]="invalid()"
+        [attr.aria-describedby]="invalid() ? errorId : null"
+        [value]="draft()"
+        (input)="onInput($event)"
+        (change)="commit()"
+      />
+    </mn-field>
   `,
 })
 export class TokenBudgetFieldComponent {
@@ -71,6 +63,9 @@ export class TokenBudgetFieldComponent {
   protected readonly errorId = `${this.id}-error`;
 
   protected readonly draft = linkedSignal(() => String(this.value()));
+  protected readonly errorMessage = computed(
+    () => `Use a whole number between ${String(this.min)} and ${String(this.maxValue())}.`,
+  );
   protected readonly invalid = computed(
     () => !isValidStoryTokenBudget(Number(this.draft()), this.maxValue()),
   );

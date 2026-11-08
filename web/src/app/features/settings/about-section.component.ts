@@ -11,111 +11,74 @@ import {
 import { EXCEPTION_PROMPT_VERSION } from '../../domain/ai/exception-policy-hash';
 import { InstallPromptService } from '../../core/platform/install-prompt.service';
 import { readBuildInfo } from '../../core/diagnostics/build-info';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
+import { FactsComponent } from '../../shared-ui/facts/facts.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
-import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
+import { SectionComponent } from '../../shared-ui/section/section.component';
 
 /** About, update, and local diagnostics controls. */
 @Component({
   selector: 'mn-about-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, SettingsRowComponent, SettingsSectionComponent],
+  imports: [
+    ButtonDirective,
+    DisclosureComponent,
+    FactsComponent,
+    IconComponent,
+    SectionComponent,
+    SettingsRowComponent,
+  ],
   template: `
-    <mn-settings-section heading="About">
-      <div class="mn-card mn-card--flush mn-settings-card">
-        @let update = updates.status();
-        <mn-settings-row label="Version" [actions]="true">
-          <span mn-settings-row-detail class="mn-settings-row__hint">
-            {{ build.appVersion }} · {{ install.isStandalone() ? 'Installed' : 'Not installed' }}
+    <mn-section heading="About" [rows]="true">
+      @let update = updates.status();
+      <mn-settings-row label="Version" [actions]="true">
+        <span mn-settings-row-detail class="mn-settings-row__hint">
+          {{ build.appVersion }} · {{ install.isStandalone() ? 'Installed' : 'Not installed' }}
+        </span>
+        @if (updateStatusLabel(update); as statusLabel) {
+          <span mn-settings-row-detail class="mn-settings-row__result" aria-live="polite">
+            {{ statusLabel }}
           </span>
-          @if (updateStatusLabel(update); as statusLabel) {
-            <span mn-settings-row-detail class="mn-settings-row__result" aria-live="polite">
-              {{ statusLabel }}
-            </span>
-          }
-          @if (!install.isStandalone() && install.canInstall()) {
-            <button type="button" class="mn-button" (click)="installApp()">Install Monosai</button>
-          }
-          <button
-            type="button"
-            class="mn-button mn-button--ghost"
-            [disabled]="update.kind === 'activating'"
-            (click)="checkForUpdates()"
-          >
-            <mn-icon name="sync" [size]="17" />
-            Check for updates
-          </button>
-        </mn-settings-row>
+        }
+        @if (!install.isStandalone() && install.canInstall()) {
+          <button type="button" mnButton (click)="installApp()">Install Monosai</button>
+        }
+        <button
+          type="button"
+          mnButton="ghost"
+          [disabled]="update.kind === 'activating'"
+          (click)="checkForUpdates()"
+        >
+          <mn-icon name="sync" [size]="17" />
+          Check for updates
+        </button>
+      </mn-settings-row>
 
-        <mn-settings-row label="Diagnostics" [actions]="true">
-          <span mn-settings-row-detail class="mn-settings-row__hint">
-            Stays in this tab. Never includes your key or text.
+      <mn-settings-row label="Diagnostics" [actions]="true">
+        <span mn-settings-row-detail class="mn-settings-row__hint">
+          Stays in this tab. Never includes your key or text.
+        </span>
+        @if (copyStatus() === 'copied') {
+          <span mn-settings-row-detail class="mn-settings-row__result" role="status">
+            Diagnostics copied.
           </span>
-          @if (copyStatus() === 'copied') {
-            <span mn-settings-row-detail class="mn-settings-row__result" role="status">
-              Diagnostics copied.
-            </span>
-          } @else if (copyStatus() === 'failed') {
-            <span mn-settings-row-detail class="mn-settings-row__result" role="status">
-              Diagnostics could not be copied on this browser.
-            </span>
-          }
-          <button
-            type="button"
-            class="mn-button"
-            aria-label="Copy diagnostics"
-            (click)="copyDiagnostics()"
-          >
-            <mn-icon name="copy" [size]="17" />
-            Copy
-          </button>
-        </mn-settings-row>
+        } @else if (copyStatus() === 'failed') {
+          <span mn-settings-row-detail class="mn-settings-row__result" role="status">
+            Diagnostics could not be copied on this browser.
+          </span>
+        }
+        <button type="button" mnButton aria-label="Copy diagnostics" (click)="copyDiagnostics()">
+          <mn-icon name="copy" [size]="17" />
+          Copy
+        </button>
+      </mn-settings-row>
 
-        <details class="mn-settings-details">
-          <summary class="mn-settings-row">
-            <span class="mn-settings-row__label">
-              <span class="mn-settings-row__title">Technical details</span>
-            </span>
-            <span class="mn-settings-row__end">
-              <span class="mn-settings-value">Build {{ buildSummary() }}</span>
-              <mn-icon class="mn-settings-chevron" name="chevron-right" [size]="18" />
-            </span>
-          </summary>
-          <div class="mn-settings-details__body">
-            <dl class="mn-facts">
-              <div>
-                <dt>App version</dt>
-                <dd>{{ build.appVersion }}</dd>
-              </div>
-              <div>
-                <dt>Build commit</dt>
-                <dd>{{ buildSummary() }}</dd>
-              </div>
-              <div>
-                <dt>Database schema version</dt>
-                <dd>{{ schemaVersion }}</dd>
-              </div>
-              <div>
-                <dt>Provider protocol</dt>
-                <dd>{{ endpointVersion }}</dd>
-              </div>
-              <div>
-                <dt>Text model test</dt>
-                <dd>{{ textModelTestVersion }}</dd>
-              </div>
-              <div>
-                <dt>Voice model test</dt>
-                <dd>{{ ttsTestVersion }}</dd>
-              </div>
-              <div>
-                <dt>Exception review</dt>
-                <dd>{{ exceptionPromptVersion }}</dd>
-              </div>
-            </dl>
-          </div>
-        </details>
-      </div>
-    </mn-settings-section>
+      <mn-disclosure heading="Technical details" [value]="'Build ' + buildSummary()">
+        <mn-facts [facts]="technicalFacts()" />
+      </mn-disclosure>
+    </mn-section>
   `,
 })
 export class AboutSectionComponent {
@@ -131,6 +94,15 @@ export class AboutSectionComponent {
   protected readonly textModelTestVersion = TEXT_MODEL_TEST_VERSION;
   protected readonly ttsTestVersion = TTS_TEST_VERSION;
   protected readonly exceptionPromptVersion = EXCEPTION_PROMPT_VERSION;
+  protected readonly technicalFacts = computed(() => [
+    { label: 'App version', value: this.build.appVersion },
+    { label: 'Build commit', value: this.buildSummary() },
+    { label: 'Database schema version', value: String(this.schemaVersion) },
+    { label: 'Provider protocol', value: this.endpointVersion },
+    { label: 'Text model test', value: String(this.textModelTestVersion) },
+    { label: 'Voice model test', value: String(this.ttsTestVersion) },
+    { label: 'Exception review', value: String(this.exceptionPromptVersion) },
+  ]);
 
   protected async installApp(): Promise<void> {
     await this.install.install();

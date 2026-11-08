@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
-import { PopupDirective, PopupTriggerDirective } from '../../shared-ui/popup/popup.directive';
+import { PopupDirective, PopupTriggerDirective } from '../popup/popup.directive';
 
 @Component({
   selector: 'mn-model-picker',

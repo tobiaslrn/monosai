@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
-import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
+import { SectionComponent } from '../../shared-ui/section/section.component';
+import { PageComponent } from '../../shared-ui/layout/layout';
 import { AboutSectionComponent } from './about-section.component';
 import { AppearanceSectionComponent } from './appearance-section.component';
 import { ModelsSectionComponent } from './models-section.component';
@@ -11,8 +12,9 @@ import { StorageSectionComponent } from './storage-section.component';
   selector: 'mn-settings-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    PageComponent,
     PageHeaderComponent,
-    SettingsSectionComponent,
+    SectionComponent,
     ReadingLevelRowComponent,
     ModelsSectionComponent,
     AppearanceSectionComponent,
@@ -20,13 +22,13 @@ import { StorageSectionComponent } from './storage-section.component';
     AboutSectionComponent,
   ],
   template: `
-    <div class="mn-page settings-page">
+    <mn-page measure="narrow">
       <mn-page-header heading="Settings" [backTo]="backTarget()" [backLabel]="backLabel()" />
 
-      <mn-settings-section heading="Reading">
+      <mn-section heading="Reading" [rows]="true">
         <!-- A signpost rather than a setting: the details live on their own page. -->
         <mn-reading-level-row />
-      </mn-settings-section>
+      </mn-section>
 
       <mn-models-section />
 
@@ -34,12 +36,7 @@ import { StorageSectionComponent } from './storage-section.component';
 
       <mn-storage-section />
       <mn-about-section />
-    </div>
-  `,
-  styles: `
-    .settings-page {
-      max-width: 40rem;
-    }
+    </mn-page>
   `,
 })
 export class SettingsPageComponent {

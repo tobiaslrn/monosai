@@ -21,6 +21,7 @@ const spaceToken = (step: Space): string => `var(--space-${String(step)})`;
 @Component({
   selector: 'mn-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class.page--narrow]': "measure() === 'narrow'" },
   template: `<ng-content />`,
   styles: `
     :host {
@@ -31,15 +32,21 @@ const spaceToken = (step: Space): string => `var(--space-${String(step)})`;
       max-width: var(--page-measure);
       margin-inline: auto;
     }
+    :host(.page--narrow) {
+      max-width: 40rem;
+    }
   `,
 })
-export class PageComponent {}
+export class PageComponent {
+  /** `narrow` for a page of settings rows, whose controls should stay near their labels. */
+  readonly measure = input<'default' | 'narrow'>('default');
+}
 
 /** A vertical run of blocks with one gap between them. */
 @Component({
   selector: 'mn-stack',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[style.gap]': 'gapValue()' },
+  host: { '[style.gap]': 'gapValue()', '[class.stack--start]': "align() === 'start'" },
   template: `<ng-content />`,
   styles: `
     :host {
@@ -47,10 +54,15 @@ export class PageComponent {}
       flex-direction: column;
       min-width: 0;
     }
+    :host(.stack--start) {
+      align-items: flex-start;
+    }
   `,
 })
 export class StackComponent {
   readonly gap = input<Space>(3);
+  /** `start` keeps each block at its own width, such as a lone button. */
+  readonly align = input<'stretch' | 'start'>('stretch');
   protected readonly gapValue = computed(() => spaceToken(this.gap()));
 }
 

@@ -3,7 +3,7 @@ import { GrammarProfileStore } from '../../application/grammar/grammar-profile.s
 import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
+import { RowComponent } from '../../shared-ui/row/row.component';
 import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
 /**
@@ -22,20 +22,19 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
 @Component({
   selector: 'mn-reading-level-row',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, ListRowComponent],
+  imports: [IconComponent, RowComponent],
   template: `
-    <mn-list-row
-      variant="overview"
-      [routerLink]="'/reading-level'"
+    <mn-row
+      link="/reading-level"
+      heading="What you can read"
+      testId="settings-reading-level"
       [state]="settingsOriginState"
-      [testId]="'settings-reading-level'"
     >
-      <span mn-list-row-title>What you can read</span>
       @if (state(); as line) {
-        <span mn-list-row-meta>{{ line }}</span>
+        <span mn-row-meta>{{ line }}</span>
       }
-      <mn-icon mn-list-row-trailing name="chevron-right" [size]="18" />
-    </mn-list-row>
+      <mn-icon name="chevron-right" [size]="18" />
+    </mn-row>
   `,
 })
 export class ReadingLevelRowComponent {

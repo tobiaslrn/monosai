@@ -13,9 +13,12 @@ import { AudioPlaybackStore } from '../../application/audio/audio-playback.store
 import { AudioCompressionStore } from '../../application/settings/audio-compression.store';
 import { StorageStore } from '../../application/settings/storage.store';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
+import { ClusterComponent } from '../../shared-ui/layout/layout';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
-import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
+import { SectionComponent } from '../../shared-ui/section/section.component';
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null) {
@@ -40,124 +43,105 @@ function formatBytes(bytes: number | null): string {
 @Component({
   selector: 'mn-storage-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, SettingsRowComponent, SettingsSectionComponent],
+  imports: [
+    ButtonDirective,
+    ClusterComponent,
+    DisclosureComponent,
+    NoticeComponent,
+    SectionComponent,
+    SettingsRowComponent,
+  ],
   template: `
-    <mn-settings-section heading="Storage">
-      <div class="mn-card mn-card--flush mn-settings-card">
-        <mn-settings-row label="Space used">
-          <span class="mn-settings-value">{{ usageLabel() }}</span>
-        </mn-settings-row>
+    <mn-section heading="Storage" [rows]="true">
+      <mn-settings-row label="Space used">
+        <span class="mn-settings-value">{{ usageLabel() }}</span>
+      </mn-settings-row>
 
-        <mn-settings-row label="Keep data">
-          <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
-            {{ persistenceLabel() }}
-          </span>
-          @if (storage.status().canRequest) {
-            <button
-              type="button"
-              class="mn-button"
-              [disabled]="
-                storage.action() !== 'idle' && storage.action() !== 'requesting-persistence'
-              "
-              [attr.aria-busy]="storage.action() === 'requesting-persistence' ? 'true' : null"
-              (click)="requestPersistence()"
-            >
-              {{ storage.action() === 'requesting-persistence' ? 'Protecting…' : 'Protect' }}
-            </button>
-          }
-        </mn-settings-row>
-
-        <mn-settings-row label="Saved audio" [actions]="true">
-          <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
-            {{ savedAudioLabel() }}
-          </span>
+      <mn-settings-row label="Keep data">
+        <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
+          {{ persistenceLabel() }}
+        </span>
+        @if (storage.status().canRequest) {
           <button
             type="button"
-            class="mn-button mn-button--danger"
-            data-testid="delete-saved-audio"
-            aria-label="Delete saved audio"
-            [disabled]="storage.action() !== 'idle'"
-            (click)="clearAudio()"
+            mnButton
+            [disabled]="
+              storage.action() !== 'idle' && storage.action() !== 'requesting-persistence'
+            "
+            [attr.aria-busy]="storage.action() === 'requesting-persistence' ? 'true' : null"
+            (click)="requestPersistence()"
           >
-            Delete
+            {{ storage.action() === 'requesting-persistence' ? 'Protecting…' : 'Protect' }}
           </button>
-          @if (compression.running()) {
-            <button type="button" class="mn-button" (click)="stopCompressing()">Stop</button>
-          }
-        </mn-settings-row>
+        }
+      </mn-settings-row>
 
-        <details class="mn-settings-details danger" data-testid="danger-zone">
-          <summary class="mn-settings-row">
-            <span class="mn-settings-row__label">
-              <span class="mn-settings-row__title">Delete all local data</span>
-            </span>
-            <span class="mn-settings-row__end">
-              <mn-icon class="mn-settings-chevron" name="chevron-right" [size]="18" />
-            </span>
-          </summary>
-          <div class="mn-settings-details__body danger-content mn-stack mn-stack--tight">
-            <p class="mn-hint">
-              A full reset permanently deletes every reading, snapshot, saved setting, and cached
-              aid on this device. It cannot be undone.
-            </p>
+      <mn-settings-row label="Saved audio" [actions]="true">
+        <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
+          {{ savedAudioLabel() }}
+        </span>
+        <button
+          type="button"
+          mnButton="danger"
+          data-testid="delete-saved-audio"
+          aria-label="Delete saved audio"
+          [disabled]="storage.action() !== 'idle'"
+          (click)="clearAudio()"
+        >
+          Delete
+        </button>
+        @if (compression.running()) {
+          <button type="button" mnButton (click)="stopCompressing()">Stop</button>
+        }
+      </mn-settings-row>
 
-            @if (resetStage() === 'idle') {
-              <button
-                type="button"
-                class="mn-button mn-button--danger"
-                data-testid="begin-reset"
-                (click)="beginReset()"
-              >
-                Delete all Monosai data
-              </button>
-            } @else {
-              <p role="alert" class="mn-notice mn-notice--error">
-                This deletes everything Monosai has stored in this browser. Continue?
-              </p>
-              <div class="mn-actions">
-                <button
-                  type="button"
-                  class="mn-button mn-button--danger"
-                  [disabled]="storage.action() === 'resetting'"
-                  data-testid="confirm-reset"
-                  (click)="confirmReset()"
-                >
-                  Yes, delete everything
-                </button>
-                <button
-                  type="button"
-                  class="mn-button"
-                  data-testid="cancel-reset"
-                  (click)="cancelReset()"
-                >
-                  Cancel
-                </button>
-              </div>
-            }
-          </div>
-        </details>
-      </div>
+      <mn-disclosure heading="Delete all local data" tone="danger" data-testid="danger-zone">
+        <p class="mn-hint">
+          A full reset permanently deletes every reading, snapshot, saved setting, and cached aid on
+          this device. It cannot be undone.
+        </p>
+
+        @if (resetStage() === 'idle') {
+          <mn-cluster>
+            <button
+              type="button"
+              mnButton="danger"
+              data-testid="begin-reset"
+              (click)="beginReset()"
+            >
+              Delete all Monosai data
+            </button>
+          </mn-cluster>
+        } @else {
+          <mn-notice tone="error" role="alert">
+            This deletes everything Monosai has stored in this browser. Continue?
+          </mn-notice>
+          <mn-cluster>
+            <button
+              type="button"
+              mnButton="danger"
+              [disabled]="storage.action() === 'resetting'"
+              data-testid="confirm-reset"
+              (click)="confirmReset()"
+            >
+              Yes, delete everything
+            </button>
+            <button type="button" mnButton data-testid="cancel-reset" (click)="cancelReset()">
+              Cancel
+            </button>
+          </mn-cluster>
+        }
+      </mn-disclosure>
 
       @if (storage.audioCleared()) {
-        <p class="mn-settings-feedback" aria-live="polite">
+        <p mn-section-footer class="mn-settings-feedback" aria-live="polite">
           Saved audio deleted{{ stoppedPlayback() ? ', and playback stopped' : '' }}.
         </p>
       }
       @if (storage.failure(); as failure) {
-        <p role="alert" class="mn-notice mn-notice--error mn-settings-notice">
-          {{ failure.message }}
-        </p>
+        <mn-notice mn-section-footer tone="error" role="alert">{{ failure.message }}</mn-notice>
       }
-    </mn-settings-section>
-  `,
-  styles: `
-    .danger summary .mn-settings-row__title {
-      color: var(--status-danger);
-    }
-
-    .danger-content {
-      align-items: flex-start;
-    }
+    </mn-section>
   `,
 })
 export class StorageSectionComponent {

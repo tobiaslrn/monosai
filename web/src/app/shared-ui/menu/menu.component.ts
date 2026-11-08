@@ -25,7 +25,10 @@ import { PopupDirective } from '../popup/popup.directive';
   exportAs: 'mnMenu',
   changeDetection: ChangeDetectionStrategy.OnPush,
   hostDirectives: [{ directive: PopupDirective, inputs: ['menu'], outputs: ['opened', 'closed'] }],
-  host: { '[attr.role]': "popup.menu() ? 'menu' : null" },
+  host: {
+    '[attr.role]': "popup.menu() ? 'menu' : role()",
+    '[class.menu--form]': 'form()',
+  },
   template: `<ng-content />`,
   styles: `
     :host(:popover-open) {
@@ -34,10 +37,19 @@ import { PopupDirective } from '../popup/popup.directive';
     :host(:popover-open:not([role='menu'])) {
       padding: var(--space-3);
     }
+    :host(.menu--form:popover-open) {
+      display: grid;
+      gap: var(--space-3);
+      width: min(23rem, calc(100vw - 4 * var(--space-4)));
+    }
   `,
 })
 export class MenuComponent {
   readonly popup = inject(PopupDirective);
+  /** A small form rather than a list: its fields and actions in one column. */
+  readonly form = input(false);
+  /** The role of a panel that is not a menu, such as `dialog` for a small form. */
+  readonly role = input<string | null>(null);
 
   /** Closes the panel; the browser hands focus back to the trigger. */
   hide(): void {

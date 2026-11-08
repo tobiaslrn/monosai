@@ -5,10 +5,12 @@ import { TextModelStore, type TextModelTask } from '../../application/settings/t
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 import { MAX_STORY_TOKEN_BUDGET } from '../../domain/settings/settings';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
+import { GroupHeaderComponent } from '../../shared-ui/group/group-header.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { ModelCatalogView } from './model-catalog-view';
-import { ModelPickerComponent } from './model-picker.component';
+import { ModelPickerComponent } from '../../shared-ui/model-picker/model-picker.component';
 import { TokenBudgetFieldComponent } from './token-budget-field.component';
 
 /**
@@ -29,37 +31,34 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule,
-    IconComponent,
+    ButtonDirective,
+    DisclosureComponent,
+    GroupHeaderComponent,
     ModelPickerComponent,
     SettingsRowComponent,
     TokenBudgetFieldComponent,
   ],
   template: `
-    <div class="mn-settings-group__header">
-      <h3 class="mn-group-title" id="mn-text-model-label">Text</h3>
-      <div class="head-status mn-actions">
-        <span
-          class="mn-status-pill"
-          [class.mn-status-pill--success]="text.readiness() === 'ready'"
-          [class.mn-status-pill--danger]="text.readiness() === 'failed'"
-          data-testid="text-readiness"
-          >{{ readinessLabel(text.readiness(), text.action() === 'testing') }}</span
+    <mn-group-header heading="Text" headingId="mn-text-model-label">
+      <span
+        class="mn-status-pill"
+        [class.mn-status-pill--success]="text.readiness() === 'ready'"
+        [class.mn-status-pill--danger]="text.readiness() === 'failed'"
+        data-testid="text-readiness"
+        >{{ readinessLabel(text.readiness(), text.action() === 'testing') }}</span
+      >
+      @if (retestable(text.readiness())) {
+        <button
+          type="button"
+          [mnButton]="text.readiness() === 'failed' ? 'danger' : 'ghost'"
+          data-testid="test-text-model"
+          [disabled]="text.action() !== 'idle'"
+          (click)="text.test()"
         >
-        @if (retestable(text.readiness())) {
-          <button
-            type="button"
-            class="mn-button"
-            [class.mn-button--ghost]="text.readiness() !== 'failed'"
-            [class.mn-button--danger]="text.readiness() === 'failed'"
-            data-testid="test-text-model"
-            [disabled]="text.action() !== 'idle'"
-            (click)="text.test()"
-          >
-            {{ statusLabel(text.readiness(), text.action() === 'testing') }}
-          </button>
-        }
-      </div>
-    </div>
+          {{ statusLabel(text.readiness(), text.action() === 'testing') }}
+        </button>
+      }
+    </mn-group-header>
 
     <mn-settings-row label="Model">
       <mn-model-picker
@@ -105,120 +104,86 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
       />
     </mn-settings-row>
 
-    <details
-      class="mn-settings-details branches"
+    <mn-disclosure
+      heading="Translation and grammar"
+      tone="quiet"
+      testId="task-models-toggle"
+      [rows]="true"
+      [value]="taskModelsSummary()"
       [open]="hasOverrides() || branchesOpen()"
-      (toggle)="setBranchesOpen($event)"
+      (openChange)="branchesOpen.set($event)"
     >
-      <summary class="mn-settings-row" data-testid="task-models-toggle">
-        <span class="mn-settings-row__label">
-          <span class="mn-settings-row__title">Translation and grammar</span>
-        </span>
-        <span class="mn-settings-row__end">
-          <span class="mn-settings-value">{{ taskModelsSummary() }}</span>
-          <mn-icon class="mn-settings-chevron" name="chevron-right" [size]="18" />
-        </span>
-      </summary>
-      <div class="mn-settings-subrows">
-        @for (task of textTasks; track task.id) {
-          <div
-            class="branch"
-            [attr.aria-labelledby]="'mn-' + task.id + '-label'"
-            [attr.data-capability]="task.id"
-            [attr.data-readiness]="
-              text.routePreset(task.id) === null ? 'inherited' : text.routeReadiness(task.id)
-            "
-          >
-            <mn-settings-row [label]="task.label" [labelId]="'mn-' + task.id + '-label'">
-              @if (text.routePreset(task.id) !== null && retestable(text.routeReadiness(task.id))) {
-                <button
-                  type="button"
-                  class="mn-button"
-                  [class.mn-button--ghost]="text.routeReadiness(task.id) !== 'failed'"
-                  [class.mn-button--danger]="text.routeReadiness(task.id) === 'failed'"
-                  data-testid="test-text-model"
-                  [disabled]="text.action() !== 'idle'"
-                  (click)="text.testTask(task.id)"
-                >
-                  {{ statusLabel(text.routeReadiness(task.id), text.action() === 'testing') }}
-                </button>
-              } @else if (
-                text.routePreset(task.id) !== null && text.routeReadiness(task.id) === 'ready'
-              ) {
-                <span class="mn-status-pill mn-status-pill--success">Ready</span>
-              }
-              <mn-model-picker
-                [compact]="true"
-                [attr.data-testid]="task.id + '-model-picker'"
-                [label]="task.label + ' models'"
-                fallbackLabel="Same as text"
-                [models]="textModels()"
-                [favoriteIds]="text.favoriteModelIds()"
-                [selectedId]="routeModelId(task.id)"
-                [selectedLabel]="text.routePreset(task.id)?.name ?? null"
-                [loading]="catalogLoading()"
-                [failure]="catalogFailure()"
-                [disabled]="!credential.isConfigured()"
-                (opened)="retryCatalog()"
-                (fallbackSelected)="clearTaskModel(task.id)"
-                (modelSelected)="selectTaskModel(task.id, $event)"
-                (favoriteToggled)="text.toggleFavorite($event)"
-              />
-            </mn-settings-row>
-
-            @if (text.routePreset(task.id) !== null) {
-              <div class="mn-settings-subrows">
-                <mn-settings-row label="Reasoning" [labelId]="'mn-' + task.id + '-reasoning-label'">
-                  <select
-                    class="mn-control"
-                    [attr.aria-labelledby]="'mn-' + task.id + '-reasoning-label'"
-                    [ngModel]="text.routePreset(task.id)?.reasoningEffort ?? ''"
-                    (change)="setTaskReasoning(task.id, $event)"
-                  >
-                    <option value="">Automatic</option>
-                    @for (effort of reasoningEfforts(routeModel(task.id)); track effort) {
-                      <option [value]="effort">{{ titleCase(effort) }}</option>
-                    }
-                  </select>
-                </mn-settings-row>
-                <mn-settings-row label="Token limit" [labelId]="'mn-' + task.id + '-limit'">
-                  <mn-token-budget-field
-                    [labelledBy]="'mn-' + task.id + '-limit'"
-                    [value]="text.routeTokenBudget(task.id)"
-                    [maxValue]="tokenBudgetMax(routeModel(task.id))"
-                    (committed)="setTaskBudget(task.id, $event)"
-                  />
-                </mn-settings-row>
-              </div>
+      @for (task of textTasks; track task.id) {
+        <div
+          [attr.aria-labelledby]="'mn-' + task.id + '-label'"
+          [attr.data-capability]="task.id"
+          [attr.data-readiness]="
+            text.routePreset(task.id) === null ? 'inherited' : text.routeReadiness(task.id)
+          "
+        >
+          <mn-settings-row [label]="task.label" [labelId]="'mn-' + task.id + '-label'">
+            @if (text.routePreset(task.id) !== null && retestable(text.routeReadiness(task.id))) {
+              <button
+                type="button"
+                [mnButton]="text.routeReadiness(task.id) === 'failed' ? 'danger' : 'ghost'"
+                data-testid="test-text-model"
+                [disabled]="text.action() !== 'idle'"
+                (click)="text.testTask(task.id)"
+              >
+                {{ statusLabel(text.routeReadiness(task.id), text.action() === 'testing') }}
+              </button>
+            } @else if (
+              text.routePreset(task.id) !== null && text.routeReadiness(task.id) === 'ready'
+            ) {
+              <span class="mn-status-pill mn-status-pill--success">Ready</span>
             }
-          </div>
-        }
-      </div>
-    </details>
-  `,
-  styles: `
-    :host {
-      display: block;
-    }
-    h3 {
-      margin: 0;
-    }
-    .head-status {
-      flex: 0 1 auto;
-      justify-content: flex-end;
-    }
-    .branch {
-      min-width: 0;
-    }
-    .branches {
-      border-top: 1px solid var(--border-subtle);
-    }
-    .branches > summary {
-      color: var(--text-secondary);
-    }
-    .branches .mn-settings-subrows .mn-settings-subrows {
-      padding-inline-start: var(--space-4);
-    }
+            <mn-model-picker
+              [compact]="true"
+              [attr.data-testid]="task.id + '-model-picker'"
+              [label]="task.label + ' models'"
+              fallbackLabel="Same as text"
+              [models]="textModels()"
+              [favoriteIds]="text.favoriteModelIds()"
+              [selectedId]="routeModelId(task.id)"
+              [selectedLabel]="text.routePreset(task.id)?.name ?? null"
+              [loading]="catalogLoading()"
+              [failure]="catalogFailure()"
+              [disabled]="!credential.isConfigured()"
+              (opened)="retryCatalog()"
+              (fallbackSelected)="clearTaskModel(task.id)"
+              (modelSelected)="selectTaskModel(task.id, $event)"
+              (favoriteToggled)="text.toggleFavorite($event)"
+            />
+          </mn-settings-row>
+
+          @if (text.routePreset(task.id) !== null) {
+            <div class="mn-settings-subrows">
+              <mn-settings-row label="Reasoning" [labelId]="'mn-' + task.id + '-reasoning-label'">
+                <select
+                  class="mn-control"
+                  [attr.aria-labelledby]="'mn-' + task.id + '-reasoning-label'"
+                  [ngModel]="text.routePreset(task.id)?.reasoningEffort ?? ''"
+                  (change)="setTaskReasoning(task.id, $event)"
+                >
+                  <option value="">Automatic</option>
+                  @for (effort of reasoningEfforts(routeModel(task.id)); track effort) {
+                    <option [value]="effort">{{ titleCase(effort) }}</option>
+                  }
+                </select>
+              </mn-settings-row>
+              <mn-settings-row label="Token limit" [labelId]="'mn-' + task.id + '-limit'">
+                <mn-token-budget-field
+                  [labelledBy]="'mn-' + task.id + '-limit'"
+                  [value]="text.routeTokenBudget(task.id)"
+                  [maxValue]="tokenBudgetMax(routeModel(task.id))"
+                  (committed)="setTaskBudget(task.id, $event)"
+                />
+              </mn-settings-row>
+            </div>
+          }
+        </div>
+      }
+    </mn-disclosure>
   `,
 })
 export class TextModelsComponent {
@@ -254,9 +219,6 @@ export class TextModelsComponent {
     () => this.text.grammarPresetId() != null || this.text.translationPresetId() != null,
   );
 
-  protected setBranchesOpen(event: Event): void {
-    this.branchesOpen.set((event.target as HTMLDetailsElement).open);
-  }
   protected retryCatalog(): void {
     this.catalog.retry();
   }
