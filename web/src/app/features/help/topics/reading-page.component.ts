@@ -1,15 +1,15 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { IconComponent } from '../../../shared-ui/icon/icon.component';
+import { NoticeComponent } from '../../../shared-ui/notice/notice.component';
 import { HelpArticleComponent } from '../help-article.component';
 
 @Component({
   selector: 'mn-help-reading',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, HelpArticleComponent],
+  imports: [RouterLink, NoticeComponent, HelpArticleComponent],
   template: `
     <mn-help-article slug="reading">
-      <p class="mn-prose__lead">What each control in the reader does.</p>
+      <p mn-lead>What each control in the reader does.</p>
 
       <section aria-labelledby="reading-lookup">
         <h2 id="reading-lookup">Looking a word up</h2>
@@ -77,14 +77,13 @@ import { HelpArticleComponent } from '../help-article.component';
 
       <section aria-labelledby="reading-trust">
         <h2 id="reading-trust">How much to trust it</h2>
-        <p class="mn-notice mn-notice--warning">
-          <mn-icon name="warning" [size]="17" />
-          <span>
+        <mn-notice tone="warning" icon="warning">
+          <p>
             A model can be wrong in the Japanese, in a translation, and in a grammar explanation,
             and it will be wrong confidently. If a sentence looks odd, it may well be wrong rather
             than misread. Check it elsewhere before you learn it.
-          </span>
-        </p>
+          </p>
+        </mn-notice>
       </section>
     </mn-help-article>
   `,

@@ -1,101 +1,68 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { ButtonDirective } from '../../shared-ui/button/button';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { ClusterComponent, PageComponent, StackComponent } from '../../shared-ui/layout/layout';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
+import { ProseComponent } from '../../shared-ui/prose/prose.component';
+import { RowComponent } from '../../shared-ui/row/row.component';
 import { adjacentHelpTopics, HELP_TOPICS } from './help-topics';
 
 /**
  * The frame every topic page wears: the shared page header with Back to Help,
- * one readable prose column, and the way on to the next topic.
- *
- * The topic's own words are projected into `.mn-prose`, which is a global class
- * because projected content is not reached by this component's styles. What
- * stays here is the frame itself.
+ * one prose column for the topic's own words, and the way on to the next
+ * topic as rows, the same shape as the topic list they come from.
  */
 @Component({
   selector: 'mn-help-article',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, PageHeaderComponent],
+  imports: [
+    RouterLink,
+    ButtonDirective,
+    ClusterComponent,
+    IconComponent,
+    PageComponent,
+    PageHeaderComponent,
+    ProseComponent,
+    RowComponent,
+    StackComponent,
+  ],
   template: `
-    <div class="mn-page">
+    <mn-page>
       <mn-page-header [heading]="topic().title" backTo="/help" backLabel="Back to Help" />
-      <div class="mn-prose">
+      <mn-prose>
         <ng-content />
-      </div>
-      <nav class="onward" aria-label="More topics">
-        @if (adjacent().previous; as previous) {
-          <a class="step" [routerLink]="['/help', previous.slug]" rel="prev">
-            <mn-icon name="back" [size]="18" />
-            <span class="step__text">
-              <span class="step__kind">Previous</span>
-              <span class="step__title">{{ previous.title }}</span>
-            </span>
-          </a>
-        }
-        @if (adjacent().next; as next) {
-          <a class="step step--next" [routerLink]="['/help', next.slug]" rel="next">
-            <span class="step__text">
-              <span class="step__kind">Next</span>
-              <span class="step__title">{{ next.title }}</span>
-            </span>
-            <mn-icon name="chevron-right" [size]="18" />
-          </a>
-        }
+      </mn-prose>
+      <nav aria-label="More topics">
+        <mn-stack [gap]="2">
+          @if (adjacent().previous; as previous) {
+            <mn-row
+              surface="card"
+              [link]="['/help', previous.slug]"
+              [heading]="previous.title"
+              testId="help-previous"
+            >
+              <mn-icon mn-row-leading name="back" [size]="18" />
+              <span mn-row-meta>Previous topic</span>
+            </mn-row>
+          }
+          @if (adjacent().next; as next) {
+            <mn-row
+              surface="card"
+              [link]="['/help', next.slug]"
+              [heading]="next.title"
+              testId="help-next"
+            >
+              <span mn-row-meta>Next topic</span>
+              <mn-icon name="chevron-right" [size]="18" />
+            </mn-row>
+          }
+          <mn-cluster>
+            <a mnButton="ghost" routerLink="/help">All topics</a>
+          </mn-cluster>
+        </mn-stack>
       </nav>
-      <p class="hub">
-        <a routerLink="/help">All topics</a>
-      </p>
-    </div>
-  `,
-  styles: `
-    .onward {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-3);
-      border-top: 1px solid var(--border-subtle);
-      padding-top: var(--space-5);
-    }
-    .step {
-      display: flex;
-      flex: 1 1 14rem;
-      gap: var(--space-3);
-      align-items: center;
-      min-height: var(--touch-target);
-      padding: var(--space-3) var(--space-4);
-      border: 1px solid var(--border-subtle-faint);
-      border-radius: var(--radius-card);
-      background: var(--surface-raised);
-      color: inherit;
-      text-decoration: none;
-    }
-    .step--next {
-      justify-content: space-between;
-      text-align: end;
-    }
-    .step__text {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      gap: var(--space-1);
-    }
-    .step__kind {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-    .step__title {
-      font-weight: var(--weight-semibold);
-    }
-    .step mn-icon {
-      flex: none;
-      color: var(--text-secondary);
-    }
-    .hub {
-      margin: 0;
-    }
-    .hub a {
-      color: var(--action-primary);
-      text-underline-offset: 0.15em;
-    }
+    </mn-page>
   `,
 })
 export class HelpArticleComponent {

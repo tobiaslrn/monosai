@@ -52,14 +52,14 @@ describe('help topics', () => {
       expect(element.querySelector('a[aria-label="Back to Help"]')?.getAttribute('href')).toBe(
         '/help',
       );
-      expect(element.querySelector('.mn-prose__lead')?.textContent.trim()).toBeTruthy();
+      expect(element.querySelector('p[mn-lead]')?.textContent.trim()).toBeTruthy();
       expect(element.querySelectorAll('h2').length).toBeGreaterThan(0);
     });
 
     it('offers the way on to the adjacent topics', () => {
       const element = render(component);
       const onward = element.querySelector('nav[aria-label="More topics"]');
-      const links = [...(onward?.querySelectorAll('a') ?? [])].map((link) =>
+      const links = [...(onward?.querySelectorAll('a[data-testid^="help-"]') ?? [])].map((link) =>
         link.getAttribute('href'),
       );
       expect(onward).not.toBeNull();

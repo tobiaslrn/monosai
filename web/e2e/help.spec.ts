@@ -114,7 +114,7 @@ test.describe('Help and utility bar', () => {
     await expect(page.getByText('google/gemini-3.8-flash')).toBeVisible();
     await expect(page.getByText('z-ai/glm-5.3-flash')).toBeVisible();
 
-    await page.getByRole('link', { name: 'Next Voice and audio' }).click();
+    await page.getByTestId('help-next').click();
     await expect(page).toHaveURL(/#\/help\/voice$/);
     await expect(page.getByRole('heading', { name: 'Voice and audio', level: 1 })).toBeVisible();
     await expect(page.getByText('hexgrad/kokoro-82m')).toBeVisible();

@@ -1,15 +1,25 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { IconComponent } from '../../../shared-ui/icon/icon.component';
+import { CardComponent } from '../../../shared-ui/card/card.component';
+import { FactsComponent } from '../../../shared-ui/facts/facts.component';
+import { StackComponent } from '../../../shared-ui/layout/layout';
+import { NoticeComponent } from '../../../shared-ui/notice/notice.component';
 import { HelpArticleComponent } from '../help-article.component';
 
 @Component({
   selector: 'mn-help-text-models',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, HelpArticleComponent],
+  imports: [
+    RouterLink,
+    CardComponent,
+    FactsComponent,
+    HelpArticleComponent,
+    NoticeComponent,
+    StackComponent,
+  ],
   template: `
     <mn-help-article slug="text-models">
-      <p class="mn-prose__lead">
+      <p mn-lead>
         The model you choose decides whether a story is worth reading and what it costs. The useful
         range is narrow: the smallest models make mistakes a beginner cannot catch, and the largest
         are an expensive way to write simple Japanese.
@@ -70,14 +80,13 @@ import { HelpArticleComponent } from '../help-article.component';
           Where a model supports it, Settings offers a Reasoning setting. Turning it up makes the
           model think before it writes, at the price of time and tokens you also pay for.
         </p>
-        <p class="mn-notice mn-notice--warning">
-          <mn-icon name="warning" [size]="17" />
-          <span>
+        <mn-notice tone="warning" icon="warning">
+          <p>
             On high effort a story can take minutes, and the reasoning can eat enough of the reply
             budget that the story is cut off. That arrives as
             <code>ai/context-budget-exceeded</code>.
-          </span>
-        </p>
+          </p>
+        </mn-notice>
         <p>
           Leave it on Automatic or low. Raise it only if a particular model keeps drifting outside
           your words.
@@ -90,50 +99,40 @@ import { HelpArticleComponent } from '../help-article.component';
           Start from one of these two. In <a routerLink="/settings">Settings</a>, open the model
           picker under Text and search for the name. Choosing a model runs the test by itself.
         </p>
-        <div class="mn-prose__options">
-          <div class="mn-card">
-            <h3>GLM 5.3 Flash</h3>
-            <p class="mn-prose__id"><code>z-ai/glm-5.3-flash</code></p>
-            <dl class="mn-facts">
-              <div>
-                <dt>Price</dt>
-                <dd>$0.075 per million input tokens, $0.25 per million out</dd>
-              </div>
-              <div>
-                <dt>A story</dt>
-                <dd>A fraction of a cent</dd>
-              </div>
-            </dl>
+        <mn-stack [gap]="4">
+          <mn-card heading="GLM 5.3 Flash">
+            <p><code>z-ai/glm-5.3-flash</code></p>
+            <mn-facts
+              [facts]="[
+                { label: 'Price', value: '$0.075 per million input tokens, $0.25 per million out' },
+                { label: 'A story', value: 'A fraction of a cent' },
+              ]"
+            />
             <p>
               Roughly a tenth of the price of the other and close enough in quality to be the
               everyday choice.
             </p>
-          </div>
-          <div class="mn-card">
-            <h3>Gemini 3.8 Flash</h3>
-            <p class="mn-prose__id"><code>google/gemini-3.8-flash</code></p>
-            <dl class="mn-facts">
-              <div>
-                <dt>Price</dt>
-                <dd>$0.75 per million input tokens, $3.75 per million out</dd>
-              </div>
-              <div>
-                <dt>A story</dt>
-                <dd>A few cents</dd>
-              </div>
-            </dl>
+          </mn-card>
+          <mn-card heading="Gemini 3.8 Flash">
+            <p><code>google/gemini-3.8-flash</code></p>
+            <mn-facts
+              [facts]="[
+                { label: 'Price', value: '$0.75 per million input tokens, $3.75 per million out' },
+                { label: 'A story', value: 'A few cents' },
+              ]"
+            />
             <p>
               The best Japanese of anything tried here, and reliable at staying inside a word list.
               Pick it when you want the best a story can get.
             </p>
-          </div>
-        </div>
+          </mn-card>
+        </mn-stack>
         <p>
           Avoid the very small open models, anything under a few billion parameters, and models sold
           on speed alone: those are the ones that invent vocabulary. Skip the flagship reasoning
           models too, which do this job no better and cost many times as much.
         </p>
-        <p class="mn-prose__checked">Prices and names checked on Sep 17, 2026.</p>
+        <p mn-checked>Prices and names checked on Sep 17, 2026.</p>
       </section>
 
       <section aria-labelledby="models-style">

@@ -9,7 +9,7 @@ import { ERROR_CODE_GROUPS, PLATFORM_CONDITIONS } from './error-codes';
   imports: [RouterLink, HelpArticleComponent],
   template: `
     <mn-help-article slug="error-codes">
-      <p class="mn-prose__lead">
+      <p mn-lead>
         A failure screen shows a code such as <code>ai/authentication</code>. Look it up here for
         the cause and the next step.
       </p>

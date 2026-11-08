@@ -15,7 +15,6 @@
   "src/app/features/generate/story-plots.component.ts": ["styles"],
   "src/app/features/grammar/preset-picker.component.ts": ["styles"],
   "src/app/features/grammar/structural-baseline-section.component.ts": ["styles"],
-  "src/app/features/help/help-article.component.ts": ["styles"],
   "src/app/features/library/library-page.component.ts": ["popover-service", "styles"],
   "src/app/features/library/library-standing.component.ts": ["styles"],
   "src/app/features/library/library-virtual-list.component.ts": ["styles"],

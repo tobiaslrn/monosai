@@ -2,22 +2,35 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { formatCount } from '../../domain/shared/locale';
 import { GENERATION_SNAPSHOT_MINIMUM } from '../../domain/vocabulary/snapshot';
+import { ButtonDirective } from '../../shared-ui/button/button';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
+import { PageComponent } from '../../shared-ui/layout/layout';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
+import { ProseComponent } from '../../shared-ui/prose/prose.component';
+import { RowComponent } from '../../shared-ui/row/row.component';
+import { SectionComponent } from '../../shared-ui/section/section.component';
 import { HELP_TOPICS } from './help-topics';
 
 /** Local, static guidance: reading the guide never invokes an AI provider. */
 @Component({
   selector: 'mn-help-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, ListRowComponent, PageHeaderComponent],
+  imports: [
+    RouterLink,
+    ButtonDirective,
+    IconComponent,
+    PageComponent,
+    PageHeaderComponent,
+    ProseComponent,
+    RowComponent,
+    SectionComponent,
+  ],
   template: `
-    <div class="mn-page">
+    <mn-page>
       <mn-page-header heading="Help" backTo="/library" backLabel="Back to library">
         <!-- Named, not drawn: no icon in the set reads as GitHub rather than a branch. -->
         <a
-          class="mn-button mn-button--ghost"
+          mnButton="ghost"
           href="https://github.com/tobiaslrn/monosai"
           target="_blank"
           rel="noopener noreferrer"
@@ -28,8 +41,8 @@ import { HELP_TOPICS } from './help-topics';
         </a>
       </mn-page-header>
 
-      <div class="mn-prose">
-        <p class="mn-prose__lead">
+      <mn-prose>
+        <p mn-lead>
           Monosai writes short Japanese stories out of the words you have already studied, so you
           can read a paragraph instead of looking one up every few seconds.
         </p>
@@ -56,25 +69,23 @@ import { HELP_TOPICS } from './help-topics';
             wrote.
           </p>
         </section>
+      </mn-prose>
 
-        <section aria-labelledby="help-topics">
-          <h2 id="help-topics">Topics</h2>
-          <ul class="mn-list-group">
-            @for (topic of topics; track topic.slug) {
-              <li>
-                <mn-list-row [routerLink]="['/help', topic.slug]" [testId]="'help-topic'">
-                  <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-                    <mn-icon [name]="topic.icon" [size]="18" />
-                  </span>
-                  <span mn-list-row-title>{{ topic.title }}</span>
-                  <span mn-list-row-meta>{{ topic.summary }}</span>
-                  <mn-icon mn-list-row-trailing name="chevron-right" />
-                </mn-list-row>
-              </li>
-            }
-          </ul>
-        </section>
+      <mn-section heading="Topics" [rows]="true">
+        @for (topic of topics; track topic.slug) {
+          <mn-row
+            [link]="['/help', topic.slug]"
+            [heading]="topic.title"
+            [icon]="topic.icon"
+            testId="help-topic"
+          >
+            <span mn-row-meta>{{ topic.summary }}</span>
+            <mn-icon name="chevron-right" />
+          </mn-row>
+        }
+      </mn-section>
 
+      <mn-prose>
         <section aria-labelledby="help-more">
           <h2 id="help-more">When something fails</h2>
           <p>
@@ -87,8 +98,8 @@ import { HELP_TOPICS } from './help-topics';
             are welcome.
           </p>
         </section>
-      </div>
-    </div>
+      </mn-prose>
+    </mn-page>
   `,
 })
 export class HelpPageComponent {

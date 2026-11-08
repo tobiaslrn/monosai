@@ -10,9 +10,7 @@ import { HelpArticleComponent } from '../help-article.component';
   imports: [RouterLink, HelpArticleComponent],
   template: `
     <mn-help-article slug="first-steps">
-      <p class="mn-prose__lead">
-        Four steps from an empty library to a story written out of your own vocabulary.
-      </p>
+      <p mn-lead>Four steps from an empty library to a story written out of your own vocabulary.</p>
 
       <section aria-labelledby="first-steps-need">
         <h2 id="first-steps-need">Before you start</h2>

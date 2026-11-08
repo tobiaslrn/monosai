@@ -10,7 +10,7 @@ import { HelpArticleComponent } from '../help-article.component';
   imports: [RouterLink, HelpArticleComponent],
   template: `
     <mn-help-article slug="questions">
-      <p class="mn-prose__lead">
+      <p mn-lead>
         The questions that come up most often, and what to do when a screen shows a code instead of
         a story.
       </p>

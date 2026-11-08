@@ -1,15 +1,15 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { IconComponent } from '../../../shared-ui/icon/icon.component';
+import { NoticeComponent } from '../../../shared-ui/notice/notice.component';
 import { HelpArticleComponent } from '../help-article.component';
 
 @Component({
   selector: 'mn-help-install',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, HelpArticleComponent],
+  imports: [RouterLink, NoticeComponent, HelpArticleComponent],
   template: `
     <mn-help-article slug="install">
-      <p class="mn-prose__lead">
+      <p mn-lead>
         Monosai is a web page that can be installed like an app. There is no store listing and no
         download, and the installed version is the same application as the one in the tab.
       </p>
@@ -71,13 +71,12 @@ import { HelpArticleComponent } from '../help-article.component';
           locally, with no account and no server to sync with. Using Monosai on a second device
           means setting it up there too.
         </p>
-        <p class="mn-notice mn-notice--warning">
-          <mn-icon name="warning" [size]="17" />
-          <span>
+        <mn-notice tone="warning" icon="warning">
+          <p>
             There is no backup and no export. Clearing this browser's data removes your stories for
             good. Settings, under Storage, can ask the browser to keep the data.
-          </span>
-        </p>
+          </p>
+        </mn-notice>
         <p>
           Your OpenRouter key is kept in this browser's storage and is sent to OpenRouter and
           nowhere else. It never appears in a log, a diagnostic copy, or an error report.
@@ -87,13 +86,12 @@ import { HelpArticleComponent } from '../help-article.component';
           words you know, the titles and plots of your last few stories when new plots are drafted,
           and the sentence being translated or spoken.
         </p>
-        <p class="mn-notice mn-notice--info">
-          <mn-icon name="info" [size]="17" />
-          <span>
+        <mn-notice tone="info" icon="info">
+          <p>
             If a text is private, do not ask for AI aids on it. Reading, lookup, and furigana all
             run locally and send nothing.
-          </span>
-        </p>
+          </p>
+        </mn-notice>
         <p>
           Monosai collects no analytics. The diagnostics buffer in Settings is for you to copy into
           a bug report, and it is not uploaded.
@@ -107,13 +105,12 @@ import { HelpArticleComponent } from '../help-article.component';
           promised to keep the data when the device runs low. You can ask for that promise there,
           and delete saved audio separately when it grows.
         </p>
-        <p class="mn-notice mn-notice--warning">
-          <mn-icon name="warning" [size]="17" />
-          <span>
+        <mn-notice tone="warning" icon="warning">
+          <p>
             The same section can delete everything local: stories, words, settings, and cached
             audio. It asks twice and it cannot be undone. Your Anki collection is not affected.
-          </span>
-        </p>
+          </p>
+        </mn-notice>
       </section>
 
       <section aria-labelledby="install-updates">

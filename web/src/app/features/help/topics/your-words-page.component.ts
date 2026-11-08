@@ -1,15 +1,15 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { IconComponent } from '../../../shared-ui/icon/icon.component';
+import { NoticeComponent } from '../../../shared-ui/notice/notice.component';
 import { HelpArticleComponent } from '../help-article.component';
 
 @Component({
   selector: 'mn-help-your-words',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, HelpArticleComponent],
+  imports: [RouterLink, NoticeComponent, HelpArticleComponent],
   template: `
     <mn-help-article slug="your-words">
-      <p class="mn-prose__lead">
+      <p mn-lead>
         Monosai needs to know which words you have already learned. The ways to tell it differ
         mostly in how much setup they cost you.
       </p>
@@ -26,13 +26,12 @@ import { HelpArticleComponent } from '../help-article.component';
           reviewed, not every card in the deck. If you study somewhere else, paste a list. Other
           flashcard applications are not supported and are not planned.
         </p>
-        <p class="mn-notice mn-notice--info">
-          <mn-icon name="info" [size]="17" />
-          <span>
+        <mn-notice tone="info" icon="info">
+          <p>
             Monosai only reads. The code that talks to Anki has no write operation in it, so it
             cannot change a card, a tag, a deck, or your scheduling, even by accident.
-          </span>
-        </p>
+          </p>
+        </mn-notice>
       </section>
 
       <section aria-labelledby="words-desktop">
@@ -42,15 +41,14 @@ import { HelpArticleComponent } from '../help-article.component';
           <a routerLink="/reading-level" fragment="words">What you can read</a>, add an Anki source,
           and Monosai lists your decks and note types and suggests which field holds the Japanese.
         </p>
-        <p class="mn-notice mn-notice--warning">
-          <mn-icon name="warning" [size]="17" />
-          <span>
+        <mn-notice tone="warning" icon="warning">
+          <p>
             AnkiConnect ignores this page until you list it. In Anki, open Tools → Add-ons →
             AnkiConnect → Config, add <code>https://tobiaslrn.github.io</code> to
             <code>webCorsOriginList</code>, and restart Anki. Skipping this gives you
             <code>anki/origin-not-allowed</code>.
-          </span>
-        </p>
+          </p>
+        </mn-notice>
         <p>Anki has to be running each time you refresh your words.</p>
       </section>
 
@@ -86,15 +84,14 @@ import { HelpArticleComponent } from '../help-article.component';
           </li>
         </ol>
         <h3>Install warnings</h3>
-        <p class="mn-notice mn-notice--info">
-          <mn-icon name="info" [size]="17" />
-          <span>
+        <mn-notice tone="info" icon="info">
+          <p>
             Two prompts are expected, because the bridge is not distributed through the Play Store.
             Play Protect may warn about an unknown developer, and Android will ask you to allow
             installing apps from wherever you downloaded it. The source is in the repository if you
             want to read it first.
-          </span>
-        </p>
+          </p>
+        </mn-notice>
         <p>
           AnkiDroid's permission prompt says read and write access to its database. It has no
           read-only permission to offer, so that is the only prompt it can show. The bridge exposes
@@ -121,14 +118,13 @@ import { HelpArticleComponent } from '../help-article.component';
           open the <code>.apkg</code> or <code>.colpkg</code> file in Monosai. It is read on your
           device and never uploaded.
         </p>
-        <p class="mn-notice mn-notice--warning">
-          <mn-icon name="warning" [size]="17" />
-          <span>
+        <mn-notice tone="warning" icon="warning">
+          <p>
             Check <strong>Include scheduling information</strong> when you export. Without it the
             file cannot say which cards you have studied, and Monosai refuses it rather than
             guessing.
-          </span>
-        </p>
+          </p>
+        </mn-notice>
         <p>
           A package is a snapshot, so export again when you want Monosai to catch up with your
           reviews. On Android you can share an export straight into the installed app from

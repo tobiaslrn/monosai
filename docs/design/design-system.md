@@ -1008,7 +1008,7 @@ Four exceptions:
   explain. `/help` carries what the application is for, what it is not for, and a
   shelf of topics; each topic is its own route below it, wearing the shared page
   frame with Back to Help and ending in its neighbours. The measure and the prose
-  elements live in `.mn-prose`, so a topic page writes words and nothing else.
+  elements live in `mn-prose`, so a topic page writes words and nothing else.
   Two options being compared are a card each, never a table: the figures are few,
   the prose beside them is long, and a table of that shape either scrolls
   sideways on a phone or breaks a model ID down to one character a line. A guide
