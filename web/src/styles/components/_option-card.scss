@@ -81,6 +81,16 @@
   gap: var(--space-1);
 }
 
+/* The choice's name, and what it means beneath it. */
+.mn-option-card__body > [mn-option-title] {
+  font-weight: var(--weight-semibold);
+}
+
+.mn-option-card__body > [mn-option-description] {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
 /* Controls that live in the card but are not part of choosing it. */
 .mn-option-card > :not(.mn-option-card__choice) {
   position: relative;

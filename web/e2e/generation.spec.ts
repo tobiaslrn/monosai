@@ -26,11 +26,13 @@ const SETUP_TIMEOUT = 180_000;
 
 /** One chip on the open Direction row. */
 function chip(page: Page, axis: string, name: string) {
-  return page.locator(`[data-axis="${axis}"] .chips`).getByRole('button', { name, exact: true });
+  return page
+    .locator(`[data-axis="${axis}"] mn-chip-group`)
+    .getByRole('button', { name, exact: true });
 }
 
 async function openAxis(page: Page, axis: string): Promise<void> {
-  const row = page.locator(`[data-axis="${axis}"]`);
+  const row = page.locator(`[data-axis="${axis}"] details`);
   if ((await row.getAttribute('open')) === null) {
     await row.locator('summary').click();
   }
@@ -138,7 +140,7 @@ test.describe('steering a story', () => {
     const next = page.getByTestId('wizard-next');
     await expect
       .poll(() =>
-        next.evaluate((element) => getComputedStyle(element.closest('.action-bar')!).position),
+        next.evaluate((element) => getComputedStyle(element.closest('mn-action-bar')!).position),
       )
       .toBe('sticky');
     await expect(next).toBeInViewport();
@@ -164,13 +166,13 @@ test.describe('steering a story', () => {
     await openGenerate(page);
     await page.getByTestId('wizard-next').click();
 
-    const rows = page.locator('details.axis');
+    const rows = page.locator('.axis details');
     await expect(rows).toHaveCount(6);
-    await expect(page.locator('details.axis[open]')).toHaveCount(0);
+    await expect(page.locator('.axis details[open]')).toHaveCount(0);
 
     await openAxis(page, 'genre');
-    await expect(page.locator('details.axis[open]')).toHaveCount(1);
-    const genreChips = page.locator('[data-axis="genre"] .chips button');
+    await expect(page.locator('.axis details[open]')).toHaveCount(1);
+    const genreChips = page.locator('[data-axis="genre"] mn-chip-group button');
     const before = await genreChips.allTextContents();
     await chip(page, 'genre', 'Mystery').click();
     await chip(page, 'genre', 'Comedy').click();
@@ -181,7 +183,7 @@ test.describe('steering a story', () => {
     );
 
     await openAxis(page, 'setting');
-    await expect(page.locator('details.axis[open]')).toHaveCount(1);
+    await expect(page.locator('.axis details[open]')).toHaveCount(1);
     await page.locator('[data-axis="setting"] [data-custom-toggle]').click();
     const custom = page.getByTestId('custom-option');
     await expect(custom).toBeFocused();

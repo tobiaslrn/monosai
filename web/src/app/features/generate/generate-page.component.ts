@@ -43,6 +43,9 @@ import { aiErrorAction, aiErrorCopy } from '../../shared-ui/ai-error/ai-error-co
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { NotFoundPanelComponent } from '../../shared-ui/not-found/not-found-panel.component';
+import { OutcomeComponent } from '../../shared-ui/outcome/outcome.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { ClusterComponent, PageComponent, StackComponent } from '../../shared-ui/layout/layout';
 import { GenerationWaitComponent } from './generation-wait.component';
 import { PrerequisitePanelComponent } from './prerequisite-panel.component';
 import { StoryFormComponent } from './story-form.component';
@@ -97,9 +100,14 @@ function formatList(items: readonly string[]): string {
     StoryFormComponent,
     ExceptionPolicyFieldComponent,
     NotFoundPanelComponent,
+    OutcomeComponent,
+    ButtonDirective,
+    PageComponent,
+    StackComponent,
+    ClusterComponent,
   ],
   template: `
-    <div class="mn-page">
+    <mn-page>
       <mn-page-header
         [heading]="pageHeading()"
         backTo="/library"
@@ -134,66 +142,67 @@ function formatList(items: readonly string[]): string {
           secondaryLabel="Start a new story"
         />
       } @else if (savedReading(); as reading) {
-        <section class="result-screen" aria-label="Saved story details">
-          <div class="ready-mark" aria-hidden="true">✓</div>
-          <p class="mn-group-title">Saved to your library</p>
-          <p class="story-title" lang="ja" data-testid="saved-title">{{ reading.title }}</p>
+        <mn-outcome
+          mark="success"
+          label="Saved story details"
+          eyebrow="Saved to your library"
+          [heading]="reading.title"
+          headingLang="ja"
+          headingTestId="saved-title"
+        >
           @if (preparingLabel(); as label) {
             <p class="mn-hint" data-testid="saved-preparation">{{ label }}</p>
           }
-          <div class="mn-actions result-actions">
-            <a
-              class="mn-button mn-button--primary"
-              [routerLink]="['/reader', reading.id]"
-              [replaceUrl]="true"
-              [state]="navigation.preservedOriginState('/library')"
-              data-testid="open-story"
-              >Open story</a
-            >
-            <button
-              type="button"
-              class="mn-button"
-              data-testid="generate-another"
-              (click)="retry()"
-            >
-              Generate another
-            </button>
-            <a class="mn-button" routerLink="/library">Back to library</a>
-          </div>
-        </section>
+          <a
+            mn-outcome-action
+            mnButton="primary"
+            [routerLink]="['/reader', reading.id]"
+            [replaceUrl]="true"
+            [state]="navigation.preservedOriginState('/library')"
+            data-testid="open-story"
+            >Open story</a
+          >
+          <button
+            mn-outcome-action
+            mnButton
+            type="button"
+            data-testid="generate-another"
+            (click)="retry()"
+          >
+            Generate another
+          </button>
+          <a mn-outcome-action mnButton routerLink="/library">Back to library</a>
+        </mn-outcome>
       } @else if (isBusy()) {
-        <section
-          class="wait-screen"
-          aria-label="Story generation progress"
+        <mn-outcome
+          variant="progress"
+          label="Story generation progress"
           data-testid="generation-screen"
         >
           <mn-generation-wait [state]="state()" />
-          <p class="mn-hint leave-hint" data-testid="leave-hint">
+          <p class="mn-hint" data-testid="leave-hint">
             You can return to the library; generation continues.
           </p>
           @if (canCancel()) {
             <button
+              mn-outcome-action
+              mnButton
               type="button"
-              class="mn-button"
               data-testid="cancel-generation"
               (click)="cancel()"
             >
               Cancel
             </button>
           }
-        </section>
+        </mn-outcome>
       } @else if (state().kind === 'cancelled') {
-        <section class="result-screen" aria-labelledby="mn-generate-cancelled-heading">
-          <p class="mn-group-title">Nothing was saved</p>
-          <h2 id="mn-generate-cancelled-heading">Generation stopped</h2>
+        <mn-outcome eyebrow="Nothing was saved" heading="Generation stopped">
           <p class="mn-hint">Your direction and plots are still here.</p>
-          <div class="mn-actions result-actions">
-            <button type="button" class="mn-button mn-button--primary" (click)="retry()">
-              Back to the form
-            </button>
-            <a class="mn-button" routerLink="/library">Back to library</a>
-          </div>
-        </section>
+          <button mn-outcome-action mnButton="primary" type="button" (click)="retry()">
+            Back to the form
+          </button>
+          <a mn-outcome-action mnButton routerLink="/library">Back to library</a>
+        </mn-outcome>
       } @else if (state().kind !== 'failed') {
         <!-- Plain: the form is the page, so a border around it encloses nothing. -->
         <section aria-labelledby="mn-generate-form-heading">
@@ -257,40 +266,41 @@ function formatList(items: readonly string[]): string {
           [description]="copy.whatFailed"
           [dataStatus]="copy.whatDidNot"
         >
-          <div data-actions class="recovery">
+          <mn-stack data-actions [gap]="2">
             <p>{{ copy.primaryAction }}</p>
             @if (copy.escape) {
               <p class="mn-hint">{{ copy.escape }}</p>
             }
-            @if (canRetrySave()) {
-              <button
-                type="button"
-                class="mn-button mn-button--primary"
-                data-testid="retry-save"
-                (click)="retrySave()"
-              >
-                Try saving again
+            <mn-cluster>
+              @if (canRetrySave()) {
+                <button
+                  mnButton="primary"
+                  type="button"
+                  data-testid="retry-save"
+                  (click)="retrySave()"
+                >
+                  Try saving again
+                </button>
+              }
+              @if (needsStorageRecovery()) {
+                <a
+                  mnButton="primary"
+                  routerLink="/settings"
+                  [queryParams]="{ from: 'generate' }"
+                  [state]="generateOriginState"
+                >
+                  Open storage settings
+                </a>
+              }
+              <button mnButton type="button" data-testid="dismiss-failure" (click)="retry()">
+                Back to the form
               </button>
-            }
-            @if (needsStorageRecovery()) {
-              <a
-                class="mn-button mn-button--primary"
-                routerLink="/settings"
-                [queryParams]="{ from: 'generate' }"
-                [state]="generateOriginState"
-              >
-                Open storage settings
-              </a>
-            }
-            <button type="button" class="mn-button" data-testid="dismiss-failure" (click)="retry()">
-              Back to the form
-            </button>
-          </div>
+            </mn-cluster>
+          </mn-stack>
         </mn-error-screen>
       }
-    </div>
+    </mn-page>
   `,
-  styleUrl: './generate-page.component.scss',
 })
 export class GeneratePageComponent implements OnChanges {
   protected readonly defaultFeedback = signal('');

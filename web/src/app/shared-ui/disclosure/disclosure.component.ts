@@ -14,7 +14,8 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
  * chevron that turns when it is open. The body is padded and stacks what it
  * holds across its width (a button goes in an `mn-cluster` to keep its own);
  * `[rows]` gives the padding up to rows that bring their own, indented under
- * the title.
+ * the title, and `[flush]` drops the side padding for content that needs the
+ * whole width, such as a set of cards or chips.
  *
  * `quiet` is a secondary branch of the card; `danger` is a destructive one,
  * such as deleting everything.
@@ -29,27 +30,43 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
     '[class.mn-disclosure--danger]': "tone() === 'danger'",
   },
   template: `
-    <details class="mn-disclosure__details" [open]="open()" (toggle)="onToggle($event)">
+    <details
+      class="mn-disclosure__details"
+      [attr.name]="name()"
+      [open]="open()"
+      (toggle)="onToggle($event)"
+    >
       <summary class="mn-settings-row mn-disclosure__summary" [attr.data-testid]="testId()">
         <span class="mn-settings-row__label">
           <span class="mn-settings-row__title">{{ heading() }}</span>
         </span>
         <span class="mn-settings-row__end">
           @if (value(); as shown) {
-            <span class="mn-settings-value">{{ shown }}</span>
+            <span
+              class="mn-settings-value"
+              [class.mn-disclosure__value--set]="valueSet()"
+              [attr.data-testid]="valueTestId()"
+              >{{ shown }}</span
+            >
           }
           <mn-icon class="mn-disclosure__chevron" name="chevron-right" [size]="18" />
         </span>
       </summary>
-      <div class="mn-disclosure__body" [class.mn-disclosure__body--rows]="rows()">
+      <div
+        class="mn-disclosure__body"
+        [class.mn-disclosure__body--rows]="rows()"
+        [class.mn-disclosure__body--flush]="flush()"
+      >
         <ng-content />
       </div>
     </details>
   `,
   styles: `
+    /* Its row lays out against its own width, wherever the disclosure sits. */
     mn-disclosure {
       display: block;
       min-width: 0;
+      container-type: inline-size;
     }
 
     mn-disclosure > .mn-disclosure__details > .mn-disclosure__summary {
@@ -85,6 +102,12 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
       transform: rotate(90deg);
     }
 
+    /* A value the learner chose, rather than the default, reads as chosen. */
+    mn-disclosure .mn-disclosure__value--set {
+      color: var(--action-primary-text);
+      font-weight: var(--weight-semibold);
+    }
+
     mn-disclosure.mn-disclosure--quiet > .mn-disclosure__details > .mn-disclosure__summary {
       color: var(--text-secondary);
     }
@@ -104,6 +127,12 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
       padding: var(--space-2) var(--space-4) var(--space-3);
       overflow-wrap: anywhere;
       border-top: 1px solid var(--border-subtle);
+    }
+
+    mn-disclosure > .mn-disclosure__details > .mn-disclosure__body--flush {
+      overflow-wrap: normal;
+      padding: var(--space-1) 0 var(--space-4);
+      border-top: 0;
     }
 
     mn-disclosure > .mn-disclosure__details > .mn-disclosure__body--rows {
@@ -139,11 +168,22 @@ export class DisclosureComponent {
   readonly tone = input<DisclosureTone>('default');
   /** The body is rows with their own padding, indented under the title. */
   readonly rows = input(false);
+  /** The body runs the full width under the row, for choices that need it all. */
+  readonly flush = input(false);
   /** Names the summary, the control that opens it. */
   readonly testId = input<string | null>(null);
+  /** For durable tests: on the stated value. */
+  readonly valueTestId = input<string | null>(null);
+  /** The value is one the learner chose rather than the default. */
+  readonly valueSet = input(false);
+  /** Disclosures sharing a name open one at a time. */
+  readonly name = input<string | null>(null);
   readonly open = model(false);
 
   protected onToggle(event: Event): void {
-    this.open.set((event.target as HTMLDetailsElement).open);
+    const open = (event.target as HTMLDetailsElement).open;
+    if (open !== this.open()) {
+      this.open.set(open);
+    }
   }
 }

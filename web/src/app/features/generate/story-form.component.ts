@@ -10,7 +10,6 @@ import {
   input,
   output,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import {
   GenerationDraftStore,
@@ -36,6 +35,17 @@ import { RadioCardComponent } from '../../shared-ui/radio-card/radio-card.compon
 import { RadioCardGroupComponent } from '../../shared-ui/radio-card/radio-card-group.component';
 import { StoryDirectionComponent } from './story-direction.component';
 import { StoryPlotsComponent } from './story-plots.component';
+import { ActionBarComponent } from '../../shared-ui/action-bar/action-bar.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { CardComponent } from '../../shared-ui/card/card.component';
+import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
+import { DividerComponent } from '../../shared-ui/divider/divider.component';
+import { FactsComponent, type Fact } from '../../shared-ui/facts/facts.component';
+import { FieldComponent } from '../../shared-ui/field/field.component';
+import { StackComponent } from '../../shared-ui/layout/layout';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
+import { RangeFieldComponent } from '../../shared-ui/range-field/range-field.component';
+import { WizardStepsComponent } from '../../shared-ui/wizard-steps/wizard-steps.component';
 
 const LENGTH_LABELS = ['Tiny', 'Short', 'Medium', 'Long'] as const;
 
@@ -82,202 +92,150 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
   selector: 'mn-story-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    RouterLink,
+    ActionBarComponent,
+    ButtonDirective,
+    CardComponent,
+    DisclosureComponent,
+    DividerComponent,
+    FactsComponent,
+    FieldComponent,
     IconComponent,
+    NoticeComponent,
     PreparationTargetsComponent,
     RadioCardComponent,
     RadioCardGroupComponent,
+    RangeFieldComponent,
+    StackComponent,
     StoryDirectionComponent,
     StoryPlotsComponent,
+    WizardStepsComponent,
   ],
   template: `
-    <!--
-      What is missing leads the form, in the document flow: it is why the
-      button at the foot is disabled, so it is read before the fields are
-      filled. Inside the sticky bar it rode up over the fields themselves.
-    -->
-    <ng-content select="[generation-blockers]" />
+    <mn-stack [gap]="4">
+      <!--
+        What is missing leads the form, in the document flow: it is why the
+        button at the foot is disabled, so it is read before the fields are
+        filled. Inside the sticky bar it rode up over the fields themselves.
+      -->
+      <ng-content select="[generation-blockers]" />
 
-    <ol class="steps" aria-label="Steps" data-testid="wizard-steps">
-      @for (name of stepNames; track name; let index = $index) {
-        <li
-          [class.is-done]="draft.step() > index + 1"
-          [class.is-current]="draft.step() === index + 1"
-          [attr.aria-current]="draft.step() === index + 1 ? 'step' : null"
-        >
-          <span class="step-mark" aria-hidden="true">
-            @if (draft.step() > index + 1) {
-              <mn-icon name="check" [size]="14" />
-            } @else {
-              {{ index + 1 }}
-            }
-          </span>
-          <span>{{ name }}</span>
-          @if (draft.step() > index + 1) {
-            <span class="mn-visually-hidden">, done</span>
-          }
-        </li>
-      }
-    </ol>
+      <mn-wizard-steps
+        label="Steps"
+        data-testid="wizard-steps"
+        [steps]="stepNames"
+        [current]="draft.step()"
+      />
 
-    @switch (draft.step()) {
-      @case (1) {
-        <section class="mn-card mn-stack" aria-labelledby="mn-words-title">
-          <h2 id="mn-words-title" class="mn-card-title" tabindex="-1" data-step-heading>Words</h2>
-
-          <div class="mn-stack mn-stack--tight">
-            <div class="mn-field">
-              <label for="mn-word-selection">Anki word selection</label>
-              <select
-                id="mn-word-selection"
-                data-testid="word-priority-select"
-                [value]="ankiWordPriorityMode()"
-                [disabled]="disabled()"
-                (change)="onWordPriorityMode($event)"
-              >
-                <option value="uniform">Uniform</option>
-                <option value="recent">Recently learned</option>
-                <option value="difficult">Difficult</option>
-              </select>
-            </div>
-            @if (ankiWordPriorityMode() === 'recent') {
-              <div class="mn-field">
-                <label for="mn-focus-size">Focus</label>
+      @switch (draft.step()) {
+        @case (1) {
+          <mn-card heading="Words" [level]="2" [focusable]="true">
+            <mn-stack [gap]="2">
+              <mn-field label="Anki word selection">
                 <select
-                  id="mn-focus-size"
-                  data-testid="focus-size-select"
+                  id="mn-word-selection"
+                  data-testid="word-priority-select"
+                  [value]="ankiWordPriorityMode()"
                   [disabled]="disabled()"
-                  (change)="onRecentFocusSize($event)"
+                  (change)="onWordPriorityMode($event)"
                 >
-                  @for (size of focusSizes; track size) {
-                    <option [value]="size" [selected]="size === recentFocusSize()">
-                      Newest {{ size }} words
-                    </option>
-                  }
+                  <option value="uniform">Uniform</option>
+                  <option value="recent">Recently learned</option>
+                  <option value="difficult">Difficult</option>
                 </select>
-              </div>
-            }
-          </div>
+              </mn-field>
+              @if (ankiWordPriorityMode() === 'recent') {
+                <mn-field label="Focus">
+                  <select
+                    id="mn-focus-size"
+                    data-testid="focus-size-select"
+                    [disabled]="disabled()"
+                    (change)="onRecentFocusSize($event)"
+                  >
+                    @for (size of focusSizes; track size) {
+                      <option [value]="size" [selected]="size === recentFocusSize()">
+                        Newest {{ size }} words
+                      </option>
+                    }
+                  </select>
+                </mn-field>
+              }
+            </mn-stack>
 
-          <div class="length">
-            <div class="setting-heading">
-              <label for="mn-story-length">Length</label>
-              <output for="mn-story-length" aria-live="polite">
-                {{ selectedLengthLabel() }} · about {{ draft.sentenceCount() }} sentences
-              </output>
-            </div>
-            <input
-              id="mn-story-length"
-              class="length-slider"
-              type="range"
-              data-testid="story-length"
-              min="0"
+            <mn-range-field
+              label="Length"
+              testId="story-length"
+              [valueLabel]="lengthValueLabel()"
               [max]="lengthOptions.length - 1"
-              step="1"
               [value]="selectedLengthIndex()"
               [disabled]="disabled()"
-              [attr.aria-valuetext]="lengthAriaValue()"
-              [attr.aria-describedby]="lengthDescriptionIds()"
-              [style.--slider-progress.%]="sliderProgress()"
-              [style.--slider-step.%]="sliderStep()"
-              (input)="onSentenceCount($event)"
-            />
-            @if (showLengthWarning()) {
-              <p
-                id="mn-length-warning"
-                class="length-warning mn-notice mn-notice--warning"
-                role="status"
-              >
-                <mn-icon name="warning" [size]="17" />
-                <span> Longer stories may ignore your vocabulary and grammar settings. </span>
-              </p>
-            }
-          </div>
-
-          <details class="mn-disclosure strictness">
-            <summary>
-              <span>Vocabulary strictness</span>
-              <span class="summary-value" data-testid="strictness-value">
-                {{ strictnessLabels[vocabularyStrictness()] }}
-              </span>
-            </summary>
-            <mn-radio-card-group
-              class="strictness-options"
-              label="Vocabulary strictness"
-              [value]="vocabularyStrictness()"
-              [disabled]="disabled()"
-              (valueChange)="onVocabularyStrictness($event)"
+              [valueText]="lengthAriaValue()"
+              [describedBy]="lengthDescriptionIds()"
+              (valueChange)="onSentenceCount($event)"
             >
-              @for (option of strictnessOptions; track option.value) {
-                <mn-radio-card [value]="option.value" [inset]="true">
-                  <span class="strictness-name">{{ option.label }}</span>
-                  <span class="strictness-description">{{ option.description }}</span>
-                </mn-radio-card>
+              @if (showLengthWarning()) {
+                <mn-notice id="mn-length-warning" tone="warning" icon="warning" role="status">
+                  Longer stories may ignore your vocabulary and grammar settings.
+                </mn-notice>
               }
-            </mn-radio-card-group>
-          </details>
+            </mn-range-field>
 
-          @if (defaultFeedback()) {
-            <p class="mn-hint" role="status">{{ defaultFeedback() }}</p>
-          }
+            <mn-divider />
 
-          <ng-content select="[story-defaults]" />
+            <mn-disclosure
+              class="strictness"
+              [flush]="true"
+              heading="Vocabulary strictness"
+              valueTestId="strictness-value"
+              [value]="strictnessLabels[vocabularyStrictness()]"
+            >
+              <mn-radio-card-group
+                label="Vocabulary strictness"
+                [value]="vocabularyStrictness()"
+                [disabled]="disabled()"
+                (valueChange)="onVocabularyStrictness($event)"
+              >
+                @for (option of strictnessOptions; track option.value) {
+                  <mn-radio-card [value]="option.value" [inset]="true">
+                    <span mn-option-title>{{ option.label }}</span>
+                    <span mn-option-description>{{ option.description }}</span>
+                  </mn-radio-card>
+                }
+              </mn-radio-card-group>
+            </mn-disclosure>
 
-          <dl class="mn-facts generation-sources" data-testid="form-sources">
-            <div>
-              <dt>
-                <a
-                  routerLink="/reading-level"
-                  fragment="words"
-                  [queryParams]="{ from: 'generate' }"
-                  [state]="generateOriginState"
-                >
-                  Vocabulary
-                </a>
-              </dt>
-              <dd>{{ snapshotSummary() }}</dd>
-            </div>
-            <div>
-              <dt>
-                <a
-                  routerLink="/reading-level"
-                  fragment="grammar"
-                  [queryParams]="{ from: 'generate' }"
-                  [state]="generateOriginState"
-                >
-                  Grammar
-                </a>
-              </dt>
-              <dd>{{ presetName() }}</dd>
-            </div>
-          </dl>
-        </section>
+            @if (defaultFeedback()) {
+              <p class="mn-hint" role="status">{{ defaultFeedback() }}</p>
+            }
+
+            <ng-content select="[story-defaults]" />
+
+            <mn-facts data-testid="form-sources" [facts]="sources()" />
+          </mn-card>
+        }
+        @case (2) {
+          <mn-story-direction [disabled]="disabled()" />
+        }
+        @case (3) {
+          <mn-story-plots [disabled]="disabled()" />
+          <mn-card aria-label="After the story">
+            <mn-preparation-targets
+              legend="Prepare after generation"
+              [targets]="preparationTargets()"
+              [audioReadiness]="audioReadiness()"
+              [disabled]="disabled()"
+              (targetsChanged)="preparationTargetsChanged.emit($event)"
+            />
+          </mn-card>
+        }
       }
-      @case (2) {
-        <mn-story-direction [disabled]="disabled()" />
-      }
-      @case (3) {
-        <mn-story-plots [disabled]="disabled()" />
-        <section class="mn-card" aria-label="After the story">
-          <mn-preparation-targets
-            legend="Prepare after generation"
-            [targets]="preparationTargets()"
-            [audioReadiness]="audioReadiness()"
-            [disabled]="disabled()"
-            (targetsChanged)="preparationTargetsChanged.emit($event)"
-          />
-        </section>
-      }
-    }
 
-    <div class="action-bar mn-stack">
-      <div class="mn-actions">
+      <mn-action-bar>
         <!-- A press names the step this button was drawn for, not the step now. -->
         @let shownStep = draft.step();
         @if (shownStep < 3) {
           <button
+            mnButton="primary"
             type="button"
-            class="mn-button mn-button--primary"
             data-testid="wizard-next"
             [disabled]="disabled() || !canContinue()"
             [attr.aria-describedby]="!canContinue() ? 'mn-generate-disabled-reason' : null"
@@ -287,8 +245,8 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
           </button>
         } @else {
           <button
+            mnButton="primary"
             type="button"
-            class="mn-button mn-button--primary"
             data-testid="generate"
             [disabled]="disabled() || !canGenerate()"
             [attr.aria-describedby]="!canGenerate() ? 'mn-generate-disabled-reason' : null"
@@ -298,235 +256,17 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
             <span>Generate story</span>
           </button>
         }
-      </div>
-      @if (disabledReason()) {
-        <!-- The panel above already says this on screen; this is the button's description. -->
-        <p id="mn-generate-disabled-reason" class="mn-visually-hidden">{{ disabledReason() }}</p>
-      }
-      @if (draft.step() === 3 && atGenerationLimit()) {
-        <p class="mn-hint" data-testid="generation-limit">
-          Generation limit reached. This one can start when one finishes.
-        </p>
-      }
-    </div>
-  `,
-  styles: `
-    :host {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-4);
-    }
-
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.5rem), 1fr));
-      gap: var(--space-2);
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .steps li {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-1) var(--space-2);
-      align-items: center;
-      min-width: 0;
-      padding-top: var(--space-2);
-      border-top: 3px solid var(--border-subtle);
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      font-weight: var(--weight-semibold);
-      overflow-wrap: anywhere;
-    }
-
-    .steps li.is-done,
-    .steps li.is-current {
-      border-top-color: var(--action-primary);
-    }
-
-    .steps li.is-done {
-      color: var(--text-primary);
-    }
-
-    .steps li.is-current {
-      color: var(--action-primary-text);
-    }
-
-    .step-mark {
-      display: inline-grid;
-      flex: none;
-      place-items: center;
-      width: 1.5rem;
-      height: 1.5rem;
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-pill);
-      font-size: var(--text-xs);
-    }
-
-    .is-done .step-mark {
-      border-color: var(--action-primary);
-      background: var(--action-primary);
-      color: var(--text-on-action);
-    }
-
-    .is-current .step-mark {
-      border-color: var(--action-primary);
-    }
-
-    [data-step-heading]:focus {
-      outline: none;
-    }
-
-    .setting-heading {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-3);
-      align-items: baseline;
-      justify-content: space-between;
-    }
-
-    .setting-heading label {
-      font-weight: var(--weight-semibold);
-    }
-
-    output {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      text-align: end;
-    }
-
-    /*
-     * The native thumb is centred on the track by a negative margin, so both
-     * sizes are properties and the margin is computed from them. The thumb's
-     * overhang at each end is the margin that keeps it inside the field.
-     */
-    .length-slider {
-      --slider-track-size: 10px;
-      --slider-thumb-size: 22px;
-
-      width: calc(100% - var(--slider-thumb-size));
-      height: var(--touch-target);
-      margin: 0 calc(var(--slider-thumb-size) / 2);
-      padding: 0;
-      appearance: none;
-      background: transparent;
-      cursor: pointer;
-    }
-
-    .length-slider::-webkit-slider-runnable-track {
-      height: var(--slider-track-size);
-      border-radius: var(--radius-pill);
-      background-color: var(--surface-sunken);
-      background-image:
-        repeating-linear-gradient(
-          to right,
-          transparent 0 calc(var(--slider-step) - 1px),
-          color-mix(in srgb, var(--border-strong) 20%, transparent) calc(var(--slider-step) - 1px)
-            var(--slider-step)
-        ),
-        linear-gradient(
-          to right,
-          var(--action-primary) 0 var(--slider-progress),
-          transparent var(--slider-progress) 100%
-        );
-    }
-
-    .length-slider::-webkit-slider-thumb {
-      width: var(--slider-thumb-size);
-      height: var(--slider-thumb-size);
-      margin-top: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
-      border: 4px solid var(--surface-raised);
-      border-radius: var(--radius-pill);
-      appearance: none;
-      background: var(--action-primary);
-      box-shadow: var(--shadow-focus);
-    }
-
-    .length-slider::-moz-range-track {
-      height: var(--slider-track-size);
-      border-radius: var(--radius-pill);
-      background-color: var(--surface-sunken);
-      background-image: repeating-linear-gradient(
-        to right,
-        transparent 0 calc(var(--slider-step) - 1px),
-        color-mix(in srgb, var(--border-strong) 20%, transparent) calc(var(--slider-step) - 1px)
-          var(--slider-step)
-      );
-    }
-
-    .length-slider::-moz-range-progress {
-      height: var(--slider-track-size);
-      border-radius: var(--radius-pill);
-      background: var(--action-primary);
-    }
-
-    .length-slider::-moz-range-thumb {
-      width: var(--slider-thumb-size);
-      height: var(--slider-thumb-size);
-      border: 4px solid var(--surface-raised);
-      border-radius: var(--radius-pill);
-      background: var(--action-primary);
-      box-shadow: var(--shadow-focus);
-    }
-
-    .length-slider:focus-visible {
-      outline: 3px solid var(--focus-ring);
-      outline-offset: 2px;
-      border-radius: var(--radius-pill);
-    }
-
-    .strictness {
-      padding-top: var(--space-2);
-      border-top: 1px solid var(--border-subtle);
-    }
-
-    .strictness > summary {
-      flex-wrap: wrap;
-    }
-
-    .summary-value {
-      margin-inline-start: auto;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      font-weight: var(--weight-medium);
-    }
-
-    .strictness-options {
-      padding-top: var(--space-2);
-    }
-
-    .strictness-name {
-      font-weight: var(--weight-semibold);
-    }
-
-    .strictness-description {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .generation-sources {
-      padding-top: var(--space-2);
-    }
-
-    /*
-     * The step's one action belongs to the whole form. It remains in document
-     * flow so its prerequisite copy never covers the fields it explains.
-     */
-    .action-bar {
-      position: sticky;
-      z-index: 2;
-      bottom: 0;
-      width: 100%;
-      margin-top: calc(var(--space-2) * -1);
-      padding: var(--space-4) 0 calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
-      background: var(--surface-canvas-fade);
-    }
-
-    .action-bar > .mn-actions,
-    .action-bar > .mn-actions > .mn-button {
-      width: 100%;
-    }
+        @if (disabledReason()) {
+          <!-- The panel above already says this on screen; this is the button's description. -->
+          <p id="mn-generate-disabled-reason" class="mn-visually-hidden">{{ disabledReason() }}</p>
+        }
+        @if (draft.step() === 3 && atGenerationLimit()) {
+          <p class="mn-hint" data-testid="generation-limit">
+            Generation limit reached. This one can start when one finishes.
+          </p>
+        }
+      </mn-action-bar>
+    </mn-stack>
   `,
 })
 export class StoryFormComponent {
@@ -545,6 +285,30 @@ export class StoryFormComponent {
   readonly atGenerationLimit = input(false);
   readonly snapshotSummary = input.required<string>();
   readonly presetName = input.required<string>();
+
+  /** What the story is drawn from, each leading to the screen that changes it. */
+  protected readonly sources = computed((): readonly Fact[] => [
+    {
+      label: 'Vocabulary',
+      value: this.snapshotSummary(),
+      link: {
+        route: '/reading-level',
+        fragment: 'words',
+        queryParams: { from: 'generate' },
+        state: this.generateOriginState,
+      },
+    },
+    {
+      label: 'Grammar',
+      value: this.presetName(),
+      link: {
+        route: '/reading-level',
+        fragment: 'grammar',
+        queryParams: { from: 'generate' },
+        state: this.generateOriginState,
+      },
+    },
+  ]);
   readonly ankiWordPriorityMode = input<AnkiWordPriorityMode>('uniform');
   readonly recentFocusSize = input<RecentFocusSize>(DEFAULT_RECENT_FOCUS_SIZE);
   readonly vocabularyStrictness = input<VocabularyStrictness>('standard');
@@ -576,15 +340,13 @@ export class StoryFormComponent {
     () => LENGTH_LABELS[Math.min(this.selectedLengthIndex(), LENGTH_LABELS.length - 1)],
   );
 
+  protected readonly lengthValueLabel = computed(
+    () => `${this.selectedLengthLabel()} · about ${String(this.draft.sentenceCount())} sentences`,
+  );
+
   protected readonly lengthAriaValue = computed(
     () => `${this.selectedLengthLabel()}, ${String(this.draft.sentenceCount())} sentences`,
   );
-
-  protected readonly sliderProgress = computed(
-    () => (this.selectedLengthIndex() / (STORY_SENTENCE_COUNTS.length - 1)) * 100,
-  );
-
-  protected readonly sliderStep = computed(() => 100 / (STORY_SENTENCE_COUNTS.length - 1));
 
   protected readonly showLengthWarning = computed(
     () => this.draft.sentenceCount() >= STORY_LENGTH_RELIABILITY_WARNING_SENTENCES,
@@ -608,7 +370,7 @@ export class StoryFormComponent {
       afterNextRender(
         () => {
           this.host.nativeElement
-            .querySelector<HTMLElement>('[data-step-heading]')
+            .querySelector<HTMLElement>('mn-card h2[tabindex]')
             ?.focus({ preventScroll: true });
           const page = document.scrollingElement;
           if (page !== null) {
@@ -620,8 +382,7 @@ export class StoryFormComponent {
     });
   }
 
-  protected onSentenceCount(event: Event): void {
-    const index = (event.target as HTMLInputElement).valueAsNumber;
+  protected onSentenceCount(index: number): void {
     const sentenceCount = STORY_SENTENCE_COUNTS.at(index);
     if (sentenceCount !== undefined) {
       this.draft.setSentenceCount(sentenceCount);

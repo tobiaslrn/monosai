@@ -20,6 +20,12 @@ import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { RadioCardComponent } from '../../shared-ui/radio-card/radio-card.component';
 import { RadioCardGroupComponent } from '../../shared-ui/radio-card/radio-card-group.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { CardComponent } from '../../shared-ui/card/card.component';
+import { CountComponent } from '../../shared-ui/count/count.component';
+import { FieldComponent } from '../../shared-ui/field/field.component';
+import { ClusterComponent, StackComponent } from '../../shared-ui/layout/layout';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 
 const COUNT_WORDS = ['no plots', 'one plot', 'two plots', 'three plots'] as const;
 
@@ -40,192 +46,133 @@ interface PlotChip {
 @Component({
   selector: 'mn-story-plots',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, RadioCardComponent, RadioCardGroupComponent],
+  imports: [
+    ButtonDirective,
+    CardComponent,
+    ClusterComponent,
+    CountComponent,
+    FieldComponent,
+    IconComponent,
+    NoticeComponent,
+    RadioCardComponent,
+    RadioCardGroupComponent,
+    StackComponent,
+  ],
   template: `
-    <section
-      class="mn-card mn-stack"
-      aria-labelledby="mn-plot-title"
-      [attr.aria-busy]="plots.isDrafting()"
-    >
-      <div class="card-head">
-        <h2 id="mn-plot-title" class="mn-card-title" tabindex="-1" data-step-heading>Plot</h2>
-        <button
-          type="button"
-          class="mn-button mn-button--ghost"
-          data-testid="regenerate-plots"
-          [disabled]="disabled() || !plots.canRegenerate()"
-          (click)="regenerate()"
-        >
-          <mn-icon name="retry" [size]="18" />
-          <span>Regenerate</span>
-        </button>
-      </div>
+    <mn-card heading="Plot" [level]="2" [focusable]="true" [attr.aria-busy]="plots.isDrafting()">
+      <button
+        mn-card-action
+        mnButton="ghost"
+        type="button"
+        data-testid="regenerate-plots"
+        [disabled]="disabled() || !plots.canRegenerate()"
+        (click)="regenerate()"
+      >
+        <mn-icon name="retry" [size]="18" />
+        <span>Regenerate</span>
+      </button>
 
       @if (failureMessage(); as message) {
-        <p class="mn-notice mn-notice--warning" role="alert" data-testid="plot-failure">
-          <mn-icon name="warning" [size]="17" />
-          <span>{{ message }}</span>
-        </p>
+        <mn-notice tone="warning" icon="warning" role="alert" data-testid="plot-failure">
+          {{ message }}
+        </mn-notice>
       }
 
       @if (plots.cards().length > 0) {
-        <fieldset class="plots" [disabled]="disabled() || plots.isDrafting()">
-          <mn-radio-card-group
-            label="Choose a plot"
-            name="mn-plot"
-            [value]="selectedId()"
-            (valueChange)="choose($event)"
-          >
-            @for (card of plots.cards(); track card.id; let index = $index) {
-              <mn-radio-card [value]="card.id" [inset]="true" data-testid="plot-option">
-                <span class="pills">
-                  @for (chip of chips(card); track $index) {
-                    <span
-                      class="mn-status-pill"
-                      [class.mn-status-pill--dashed]="chip.kind === 'rolled'"
-                      [class.mn-status-pill--accent]="chip.kind === 'turn'"
-                    >
-                      @if (chip.kind === 'turn') {
-                        <span class="mn-visually-hidden">Turning point: </span>
-                      }
-                      {{ chip.text }}
-                      @if (chip.kind === 'rolled') {
-                        <span class="mn-visually-hidden"> (random)</span>
-                      }
-                    </span>
-                  }
-                  @if (edited(card)) {
-                    <span class="mn-status-pill mn-status-pill--accent">Edited</span>
-                  }
-                </span>
-                @if (editing() !== card.id) {
-                  <span class="plot-text" data-testid="plot-text">{{ card.text }}</span>
+        @let locked = disabled() || plots.isDrafting();
+        <mn-radio-card-group
+          label="Choose a plot"
+          name="mn-plot"
+          [value]="selectedId()"
+          [disabled]="locked"
+          (valueChange)="choose($event)"
+        >
+          @for (card of plots.cards(); track card.id; let index = $index) {
+            <mn-radio-card [value]="card.id" [inset]="true" data-testid="plot-option">
+              <mn-cluster [gap]="1">
+                @for (chip of chips(card); track $index) {
+                  <span
+                    class="mn-status-pill"
+                    [class.mn-status-pill--dashed]="chip.kind === 'rolled'"
+                    [class.mn-status-pill--accent]="chip.kind === 'turn'"
+                  >
+                    @if (chip.kind === 'turn') {
+                      <span class="mn-visually-hidden">Turning point: </span>
+                    }
+                    {{ chip.text }}
+                    @if (chip.kind === 'rolled') {
+                      <span class="mn-visually-hidden"> (random)</span>
+                    }
+                  </span>
                 }
-                @if (editing() === card.id) {
-                  <div mn-radio-card-extra class="mn-field plot-edit">
+                @if (edited(card)) {
+                  <span class="mn-status-pill mn-status-pill--accent">Edited</span>
+                }
+              </mn-cluster>
+              @if (editing() !== card.id) {
+                <span data-testid="plot-text">{{ card.text }}</span>
+              }
+              @if (editing() === card.id) {
+                <mn-stack mn-radio-card-extra [gap]="2">
+                  <mn-field
+                    errorId="mn-plot-limit"
+                    [error]="
+                      tooLong(card)
+                        ? 'Remove ' + overBy(card) + ' to continue.'
+                        : card.text.trim() === ''
+                          ? 'Write a plot to continue.'
+                          : null
+                    "
+                  >
                     <textarea
                       rows="5"
                       data-testid="plot-editor"
                       [attr.aria-label]="'Plot ' + (index + 1)"
                       [attr.aria-describedby]="editDescriptionIds()"
                       [attr.aria-invalid]="tooLong(card)"
+                      [disabled]="locked"
                       [value]="card.text"
                       (input)="onEdit(index, $event)"
                     ></textarea>
-                    @if (counterVisible(card)) {
-                      <p id="mn-plot-count" class="counter" [class.is-over]="tooLong(card)">
-                        {{ formatCount(length(card)) }} of {{ formatCount(limit) }} characters
-                      </p>
+                  </mn-field>
+                  @if (counterVisible(card)) {
+                    <mn-count id="mn-plot-count" [over]="tooLong(card)">
+                      {{ formatCount(length(card)) }} of {{ formatCount(limit) }} characters
+                    </mn-count>
+                  }
+                </mn-stack>
+              }
+              @if (plots.selectedIndex() === index) {
+                <mn-cluster mn-radio-card-extra justify="end">
+                  <button
+                    mnButton="ghost"
+                    type="button"
+                    data-testid="edit-plot"
+                    data-edit-toggle
+                    [disabled]="locked"
+                    (click)="toggleEdit(index, card.id)"
+                  >
+                    @if (editing() === card.id) {
+                      <mn-icon name="check" [size]="18" />
+                      <span>Done</span>
+                    } @else {
+                      <mn-icon name="rename" [size]="18" />
+                      <span>Edit</span>
                     }
-                    @if (tooLong(card)) {
-                      <p id="mn-plot-limit" class="mn-field-error" role="alert">
-                        Remove {{ overBy(card) }} to continue.
-                      </p>
-                    } @else if (card.text.trim() === '') {
-                      <p id="mn-plot-limit" class="mn-field-error" role="alert">
-                        Write a plot to continue.
-                      </p>
-                    }
-                  </div>
-                }
-                @if (plots.selectedIndex() === index) {
-                  <div mn-radio-card-extra class="plot-tools">
-                    <button
-                      type="button"
-                      class="mn-button mn-button--ghost"
-                      data-testid="edit-plot"
-                      data-edit-toggle
-                      (click)="toggleEdit(index, card.id)"
-                    >
-                      @if (editing() === card.id) {
-                        <mn-icon name="check" [size]="18" />
-                        <span>Done</span>
-                      } @else {
-                        <mn-icon name="rename" [size]="18" />
-                        <span>Edit</span>
-                      }
-                    </button>
-                  </div>
-                }
-              </mn-radio-card>
-            }
-          </mn-radio-card-group>
-        </fieldset>
+                  </button>
+                </mn-cluster>
+              }
+            </mn-radio-card>
+          }
+        </mn-radio-card-group>
       }
 
       @if (plots.isDrafting() && waitingLine(); as line) {
-        <p class="waiting" role="status" data-testid="plot-waiting">{{ line }}</p>
+        <p class="mn-hint" role="status" data-testid="plot-waiting">{{ line }}</p>
       } @else if (plots.isDrafting()) {
         <p class="mn-visually-hidden" role="status">Writing new plots…</p>
       }
-    </section>
-  `,
-  styles: `
-    .card-head {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2) var(--space-3);
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .card-head .mn-card-title:focus {
-      outline: none;
-    }
-
-    .plots {
-      min-width: 0;
-      margin: 0;
-      padding: 0;
-      border: 0;
-    }
-
-    .plots mn-radio-card-group {
-      gap: var(--space-3);
-    }
-
-    .pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-1);
-      margin-block-end: var(--space-1);
-    }
-
-    .plot-text {
-      line-height: var(--leading-normal);
-    }
-
-    .plot-edit textarea {
-      min-height: 8rem;
-      resize: vertical;
-    }
-
-    .plot-tools {
-      display: flex;
-      justify-content: flex-end;
-      margin-block: calc(var(--space-2) * -1);
-      margin-inline-end: calc(var(--space-3) * -1);
-    }
-
-    .waiting {
-      margin: 0;
-      color: var(--text-secondary);
-    }
-
-    .counter {
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .counter.is-over {
-      color: var(--status-danger);
-      font-weight: var(--weight-semibold);
-    }
-
-    fieldset:disabled mn-radio-card {
-      cursor: progress;
-    }
+    </mn-card>
   `,
 })
 export class StoryPlotsComponent {

@@ -5,7 +5,10 @@ import type {
   GrammarPresetLine,
   PrerequisiteCheck,
 } from '../../application/generation/generation-prerequisites';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { BlockerComponent, BlockerListComponent } from '../../shared-ui/blocker/blocker.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { StackComponent } from '../../shared-ui/layout/layout';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 
 /**
  * What is still missing before a story can be generated.
@@ -22,79 +25,43 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 @Component({
   selector: 'mn-prerequisite-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent],
+  imports: [
+    RouterLink,
+    BlockerListComponent,
+    BlockerComponent,
+    ButtonDirective,
+    NoticeComponent,
+    StackComponent,
+  ],
   template: `
-    @if (unmet().length > 0) {
-      <ul class="checks mn-stack">
-        @for (check of unmet(); track check.id) {
-          <li class="check" [attr.data-check]="check.id">
-            <mn-icon class="mn-lead" name="warning" [size]="18" />
-            <p class="detail">
+    <mn-stack [gap]="4">
+      @if (unmet().length > 0) {
+        <mn-blocker-list>
+          @for (check of unmet(); track check.id) {
+            <mn-blocker [attr.data-check]="check.id">
               <strong>{{ check.label }}: </strong>{{ check.detail }}
-            </p>
-            @if (check.route !== '') {
-              <a
-                class="mn-button"
-                [routerLink]="check.route"
-                [queryParams]="{ from: 'generate' }"
-                [state]="generateOriginState"
-              >
-                {{ check.actionLabel }}
-              </a>
-            }
-          </li>
-        }
-      </ul>
-    }
+              @if (check.route !== '') {
+                <a
+                  mn-blocker-action
+                  mnButton
+                  [routerLink]="check.route"
+                  [queryParams]="{ from: 'generate' }"
+                  [state]="generateOriginState"
+                >
+                  {{ check.actionLabel }}
+                </a>
+              }
+            </mn-blocker>
+          }
+        </mn-blocker-list>
+      }
 
-    @if (preset().warning; as warning) {
-      <p class="mn-notice mn-notice--info" data-testid="preset-warning">
-        <mn-icon name="info" [size]="16" />
-        <span><span class="mn-visually-hidden">Note: </span>{{ warning }}</span>
-      </p>
-    }
-  `,
-  styles: `
-    :host {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-4);
-    }
-
-    .checks {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    /*
-     * Every check has the same shape: the icon, the sentence, and the way to
-     * fix it beneath the sentence. Wrapping by width put one button beside its
-     * text and the next one below, which read as two different kinds of row.
-     */
-    .check {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: var(--space-2) var(--space-3);
-      align-items: start;
-    }
-
-    /* The glyph leads the detail, so it takes the detail's size to find its first line. */
-    .check mn-icon {
-      color: var(--status-warning);
-      font-size: var(--text-sm);
-    }
-
-    .check .mn-button {
-      grid-column: 2;
-      justify-self: start;
-    }
-
-    .detail {
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
+      @if (preset().warning; as warning) {
+        <mn-notice tone="info" icon="info" data-testid="preset-warning">
+          <span class="mn-visually-hidden">Note: </span>{{ warning }}
+        </mn-notice>
+      }
+    </mn-stack>
   `,
 })
 export class PrerequisitePanelComponent {

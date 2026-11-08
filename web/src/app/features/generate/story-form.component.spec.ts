@@ -198,7 +198,7 @@ describe('StoryFormComponent', () => {
     if (slider === null) {
       throw new Error('story length slider was not rendered');
     }
-    expect(element.querySelector('output[for="mn-story-length"]')?.textContent).toContain(
+    expect(element.querySelector('mn-range-field output')?.textContent).toContain(
       'Short · about 15 sentences',
     );
     expect(slider.max).toBe('7');
@@ -272,7 +272,7 @@ describe('StoryFormComponent', () => {
 
   it('states the strictness in its closed disclosure and emits changes', () => {
     const { element, fixture, host } = render();
-    const details = element.querySelector<HTMLDetailsElement>('.strictness');
+    const details = element.querySelector<HTMLDetailsElement>('.strictness details');
 
     expect(details?.open).toBe(false);
     expect(details?.querySelector('[data-testid="strictness-value"]')?.textContent).toContain(
@@ -293,8 +293,8 @@ describe('StoryFormComponent', () => {
 
     expect(
       cards.map((card) => [
-        card.querySelector('.strictness-name')?.textContent,
-        card.querySelector('.strictness-description')?.textContent,
+        card.querySelector('[mn-option-title]')?.textContent,
+        card.querySelector('[mn-option-description]')?.textContent,
       ]),
     ).toEqual([
       ['Relaxed', 'Keep the first draft.'],
@@ -317,8 +317,8 @@ describe('StoryFormComponent', () => {
     const { element, fixture } = render();
     atStep(fixture, 2);
 
-    const rows = [...element.querySelectorAll<HTMLDetailsElement>('details.axis')];
-    expect(rows.map((row) => row.dataset['axis'])).toEqual([
+    const rows = [...element.querySelectorAll<HTMLDetailsElement>('.axis details')];
+    expect(rows.map((row) => row.closest<HTMLElement>('[data-axis]')?.dataset['axis'])).toEqual([
       'genre',
       'topic',
       'setting',
@@ -337,7 +337,7 @@ describe('StoryFormComponent', () => {
     const { element, fixture } = render();
     atStep(fixture, 2);
     const genre = (): HTMLButtonElement[] => [
-      ...element.querySelectorAll<HTMLButtonElement>('[data-axis="genre"] .chips button'),
+      ...element.querySelectorAll<HTMLButtonElement>('[data-axis="genre"] mn-chip-group button'),
     ];
     const before = genre().map((chip) => chip.textContent.trim());
     expect(before[0]).toBe('Any');
@@ -381,8 +381,8 @@ describe('StoryFormComponent', () => {
     field!.form?.requestSubmit();
     fixture.detectChanges();
 
-    const chips = [...element.querySelectorAll('[data-axis="genre"] .chips button')].map((chip) =>
-      chip.textContent.trim(),
+    const chips = [...element.querySelectorAll('[data-axis="genre"] mn-chip-group button')].map(
+      (chip) => chip.textContent.trim(),
     );
     expect(chips.slice(-2)).toEqual(['Baking contest', 'Custom']);
     expect(draft.direction().selected.genre).toEqual(['Baking contest']);
@@ -405,9 +405,7 @@ describe('StoryFormComponent', () => {
   it('keeps special instructions optional, counted, and limited', () => {
     const { element, fixture } = render();
     atStep(fixture, 2);
-    expect(element.querySelector('label[for="mn-instructions"]')?.textContent).toContain(
-      'optional',
-    );
+    expect(element.querySelector('label:has(#mn-instructions)')?.textContent).toContain('optional');
     expect(element.querySelector('#mn-instructions-count')).toBeNull();
     // No premise box any more: the plot step produces the premise.
     expect(element.querySelector('[data-testid="premise"]')).toBeNull();

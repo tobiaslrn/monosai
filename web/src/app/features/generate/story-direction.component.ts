@@ -19,6 +19,14 @@ import {
 } from '../../domain/ai/story-direction-options';
 import { formatCount, formatCountOf } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { CardComponent } from '../../shared-ui/card/card.component';
+import { ChipGroupComponent } from '../../shared-ui/chip-group/chip-group.component';
+import { CountComponent } from '../../shared-ui/count/count.component';
+import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
+import { DividerComponent } from '../../shared-ui/divider/divider.component';
+import { FieldComponent } from '../../shared-ui/field/field.component';
+import { ClusterComponent, StackComponent } from '../../shared-ui/layout/layout';
 
 /**
  * The Direction step: six axes the learner may steer a story with.
@@ -31,81 +39,84 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 @Component({
   selector: 'mn-story-direction',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent],
+  imports: [
+    ButtonDirective,
+    CardComponent,
+    ChipGroupComponent,
+    ClusterComponent,
+    CountComponent,
+    DisclosureComponent,
+    DividerComponent,
+    FieldComponent,
+    IconComponent,
+    StackComponent,
+  ],
   template: `
-    <section class="mn-card mn-stack" aria-labelledby="mn-direction-title">
-      <div class="card-head">
-        <h2 id="mn-direction-title" class="mn-card-title" tabindex="-1" data-step-heading>
-          Direction
-        </h2>
-        <button
-          type="button"
-          class="mn-button mn-button--ghost"
-          data-testid="surprise-direction"
-          [disabled]="disabled()"
-          (click)="surprise()"
-        >
-          <mn-icon name="random" [size]="18" />
-          <span>Surprise me</span>
-        </button>
-      </div>
+    <mn-card heading="Direction" [level]="2" [focusable]="true">
+      <button
+        mn-card-action
+        mnButton="ghost"
+        type="button"
+        data-testid="surprise-direction"
+        [disabled]="disabled()"
+        (click)="surprise()"
+      >
+        <mn-icon name="random" [size]="18" />
+        <span>Surprise me</span>
+      </button>
 
-      <div class="axes">
+      <mn-stack [gap]="0">
         @for (axis of axes; track axis) {
-          <details
-            class="mn-disclosure axis"
+          <mn-divider />
+          <mn-disclosure
+            class="axis"
+            [flush]="true"
             name="mn-story-axis"
+            valueTestId="axis-value"
             [attr.data-axis]="axis"
+            [heading]="labels[axis]"
+            [value]="summary(axis)"
+            [valueSet]="isSet(axis)"
             [open]="openAxis() === axis"
-            (toggle)="onToggle(axis, $event)"
+            (openChange)="onToggle(axis, $event)"
           >
-            <summary>
-              <span class="axis-label">{{ labels[axis] }}</span>
-              <span class="axis-value" [class.is-set]="isSet(axis)" data-testid="axis-value">
-                {{ summary(axis) }}
-              </span>
-            </summary>
-            <div class="axis-body">
-              <div class="chips" role="group" [attr.aria-label]="labels[axis]">
+            <mn-chip-group [label]="labels[axis]">
+              <button
+                mnButton
+                type="button"
+                [attr.aria-pressed]="!isSet(axis)"
+                [disabled]="disabled()"
+                (click)="draft.clearAxis(axis)"
+              >
+                Any
+              </button>
+              @for (option of options(axis); track option) {
                 <button
+                  mnButton
                   type="button"
-                  class="mn-button"
-                  [attr.aria-pressed]="!isSet(axis)"
+                  [attr.aria-pressed]="isChosen(axis, option)"
                   [disabled]="disabled()"
-                  (click)="draft.clearAxis(axis)"
+                  (click)="draft.toggleOption(axis, option)"
                 >
-                  Any
+                  {{ option }}
                 </button>
-                @for (option of options(axis); track option) {
-                  <button
-                    type="button"
-                    class="mn-button"
-                    [attr.aria-pressed]="isChosen(axis, option)"
-                    [disabled]="disabled()"
-                    (click)="draft.toggleOption(axis, option)"
-                  >
-                    {{ option }}
-                  </button>
-                }
-                <button
-                  type="button"
-                  class="mn-button"
-                  data-custom-toggle
-                  [attr.aria-expanded]="customAxis() === axis"
-                  [attr.aria-controls]="'mn-custom-' + axis"
-                  [disabled]="disabled()"
-                  (click)="toggleCustom(axis)"
-                >
-                  <mn-icon name="add" [size]="16" />
-                  <span>Custom</span>
-                </button>
-              </div>
-              @if (customAxis() === axis) {
-                <form
-                  class="custom-row"
-                  [id]="'mn-custom-' + axis"
-                  (submit)="addCustom(axis, $event)"
-                >
+              }
+              <button
+                mnButton
+                type="button"
+                data-custom-toggle
+                [attr.aria-expanded]="customAxis() === axis"
+                [attr.aria-controls]="'mn-custom-' + axis"
+                [disabled]="disabled()"
+                (click)="toggleCustom(axis)"
+              >
+                <mn-icon name="add" [size]="16" />
+                <span>Custom</span>
+              </button>
+            </mn-chip-group>
+            @if (customAxis() === axis) {
+              <form [id]="'mn-custom-' + axis" (submit)="addCustom(axis, $event)">
+                <mn-cluster fill="first">
                   <input
                     class="mn-control"
                     type="text"
@@ -115,136 +126,41 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
                     [attr.aria-label]="'Custom ' + labels[axis].toLowerCase()"
                     (keydown.escape)="closeCustom(axis, $event)"
                   />
-                  <button type="submit" class="mn-button">Add</button>
-                </form>
-              }
-            </div>
-          </details>
+                  <button mnButton type="submit">Add</button>
+                </mn-cluster>
+              </form>
+            }
+          </mn-disclosure>
         }
-      </div>
+        <mn-divider />
+      </mn-stack>
 
-      <div class="mn-field">
-        <label for="mn-instructions">Special instructions (optional)</label>
-        <textarea
-          id="mn-instructions"
-          rows="2"
-          data-testid="special-instructions"
-          placeholder="Tone, viewpoint, dialogue, or register"
-          [value]="draft.specialInstructions()"
-          [attr.aria-describedby]="instructionsDescriptionIds()"
-          [attr.aria-invalid]="instructionsTooLong()"
-          [disabled]="disabled()"
-          (input)="onInstructions($event)"
-        ></textarea>
+      <mn-stack [gap]="2">
+        <mn-field
+          label="Special instructions (optional)"
+          errorId="mn-instructions-limit"
+          [error]="instructionsTooLong() ? instructionsLimitMessage() : null"
+        >
+          <textarea
+            id="mn-instructions"
+            rows="2"
+            data-testid="special-instructions"
+            placeholder="Tone, viewpoint, dialogue, or register"
+            [value]="draft.specialInstructions()"
+            [attr.aria-describedby]="instructionsDescriptionIds()"
+            [attr.aria-invalid]="instructionsTooLong()"
+            [disabled]="disabled()"
+            (input)="onInstructions($event)"
+          ></textarea>
+        </mn-field>
         @if (instructionsCounterVisible()) {
-          <p id="mn-instructions-count" class="counter" [class.is-over]="instructionsTooLong()">
+          <mn-count id="mn-instructions-count" [over]="instructionsTooLong()">
             {{ formatCount(draft.instructionsLength()) }} of
             {{ formatCount(draft.instructionsLimit) }} characters
-          </p>
+          </mn-count>
         }
-        @if (instructionsTooLong()) {
-          <p id="mn-instructions-limit" class="mn-field-error" role="alert">
-            {{ instructionsLimitMessage() }}
-          </p>
-        }
-      </div>
-    </section>
-  `,
-  styles: `
-    .card-head {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2) var(--space-3);
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .card-head .mn-card-title:focus {
-      outline: none;
-    }
-
-    .axes {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .axis {
-      border-top: 1px solid var(--border-subtle);
-    }
-
-    .axis:last-child {
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .axis > summary {
-      gap: var(--space-3);
-    }
-
-    .axis-label {
-      flex: none;
-    }
-
-    /* Large text puts the value on its own line instead of cutting it off. */
-    .axis > summary {
-      flex-wrap: wrap;
-    }
-
-    .axis-value {
-      min-width: 0;
-      margin-inline-start: auto;
-      overflow: hidden;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      font-weight: var(--weight-medium);
-      text-align: end;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .axis-value.is-set {
-      color: var(--action-primary-text);
-      font-weight: var(--weight-semibold);
-    }
-
-    .axis-body {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      padding-block: var(--space-1) var(--space-4);
-    }
-
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-    }
-
-    .chips button {
-      max-width: 100%;
-      overflow-wrap: break-word;
-      white-space: normal;
-    }
-
-    .custom-row {
-      display: flex;
-      gap: var(--space-2);
-    }
-
-    .custom-row input {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .counter {
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .counter.is-over {
-      color: var(--status-danger);
-      font-weight: var(--weight-semibold);
-    }
+      </mn-stack>
+    </mn-card>
   `,
 })
 export class StoryDirectionComponent {
@@ -303,8 +219,7 @@ export class StoryDirectionComponent {
    * Follows the browser's own toggling, including the row it closes when
    * another one opens, so the open row is never two places at once.
    */
-  protected onToggle(axis: StoryAxis, event: Event): void {
-    const open = (event.target as HTMLDetailsElement).open;
+  protected onToggle(axis: StoryAxis, open: boolean): void {
     if (open) {
       this.openAxis.set(axis);
     } else if (this.openAxis() === axis) {

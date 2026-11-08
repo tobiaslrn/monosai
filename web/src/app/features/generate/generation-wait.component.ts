@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import type { GenerationState } from '../../application/generation/generation-state';
+import { WorkingComponent } from '../../shared-ui/working/working.component';
 
 interface WaitCopy {
   readonly key: string;
@@ -84,22 +85,16 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
 @Component({
   selector: 'mn-generation-wait',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [WorkingComponent],
   template: `
     @for (message of [copy()]; track message.key) {
-      <div class="copy" data-testid="generation-copy">
-        <h2>
-          <span class="status-title">{{ message.title }}</span
-          ><span class="loading-dots" aria-hidden="true"
-            ><span class="loading-dots__reveal">...</span></span
-          >
-        </h2>
-        @if (message.detail) {
-          <p>{{ message.detail }}</p>
-        }
-      </div>
+      <mn-working
+        data-testid="generation-copy"
+        [heading]="message.title"
+        [detail]="message.detail"
+      />
     }
   `,
-  styleUrl: './generation-wait.component.scss',
 })
 export class GenerationWaitComponent {
   /**

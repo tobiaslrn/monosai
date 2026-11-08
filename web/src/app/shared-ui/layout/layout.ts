@@ -16,9 +16,10 @@ import {
  */
 
 /** A step on the spacing scale (`--space-1` to `--space-7`). */
-export type Space = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+/** A step of the spacing scale; 0 butts items together, such as rows between dividers. */
+export type Space = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
-const spaceToken = (step: Space): string => `var(--space-${String(step)})`;
+const spaceToken = (step: Space): string => (step === 0 ? '0' : `var(--space-${String(step)})`);
 
 /**
  * The frame of every non-reader screen: its `mn-page-header`, then the content,
@@ -83,6 +84,8 @@ export type ClusterJustify = 'start' | 'end' | 'between';
  *
  * `fill="narrow"` shares the row equally between the items on a screen
  * narrower than the wide layout, such as a set of filters a thumb has to hit.
+ * `fill="first"` gives the first item what the rest leave, on one line: a
+ * text field and the button that submits it.
  * That reaches the projected items, so the styles are global, rooted at the
  * element.
  */
@@ -95,6 +98,7 @@ export type ClusterJustify = 'start' | 'end' | 'between';
     '[class.cluster--end]': "justify() === 'end'",
     '[class.cluster--between]': "justify() === 'between'",
     '[class.cluster--fill-narrow]': "fill() === 'narrow'",
+    '[class.cluster--fill-first]': "fill() === 'first'",
   },
   template: `<ng-content />`,
   styles: `
@@ -113,6 +117,13 @@ export type ClusterJustify = 'start' | 'end' | 'between';
     mn-cluster.cluster--between {
       justify-content: space-between;
     }
+    mn-cluster.cluster--fill-first {
+      flex-wrap: nowrap;
+    }
+    mn-cluster.cluster--fill-first > :first-child {
+      flex: 1;
+      min-width: 0;
+    }
     @media (max-width: breakpoints.$wide-max) {
       mn-cluster.cluster--fill-narrow > * {
         flex: 1 1 min(100%, 6rem);
@@ -123,7 +134,7 @@ export type ClusterJustify = 'start' | 'end' | 'between';
 export class ClusterComponent {
   readonly gap = input<Space>(2);
   readonly justify = input<ClusterJustify>('start');
-  readonly fill = input<'none' | 'narrow'>('none');
+  readonly fill = input<'none' | 'narrow' | 'first'>('none');
   protected readonly gapValue = computed(() => spaceToken(this.gap()));
 }
 

@@ -6,7 +6,9 @@ let nextCardId = 0;
  * The one raised surface, for content that is not a section of a page: an
  * option compared with another, a draft at the head of the section it will
  * change. Its content runs in one stack. An optional title is the card's own
- * heading; `level` keeps the outline right where the card sits.
+ * heading; `level` keeps the outline right where the card sits. An action on
+ * the whole card (`[mn-card-action]`) sits at the title's end, and `focusable`
+ * lets a step move focus to the title to say where the learner now is.
  *
  * A page section with a heading above its card is `mn-section`.
  */
@@ -16,11 +18,18 @@ let nextCardId = 0;
   host: { '[attr.aria-labelledby]': 'heading() ? headingId : null' },
   template: `
     @if (heading(); as title) {
-      @if (level() === 2) {
-        <h2 class="title" [id]="headingId">{{ title }}</h2>
-      } @else {
-        <h3 class="title" [id]="headingId">{{ title }}</h3>
-      }
+      <div class="head">
+        @if (level() === 2) {
+          <h2 class="title" [id]="headingId" [attr.tabindex]="focusable() ? -1 : null">
+            {{ title }}
+          </h2>
+        } @else {
+          <h3 class="title" [id]="headingId" [attr.tabindex]="focusable() ? -1 : null">
+            {{ title }}
+          </h3>
+        }
+        <ng-content select="[mn-card-action]" />
+      </div>
     }
     <ng-content />
   `,
@@ -35,6 +44,17 @@ let nextCardId = 0;
       border-radius: var(--radius-card);
       background: var(--surface-raised);
     }
+    .head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-3);
+      align-items: center;
+      justify-content: space-between;
+    }
+    /* Focus lands on the title to say where the learner is; it is not a control. */
+    .title:focus {
+      outline: none;
+    }
     .title {
       margin: 0;
       font-size: var(--text-lg);
@@ -46,5 +66,6 @@ let nextCardId = 0;
 export class CardComponent {
   readonly heading = input<string | null>(null);
   readonly level = input<2 | 3>(3);
+  readonly focusable = input(false);
   protected readonly headingId = `mn-card-${String(nextCardId++)}-heading`;
 }
