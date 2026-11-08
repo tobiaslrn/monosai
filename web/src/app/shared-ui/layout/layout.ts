@@ -125,8 +125,10 @@ export type ClusterJustify = 'start' | 'end' | 'between';
       min-width: 0;
     }
     @media (max-width: breakpoints.$wide-max) {
-      mn-cluster.cluster--fill-narrow > * {
-        flex: 1 1 min(100%, 6rem);
+      /* Equal columns, so every item is the same width whatever its label. */
+      mn-cluster.cluster--fill-narrow {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 6rem), 1fr));
       }
     }
   `,
