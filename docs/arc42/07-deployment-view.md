@@ -33,18 +33,18 @@ flowchart TB
     main -->|HTTPS| or
 ```
 
-| Infrastructure element | Building blocks it runs | Why here |
-| --- | --- | --- |
-| **Main thread** | `core/`, `features/`, `application/`, most of `infrastructure/` | The user interface and every use case |
-| **Language worker** | `web/src/workers/language/` | The tokenizer is WebAssembly and the dictionary index is large. Neither may block the reader. See [ADR 0005](../decisions/0005-tokenizer-selection.md) |
-| **Package worker** | `web/src/workers/package/` | Reading a package means unzipping and then querying SQLite. Both are slow, and both handle untrusted input. See [ADR 0016](../decisions/0016-anki-package-parsing.md) |
-| **Service worker** | Monosai's own worker, wrapping the framework's | Offline shell, asset caching, and the Android share target. Monosai's worker handles the share `POST` and hands everything else to the framework's worker unchanged. See [ADR 0036](../decisions/0036-android-package-share-target.md) |
-| **IndexedDB** | Every Dexie repository | All learner data. Survives a reload and a reinstall of the shell |
-| **Cache Storage** | Shell, icons, language assets, share inbox | Makes the offline start possible, and is where a shared package waits |
-| **GitHub Pages** | The built artifact | Static hosting, no server logic, served under an application base path |
-| **Anki on the same device** | None. External | The vocabulary source. Reached over loopback HTTP, never over the internet |
-| **Monosai Bridge** | `android-bridge/app/` | Idle foreground listener, query-only ContentProvider access, optional boot restart. No polling or wake locks; no notification permission request |
-| **The AI service** | None. External | Text and speech, paid by the learner |
+| Infrastructure element      | Building blocks it runs                                         | Why here                                                                                                                                                                                                                               |
+| --------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Main thread**             | `core/`, `features/`, `application/`, most of `infrastructure/` | The user interface and every use case                                                                                                                                                                                                  |
+| **Language worker**         | `web/src/workers/language/`                                     | The tokenizer is WebAssembly and the dictionary index is large. Neither may block the reader. See [ADR 0005](../decisions/0005-tokenizer-selection.md)                                                                                 |
+| **Package worker**          | `web/src/workers/package/`                                      | Reading a package means unzipping and then querying SQLite. Both are slow, and both handle untrusted input. See [ADR 0016](../decisions/0016-anki-package-parsing.md)                                                                  |
+| **Service worker**          | Monosai's own worker, wrapping the framework's                  | Offline shell, asset caching, and the Android share target. Monosai's worker handles the share `POST` and hands everything else to the framework's worker unchanged. See [ADR 0036](../decisions/0036-android-package-share-target.md) |
+| **IndexedDB**               | Every Dexie repository                                          | All learner data. Survives a reload and a reinstall of the shell                                                                                                                                                                       |
+| **Cache Storage**           | Shell, icons, language assets, share inbox                      | Makes the offline start possible, and is where a shared package waits                                                                                                                                                                  |
+| **GitHub Pages**            | The built artifact                                              | Static hosting, no server logic, served under an application base path                                                                                                                                                                 |
+| **Anki on the same device** | None. External                                                  | The vocabulary source. Reached over loopback HTTP, never over the internet                                                                                                                                                             |
+| **Monosai Bridge**          | `android-bridge/app/`                                           | Idle foreground listener, query-only ContentProvider access, optional boot restart. No polling or wake locks; no notification permission request                                                                                       |
+| **The AI service**          | None. External                                                  | Text and speech, paid by the learner                                                                                                                                                                                                   |
 
 Quality properties of this topology: the browser holds every piece of learner data, so there is
 nothing to breach on a server. Updates never activate during a form or a job; the learner activates
@@ -88,15 +88,15 @@ flowchart LR
     gate --> deploy
 ```
 
-| Stage | Responsibility |
-| --- | --- |
-| **Static analysis** | Formatting, linting including the layer zones, type checking, generated assets and fixtures, icons, licences, and a dependency audit |
-| **Unit and integration tests** | The full unit suite, held to the coverage thresholds the build configuration declares |
-| **Production build** | Produces the one artifact. Verifies that it contains everything a deployed Progressive Web App needs and that its base path is right, and holds it to the declared bundle budgets |
-| **Browser journeys** | Sharded across the desktop and Android lanes. A pull request runs the smoke lane; a push to the default branch runs the full regression lane |
-| **PWA and offline suite** | The same artifact, served locally with the service worker live |
-| **Gate** | Fails unless every listed stage succeeded. A stage blocks merging by joining the gate's dependency list, so branch protection never has to be edited |
-| **Deploy** | Runs on the default branch only, after the gate. Downloads the artifact and publishes it. It never builds |
+| Stage                          | Responsibility                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Static analysis**            | Formatting, linting including the layer zones, component style tokens and the composition allowlist (features and core may not gain styles, native popovers, raw `<details>`, or `PopoverService` outside the reader; the checked-in allowlist may only shrink against the base revision), type checking, generated assets and fixtures, icons, licences, and a dependency audit |
+| **Unit and integration tests** | The full unit suite, held to the coverage thresholds the build configuration declares                                                                                                                                                                                                                                                                                            |
+| **Production build**           | Produces the one artifact. Verifies that it contains everything a deployed Progressive Web App needs and that its base path is right, and holds it to the declared bundle budgets                                                                                                                                                                                                |
+| **Browser journeys**           | Sharded across the desktop and Android lanes. A pull request runs the smoke lane; a push to the default branch runs the full regression lane                                                                                                                                                                                                                                     |
+| **PWA and offline suite**      | The same artifact, served locally with the service worker live                                                                                                                                                                                                                                                                                                                   |
+| **Gate**                       | Fails unless every listed stage succeeded. A stage blocks merging by joining the gate's dependency list, so branch protection never has to be edited                                                                                                                                                                                                                             |
+| **Deploy**                     | Runs on the default branch only, after the gate. Downloads the artifact and publishes it. It never builds                                                                                                                                                                                                                                                                        |
 
 Two rules keep this honest. Nothing except the build stage compiles the application; every test stage
 is told through `MONOSAI_PREBUILT_DIST=true` to serve the downloaded artifact rather than build its own. And a stage becomes blocking by

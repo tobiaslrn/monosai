@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
       - uses: gradle/actions/setup-gradle@v6
       - uses: actions/setup-node@v7
         with:
@@ -54,6 +54,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The composition allowlist is compared with the base revision.
+          fetch-depth: 0
       - uses: ./.github/actions/setup
       - name: Language dataset schema, digest, and attribution check
         run: npm run assets:verify
@@ -73,9 +76,11 @@ jobs:
         working-directory: web
       - run: npm run typecheck
       - run: npm run lint
-      - name: Component style token and selector check
+      - name: Component style, selector, and composition check
         run: npm run stylelint
         working-directory: web
+        env:
+          COMPOSITION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
       - name: Formatting check (advisory)
         run: npm run format:check
         continue-on-error: true
@@ -141,12 +146,12 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npm run e2e -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         env:
-          MONOSAI_PREBUILT_DIST: 'true'
+          MONOSAI_PREBUILT_DIST: "true"
       - name: Full browser regression suite
         if: github.event_name != 'pull_request'
         run: npm run e2e:full -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         env:
-          MONOSAI_PREBUILT_DIST: 'true'
+          MONOSAI_PREBUILT_DIST: "true"
       - name: Upload this shard's partial report
         if: always()
         uses: actions/upload-artifact@v7
@@ -201,7 +206,7 @@ jobs:
       - name: Offline reload, installability, and base path
         run: npm run e2e:pwa
         env:
-          MONOSAI_PREBUILT_DIST: 'true'
+          MONOSAI_PREBUILT_DIST: "true"
       - if: failure()
         uses: actions/upload-artifact@v7
         with:

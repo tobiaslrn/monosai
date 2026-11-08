@@ -3,6 +3,7 @@ import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import stylelint from 'stylelint';
 import { globalStylesConfig } from '../stylelint.config.mjs';
+import { checkComposition } from './composition-freeze.mjs';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const webRoot = resolve(scriptDirectory, '..');
@@ -116,6 +117,8 @@ const styleFiles = (await collectFiles(stylesRoot)).filter((file) => extname(fil
 for (const filePath of styleFiles.sort()) {
   warnings.push(...(await lintGlobalStyles(await readFile(filePath, 'utf8'), filePath)));
 }
+
+warnings.push(...(await checkComposition(webRoot)));
 
 if (warnings.length > 0) {
   console.error(warnings.join('\n'));
