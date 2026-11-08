@@ -17,6 +17,8 @@ import {
   isAutomaticAnkiSource,
   isIncludedInVocabulary,
 } from '../../domain/vocabulary/vocabulary-source';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { RowComponent } from '../../shared-ui/row/row.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import type { IconName } from '../../shared-ui/icon/icon-set';
 import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
@@ -40,150 +42,76 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
 @Component({
   selector: 'mn-source-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, ListRowComponent],
+  imports: [IconComponent, ListRowComponent, ButtonDirective, RowComponent],
   template: `
-    <div class="mn-card mn-card--flush">
-      <ul class="sources">
-        @for (source of sources(); track source.id) {
-          <li>
-            <mn-list-row
-              variant="flush"
-              [class.is-off]="!included(source)"
-              [mutedLeading]="!included(source)"
-              [routerLink]="['/reading-level/source', source.id]"
-              [testId]="'source-row'"
-            >
-              <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-                <mn-icon [name]="iconFor(source)" [size]="18" />
-              </span>
-              <span mn-list-row-title>{{ source.label }}</span>
-              <span mn-list-row-meta>
-                @if (needsAttention(source)) {
-                  <span class="warn-dot" aria-hidden="true"></span>
-                }
-                {{ whereLine(source) }}
-              </span>
-              <mn-icon mn-list-row-trailing name="chevron-right" />
-            </mn-list-row>
-          </li>
-        } @empty {
-          <li class="empty mn-hint" data-testid="no-sources">
-            No sources yet. Add one to use your words.
-          </li>
-        }
-      </ul>
-
-      @if (attention(); as message) {
-        <p class="footer is-attention" data-testid="source-attention">
-          <mn-icon name="warning" [size]="20" />
-          <span class="footer-text">{{ message }}</span>
-          <button
-            type="button"
-            class="mn-button mn-button--ghost"
-            [attr.aria-busy]="syncing() ? 'true' : null"
-            (click)="syncAgain()"
-            data-testid="attention-retry"
+    <ul class="mn-list-group">
+      @for (source of sources(); track source.id) {
+        <li>
+          <mn-list-row
+            variant="flush"
+            [class.is-off]="!included(source)"
+            [mutedLeading]="!included(source)"
+            [routerLink]="['/reading-level/source', source.id]"
+            [testId]="'source-row'"
           >
-            Try now
-          </button>
-        </p>
-      } @else if (syncedLabel(); as synced) {
-        <p class="footer" data-testid="source-synced">
-          <mn-icon class="synced" name="synced" [size]="22" />
-          <span class="footer-text">{{ synced }}</span>
-          @if (canSyncAgain()) {
+            <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
+              <mn-icon [name]="iconFor(source)" [size]="18" />
+            </span>
+            <span mn-list-row-title>{{ source.label }}</span>
+            <span mn-list-row-meta>
+              @if (needsAttention(source)) {
+                <mn-icon name="warning" tone="warning" [size]="14" />
+              }
+              {{ whereLine(source) }}
+            </span>
+            <mn-icon mn-list-row-trailing name="chevron-right" />
+          </mn-list-row>
+        </li>
+      } @empty {
+        <li>
+          <mn-row testId="no-sources">
+            <span mn-row-meta>No sources yet. Add one to use your words.</span>
+          </mn-row>
+        </li>
+      }
+      @if (attention(); as message) {
+        <li>
+          <mn-row testId="source-attention">
+            <mn-icon mn-row-leading name="warning" tone="warning" />
+            <span mn-row-meta>{{ message }}</span>
             <button
+              mnButton="ghost"
               type="button"
-              class="mn-icon-button sync"
-              [class.is-busy]="syncing()"
               [attr.aria-busy]="syncing() ? 'true' : null"
-              aria-label="Read Anki again"
-              title="Read Anki again"
               (click)="syncAgain()"
-              data-testid="sync-again"
+              data-testid="attention-retry"
             >
-              <mn-icon name="sync" [size]="20" />
+              Try now
             </button>
-          }
-        </p>
+          </mn-row>
+        </li>
+      } @else if (syncedLabel(); as synced) {
+        <li>
+          <mn-row testId="source-synced">
+            <mn-icon mn-row-leading name="synced" tone="success" [size]="22" />
+            <span mn-row-meta>{{ synced }}</span>
+            @if (canSyncAgain()) {
+              <button
+                mnButton="icon"
+                type="button"
+                [attr.aria-busy]="syncing() ? 'true' : null"
+                aria-label="Read Anki again"
+                title="Read Anki again"
+                (click)="syncAgain()"
+                data-testid="sync-again"
+              >
+                <mn-icon name="sync" tone="accent" [size]="20" [spin]="syncing()" />
+              </button>
+            }
+          </mn-row>
+        </li>
       }
-    </div>
-  `,
-  styles: `
-    :host {
-      display: block;
-      min-width: 0;
-    }
-
-    .sources {
-      display: grid;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .sources li + li {
-      border-top: 1px solid var(--border-subtle);
-    }
-
-    .warn-dot {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      margin-right: 0.35em;
-      border-radius: var(--radius-pill);
-      background: var(--status-warning);
-      vertical-align: middle;
-    }
-
-    .footer {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-3);
-      align-items: center;
-      min-height: 3.5rem;
-      margin: 0 var(--space-3);
-      padding: var(--space-2) 0;
-      border-top: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-    }
-
-    .footer-text {
-      flex: 1 1 min(100%, 12em);
-      min-width: 0;
-    }
-
-    .synced {
-      flex: none;
-      color: var(--status-success);
-    }
-
-    .footer.is-attention {
-      color: var(--status-warning);
-      font-size: var(--text-sm);
-    }
-
-    .footer.is-attention mn-icon {
-      flex: none;
-    }
-
-    .sync {
-      color: var(--action-primary);
-    }
-
-    .sync.is-busy mn-icon {
-      animation: mn-spin var(--motion-spin) linear infinite;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .sync.is-busy mn-icon {
-        animation: none;
-      }
-    }
-
-    .empty {
-      padding: var(--space-4);
-    }
+    </ul>
   `,
 })
 export class SourceListComponent {

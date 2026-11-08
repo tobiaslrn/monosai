@@ -4,6 +4,7 @@ import { SourceMappingStore } from '../../application/vocabulary/source-mapping.
 import { SourceStandingStore } from '../../application/vocabulary/source-standing.store';
 import { formatCountOf } from '../../domain/shared/locale';
 import { isIncludedInVocabulary } from '../../domain/vocabulary/vocabulary-source';
+import { StackComponent } from '../../shared-ui/layout/layout';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
@@ -18,37 +19,23 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
 @Component({
   selector: 'mn-vocabulary-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, ListRowComponent],
+  imports: [IconComponent, ListRowComponent, StackComponent],
   template: `
     <mn-list-row [routerLink]="'/reading-level/vocabulary'" [testId]="'browse-vocabulary'">
       <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
         <mn-icon name="vocabulary" [size]="18" />
       </span>
       <span mn-list-row-title>Vocabulary</span>
-      <span mn-list-row-meta class="vocabulary-meta" data-testid="source-standing">
-        <span data-testid="words-standing">{{ wordsValue() }}</span>
-        @if (detail(); as line) {
-          <span class="vocabulary-detail">{{ line }}</span>
-        }
+      <span mn-list-row-meta data-testid="source-standing">
+        <mn-stack [gap]="1">
+          <span data-testid="words-standing">{{ wordsValue() }}</span>
+          @if (detail(); as line) {
+            <span>{{ line }}</span>
+          }
+        </mn-stack>
       </span>
       <mn-icon mn-list-row-trailing name="chevron-right" />
     </mn-list-row>
-  `,
-  styles: `
-    :host {
-      display: block;
-    }
-
-    .vocabulary-meta {
-      display: grid;
-      gap: 1px;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .vocabulary-detail {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
   `,
 })
 export class VocabularyCardComponent {

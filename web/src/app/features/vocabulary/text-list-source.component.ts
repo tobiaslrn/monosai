@@ -15,93 +15,76 @@ import { formatCountOf } from '../../domain/shared/locale';
 import { parseTextList } from '../../domain/vocabulary/text-list-parser';
 import type { TextListVocabularySource } from '../../domain/vocabulary/vocabulary-source';
 import { textListPreviewLabel } from './text-list-preview';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { CardComponent } from '../../shared-ui/card/card.component';
+import { FieldComponent } from '../../shared-ui/field/field.component';
+import { ClusterComponent } from '../../shared-ui/layout/layout';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 
 /** Focused editor shared by the Add words sheet and a pasted list's own page. */
 @Component({
   selector: 'mn-text-list-source',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ButtonDirective, CardComponent, ClusterComponent, FieldComponent, NoticeComponent],
   template: `
-    <form class="editor" (submit)="save($event)" data-testid="text-source-editor">
-      <label class="mn-field">
-        <span>List name (required)</span>
-        <input
-          type="text"
-          maxlength="80"
-          [value]="label()"
-          (input)="setLabel($event)"
-          placeholder="For example, Genki vocabulary"
-        />
-      </label>
-      <label class="mn-field">
-        <span>Vocabulary (required)</span>
-        <textarea
-          rows="7"
-          [value]="content()"
-          (input)="setContent($event)"
-          placeholder="猫&#10;食べる&#10;おはようございます"
-          data-testid="text-source-content"
-        ></textarea>
-      </label>
-      <p class="preview" aria-live="polite">
-        {{ previewLabel() }}
-      </p>
-      @if (!canSave()) {
-        <p id="mn-text-source-requirements" class="mn-hint">
-          {{ requirements() }}
+    <form (submit)="save($event)" data-testid="text-source-editor">
+      <mn-card>
+        <mn-field label="List name (required)">
+          <input
+            type="text"
+            maxlength="80"
+            [value]="label()"
+            (input)="setLabel($event)"
+            placeholder="For example, Genki vocabulary"
+          />
+        </mn-field>
+        <mn-field label="Vocabulary (required)">
+          <textarea
+            rows="7"
+            [value]="content()"
+            (input)="setContent($event)"
+            placeholder="猫&#10;食べる&#10;おはようございます"
+            data-testid="text-source-content"
+          ></textarea>
+        </mn-field>
+        <p class="mn-hint" aria-live="polite">
+          {{ previewLabel() }}
         </p>
-      }
-      @if (editorError(); as error) {
-        <p class="mn-notice mn-notice--error" role="alert">{{ error }}</p>
-      }
-      @if (preview().nonJapaneseLines > 0) {
-        <p class="mn-hint" role="status">
-          {{ formatCountOf(preview().nonJapaneseLines, 'line') }}
-          {{ preview().nonJapaneseLines === 1 ? 'does' : 'do' }} not appear to contain Japanese.
-          Check that these are the words you intended; they can still be added.
-        </p>
-      }
-      <div class="mn-actions">
-        <button
-          type="submit"
-          class="mn-button mn-button--primary"
-          [disabled]="saving() || preview().entries.length === 0 || label().trim().length === 0"
-          [attr.aria-describedby]="!canSave() ? 'mn-text-source-requirements' : null"
-          data-testid="save-text-source"
-        >
-          {{
-            saving() ? 'Updating vocabulary…' : source() === null ? 'Add source' : 'Save changes'
-          }}
-        </button>
-        <button type="button" class="mn-button" [disabled]="saving()" (click)="cancelled.emit()">
-          Cancel
-        </button>
-      </div>
+        @if (!canSave()) {
+          <p id="mn-text-source-requirements" class="mn-hint">
+            {{ requirements() }}
+          </p>
+        }
+        @if (editorError(); as error) {
+          <mn-notice tone="error" role="alert"
+            ><p>{{ error }}</p></mn-notice
+          >
+        }
+        @if (preview().nonJapaneseLines > 0) {
+          <p class="mn-hint" role="status">
+            {{ formatCountOf(preview().nonJapaneseLines, 'line') }}
+            {{ preview().nonJapaneseLines === 1 ? 'does' : 'do' }} not appear to contain Japanese.
+            Check that these are the words you intended; they can still be added.
+          </p>
+        }
+        <mn-cluster>
+          <button
+            mnButton="primary"
+            type="submit"
+            [disabled]="saving() || preview().entries.length === 0 || label().trim().length === 0"
+            [attr.aria-describedby]="!canSave() ? 'mn-text-source-requirements' : null"
+            data-testid="save-text-source"
+          >
+            {{
+              saving() ? 'Updating vocabulary…' : source() === null ? 'Add source' : 'Save changes'
+            }}
+          </button>
+          <button mnButton type="button" [disabled]="saving()" (click)="cancelled.emit()">
+            Cancel
+          </button>
+        </mn-cluster>
+      </mn-card>
     </form>
-  `,
-  styles: `
-    .editor {
-      display: grid;
-      gap: var(--space-2);
-      padding: var(--space-3);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-panel);
-    }
-
-    textarea {
-      min-height: 9rem;
-      resize: vertical;
-      font-family: inherit;
-    }
-
-    p {
-      margin: 0;
-    }
-
-    .preview {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
   `,
 })
 export class TextListSourceComponent {

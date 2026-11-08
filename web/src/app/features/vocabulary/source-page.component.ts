@@ -52,6 +52,13 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
 import { SwitchRowComponent } from '../../shared-ui/switch-row/switch-row.component';
 import { PackageImportComponent } from './package-import.component';
 import { TextListSourceComponent } from './text-list-source.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { CardComponent } from '../../shared-ui/card/card.component';
+import { CheckboxComponent } from '../../shared-ui/checkbox/checkbox.component';
+import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
+import { DividerComponent } from '../../shared-ui/divider/divider.component';
+import { ClusterComponent, GridComponent, PageComponent } from '../../shared-ui/layout/layout';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 
 const STALE_REASONS: Record<StaleReason, string> = {
   'deck-missing': 'That deck is no longer in your collection.',
@@ -76,36 +83,46 @@ const STALE_REASONS: Record<StaleReason, string> = {
   providers: [VocabularyRefreshStore, PackageImportStore],
   imports: [
     FormsModule,
+    ButtonDirective,
+    CardComponent,
+    CheckboxComponent,
+    ClusterComponent,
+    DisclosureComponent,
+    DividerComponent,
+    GridComponent,
     IconComponent,
+    NoticeComponent,
+    PageComponent,
     PageHeaderComponent,
     PackageImportComponent,
     SwitchRowComponent,
     TextListSourceComponent,
   ],
   template: `
-    <div class="mn-page">
+    <mn-page>
       <mn-page-header [heading]="heading()" backTo="/reading-level" backLabel="Back to words" />
 
       <p class="mn-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
 
       @if (source(); as source) {
-        <section class="mn-card" [attr.aria-label]="source.label">
+        <mn-card role="region" [attr.aria-label]="source.label">
           <p class="mn-hint" data-testid="source-summary">{{ summary(source) }}</p>
 
           @if (attention(); as message) {
-            <p class="mn-notice mn-notice--warning" role="status" data-testid="source-attention">
-              <span>{{ message }}</span>
+            <mn-notice tone="warning" role="status" data-testid="source-attention">
+              <p>{{ message }}</p>
               @if (source.kind === 'anki-connect') {
                 <button
+                  mn-notice-action
+                  mnButton="ghost"
                   type="button"
-                  class="mn-button mn-button--ghost"
                   [attr.aria-busy]="manual.isSyncing() ? 'true' : null"
                   (click)="syncNow(source)"
                 >
                   Try now
                 </button>
               }
-            </p>
+            </mn-notice>
           }
 
           <mn-switch-row
@@ -114,10 +131,10 @@ const STALE_REASONS: Record<StaleReason, string> = {
             [disabled]="busy()"
             (checkedChange)="setIncluded(source.id, $event)"
           >
-            <span class="setting-label">Count these words</span>
+            Count these words
           </mn-switch-row>
 
-          <div class="rule"></div>
+          <mn-divider />
 
           @if (source.kind === 'anki-connect') {
             <mn-switch-row
@@ -126,12 +143,12 @@ const STALE_REASONS: Record<StaleReason, string> = {
               [disabled]="busy()"
               (checkedChange)="setAutomaticSync(source.id, $event)"
             >
-              <span class="setting-label">Keep it up to date</span>
+              Keep it up to date
             </mn-switch-row>
-            <div class="footline">
+            <mn-cluster justify="between" [gap]="3">
               <button
                 type="button"
-                class="mn-button"
+                mnButton
                 [disabled]="busy() && !manual.isSyncingSource(source.id)"
                 [attr.aria-busy]="manual.isSyncingSource(source.id) ? 'true' : null"
                 (click)="syncNow(source)"
@@ -140,26 +157,26 @@ const STALE_REASONS: Record<StaleReason, string> = {
                 {{ manual.isSyncingSource(source.id) ? 'Reading…' : 'Refresh now' }}
               </button>
               @if (manual.isSyncingSource(source.id)) {
-                <button type="button" class="mn-button" (click)="manual.cancel()">Cancel</button>
+                <button type="button" mnButton (click)="manual.cancel()">Cancel</button>
               } @else {
                 <span class="mn-hint">{{ lastReadLine(source.id) }}</span>
               }
-            </div>
+            </mn-cluster>
           } @else if (source.kind === 'anki-package') {
-            <div class="footline">
+            <mn-cluster justify="between" [gap]="3">
               <button
                 type="button"
-                class="mn-button"
+                mnButton
                 [disabled]="packageBusy()"
                 (click)="packageInput.click()"
                 data-testid="replace-package"
               >
                 Replace…
               </button>
-            </div>
+            </mn-cluster>
             <input
               #packageInput
-              class="file-input"
+              class="mn-visually-hidden"
               type="file"
               aria-label="Choose a replacement Anki package"
               aria-hidden="true"
@@ -171,20 +188,18 @@ const STALE_REASONS: Record<StaleReason, string> = {
             />
             <mn-package-import />
           } @else {
-            <div class="footline">
-              <span class="label">
-                <strong>Your own words</strong>
-              </span>
+            <mn-cluster justify="between" [gap]="3">
+              <strong>Your own words</strong>
               <button
                 type="button"
-                class="mn-button"
+                mnButton
                 [disabled]="editing()"
                 (click)="editing.set(true)"
                 data-testid="edit-text-list"
               >
                 Edit list
               </button>
-            </div>
+            </mn-cluster>
             @if (editing() && source.kind === 'text-list') {
               <mn-text-list-source
                 [source]="textList(source)"
@@ -194,19 +209,20 @@ const STALE_REASONS: Record<StaleReason, string> = {
             }
           }
 
-          <div class="rule"></div>
+          <mn-divider />
 
           @if (source.kind === 'anki-package') {
             <p class="mn-hint">{{ mappingSummary(source) }}</p>
 
-            <div class="rule"></div>
+            <mn-divider />
           } @else if (source.kind !== 'text-list') {
-            <details class="mn-disclosure" (toggle)="onMappingToggle($event, source)">
-              <summary>
-                <span class="summary-label">{{ mappingSummary(source) }}</span>
-              </summary>
+            <mn-disclosure
+              tone="quiet"
+              [heading]="mappingSummary(source)"
+              (openChange)="onMappingOpen($event, source)"
+            >
               @if (configurable(source)) {
-                <div class="fieldgrid">
+                <mn-grid min="9rem">
                   <label class="mn-field">
                     <span>Deck</span>
                     <select
@@ -249,7 +265,6 @@ const STALE_REASONS: Record<StaleReason, string> = {
                   <label class="mn-field">
                     <span>Meaning</span>
                     <select
-                      class="mn-control"
                       aria-label="Meaning field"
                       [disabled]="refresh.isBusy()"
                       [ngModel]="source.meaningFieldName ?? ''"
@@ -261,20 +276,17 @@ const STALE_REASONS: Record<StaleReason, string> = {
                       }
                     </select>
                   </label>
-                </div>
+                </mn-grid>
                 @if (hasChildren(source.deckName)) {
-                  <label class="check">
-                    <input
-                      type="checkbox"
-                      [disabled]="refresh.isBusy()"
-                      [checked]="source.deckScope === 'deck-and-subdecks'"
-                      (change)="setScope(source, $event)"
-                    />
-                    <span>Include the subdecks</span>
-                  </label>
+                  <mn-checkbox
+                    [disabled]="refresh.isBusy()"
+                    [checked]="source.deckScope === 'deck-and-subdecks'"
+                    (checkedChange)="setScope(source, $event)"
+                    >Include the subdecks</mn-checkbox
+                  >
                 }
               } @else if (source.kind === 'anki-connect') {
-                <p class="mn-hint fold" role="status">
+                <p class="mn-hint" role="status">
                   {{
                     refresh.isBusy()
                       ? 'Asking Anki what it has…'
@@ -282,25 +294,27 @@ const STALE_REASONS: Record<StaleReason, string> = {
                   }}
                 </p>
               }
-            </details>
+            </mn-disclosure>
 
             @if (staleReason(source); as reason) {
-              <p class="stale" role="alert" data-testid="source-stale">
-                {{ staleMessage(reason) }} Add this source again to repair it.
-              </p>
+              <mn-notice tone="error" role="alert" data-testid="source-stale">
+                <p>{{ staleMessage(reason) }} Add this source again to repair it.</p>
+              </mn-notice>
             }
 
-            <div class="rule"></div>
+            <mn-divider />
           }
 
           @if (changeError(); as error) {
-            <p class="stale" role="alert">{{ error }}</p>
+            <mn-notice tone="error" role="alert"
+              ><p>{{ error }}</p></mn-notice
+            >
           }
 
-          <div class="footline">
+          <mn-cluster justify="between" [gap]="3">
             <button
               type="button"
-              class="mn-button mn-button--danger"
+              mnButton="danger"
               [disabled]="busy()"
               (click)="confirmRemove(source)"
               [attr.aria-label]="'Remove ' + source.label"
@@ -308,77 +322,14 @@ const STALE_REASONS: Record<StaleReason, string> = {
             >
               <mn-icon name="delete" /> Remove source
             </button>
-          </div>
-        </section>
+          </mn-cluster>
+        </mn-card>
       } @else if (store.loaded()) {
-        <section class="mn-card">
+        <mn-card>
           <p>This source is no longer here.</p>
-        </section>
+        </mn-card>
       }
-    </div>
-  `,
-  styles: `
-    .setting-label {
-      font-size: var(--text-md);
-      font-weight: var(--weight-semibold);
-    }
-
-    .label {
-      display: grid;
-      gap: 1px;
-      min-width: 0;
-    }
-
-    .label strong {
-      font-weight: var(--weight-semibold);
-    }
-
-    /* A rule, not decoration: it is what stops two settings reading as one. */
-    .rule {
-      height: 1px;
-      background: var(--border-subtle);
-    }
-
-    .footline {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-3);
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .fieldgrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-      gap: var(--space-3);
-      margin-top: var(--space-3);
-    }
-
-    .fold {
-      margin: var(--space-2) 0 0;
-    }
-
-    .check {
-      display: flex;
-      gap: var(--space-2);
-      align-items: center;
-      min-height: var(--touch-target);
-      font-size: var(--text-sm);
-    }
-
-    .stale {
-      margin: 0;
-      color: var(--status-danger);
-      font-size: var(--text-sm);
-    }
-
-    .file-input {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      opacity: 0;
-      pointer-events: none;
-    }
+    </mn-page>
   `,
 })
 export class SourcePageComponent {
@@ -542,8 +493,7 @@ export class SourcePageComponent {
    * answers the question; connecting on arrival would ask Anki for a catalog
    * nobody was going to look at.
    */
-  protected async onMappingToggle(event: Event, source: VocabularySource): Promise<void> {
-    const open = (event.target as HTMLDetailsElement).open;
+  protected async onMappingOpen(open: boolean, source: VocabularySource): Promise<void> {
     if (!open || source.kind !== 'anki-connect' || this.configurable(source)) {
       return;
     }
@@ -588,9 +538,9 @@ export class SourcePageComponent {
     await this.applyConnectedSourceChange();
   }
 
-  protected async setScope(source: SourceMapping, event: Event): Promise<void> {
+  protected async setScope(source: SourceMapping, includeSubdecks: boolean): Promise<void> {
     await this.store.update(source.id, {
-      deckScope: readChecked(event) ? 'deck-and-subdecks' : 'deck-only',
+      deckScope: includeSubdecks ? 'deck-and-subdecks' : 'deck-only',
     });
     await this.applyConnectedSourceChange();
   }
@@ -717,8 +667,4 @@ export class SourcePageComponent {
 
 function readValue(event: Event): string {
   return (event.target as HTMLSelectElement).value;
-}
-
-function readChecked(event: Event): boolean {
-  return (event.target as HTMLInputElement).checked;
 }

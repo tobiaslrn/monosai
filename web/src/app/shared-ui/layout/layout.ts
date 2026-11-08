@@ -128,6 +128,32 @@ export class ClusterComponent {
 }
 
 /**
+ * Equal columns that fit as many as the width allows, each at least `min`
+ * wide, and one column when not even two fit: a set of fields answering
+ * related questions, side by side once a stack of full-width controls would
+ * be a column of bars.
+ */
+@Component({
+  selector: 'mn-grid',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[style.gap]': 'gapValue()', '[style.--mn-grid-min]': 'min()' },
+  template: `<ng-content />`,
+  styles: `
+    :host {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--mn-grid-min)), 1fr));
+      min-width: 0;
+    }
+  `,
+})
+export class GridComponent {
+  /** The narrowest a column may be, in rem so it grows with the text. */
+  readonly min = input<'9rem' | '12rem'>('12rem');
+  readonly gap = input<Space>(3);
+  protected readonly gapValue = computed(() => spaceToken(this.gap()));
+}
+
+/**
  * A label block and an end block on one line, the end pinned to the inline
  * end and aligned with the label's first line. When the split's own width no
  * longer holds both, the end block moves below the label as a whole.

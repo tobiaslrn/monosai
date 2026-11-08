@@ -1,18 +1,11 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  DestroyRef,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { hasModifierKey } from '@angular/cdk/keycodes';
 import { FormsModule } from '@angular/forms';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { ViewportService } from '../../core/platform/viewport.service';
-import { SheetHandleComponent } from '../../shared-ui/sheet/sheet-handle.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { SheetPanelComponent } from '../../shared-ui/sheet/sheet-panel.component';
 import {
   applyBrowseQuery,
   DEFAULT_BROWSE_QUERY,
@@ -38,21 +31,16 @@ const DEPARTURE_FALLBACK_MS = 400;
 @Component({
   selector: 'mn-vocabulary-filter-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, SheetHandleComponent],
+  imports: [FormsModule, ButtonDirective, SheetPanelComponent],
   template: `
-    <section
-      class="sheet"
-      aria-labelledby="vocabulary-filter-heading"
-      [class.is-dragging]="dragOffset() > 0 && !leaving()"
-      [class.is-leaving]="leaving()"
-      [style.transform]="leaving() ? null : dragTransform()"
-      (transitionend)="onTransitionEnd($event)"
+    <mn-sheet-panel
+      heading="Filters"
+      headingId="vocabulary-filter-heading"
+      handleLabel="Close filters"
+      [leaving]="leaving()"
+      (dismissed)="depart(undefined)"
+      (departed)="onDeparted()"
     >
-      @if (isMobile()) {
-        <mn-sheet-handle #handle label="Close filters" (dismissed)="depart(undefined)" />
-      }
-      <h2 id="vocabulary-filter-heading">Filters</h2>
-
       <label class="mn-field">
         <span>Source</span>
         <select
@@ -68,7 +56,7 @@ const DEPARTURE_FALLBACK_MS = 400;
         </select>
       </label>
 
-      <fieldset class="difficulty">
+      <fieldset>
         <legend>Difficulty</legend>
         <label class="mn-field">
           <span>Minimum difficulty: {{ draft().difficulty.min }}%</span>
@@ -127,94 +115,11 @@ const DEPARTURE_FALLBACK_MS = 400;
         </select>
       </label>
 
-      <div class="mn-actions sheet-actions">
-        <button type="button" class="mn-button mn-button--primary" (click)="depart(draft())">
-          Show {{ formatCountOf(matchCount(), 'word') }}
-        </button>
-        <button type="button" class="mn-button mn-button--ghost" (click)="reset()">Reset</button>
-      </div>
-    </section>
-  `,
-  styles: `
-    .sheet {
-      display: grid;
-      gap: var(--space-4);
-      width: min(32rem, calc(100vw - 2 * var(--space-4)));
-      max-height: min(90vh, 42rem);
-      overflow: auto;
-      padding: var(--space-5);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
-      transition: transform var(--motion-medium) var(--ease-settle);
-    }
-
-    h2,
-    fieldset {
-      margin: 0;
-    }
-
-    h2 {
-      font-size: var(--text-lg);
-    }
-
-    fieldset {
-      display: grid;
-      gap: var(--space-3);
-      min-inline-size: 0;
-      padding: 0;
-      border: 0;
-    }
-
-    legend {
-      margin-block-end: var(--space-2);
-      font-weight: var(--weight-medium);
-    }
-
-    .sheet-actions {
-      justify-content: space-between;
-      margin-block-start: var(--space-2);
-    }
-
-    .sheet.is-dragging {
-      transition: none;
-    }
-
-    /* Leaving, a docked sheet slides back down its edge, at the
-       popover sheets' pace and curve, and is no longer a surface to press. */
-    .sheet.is-leaving {
-      pointer-events: none;
-    }
-
-    mn-sheet-handle {
-      --mn-sheet-handle-bleed: var(--space-5);
-    }
-
-    @media (max-width: 59.999em) {
-      .sheet {
-        width: 100%;
-        max-height: 90vh;
-        /* The grab handle sits flush against the docked edge. */
-        padding-block-start: 0;
-        border-inline: 0;
-        border-block-end: 0;
-        border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-      }
-
-      /* Leaving accelerates, as a native sheet does; springing back keeps the settle curve. */
-      .sheet.is-leaving {
-        transform: translateY(100%);
-        transition: transform var(--motion-medium) var(--ease-exit);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .sheet,
-      .sheet.is-leaving {
-        transition: none;
-      }
-    }
+      <button mn-sheet-action mnButton="primary" type="button" (click)="depart(draft())">
+        Show {{ formatCountOf(matchCount(), 'word') }}
+      </button>
+      <button mn-sheet-action mnButton="ghost" type="button" (click)="reset()">Reset</button>
+    </mn-sheet-panel>
   `,
 })
 export class VocabularyFilterSheetComponent {
@@ -242,17 +147,10 @@ export class VocabularyFilterSheetComponent {
   private readonly viewport = inject(ViewportService);
   private fallback: ReturnType<typeof setTimeout> | undefined;
   private result: BrowseQuery | undefined;
-  private readonly handle = viewChild<SheetHandleComponent>('handle');
   protected readonly draft = signal<BrowseQuery>(this.data.query);
 
-  protected readonly isMobile = this.viewport.isMobile;
   /** Set once a dismissal has begun, so a second one during the slide is ignored. */
   protected readonly leaving = signal(false);
-  protected readonly dragOffset = computed(() => this.handle()?.offset() ?? 0);
-  protected readonly dragTransform = computed(() => {
-    const offset = this.dragOffset();
-    return offset === 0 ? null : `translateY(${String(offset)}px)`;
-  });
 
   protected readonly formatCountOf = formatCountOf;
   protected readonly matchCount = () =>
@@ -295,7 +193,7 @@ export class VocabularyFilterSheetComponent {
       return;
     }
     this.result = result;
-    if (!this.isMobile() || this.viewport.prefersReducedMotion()) {
+    if (!this.viewport.isMobile() || this.viewport.prefersReducedMotion()) {
       this.finish();
       return;
     }
@@ -307,12 +205,9 @@ export class VocabularyFilterSheetComponent {
     }, DEPARTURE_FALLBACK_MS);
   }
 
-  protected onTransitionEnd(event: TransitionEvent): void {
-    if (
-      this.leaving() &&
-      event.target === event.currentTarget &&
-      event.propertyName === 'transform'
-    ) {
+  /** The handle springing back also ends a slide; only the slide away closes. */
+  protected onDeparted(): void {
+    if (this.leaving()) {
       this.finish();
     }
   }

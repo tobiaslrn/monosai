@@ -42,7 +42,9 @@ describe('VocabularyFilterSheetComponent', () => {
     const closed: (BrowseQuery | undefined)[] = [];
     ref.closed.subscribe((result) => closed.push(result));
     detect();
-    const sheet = document.querySelector<HTMLElement>('mn-vocabulary-filter-sheet .sheet')!;
+    const sheet = document.querySelector<HTMLElement>(
+      'mn-vocabulary-filter-sheet .mn-sheet-panel',
+    )!;
     return { ref, closed, sheet };
   }
 

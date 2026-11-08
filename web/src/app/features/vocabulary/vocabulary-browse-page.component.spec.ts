@@ -250,11 +250,11 @@ describe('VocabularyBrowsePageComponent', () => {
   it('marks a hard word by more than its colour', async () => {
     await seedVocabulary();
     const { element } = await render();
-    const eat = element.querySelector('mn-vocabulary-browse-row .difficulty');
+    const eat = element.querySelector('mn-vocabulary-browse-row [data-testid="difficulty"]');
 
     // Anki's 5.5 on its 1-10 scale is half way: hard, and printed as a number.
     expect(eat?.textContent).toContain('50%');
-    expect(eat?.classList.contains('is-hard')).toBe(true);
+    expect(eat?.classList.contains('mn-figure--warning')).toBe(true);
     expect(eat?.textContent).toContain('Difficulty');
   });
 
@@ -274,7 +274,7 @@ describe('VocabularyBrowsePageComponent', () => {
 
     expect(element.textContent).toContain('Vocabulary is unavailable.');
     shouldFail = false;
-    element.querySelector<HTMLButtonElement>('.state-message .mn-button')?.click();
+    element.querySelector<HTMLButtonElement>('mn-notice button')?.click();
     await settle(fixture);
     expect(element.textContent).toContain('No vocabulary yet.');
   });

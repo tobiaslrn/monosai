@@ -12,6 +12,11 @@ import { PackageImportStore } from '../../application/vocabulary/package-import.
 import { vocabularySourceId } from '../../domain/shared/ids';
 import { formatCountOf } from '../../domain/shared/locale';
 import { ANKI_LINKS } from './anki-links';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { CardComponent } from '../../shared-ui/card/card.component';
+import { CheckboxComponent } from '../../shared-ui/checkbox/checkbox.component';
+import { ClusterComponent, GridComponent } from '../../shared-ui/layout/layout';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 
 /**
  * The incoming Anki package: quiet while it works, a chooser only when the
@@ -19,73 +24,79 @@ import { ANKI_LINKS } from './anki-links';
  */
 @Component({
   selector: 'mn-package-import',
-  imports: [FormsModule],
+  imports: [
+    FormsModule,
+    ButtonDirective,
+    CardComponent,
+    CheckboxComponent,
+    ClusterComponent,
+    GridComponent,
+    NoticeComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (state(); as current) {
       @switch (current.kind) {
         @case ('idle') {}
         @case ('complete') {
-          <div class="mn-card" data-testid="package-import-complete">
-            <p class="headline">
+          <mn-card data-testid="package-import-complete">
+            <p>
               {{ current.outcome.replaced ? 'Replaced' : 'Added' }}
               {{ current.outcome.deckName }} ·
               {{ formatCountOf(current.outcome.uniqueExpressions, 'unique expression') }}
             </p>
-            <div class="mn-actions">
-              <button type="button" class="mn-button" (click)="store.dismiss()">Dismiss</button>
-            </div>
-          </div>
+            <mn-cluster>
+              <button type="button" mnButton (click)="store.dismiss()">Dismiss</button>
+            </mn-cluster>
+          </mn-card>
         }
         @case ('cancelled') {
-          <div class="mn-card" data-testid="package-import-cancelled">
-            <p class="headline">Import cancelled. Your vocabulary is unchanged.</p>
-            <div class="mn-actions">
-              <button type="button" class="mn-button" (click)="store.dismiss()">Dismiss</button>
-            </div>
-          </div>
+          <mn-card data-testid="package-import-cancelled">
+            <p>Import cancelled. Your vocabulary is unchanged.</p>
+            <mn-cluster>
+              <button type="button" mnButton (click)="store.dismiss()">Dismiss</button>
+            </mn-cluster>
+          </mn-card>
         }
         @case ('failed') {
-          <div class="mn-card" role="alert" data-testid="package-import-failed">
-            <div class="mn-notice mn-notice--error">
-              <div>
-                <p class="headline">{{ current.error.message }}</p>
-                <p>
-                  Your current vocabulary and other sources are unchanged.
-                  @if (!current.canRetry) {
-                    Export the deck from Anki or AnkiDroid with scheduling information included,
-                    then add it again —
-                    <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
-                      >how to export</a
-                    >.
-                  }
-                </p>
-              </div>
-            </div>
-            <div class="mn-actions">
+          <mn-card role="alert" data-testid="package-import-failed">
+            <mn-notice tone="error">
+              <p>{{ current.error.message }}</p>
+              <p>
+                Your current vocabulary and other sources are unchanged.
+                @if (!current.canRetry) {
+                  Export the deck from Anki or AnkiDroid with scheduling information included, then
+                  add it again —
+                  <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
+                    >how to export</a
+                  >.
+                }
+              </p>
+            </mn-notice>
+            <mn-cluster>
               @if (current.canRetry) {
                 <button
+                  mnButton="primary"
                   type="button"
-                  class="mn-button mn-button--primary"
                   (click)="store.retry()"
                   data-testid="package-import-retry"
                 >
                   Try again
                 </button>
               }
-              <button type="button" class="mn-button" (click)="store.dismiss()">Dismiss</button>
-            </div>
-          </div>
+              <button type="button" mnButton (click)="store.dismiss()">Dismiss</button>
+            </mn-cluster>
+          </mn-card>
         }
         @case ('selecting') {
-          <div class="mn-card" data-testid="package-import-selection">
+          <mn-card data-testid="package-import-selection">
             <h3 #selectionHeading tabindex="-1">Choose what to import</h3>
             <p class="mn-hint">
               Monosai could not tell what this package should become, so nothing has been imported
               yet.
             </p>
 
-            <div class="fields">
+            <mn-grid [gap]="2">
               @if (current.plan.deckOptions.length > 1) {
                 <label class="mn-field">
                   <span>Deck</span>
@@ -144,17 +155,14 @@ import { ANKI_LINKS } from './anki-links';
                   </select>
                 </label>
               }
-            </div>
+            </mn-grid>
 
             @if (deckHasChildren()) {
-              <label class="check">
-                <input
-                  type="checkbox"
-                  [checked]="current.plan.selection.deckScope === 'deck-and-subdecks'"
-                  (change)="setScope($event)"
-                />
-                <span>Include subdecks</span>
-              </label>
+              <mn-checkbox
+                [checked]="current.plan.selection.deckScope === 'deck-and-subdecks'"
+                (checkedChange)="setScope($event)"
+                >Include subdecks</mn-checkbox
+              >
             }
 
             @if (current.plan.replaces; as replaced) {
@@ -163,56 +171,30 @@ import { ANKI_LINKS } from './anki-links';
               }
             }
 
-            <div class="mn-actions">
+            <mn-cluster>
               <button
+                mnButton="primary"
                 type="button"
-                class="mn-button mn-button--primary"
                 (click)="store.confirm()"
                 data-testid="package-import-confirm"
               >
                 Import vocabulary
               </button>
-              <button type="button" class="mn-button" (click)="store.cancel()">Cancel</button>
-            </div>
-          </div>
+              <button type="button" mnButton (click)="store.cancel()">Cancel</button>
+            </mn-cluster>
+          </mn-card>
         }
         @default {
-          <div class="mn-card" data-testid="package-import-progress">
-            <p class="headline">{{ progress() }}</p>
+          <mn-card data-testid="package-import-progress">
+            <p>{{ progress() }}</p>
             @if (store.canCancel()) {
-              <div class="mn-actions">
-                <button type="button" class="mn-button" (click)="store.cancel()">Cancel</button>
-              </div>
+              <mn-cluster>
+                <button type="button" mnButton (click)="store.cancel()">Cancel</button>
+              </mn-cluster>
             }
-          </div>
+          </mn-card>
         }
       }
-    }
-  `,
-  styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
-    .headline,
-    h3 {
-      margin: 0;
-    }
-
-    .fields {
-      display: grid;
-      gap: var(--space-2);
-    }
-
-    @media (min-width: breakpoints.$narrow) {
-      .fields {
-        grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-      }
-    }
-
-    .check {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      flex-wrap: wrap;
     }
   `,
 })
@@ -271,9 +253,7 @@ export class PackageImportComponent {
     this.store.chooseReplacement(vocabularySourceId(this.value(event)));
   }
 
-  protected setScope(event: Event): void {
-    this.store.setDeckScope(
-      (event.target as HTMLInputElement).checked ? 'deck-and-subdecks' : 'deck-only',
-    );
+  protected setScope(includeSubdecks: boolean): void {
+    this.store.setDeckScope(includeSubdecks ? 'deck-and-subdecks' : 'deck-only');
   }
 }

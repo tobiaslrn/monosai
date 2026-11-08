@@ -166,7 +166,7 @@ describe('SourcePageComponent', () => {
   /** A closed fold that hides the answer to its own label is worse than no fold. */
   it('states what the source reads in the summary of the closed disclosure', async () => {
     const { element } = await render(anki.id);
-    const details = required(element, 'details.mn-disclosure') as HTMLDetailsElement;
+    const details = required(element, 'mn-disclosure details') as HTMLDetailsElement;
 
     expect(details.open).toBe(false);
     expect(details.querySelector('summary')?.textContent).toContain(
@@ -180,7 +180,7 @@ describe('SourcePageComponent', () => {
     await TestBed.inject(SourceMappingStore).load();
     const { element } = await render(file.id);
 
-    expect(element.querySelector('details.mn-disclosure')).toBeNull();
+    expect(element.querySelector('mn-disclosure details')).toBeNull();
     expect(element.textContent).toContain(
       `Reading the ${file.expressionFieldName} field of ${file.noteTypeName}`,
     );

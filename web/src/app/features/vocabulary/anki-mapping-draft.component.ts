@@ -1,26 +1,37 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AnkiConnectionStore } from '../../application/vocabulary/anki-connection.store';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { CardComponent } from '../../shared-ui/card/card.component';
+import { ClusterComponent, GridComponent, StackComponent } from '../../shared-ui/layout/layout';
 
 @Component({
   selector: 'mn-anki-mapping-draft',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule],
+  imports: [
+    FormsModule,
+    ButtonDirective,
+    CardComponent,
+    ClusterComponent,
+    GridComponent,
+    StackComponent,
+  ],
   template: `
     @if (store.sampling()) {
-      <p role="status">Checking which fields contain Japanese…</p>
-      <button type="button" class="mn-button" (click)="store.cancel()">Cancel</button>
+      <mn-stack align="start">
+        <p role="status">Checking which fields contain Japanese…</p>
+        <button mnButton type="button" (click)="store.cancel()">Cancel</button>
+      </mn-stack>
     }
     @if (store.selecting()) {
-      <section class="mn-card" aria-label="Review Anki source">
-        <h3>Review Anki source</h3>
+      <mn-card role="region" heading="Review Anki source">
         @if (!store.suggested()) {
           <p class="mn-hint">
             Monosai could not tell which field holds the Japanese. Choose the deck, note type, and
             expression field.
           </p>
         }
-        <div class="fields">
+        <mn-grid [gap]="2">
           <label class="mn-field"
             ><span>Deck</span>
             <select
@@ -74,7 +85,7 @@ import { AnkiConnectionStore } from '../../application/vocabulary/anki-connectio
               }
             </select>
           </label>
-        </div>
+        </mn-grid>
         @if (store.preview()) {
           @for (warning of store.preview()?.stats?.sourceWarnings; track $index) {
             <p class="mn-hint" role="status">{{ warning }}</p>
@@ -82,15 +93,15 @@ import { AnkiConnectionStore } from '../../application/vocabulary/anki-connectio
           <p lang="ja">{{ store.sampleWords().join(' · ') || 'No reviewed words found.' }}</p>
           <p class="mn-hint">Your vocabulary stays unchanged until you confirm.</p>
         }
-        <div class="mn-actions">
+        <mn-cluster>
           @if (store.preview()) {
-            <button type="button" class="mn-button mn-button--primary" (click)="store.confirm()">
+            <button type="button" mnButton="primary" (click)="store.confirm()">
               Confirm vocabulary
             </button>
           } @else {
             <button
               type="button"
-              class="mn-button mn-button--primary"
+              mnButton="primary"
               [disabled]="!store.valid() || store.refresh.isBusy()"
               (click)="store.prepare()"
             >
@@ -99,48 +110,14 @@ import { AnkiConnectionStore } from '../../application/vocabulary/anki-connectio
           }
           <button
             type="button"
-            class="mn-button"
+            mnButton
             [disabled]="store.refresh.state().kind === 'committing'"
             (click)="store.cancel()"
           >
             Cancel
           </button>
-        </div>
-      </section>
-    }
-  `,
-  styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
-    :host {
-      display: block;
-      width: 100%;
-    }
-
-    section {
-      display: grid;
-      gap: var(--space-2);
-    }
-
-    /*
-     * The same shape the package import uses for the same four questions: one
-     * column on a phone, and side by side once the card is wide enough that a
-     * stack of full-width selects would be a column of bars.
-     */
-    .fields {
-      display: grid;
-      gap: var(--space-2);
-    }
-
-    @media (min-width: breakpoints.$narrow) {
-      .fields {
-        grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-      }
-    }
-
-    h3,
-    p {
-      margin: 0;
+        </mn-cluster>
+      </mn-card>
     }
   `,
 })

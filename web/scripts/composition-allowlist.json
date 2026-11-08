@@ -32,14 +32,5 @@
   "src/app/features/reader/word-inspector.component.ts": ["styles"],
   "src/app/features/reader/word-preview.component.ts": ["styles"],
   "src/app/features/reading-level/level-choice-page.component.ts": ["styles"],
-  "src/app/features/reading-level/reading-level-page.component.ts": ["details", "styles"],
-  "src/app/features/vocabulary/anki-mapping-draft.component.ts": ["styles"],
-  "src/app/features/vocabulary/package-import.component.ts": ["styles"],
-  "src/app/features/vocabulary/source-list.component.ts": ["styles"],
-  "src/app/features/vocabulary/source-page.component.ts": ["details", "styles"],
-  "src/app/features/vocabulary/text-list-source.component.ts": ["styles"],
-  "src/app/features/vocabulary/vocabulary-browse-page.component.ts": ["styles"],
-  "src/app/features/vocabulary/vocabulary-browse-row.component.ts": ["details", "styles"],
-  "src/app/features/vocabulary/vocabulary-card.component.ts": ["styles"],
-  "src/app/features/vocabulary/vocabulary-filter-sheet.component.ts": ["styles"]
+  "src/app/features/reading-level/reading-level-page.component.ts": ["details", "styles"]
 }

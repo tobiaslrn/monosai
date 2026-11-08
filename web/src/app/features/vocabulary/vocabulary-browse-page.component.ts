@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, Injector, computed, inject } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { createGlobalPositionStrategy } from '@angular/cdk/overlay';
-import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { VocabularyBrowseStore } from '../../application/vocabulary/vocabulary-browse.store';
 import { ViewportService } from '../../core/platform/viewport.service';
@@ -9,7 +8,16 @@ import { vocabularySourceId } from '../../domain/shared/ids';
 import { formatCount, formatCountOf } from '../../domain/shared/locale';
 import type { BrowseQuery } from '../../domain/vocabulary/vocabulary-browse';
 import type { VocabularyEntry } from '../../domain/vocabulary/vocabulary-repository';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { EntryListComponent } from '../../shared-ui/entry-list/entry-list.component';
+import {
+  FilterSelectComponent,
+  type FilterOption,
+} from '../../shared-ui/filter-select/filter-select.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { ClusterComponent, PageComponent, StackComponent } from '../../shared-ui/layout/layout';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
+import { SearchFieldComponent } from '../../shared-ui/search-field/search-field.component';
 import type { IconName } from '../../shared-ui/icon/icon-set';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import {
@@ -32,16 +40,23 @@ interface VirtualVocabularyEntry {
   selector: 'mn-vocabulary-browse-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    FormsModule,
     RouterLink,
+    ButtonDirective,
+    ClusterComponent,
+    EntryListComponent,
+    FilterSelectComponent,
     IconComponent,
+    NoticeComponent,
+    PageComponent,
     PageHeaderComponent,
+    SearchFieldComponent,
+    StackComponent,
     VirtualListDirective,
     VirtualItemDirective,
     VocabularyBrowseRowComponent,
   ],
   template: `
-    <div class="mn-page vocabulary-page">
+    <mn-page [gap]="3">
       <mn-page-header
         heading="Your vocabulary"
         backTo="/reading-level"
@@ -49,53 +64,38 @@ interface VirtualVocabularyEntry {
         [subtitle]="countLabel()"
       />
 
-      <label class="search-field">
-        <span class="mn-visually-hidden">Search vocabulary</span>
-        <mn-icon class="search-icon" name="search" [size]="20" />
-        <input
-          class="mn-control"
-          type="search"
-          placeholder="Search Japanese or English"
-          aria-label="Search Japanese or English"
-          [ngModel]="store.query().search"
-          (ngModelChange)="store.setSearch($event)"
-          data-testid="vocabulary-search"
-        />
-      </label>
+      <mn-search-field
+        label="Search Japanese or English"
+        testId="vocabulary-search"
+        [value]="store.query().search"
+        (valueChange)="store.setSearch($event)"
+      />
 
-      <div class="toolbar">
-        <label class="source-filter">
-          <span class="mn-visually-hidden">Filter by source</span>
-          <select
-            class="mn-control source-select"
-            aria-label="Filter by source"
-            [ngModel]="store.query().sourceId ?? ''"
-            (ngModelChange)="setSource($event)"
-            data-testid="vocabulary-source-filter"
-          >
-            <option value="">All sources</option>
-            @for (source of store.sources(); track source.sourceId) {
-              <option [value]="source.sourceId">{{ source.label }}</option>
-            }
-          </select>
-        </label>
+      <mn-cluster justify="between">
+        <mn-filter-select
+          label="Filter by source"
+          testId="vocabulary-source-filter"
+          [options]="sourceOptions()"
+          [value]="store.query().sourceId ?? ''"
+          (valueChange)="setSource($event)"
+        />
         <button
+          mnButton
           type="button"
-          class="mn-button"
           aria-haspopup="dialog"
           (click)="openFilters()"
           data-testid="vocabulary-filters"
         >
           <mn-icon name="filter" [size]="18" /> Filters
         </button>
-      </div>
+      </mn-cluster>
 
-      <p class="sort-line">
-        {{ sortLabel() }}
+      <mn-cluster [gap]="1" class="mn-hint">
+        <span>{{ sortLabel() }}</span>
         @if (sortIcon(); as icon) {
           <mn-icon [name]="icon" [size]="16" />
         }
-      </p>
+      </mn-cluster>
 
       <p class="mn-visually-hidden" role="status" aria-live="polite">
         {{ matchAnnouncement() }}
@@ -103,68 +103,56 @@ interface VirtualVocabularyEntry {
 
       @switch (store.state()) {
         @case ('loading') {
-          <p class="state-message" role="status">Loading vocabulary…</p>
+          <p class="mn-hint" role="status">Loading vocabulary…</p>
         }
         @case ('unavailable') {
-          <section class="state-message" role="alert">
+          <mn-notice tone="error" role="alert">
             <p>Vocabulary is unavailable.</p>
-            <button type="button" class="mn-button" (click)="reload()">Try again</button>
-          </section>
+            <button mn-notice-action mnButton type="button" (click)="reload()">Try again</button>
+          </mn-notice>
         }
         @case ('failed') {
-          <section class="state-message" role="alert">
+          <mn-notice tone="error" role="alert">
             <p>Vocabulary could not be loaded.</p>
-            <button type="button" class="mn-button" (click)="reload()">Try again</button>
-          </section>
+            <button mn-notice-action mnButton type="button" (click)="reload()">Try again</button>
+          </mn-notice>
         }
         @case ('empty') {
-          @if (store.snapshot() === null) {
-            <p class="state-message">
-              No vocabulary yet.
-              <a routerLink="/reading-level" fragment="words">Add words</a>
-            </p>
-          } @else {
-            <p class="state-message">
-              No words yet.
-              <a routerLink="/reading-level" fragment="words">Add words</a>
-            </p>
-          }
+          <p class="mn-hint">
+            {{ store.snapshot() === null ? 'No vocabulary yet.' : 'No words yet.' }}
+            <a routerLink="/reading-level" fragment="words">Add words</a>
+          </p>
         }
         @case ('ready') {
           @if (store.matchCount() === 0) {
-            <section class="state-message">
-              <p>
+            <mn-stack align="start">
+              <p class="mn-hint">
                 {{
                   store.query().search.trim() !== ''
                     ? 'No words match your search.'
                     : 'No words match these filters.'
                 }}
               </p>
-              <button type="button" class="mn-button mn-button--ghost" (click)="reset()">
-                Reset filters
-              </button>
-            </section>
+              <button mnButton="ghost" type="button" (click)="reset()">Reset filters</button>
+            </mn-stack>
           } @else {
-            <div class="list-region">
+            <mn-entry-list
+              [columns]="['Word', 'Difficulty', 'Studied']"
+              figureTracks="4.25rem 5.25rem"
+            >
               <h2 class="mn-visually-hidden">Words</h2>
-              <div class="columns" aria-hidden="true">
-                <span>Word</span>
-                <span>Difficulty</span>
-                <span>Studied</span>
-              </div>
               <div
                 #list="virtualList"
-                class="virtual-document"
                 [mnVirtualList]="virtualEntries()"
                 [estimateHeight]="estimateHeight"
                 [overscanPx]="600"
               >
                 <div
-                  class="virtual-spacer"
                   aria-hidden="true"
+                  data-virtual-spacer="before"
                   [style.height.px]="list.range().topSpacer"
                 ></div>
-                <ul class="entry-list">
+                <ul>
                   @for (item of list.visibleItems(); track item.key) {
                     <li [mnVirtualItem]="item.key">
                       <mn-vocabulary-browse-row
@@ -177,153 +165,16 @@ interface VirtualVocabularyEntry {
                   }
                 </ul>
                 <div
-                  class="virtual-spacer"
                   aria-hidden="true"
+                  data-virtual-spacer="after"
                   [style.height.px]="list.range().bottomSpacer"
                 ></div>
               </div>
-            </div>
+            </mn-entry-list>
           }
         }
       }
-    </div>
-  `,
-  styles: `
-    .vocabulary-page {
-      gap: var(--space-3);
-    }
-
-    .search-field {
-      position: relative;
-      display: block;
-      min-width: 0;
-    }
-
-    .search-icon {
-      position: absolute;
-      top: 50%;
-      left: var(--space-3);
-      color: var(--text-secondary);
-      transform: translateY(-50%);
-      pointer-events: none;
-    }
-
-    .search-field input {
-      min-height: 3rem;
-      padding-inline-start: 2.75rem;
-    }
-
-    /*
-     * The browser draws its own clear control in its default blue on Android.
-     * Draw it instead as a cross in the field's own text colour, so it follows the theme.
-     */
-    .search-field input::-webkit-search-cancel-button {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 1.25rem;
-      height: 1.25rem;
-      background-color: var(--text-secondary);
-      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
-        center / contain no-repeat;
-      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
-        center / contain no-repeat;
-      cursor: pointer;
-    }
-
-    /*
-     * The picker and Filters share a line while the picker can keep a readable
-     * width; with the text too large for that, Filters wraps below it rather
-     * than the picker being squeezed until its value is cut off.
-     */
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .source-filter {
-      flex: 1 1 9rem;
-      min-width: 0;
-      max-width: 16rem;
-    }
-
-    .source-select {
-      width: 100%;
-      border-radius: var(--radius-pill);
-      font-weight: var(--weight-medium);
-    }
-
-    .sort-line {
-      display: flex;
-      gap: var(--space-1);
-      align-items: center;
-      margin: var(--space-2) 0 0;
-      font-size: var(--text-sm);
-      font-weight: var(--weight-medium);
-    }
-
-    .state-message {
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    /* Rows lay themselves out against this box, not against the window. */
-    .list-region {
-      container: vocabulary-list / inline-size;
-      min-width: 0;
-    }
-
-    /* The same tracks as a row's summary, so each label sits over its column. */
-    .columns {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 4.25rem 5.25rem 1.25rem;
-      gap: var(--space-3);
-      padding: 0 var(--space-3) var(--space-2);
-      border-block-end: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    @container vocabulary-list (max-width: 20rem) {
-      .columns {
-        display: none;
-      }
-    }
-
-    .virtual-document {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .virtual-spacer {
-      width: 100%;
-      pointer-events: none;
-    }
-
-    .entry-list {
-      display: grid;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .entry-list li {
-      min-width: 0;
-    }
-
-    .state-message {
-      display: grid;
-      gap: var(--space-3);
-      justify-items: start;
-      padding-block: var(--space-5);
-    }
-
-    .state-message p {
-      margin: 0;
-    }
+    </mn-page>
   `,
 })
 export class VocabularyBrowsePageComponent {
@@ -336,6 +187,10 @@ export class VocabularyBrowsePageComponent {
     this.store.visible().map((entry) => ({ key: entry.itemId, entry })),
   );
   protected readonly estimateHeight = (): number => 82;
+  protected readonly sourceOptions = computed<readonly FilterOption[]>(() => [
+    { value: '', label: 'All sources' },
+    ...this.store.sources().map((source) => ({ value: source.sourceId, label: source.label })),
+  ]);
   /**
    * How many words there are, and how many rows are showing once a search or a
    * filter has narrowed them. A word with two meanings is one word and two

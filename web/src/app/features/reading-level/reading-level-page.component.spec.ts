@@ -183,7 +183,7 @@ describe('ReadingLevelPageComponent', () => {
     element.querySelector<HTMLButtonElement>('[data-testid="choose-anki"]')?.click();
     await vi.waitFor(async () => {
       await settle(fixture);
-      expect(element.querySelector('mn-anki-mapping-draft section')).not.toBeNull();
+      expect(element.querySelector('mn-anki-mapping-draft mn-card')).not.toBeNull();
     });
     expect(action.contains(element.querySelector('mn-anki-mapping-draft'))).toBe(false);
   });
