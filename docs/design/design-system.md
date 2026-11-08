@@ -8,8 +8,8 @@ It deliberately carries **no values**. There are no hex codes, no pixel counts,
 no type scale, and no component API here, because a document that repeats them
 goes stale the first time one is tuned. Values live in `web/src/styles/_tokens.scss`,
 the named thresholds in `web/src/styles/_breakpoints.scss`, the form fields in
-`web/src/styles/_controls.scss`, and one file per shared primitive in
-`web/src/styles/components/`; this document
+`web/src/styles/_controls.scss`, and everything else in the shared primitives in
+`web/src/app/shared-ui/`, each of which documents its own use; this document
 names the _roles_ those tokens fill and the rules that govern their use. When
 these disagree, this document describes the intent and the tokens describe the
 current state — reconcile by changing the tokens.
@@ -208,30 +208,46 @@ pairs rather than a compressed prose line, so they remain easy to scan.
 
 ### Shared primitives
 
-Shared classes own the visual role they name. Feature styles may position a
-primitive or add state-specific placement, but they do not redefine its
-silhouette, palette, type, or interaction treatment. The source of each role is
-kept beside the tokens in `web/src/styles/components/`:
+A screen is built only from the primitives in `web/src/app/shared-ui/`
+([ADR 0087](../decisions/0087-features-compose-shared-ui.md)). A feature
+component composes them and writes no styles of its own: no `styles` block, no
+stylesheet, no native `[popover]`, and no raw `<details>`. When a screen needs
+something no primitive draws, the primitive changes first, or a new one is
+added, and the screen then uses it. The build holds this to an allowlist that
+may only shrink (`web/scripts/composition-allowlist.json`); what is still on it
+is the reader, whose surfaces are its own, and the screens not yet moved.
 
-| Role        | Use                                                                                                                          | Source                                                                   |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Button      | Reversible, primary, quiet, danger, and icon-only actions                                                                    | [`_button.scss`](../../web/src/styles/components/_button.scss)           |
-| Card        | One raised surface; `mn-inset` is its borderless sunken group                                                                | [`_card.scss`](../../web/src/styles/components/_card.scss)               |
-| Notice      | A soft, named status or warning beside the thing it describes                                                                | [`_notice.scss`](../../web/src/styles/components/_notice.scss)           |
-| Status      | A non-pressable compact state such as Ready or Unread                                                                        | [`_status.scss`](../../web/src/styles/components/_status.scss)           |
-| Facts       | Read-only label/value pairs                                                                                                  | [`_facts.scss`](../../web/src/styles/components/_facts.scss)             |
-| Segmented   | One native choice out of a small, stable set                                                                                 | [`_segmented.scss`](../../web/src/styles/components/_segmented.scss)     |
-| Option card | One of several options read before choosing, as a native radio in a card                                                     | [`_option-card.scss`](../../web/src/styles/components/_option-card.scss) |
-| Popup       | A native popover hanging from its control: a menu, a picker, a small form                                                    | [`_popup.scss`](../../web/src/styles/components/_popup.scss)             |
-| List row    | One shelf destination with leading, title, meta, trailing, and menu slots; `mn-list-group` gives rows one pair of card edges | [`_list-row.scss`](../../web/src/styles/components/_list-row.scss)       |
-| Page frame  | The centred non-reader measure, stacks, and action rows                                                                      | [`_layout.scss`](../../web/src/styles/components/_layout.scss)           |
-| Text        | Secondary text and sentence-case group titles                                                                                | [`_text.scss`](../../web/src/styles/components/_text.scss)               |
-| Icon badge  | A meaningful leading icon for a row or card                                                                                  | [`_icon-badge.scss`](../../web/src/styles/components/_icon-badge.scss)   |
+Each primitive documents its own inputs and slots beside its code. What each is
+the way to build:
 
-The shared page-header component supplies every non-reader top bar on the same
-`--page-measure` as the page frame. The reader remains outside this primitive
-set where its text measure and sticky chrome are intentionally separate, but
-its bar follows the same shape.
+| Role             | Primitives                                                                                                                                                                                                             |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page frame       | `mn-page`, and `mn-page-header` for the one bar                                                                                                                                                                        |
+| Layout           | `mn-stack` (one vertical rhythm), `mn-cluster` (one wrapping row), `mn-split` (a label and its end), `mn-grid`; `mn-divider` between blocks                                                                            |
+| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                       |
+| Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                  |
+| Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                    |
+| Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                        |
+| Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                     |
+| Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs)                                                                                                                              |
+| Status           | `mn-notice` beside what it describes, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` for a form in steps, `mn-working` for a wait in words |
+| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen`, `mn-not-found-panel`                                                                                                            |
+| Overlays         | `mn-dialog`, `mn-confirm-dialog`, `mn-rename-dialog`, `mnPopup` with `mnPopupTrigger`, `mn-sheet-panel`                                                                                                                |
+| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                           |
+| Glyphs           | `mn-icon`                                                                                                                                                                                                              |
+
+A panel that hangs from a control — an action menu, a model picker, the
+connection panel — is a popup. It is a native popover, so the browser dismisses
+it on a press outside or Escape and returns focus, the top layer keeps it above
+any card that clips, and no instance registers a listener, which is what lets
+one sit in every row of a virtualised shelf. A panel that hangs from a control
+never dims the page: only a sheet docked to a phone's bottom edge draws the
+scrim. The reader's floating surfaces and sheets stay on `PopoverService`,
+because they own gestures and docking a menu does not have
+([ADR 0083](../decisions/0083-floating-panels-are-native-popovers.md)).
+
+The reader remains outside this set where its text measure and sticky chrome
+are intentionally separate, but its bar follows the same shape.
 
 ### Density
 
@@ -327,40 +343,6 @@ do not replace the character count here.
 
 ## 3. Controls
 
-### Building the controls
-
-A control is built once, as a shared Angular primitive in `web/src/app/shared-ui/`,
-and every screen composes it rather than writing its markup again. The primitive
-draws on the shared style in `web/src/styles/`; a feature places it and never
-re-skins it. The primitives, and what each is the way to build:
-
-- **`mn-segmented-control`** — one choice out of a few whose labels say it all,
-  such as the theme. Native radios under one name, so arrow keys, the roving tab stop, and
-  the checked state stay the browser's. Three bare radio labels in a fieldset are
-  not a second way to build the same choice.
-- **`mn-radio-card-group` and `mn-radio-card`** — options a learner reads before
-  choosing: the reading levels, the drafted plots, the vocabulary strictness. The group owns the picked value
-  once and each card derives from it; the card's body, trailing indicator, and
-  extra controls are projected. The picked card wears the one selection tint,
-  `--action-primary-soft`, the tint of a pressed toggle and a segmented choice. No
-  second tint marks a selection, and no class mirrors it.
-- **`mn-switch-row`** — a labelled switch, whether it sits in a group or stands
-  alone as one decision. It is a native checkbox with `role="switch"`, and the whole
-  row is the target.
-- **`mn-settings-row`** — a row of a settings card: a title, optional hint and
-  result lines, and the control or value at the end. A settings screen is rows, not
-  repeated markup.
-- **A popup**, `mnPopup` with `mnPopupTrigger`, is how every floating panel that
-  hangs from a control is built: an action menu, a model picker, the connection
-  panel. It is a native popover, so the browser dismisses it on a press outside or
-  Escape, Escape and closing it from code hand focus back to the control (a press
-  outside has already moved it), the top layer keeps it above any card that clips, and no instance registers a listener, which is what lets one sit in
-  every row of a virtualised shelf. A menu adds focus on its first item and the
-  arrow keys. A panel that hangs from a control never dims the page: only a sheet
-  docked to a phone's bottom edge draws the scrim. The reader's floating surfaces and sheets are a different thing and
-  stay on `PopoverService`, because they own gestures and docking that a menu does
-  not have ([ADR 0083](../decisions/0083-floating-panels-are-native-popovers.md)).
-
 ### The line between an icon and a label
 
 An icon may stand alone when the control is **pressed repeatedly within a
@@ -400,11 +382,11 @@ primary action of a surface — the play control in the transport, the primary
 button of a form.
 
 Text buttons share one pill silhouette, one touch-target height, one text size,
-and one weight. The unqualified `.mn-button` is the secondary outline for an
-ordinary reversible action. `.mn-button--primary` is the one filled action that
-starts or commits the main work on a surface. `.mn-button--ghost` is action-colour
+and one weight. A bare `mnButton` is the secondary outline for an
+ordinary reversible action. `mnButton="primary"` is the one filled action that
+starts or commits the main work on a surface. `mnButton="ghost"` is action-colour
 text without a border for quiet verbs such as adding a source, testing, or
-previewing. `.mn-button--danger` keeps a destructive action outlined in the
+previewing. `mnButton="danger"` keeps a destructive action outlined in the
 danger colour and is used where confirmation follows. A surface has at most one
 filled primary control; selected toggles use a soft selection tint instead.
 
@@ -555,7 +537,7 @@ label, as every disclosure does: "Any" in secondary text when nothing is chosen,
 the choice in the action colour when something is. Every row starts closed, so a
 "surprise" that fills them all shows each value in its own summary.
 
-An open row is a wrap of **choice chips**: ordinary `.mn-button` toggles with
+An open row is a wrap of **choice chips**: ordinary `mnButton` toggles in an `mn-chip-group`, with
 `aria-pressed`, at the full touch-target height — the density rule allows no
 smaller target, and a compact chip whose hit area overflowed its neighbour's
 gap would put two targets under one finger. The order never changes on

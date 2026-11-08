@@ -54,5 +54,8 @@ It stores everything in the browser, only reads from Anki, and uses the learner'
 - Never silently reset or lose local data; migration failures offer explicit recovery.
 - Validate external, stored, imported, and AI-generated data at runtime.
 - Visual or interactive changes follow [the design system](docs/design/design-system.md).
+- Features and core compose `web/src/app/shared-ui/` primitives and write no styles. A
+  missing visual need changes or adds a primitive first; the composition allowlist only
+  shrinks.
 - Never put internal issue IDs (`B6-16`, `H07`) or QA file names in code, docs, commits, or
   PRs. Describe the behaviour instead.

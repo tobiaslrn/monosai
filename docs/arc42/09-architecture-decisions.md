@@ -146,3 +146,4 @@ shared its number until it was given the next free one.
 | [0083](../decisions/0083-floating-panels-are-native-popovers.md)                         | Floating panels that hang from a control are native popovers               |
 | [0084](../decisions/0084-unchecked-index-and-exact-optional-properties.md)               | Unchecked index access and exact optional properties                       |
 | [0085](../decisions/0085-sha256-padding-is-fixed.md)                                     | The synchronous SHA-256 pads correctly                                     |
+| [0087](../decisions/0087-features-compose-shared-ui.md)                                  | Features compose shared-ui primitives and write no styles                  |
