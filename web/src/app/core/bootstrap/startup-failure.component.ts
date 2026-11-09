@@ -44,7 +44,7 @@ const EXPORT_URL_LIFETIME_MS = 60_000;
             [attr.aria-busy]="reloading() ? 'true' : null"
             (click)="reload()"
           >
-            {{ reloading() ? 'Reloading…' : 'Reload' }}
+            {{ reloading() ? 'Reloadingâ€¦' : 'Reload' }}
           </button>
         } @else {
           <button
@@ -83,13 +83,17 @@ const EXPORT_URL_LIFETIME_MS = 60_000;
     }
   `,
   styles: `
+    /* No bar to sit under, so the page's gap stands in for one. */
     :host {
-      display: block;
-      padding-inline: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--page-gap);
+      padding: var(--page-gap) var(--page-gutter);
     }
 
     .action-failure {
-      max-width: 35rem;
+      width: 100%;
+      max-width: var(--page-measure);
       margin-inline: auto;
     }
   `,

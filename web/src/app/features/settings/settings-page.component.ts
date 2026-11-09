@@ -22,7 +22,7 @@ import { StorageSectionComponent } from './storage-section.component';
     AboutSectionComponent,
   ],
   template: `
-    <mn-page measure="narrow">
+    <mn-page>
       <mn-page-header heading="Settings" [backTo]="backTarget()" [backLabel]="backLabel()" />
 
       <mn-section heading="Reading" [rows]="true">

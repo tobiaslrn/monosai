@@ -1,6 +1,7 @@
+/* The page's own column: an error has the same edges as what it replaces. */
 .panel {
-  max-width: 35rem;
-  margin: var(--space-6) auto;
+  max-width: var(--page-measure);
+  margin-inline: auto;
 }
 
 p {

@@ -5,7 +5,7 @@
 .mn-page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--page-gap);
   width: 100%;
   max-width: var(--page-measure);
   margin-inline: auto;
@@ -27,7 +27,7 @@
 .mn-stack {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--stack-gap);
   min-width: 0;
 }
 

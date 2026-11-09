@@ -15,6 +15,11 @@
   background: transparent;
 }
 
+/* A flush row is part of a card, so it draws no corners of its own. */
+.mn-list-row--flush {
+  border-radius: 0;
+}
+
 .mn-list-row--muted {
   background: var(--surface-sunken);
 }
@@ -51,7 +56,7 @@
   display: grid;
   grid-template-columns: auto minmax(min-content, 1fr) auto;
   grid-template-rows: auto auto;
-  gap: 0.125rem min(var(--space-3), 12px);
+  gap: var(--line-gap) min(var(--space-3), 12px);
 }
 
 .mn-list-row--overview .mn-list-row__leading,
@@ -101,7 +106,7 @@
   align-items: center;
   min-width: 0;
   min-height: var(--row-min-height);
-  padding: var(--space-2) min(var(--space-3), 12px);
+  padding: var(--row-inset-block) var(--surface-inset);
   border-radius: inherit;
   color: var(--text-primary);
   text-decoration: none;
@@ -140,7 +145,7 @@
   flex-direction: column;
   justify-content: center;
   min-width: 0;
-  gap: 0.125rem;
+  gap: var(--line-gap);
 }
 
 /* A long name wraps once and then ends; the full name is still the link's name. */

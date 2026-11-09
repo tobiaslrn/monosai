@@ -19,7 +19,11 @@ import {
 /** A step of the spacing scale; 0 butts items together, such as rows between dividers. */
 export type Space = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
-const spaceToken = (step: Space): string => (step === 0 ? '0' : `var(--space-${String(step)})`);
+/** A step of the scale, or `page` for the gap between a page's own blocks. */
+export type Gap = Space | 'page';
+
+const spaceToken = (step: Gap): string =>
+  step === 'page' ? 'var(--page-gap)' : step === 0 ? '0' : `var(--space-${String(step)})`;
 
 /**
  * The frame of every non-reader screen: its `mn-page-header`, then the content,
@@ -28,27 +32,29 @@ const spaceToken = (step: Space): string => (step === 0 ? '0' : `var(--space-${S
 @Component({
   selector: 'mn-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[class.page--narrow]': "measure() === 'narrow'", '[style.gap]': 'gapValue()' },
+  host: { '[style.gap]': 'gapValue()' },
   template: `<ng-content />`,
   styles: `
     :host {
       display: flex;
       flex-direction: column;
+      gap: var(--page-gap);
       width: 100%;
       max-width: var(--page-measure);
       margin-inline: auto;
     }
-    :host(.page--narrow) {
-      max-width: 40rem;
-    }
   `,
 })
 export class PageComponent {
-  /** `narrow` for a page of settings rows, whose controls should stay near their labels. */
-  readonly measure = input<'default' | 'narrow'>('default');
-  /** The rail between blocks; a home screen that is one composition draws them closer. */
-  readonly gap = input<Space>(5);
-  protected readonly gapValue = computed(() => spaceToken(this.gap()));
+  /**
+   * The rail between blocks. Omitted, it is the page gap every screen shares;
+   * a step of the scale is for a screen that is one composition.
+   */
+  readonly gap = input<Space | null>(null);
+  protected readonly gapValue = computed(() => {
+    const step = this.gap();
+    return step === null ? null : spaceToken(step);
+  });
 }
 
 /** A vertical run of blocks with one gap between them. */
@@ -61,6 +67,7 @@ export class PageComponent {
     :host {
       display: flex;
       flex-direction: column;
+      gap: var(--stack-gap);
       min-width: 0;
     }
     :host(.stack--start) {
@@ -69,10 +76,14 @@ export class PageComponent {
   `,
 })
 export class StackComponent {
-  readonly gap = input<Space>(3);
+  /** Omitted, the stack gap every card shares; a step of the scale otherwise. */
+  readonly gap = input<Gap | null>(null);
   /** `start` keeps each block at its own width, such as a lone button. */
   readonly align = input<'stretch' | 'start'>('stretch');
-  protected readonly gapValue = computed(() => spaceToken(this.gap()));
+  protected readonly gapValue = computed(() => {
+    const step = this.gap();
+    return step === null ? null : spaceToken(step);
+  });
 }
 
 export type ClusterJustify = 'start' | 'end' | 'between';

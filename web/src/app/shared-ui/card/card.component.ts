@@ -37,9 +37,9 @@ let nextCardId = 0;
     :host {
       display: flex;
       flex-direction: column;
-      gap: var(--space-3);
+      gap: var(--stack-gap);
       min-width: 0;
-      padding: var(--space-4);
+      padding: var(--surface-inset);
       border: 1px solid color-mix(in srgb, var(--border-subtle) 35%, transparent);
       border-radius: var(--radius-card);
       background: var(--surface-raised);

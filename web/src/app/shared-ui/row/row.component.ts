@@ -137,14 +137,10 @@ let nextRowId = 0;
       gap: var(--space-2) min(var(--space-3), 12px);
       align-items: center;
       min-width: 0;
-      padding: var(--space-2) var(--space-4);
+      padding: var(--row-inset-block) var(--surface-inset);
       border-radius: inherit;
       color: inherit;
       text-decoration: none;
-    }
-
-    mn-row.mn-row--link > .mn-row__main {
-      padding-inline: min(var(--space-3), 12px);
     }
 
     mn-row > button.mn-row__main {
@@ -177,7 +173,7 @@ let nextRowId = 0;
       display: flex;
       flex: 1 1 12rem;
       flex-direction: column;
-      gap: 0.125rem;
+      gap: var(--line-gap);
       justify-content: center;
       min-width: 0;
     }

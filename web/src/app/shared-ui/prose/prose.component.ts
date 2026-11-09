@@ -26,7 +26,7 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/
     mn-prose {
       display: flex;
       flex-direction: column;
-      gap: var(--space-5);
+      gap: var(--page-gap);
       min-width: 0;
     }
 
@@ -34,10 +34,10 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/
     :where(mn-prose) > :where(section) {
       display: flex;
       flex-direction: column;
-      gap: var(--space-3);
+      gap: var(--stack-gap);
       min-width: 0;
       border-top: 1px solid var(--border-subtle);
-      padding-top: var(--space-5);
+      padding-top: var(--page-gap);
     }
 
     :where(mn-prose) > :where(section:first-child) {
@@ -55,8 +55,8 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/
       font-size: var(--text-lg);
     }
 
+    /* The column is already a reading measure, so paragraphs fill it and share the cards' edges. */
     :where(mn-prose, mn-prose > section) > :where(p, ul, ol) {
-      max-width: 44rem;
       margin: 0;
     }
 

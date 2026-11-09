@@ -114,7 +114,7 @@ describe('StartupFailureComponent', () => {
     press(fixture, 'Reload');
     fixture.detectChanges();
 
-    expect(labels(fixture)[0]).toBe('Reloading…');
+    expect(labels(fixture)[0]).toBe('Reloadingâ€¦');
     expect(element(fixture).querySelector('button')?.disabled).toBe(true);
     finish();
     await fixture.whenStable();

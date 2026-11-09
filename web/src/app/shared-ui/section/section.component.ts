@@ -17,6 +17,10 @@ let nextSectionId = 0;
  * stack inside the card's padding. A notice placed among rows keeps its own
  * border and sits inset from the card's edges.
  *
+ * A section that needs a sentence of explanation before its card says it with
+ * `mn-section-lead`: body text in the secondary colour, between the heading
+ * and the card, one rhythm tighter than the gap that follows it.
+ *
  * What answers the section as a whole, such as the result of an action in it,
  * goes after the card with `mn-section-footer`.
  *
@@ -33,6 +37,7 @@ let nextSectionId = 0;
         <h2 [id]="headingId">{{ heading() }}</h2>
         <span class="mn-section__action"><ng-content select="[mn-section-action]" /></span>
       </header>
+      <div class="mn-section__lead"><ng-content select="[mn-section-lead]" /></div>
       <div class="mn-section__card" [class.mn-section__card--rows]="rows()">
         <ng-content />
       </div>
@@ -48,7 +53,7 @@ let nextSectionId = 0;
     mn-section > .mn-section__frame {
       display: flex;
       flex-direction: column;
-      gap: var(--space-2);
+      gap: var(--group-gap);
       min-width: 0;
     }
 
@@ -58,8 +63,7 @@ let nextSectionId = 0;
       gap: var(--space-2);
       align-items: center;
       min-width: 0;
-      min-height: 1.75rem;
-      padding-inline: var(--space-1);
+      min-height: var(--heading-row);
     }
 
     mn-section > .mn-section__frame > .mn-section__header > h2 {
@@ -74,18 +78,37 @@ let nextSectionId = 0;
       align-items: center;
       min-width: 0;
       margin-inline-start: auto;
+      margin-block: calc((var(--heading-row) - var(--touch-target)) / 2);
     }
 
     mn-section > .mn-section__frame > .mn-section__header > .mn-section__action:empty {
       display: none;
     }
 
+    mn-section > .mn-section__frame > .mn-section__lead {
+      display: flex;
+      flex-direction: column;
+      gap: var(--group-gap);
+      min-width: 0;
+      padding-block-end: var(--group-gap);
+      color: var(--text-secondary);
+      line-height: var(--leading-normal);
+    }
+
+    mn-section > .mn-section__frame > .mn-section__lead:empty {
+      display: none;
+    }
+
+    mn-section > .mn-section__frame > .mn-section__lead > :where(p) {
+      margin: 0;
+    }
+
     mn-section > .mn-section__frame > .mn-section__card {
       display: flex;
       flex-direction: column;
-      gap: var(--space-3);
+      gap: var(--stack-gap);
       min-width: 0;
-      padding: var(--space-4);
+      padding: var(--surface-inset);
       border: 1px solid color-mix(in srgb, var(--border-subtle) 35%, transparent);
       border-radius: var(--radius-card);
       background: var(--surface-raised);
@@ -98,12 +121,17 @@ let nextSectionId = 0;
       overflow: clip;
     }
 
+    /* The card draws the corners, so a row's hairline runs straight to its edges. */
+    mn-section > .mn-section__frame > .mn-section__card--rows > :not(mn-notice) {
+      border-radius: 0;
+    }
+
     mn-section > .mn-section__frame > .mn-section__card--rows > * + *:not(mn-notice) {
       border-top: 1px solid var(--border-subtle);
     }
 
     mn-section > .mn-section__frame > .mn-section__card--rows > mn-notice {
-      margin: var(--space-3);
+      margin: var(--surface-inset);
     }
 
     mn-section > .mn-section__frame > .mn-section__card--rows > mn-notice + * {

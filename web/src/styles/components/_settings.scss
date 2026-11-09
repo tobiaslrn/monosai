@@ -2,7 +2,7 @@
 .mn-settings-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--group-gap);
   min-width: 0;
 }
 
@@ -10,10 +10,9 @@
   display: flex;
   flex-wrap: wrap;
   min-width: 0;
-  min-height: 1.75rem;
+  min-height: var(--heading-row);
   gap: var(--space-2);
   align-items: center;
-  padding-inline: var(--space-1);
 }
 
 .mn-settings-section__header h2 {
@@ -28,6 +27,7 @@
   flex: 0 1 auto;
   min-width: 0;
   margin-inline-start: auto;
+  margin-block: calc((var(--heading-row) - var(--touch-target)) / 2);
   align-items: center;
 }
 
@@ -42,7 +42,7 @@
   min-height: 3.625rem;
   gap: var(--space-2) var(--space-3);
   align-items: center;
-  padding: var(--space-2) var(--space-4);
+  padding: var(--row-inset-block) var(--surface-inset);
   color: inherit;
 }
 
@@ -119,7 +119,7 @@
 }
 
 .mn-section__card--rows > .mn-settings-group {
-  margin: var(--space-3);
+  margin: var(--surface-inset);
   padding: 0;
   overflow: clip;
   border-top: 0;
@@ -132,7 +132,7 @@
   min-height: 2.75rem;
   gap: var(--space-2);
   align-items: center;
-  padding: var(--space-2) var(--space-4);
+  padding: var(--row-inset-block) var(--surface-inset);
   border-bottom: 1px solid var(--border-subtle);
   background: transparent;
 }
@@ -144,11 +144,11 @@
 }
 
 .mn-settings-group > .mn-settings-row {
-  padding-inline: var(--space-4);
+  padding-inline: var(--surface-inset);
 }
 
 .mn-settings-subrows {
-  padding: 0 var(--space-4) var(--space-2) var(--space-7);
+  padding: 0 var(--surface-inset) var(--row-inset-block) var(--space-7);
 }
 
 .mn-settings-subrows > .mn-settings-row {
@@ -160,12 +160,12 @@
 }
 
 .mn-disclosure__body--rows .mn-settings-subrows {
-  padding-inline: var(--space-4) 0;
+  padding-inline: var(--surface-inset) 0;
 }
 
 .mn-settings-feedback {
   margin: 0;
-  padding: 0 var(--space-4) var(--space-3);
+  padding: 0 var(--surface-inset) var(--stack-gap);
   color: var(--text-secondary);
   font-size: var(--text-sm);
 }
@@ -205,10 +205,6 @@
 }
 
 @media (max-width: 30rem) {
-  .mn-settings-row {
-    padding-inline: var(--space-3);
-  }
-
   .mn-settings-row__end {
     max-width: 100%;
   }
@@ -219,12 +215,16 @@
     width: min(9.375rem, 50cqi);
   }
 
-  .mn-settings-group__header {
-    padding-inline: var(--space-3);
+  /*
+   * A phone has no room to spend on a second level: the inset group and its
+   * sub-rows keep a slimmer gutter, so a row's control stays beside its label.
+   */
+  .mn-section__card--rows > .mn-settings-group {
+    margin: var(--stack-gap);
   }
 
   .mn-settings-subrows {
-    padding-inline: var(--space-3) var(--space-3);
+    padding-inline: var(--stack-gap);
   }
 }
 

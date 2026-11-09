@@ -1,3 +1,5 @@
+@use 'breakpoints';
+
 @mixin light-palette {
   --surface-canvas: #f8f6f1;
   --surface-panel: #fffdf9;
@@ -140,8 +142,38 @@
   --reader-line-height-ruby: 2.6;
   --reader-paragraph-gap: 2.25rem;
   --reader-measure: calc(36 * var(--reader-font-size));
-  /* Every non-reader page and the application bar share this column. */
-  --page-measure: 60rem;
+  /*
+   * Every non-reader page and its bar share this one column: a comfortable
+   * measure for a line of English, which cards, headings and prose all fill.
+   */
+  --page-measure: 44rem;
+
+  /*
+   * Layout roles. Every page, card and row takes its spacing from these, and
+   * no primitive restates one as a literal of its own, so one change here moves
+   * every screen together.
+   *
+   * page-gutter      the canvas between the column and the window edge
+   * page-gap         between the blocks of a page: sections, cards, actions
+   * group-gap        between the parts of one block: a heading and its card,
+   *                  a title and its lines
+   * stack-gap        between the items inside a card
+   * surface-inset    how far a card's content, and a row's, sits in from the
+   *                  card's edge — one value, so the text of a row of rows lines
+   *                  up with the text of a padded card
+   * row-inset-block  a row's padding above and below its content
+   * line-gap         between a title and the line under it, inside one item
+   * heading-row      the height of a section heading's row; an action beside
+   *                  the heading overhangs it rather than pushing the card down
+   */
+  --page-gutter: min(var(--space-4), 16px);
+  --page-gap: var(--space-5);
+  --group-gap: var(--space-2);
+  --stack-gap: var(--space-3);
+  --surface-inset: var(--space-4);
+  --row-inset-block: var(--space-2);
+  --line-gap: 0.125rem;
+  --heading-row: 1.75rem;
 
   /* Shared composite surfaces keep component styles token-only. */
   --backdrop-scrim: rgb(0 0 0 / 38%);
@@ -216,6 +248,13 @@
   @include dark-palette;
 
   color-scheme: dark;
+}
+
+/* A wide window gives the column more canvas around it, never a wider column. */
+@media (min-width: breakpoints.$wide) {
+  :root {
+    --page-gutter: var(--space-6);
+  }
 }
 
 @media (prefers-color-scheme: dark) {
