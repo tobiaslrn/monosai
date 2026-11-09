@@ -76,6 +76,20 @@
   margin-inline-start: auto;
 }
 
+/* `mn-notice`'s actions: one block at the end, so a pair never splits across lines. */
+.mn-notice > .mn-notice__actions {
+  display: flex;
+  flex: none;
+  flex-flow: row wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-inline-start: auto;
+}
+
+.mn-notice > .mn-notice__actions:empty {
+  display: none;
+}
+
 .mn-notice a:not(.mn-button) {
   color: inherit;
 }

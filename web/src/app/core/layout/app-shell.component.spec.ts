@@ -4,6 +4,7 @@ import { Router, provideRouter } from '@angular/router';
 import { describe, expect, it, vi } from 'vitest';
 import { AppShellComponent } from './app-shell.component';
 import { HelpIntroService } from './help-intro.service';
+import { PageNoticeSlot } from '../../shared-ui/page-header/page-notice-slot';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AlphaNoticeService } from './alpha-notice.service';
 
@@ -26,6 +27,7 @@ describe('AppShellComponent', () => {
         providers: [
           { provide: HelpIntroService, useValue: intro },
           { provide: AlphaNoticeService, useValue: alpha },
+          PageNoticeSlot,
         ],
       },
     });

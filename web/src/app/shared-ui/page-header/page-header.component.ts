@@ -10,10 +10,12 @@ import {
   viewChild,
   type ElementRef,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { IconComponent } from '../icon/icon.component';
 import { WordmarkComponent } from '../wordmark/wordmark.component';
+import { PageNoticeSlot } from './page-notice-slot';
 
 /**
  * The top bar every page outside the reader wears.
@@ -26,7 +28,7 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
 @Component({
   selector: 'mn-page-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, IconComponent, WordmarkComponent],
+  imports: [NgTemplateOutlet, RouterLink, IconComponent, WordmarkComponent],
   template: `
     <header #bar class="head" [class.head--home]="home()">
       @if (backTo(); as target) {
@@ -86,8 +88,13 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
         <ng-content />
       </div>
     </header>
+    @if (noticeSlot?.template(); as notice) {
+      <ng-container [ngTemplateOutlet]="notice" />
+    }
   `,
   styles: `
+    @use '../../../styles/breakpoints' as breakpoints;
+
     /*
      * No box of its own, so the bar's sticky containing block is the page
      * column rather than this element — otherwise it could never stick.
@@ -141,6 +148,16 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
      */
     .back {
       margin-inline: calc(-1 * var(--space-2));
+    }
+
+    /*
+     * Where the window leaves canvas beside the column, Back hangs in it, so
+     * the title starts on the column's edge with the headings and cards below.
+     */
+    @media (min-width: breakpoints.$wide) {
+      .back {
+        margin-inline-start: calc(-1 * var(--touch-target));
+      }
     }
 
     .mark {
@@ -222,6 +239,8 @@ import { WordmarkComponent } from '../wordmark/wordmark.component';
 })
 export class PageHeaderComponent {
   private readonly navigation = inject(NavigationHistoryService);
+  /** The frame's notice for whichever page is showing, drawn as the page's first block. */
+  protected readonly noticeSlot = inject(PageNoticeSlot, { optional: true });
   private readonly bar = viewChild.required<ElementRef<HTMLElement>>('bar');
   readonly heading = input.required<string>();
   /** Omitted only by the Library, which is where every other page goes back to. */

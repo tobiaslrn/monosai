@@ -2,6 +2,8 @@ import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
+import { BannerComponent } from '../../shared-ui/banner/banner.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
 
 /**
  * A non-modal update notice.
@@ -14,6 +16,7 @@ import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog
 @Component({
   selector: 'mn-app-update-banner',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [BannerComponent, ButtonDirective],
   template: `
     @let status = store.status();
     @if (
@@ -21,38 +24,21 @@ import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog
       (!supersededOnly() &&
         (status.kind === 'available' || status.kind === 'activating' || status.kind === 'failed'))
     ) {
-      <div
+      <mn-banner
         class="banner"
+        [tone]="status.kind === 'superseded' || status.kind === 'failed' ? 'error' : 'info'"
+        [icon]="status.kind === 'superseded' || status.kind === 'failed' ? 'warning' : null"
         [attr.role]="status.kind === 'superseded' ? 'alert' : 'status'"
         [attr.aria-live]="status.kind === 'superseded' ? null : 'polite'"
       >
         @switch (status.kind) {
           @case ('superseded') {
             <p>{{ status.message }}</p>
-            <div class="mn-actions">
-              <button
-                type="button"
-                class="mn-button mn-button--primary"
-                (click)="reloadSuperseded()"
-              >
-                Reload
-              </button>
-            </div>
           }
           @case ('available') {
-            <p>A new version of Monosai has downloaded.</p>
+            <p>A new version of Monosai is ready.</p>
             @if (store.isBusy()) {
               <p class="mn-hint">Waiting for current work to finish.</p>
-              <button type="button" class="mn-button mn-button--primary" disabled>
-                Update and reload
-              </button>
-            } @else {
-              <div class="mn-actions">
-                <button type="button" class="mn-button mn-button--primary" (click)="activate()">
-                  Update and reload
-                </button>
-                <button type="button" class="mn-button" (click)="dismiss()">Not now</button>
-              </div>
             }
           }
           @case ('activating') {
@@ -63,39 +49,35 @@ import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog
             @if (store.isBusy()) {
               <p class="mn-hint">Waiting for current work to finish.</p>
             }
-            <div class="mn-actions">
+          }
+        }
+        <ng-container ngProjectAs="[mn-banner-action]">
+          @switch (status.kind) {
+            @case ('superseded') {
+              <button mnButton="primary" type="button" (click)="reloadSuperseded()">Reload</button>
+            }
+            @case ('available') {
+              @if (store.isBusy()) {
+                <button mnButton="primary" type="button" disabled>Reload to update</button>
+              } @else {
+                <button mnButton="primary" type="button" (click)="activate()">
+                  Reload to update
+                </button>
+                <button mnButton="ghost" type="button" (click)="dismiss()">Later</button>
+              }
+            }
+            @case ('failed') {
               @if (status.recovery === 'reload') {
-                <button
-                  type="button"
-                  class="mn-button"
-                  [disabled]="store.isBusy()"
-                  (click)="reload()"
-                >
+                <button mnButton type="button" [disabled]="store.isBusy()" (click)="reload()">
                   Reload to recover
                 </button>
               } @else {
-                <button type="button" class="mn-button" (click)="retry()">Try again</button>
+                <button mnButton type="button" (click)="retry()">Try again</button>
               }
-            </div>
+            }
           }
-        }
-      </div>
-    }
-  `,
-  styles: `
-    .banner {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--space-3);
-      padding: var(--space-3) var(--space-4);
-      border-bottom: 1px solid var(--border-subtle);
-      background: var(--action-primary-soft);
-      color: var(--text-primary);
-    }
-
-    p {
-      margin: 0;
+        </ng-container>
+      </mn-banner>
     }
   `,
 })

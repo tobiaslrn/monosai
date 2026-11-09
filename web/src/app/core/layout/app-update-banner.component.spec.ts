@@ -70,7 +70,7 @@ describe('AppUpdateBannerComponent', () => {
     expect(banner?.getAttribute('aria-live')).toBe('polite');
     expect(element.querySelector('dialog, [role="dialog"]')).toBeNull();
     expect(document.activeElement).not.toBe(banner);
-    expect(banner?.textContent).toContain('has downloaded');
+    expect(banner?.textContent).toContain('is ready');
   });
 
   it('disables the update action and explains why while busy work is in progress', () => {
@@ -82,7 +82,7 @@ describe('AppUpdateBannerComponent', () => {
     const enabledButton = element.querySelector('button:not([disabled])');
     const disabledButton = element.querySelector('button[disabled]');
     expect(disabledButton).not.toBeNull();
-    expect(disabledButton?.textContent).toContain('Update and reload');
+    expect(disabledButton?.textContent).toContain('Reload to update');
     expect(enabledButton).toBeNull();
     expect(element.textContent).toContain('Waiting for current work to finish.');
   });
@@ -162,7 +162,7 @@ describe('AppUpdateBannerComponent', () => {
       view.fixture.detectChanges();
 
       expect(view.element.textContent).toContain('can no longer save');
-      expect(view.element.textContent).not.toContain('has downloaded');
+      expect(view.element.textContent).not.toContain('is ready');
     });
   });
 

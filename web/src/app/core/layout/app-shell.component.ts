@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  viewChild,
+  type TemplateRef,
+} from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, NavigationError, Router, RouterOutlet } from '@angular/router';
 import { filter, map, tap } from 'rxjs';
@@ -10,6 +18,9 @@ import { AppUpdateBannerComponent } from './app-update-banner.component';
 import { VocabularySyncBannerComponent } from './vocabulary-sync-banner.component';
 import { HelpIntroService } from './help-intro.service';
 import { AlphaNoticeService } from './alpha-notice.service';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
+import { PageNoticeSlot } from '../../shared-ui/page-header/page-notice-slot';
 
 /**
  * The application frame.
@@ -23,8 +34,14 @@ import { AlphaNoticeService } from './alpha-notice.service';
 @Component({
   selector: 'mn-app-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, AppUpdateBannerComponent, VocabularySyncBannerComponent],
-  providers: [HelpIntroService],
+  imports: [
+    RouterOutlet,
+    AppUpdateBannerComponent,
+    VocabularySyncBannerComponent,
+    ButtonDirective,
+    NoticeComponent,
+  ],
+  providers: [HelpIntroService, PageNoticeSlot],
   template: `
     <a class="mn-skip-link" href="#mn-main">Skip to main content</a>
 
@@ -33,31 +50,48 @@ import { AlphaNoticeService } from './alpha-notice.service';
     } @else {
       <mn-app-update-banner />
       <mn-vocabulary-sync-banner />
-      @if (intro.visible()) {
-        <aside class="intro-error intro-offer" aria-label="A little help getting started">
-          <button type="button" class="mn-button" (click)="intro.finish('dismiss')">Got it</button>
-          <button type="button" class="mn-button" (click)="intro.finish('guide')">
-            Read the guide
-          </button>
-        </aside>
-      }
-      @if (intro.saveFailed()) {
-        <div class="intro-error" role="alert">
-          <div class="mn-notice mn-notice--error">
-            <p>Could not save your Help preference.</p>
-            <button type="button" class="mn-button" (click)="intro.retrySave()">Try again</button>
-          </div>
-        </div>
-      }
     }
+
+    <!--
+      The first-use offer belongs to the page, not above it: each page's bar
+      draws it as the page's first block, in the page's own column.
+    -->
+    <ng-template #introNotice>
+      @if (!isReaderRoute()) {
+        @if (intro.visible()) {
+          <aside aria-label="A little help getting started">
+            <mn-notice icon="help">
+              <p>New here? The guide walks you from an empty library to your first story.</p>
+              <button mn-notice-action mnButton type="button" (click)="intro.finish('guide')">
+                Read the guide
+              </button>
+              <button
+                mn-notice-action
+                mnButton="ghost"
+                type="button"
+                (click)="intro.finish('dismiss')"
+              >
+                Got it
+              </button>
+            </mn-notice>
+          </aside>
+        }
+        @if (intro.saveFailed()) {
+          <mn-notice tone="error" icon="warning" role="alert">
+            <p>Could not save your Help preference.</p>
+            <button mn-notice-action mnButton type="button" (click)="intro.retrySave()">
+              Try again
+            </button>
+          </mn-notice>
+        }
+      }
+    </ng-template>
 
     <main id="mn-main" class="main" tabindex="-1">
       <router-outlet />
     </main>
   `,
   styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
     :host {
       display: block;
       min-height: 100dvh;
@@ -66,7 +100,7 @@ import { AlphaNoticeService } from './alpha-notice.service';
     /* No top padding: each page's sticky top bar starts at the viewport edge. */
     .main {
       min-width: 0;
-      padding: 0 min(var(--space-4), 16px) var(--space-6);
+      padding: 0 var(--page-gutter) var(--space-6);
       /* Clip stray paint without turning this sticky ancestor into a scrollport. */
       overflow-x: clip;
     }
@@ -74,37 +108,11 @@ import { AlphaNoticeService } from './alpha-notice.service';
     .main:focus {
       outline: none;
     }
-
-    .intro-error {
-      max-width: var(--page-measure);
-      margin: var(--space-4) auto;
-      padding-inline: var(--space-4);
-    }
-    .intro-offer {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--space-2);
-    }
-    .intro-offer p {
-      margin: 0;
-      flex: 1 1 15rem;
-    }
-
-    @media (min-width: breakpoints.$wide) {
-      .main {
-        padding: 0 var(--space-6) var(--space-6);
-      }
-
-      /* The banner is already the column's width here, so it needs no inset of its own. */
-      .intro-error {
-        padding-inline: 0;
-      }
-    }
   `,
 })
 export class AppShellComponent {
   protected readonly intro = inject(HelpIntroService);
+  private readonly introNotice = viewChild<TemplateRef<unknown>>('introNotice');
   private readonly alpha = inject(AlphaNoticeService);
   private readonly router = inject(Router);
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
@@ -152,6 +160,10 @@ export class AppShellComponent {
   });
 
   constructor() {
+    const slot = inject(PageNoticeSlot);
+    effect(() => {
+      slot.template.set(this.introNotice() ?? null);
+    });
     // Subscribed after `url`, so the route the notices are judged by is already
     // the one this navigation ended on.
     this.router.events

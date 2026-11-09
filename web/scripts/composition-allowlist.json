@@ -1,7 +1,6 @@
 {
   "src/app/core/bootstrap/startup-failure.component.ts": ["styles"],
   "src/app/core/layout/app-shell.component.ts": ["styles"],
-  "src/app/core/layout/app-update-banner.component.ts": ["styles"],
   "src/app/core/layout/vocabulary-sync-banner.component.ts": ["styles"],
   "src/app/features/add-text/add-text-page.component.ts": ["styles"],
   "src/app/features/add-text/text-input-step.component.ts": ["styles"],

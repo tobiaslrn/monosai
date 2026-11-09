@@ -1,10 +1,11 @@
 import { Location } from '@angular/common';
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, viewChild, type TemplateRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { PageHeaderComponent } from './page-header.component';
+import { PageNoticeSlot } from './page-notice-slot';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -106,5 +107,40 @@ describe('PageHeaderComponent back control', () => {
     expect(element.querySelector('.alpha-marker')?.getAttribute('aria-label')).toBe(
       'Alpha version',
     );
+  });
+});
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [PageHeaderComponent],
+  template: `<ng-template #notice><p data-testid="frame-notice">New here?</p></ng-template>
+    <mn-page-header heading="Library" />`,
+})
+class NoticeHostComponent {
+  readonly notice = viewChild.required<TemplateRef<unknown>>('notice');
+}
+
+describe('PageHeaderComponent frame notice', () => {
+  it('draws the frame notice after the bar, as the page’s first block', () => {
+    TestBed.configureTestingModule({ providers: [provideRouter([]), PageNoticeSlot] });
+    const fixture = TestBed.createComponent(NoticeHostComponent);
+    fixture.detectChanges();
+    TestBed.inject(PageNoticeSlot).template.set(fixture.componentInstance.notice());
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const notice = element.querySelector('[data-testid="frame-notice"]');
+    expect(notice).not.toBeNull();
+    expect(element.querySelector('header')?.nextElementSibling).toBe(notice);
+  });
+
+  it('draws nothing extra without a frame', () => {
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const fixture = TestBed.createComponent(NoticeHostComponent);
+    fixture.detectChanges();
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="frame-notice"]'),
+    ).toBeNull();
   });
 });

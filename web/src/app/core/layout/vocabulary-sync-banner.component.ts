@@ -1,12 +1,14 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { BannerComponent } from '../../shared-ui/banner/banner.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
 import { AutomaticAnkiSyncCoordinator } from '../../application/vocabulary/automatic-anki-sync.coordinator';
 import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
 @Component({
   selector: 'mn-vocabulary-sync-banner',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, BannerComponent, ButtonDirective],
   template: `
     @if (coordinator?.status(); as status) {
       @switch (status.kind) {
@@ -24,15 +26,22 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
           }
         }
         @case ('attention') {
-          <aside class="banner attention" role="status" aria-live="polite" aria-atomic="true">
-            <span>{{ status.message }}</span>
-            <span class="mn-actions">
-              <button type="button" class="mn-button mn-button--ghost" (click)="retry()">
-                Retry now
-              </button>
-              <a routerLink="/reading-level" fragment="words">Manage sources</a>
-            </span>
-          </aside>
+          <mn-banner
+            class="banner attention"
+            tone="warning"
+            icon="warning"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <p>{{ status.message }}</p>
+            <button mn-banner-action mnButton="ghost" type="button" (click)="retry()">
+              Retry now
+            </button>
+            <a mn-banner-action mnButton="ghost" routerLink="/reading-level" fragment="words"
+              >Manage sources</a
+            >
+          </mn-banner>
         }
       }
     }
@@ -70,30 +79,6 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
         opacity: 0;
         transform: translate(1rem, 1rem);
       }
-    }
-
-    .banner {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: var(--space-2) var(--space-3);
-      padding: var(--space-2) var(--space-4);
-      border-bottom: 1px solid var(--border-subtle);
-      background: var(--surface-raised);
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .banner.attention {
-      background: var(--status-warning-soft);
-      color: var(--text-primary);
-    }
-
-    a {
-      color: var(--action-primary-text);
-      font: inherit;
-      text-decoration: underline;
     }
 
     @media (prefers-reduced-motion: reduce) {

@@ -7,8 +7,8 @@ export type NoticeTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
 /**
  * Something reported beside the thing it is about: a failure, a warning, a
  * result, or a fact needed before acting. The words take the row and an
- * optional action sits at its end, moving below the words only when they
- * need the room.
+ * optional action, or a pair of them, sits at its end as one block, moving
+ * below the words only when they need the room.
  *
  *   <mn-notice tone="error" icon="warning" role="alert">
  *     <p>What happened.</p>
@@ -33,7 +33,7 @@ export type NoticeTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
       <mn-icon [name]="name" [size]="18" />
     }
     <div><ng-content /></div>
-    <ng-content select="[mn-notice-action]" />
+    <span class="mn-notice__actions"><ng-content select="[mn-notice-action]" /></span>
   `,
 })
 export class NoticeComponent {
