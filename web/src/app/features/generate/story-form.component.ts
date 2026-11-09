@@ -111,7 +111,8 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
     WizardStepsComponent,
   ],
   template: `
-    <mn-stack [gap]="4">
+    <!-- The form's blocks are the page's blocks, so they keep the page's rhythm. -->
+    <mn-stack gap="page">
       <!--
         What is missing leads the form, in the document flow: it is why the
         button at the foot is disabled, so it is read before the fields are

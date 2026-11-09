@@ -34,9 +34,9 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
     StackComponent,
   ],
   template: `
-    <mn-stack [gap]="4">
+    <mn-stack>
       @if (unmet().length > 0) {
-        <mn-blocker-list>
+        <mn-blocker-list heading="Before you can write">
           @for (check of unmet(); track check.id) {
             <mn-blocker [attr.data-check]="check.id">
               <strong>{{ check.label }}: </strong>{{ check.detail }}

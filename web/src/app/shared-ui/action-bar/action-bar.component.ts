@@ -27,7 +27,8 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/
       flex-direction: column;
       gap: var(--space-3);
       width: 100%;
-      margin-top: calc(var(--space-2) * -1);
+      /* The fade reaches up over the form; the button itself sits one page gap below it. */
+      margin-top: calc(var(--space-4) * -1);
       padding: var(--space-4) 0 calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
       background: var(--surface-canvas-fade);
     }

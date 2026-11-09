@@ -218,6 +218,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
           } @else if (source.kind !== 'text-list') {
             <mn-disclosure
               tone="quiet"
+              [flush]="true"
               [heading]="mappingSummary(source)"
               (openChange)="onMappingOpen($event, source)"
             >

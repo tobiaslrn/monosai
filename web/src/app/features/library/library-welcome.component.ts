@@ -3,9 +3,8 @@ import { navigationOriginState } from '../../core/routing/navigation-history.ser
 import { formatCount } from '../../domain/shared/locale';
 import { GENERATION_SNAPSHOT_MINIMUM } from '../../domain/vocabulary/snapshot';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { StackComponent } from '../../shared-ui/layout/layout';
-import { ProseComponent } from '../../shared-ui/prose/prose.component';
 import { RowComponent } from '../../shared-ui/row/row.component';
+import { SectionComponent } from '../../shared-ui/section/section.component';
 
 /**
  * The Library before there is anything on it.
@@ -24,45 +23,35 @@ import { RowComponent } from '../../shared-ui/row/row.component';
 @Component({
   selector: 'mn-library-welcome',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, ProseComponent, RowComponent, StackComponent],
+  imports: [IconComponent, RowComponent, SectionComponent],
   template: `
-    <section aria-labelledby="mn-welcome-heading">
-      <mn-stack [gap]="4">
-        <mn-prose>
-          <h2 id="mn-welcome-heading">Monosai writes Japanese you can actually read.</h2>
-          <p mn-lead>
-            Monosai builds readable stories from at least {{ minimumWords }} words from Anki, an
-            Anki package, or a pasted list. Paste Japanese text to add readings, spacing, and a
-            dictionary.
-          </p>
-          <p>Everything stays on this device.</p>
-        </mn-prose>
-
-        <mn-stack [gap]="2">
-          <mn-row
-            surface="card"
-            heading="Add a word list"
-            icon="vocabulary"
-            link="/reading-level"
-            fragment="words"
-            [state]="libraryOriginState"
-            testId="welcome-choice"
-          >
-            <mn-icon name="chevron-right" [size]="18" />
-          </mn-row>
-          <mn-row
-            surface="card"
-            heading="Paste Japanese text"
-            icon="add"
-            link="/add"
-            [state]="libraryOriginState"
-            testId="welcome-choice"
-          >
-            <mn-icon name="chevron-right" [size]="18" />
-          </mn-row>
-        </mn-stack>
-      </mn-stack>
-    </section>
+    <!-- One grouped card, like every other list of destinations in Monosai. -->
+    <mn-section heading="Monosai writes Japanese you can actually read." [rows]="true">
+      <p mn-section-lead>
+        Monosai builds readable stories from at least {{ minimumWords }} words from Anki, an Anki
+        package, or a pasted list. Paste Japanese text to add readings, spacing, and a dictionary.
+      </p>
+      <p mn-section-lead>Everything stays on this device.</p>
+      <mn-row
+        heading="Add a word list"
+        icon="vocabulary"
+        link="/reading-level"
+        fragment="words"
+        [state]="libraryOriginState"
+        testId="welcome-choice"
+      >
+        <mn-icon name="chevron-right" [size]="18" />
+      </mn-row>
+      <mn-row
+        heading="Paste Japanese text"
+        icon="add"
+        link="/add"
+        [state]="libraryOriginState"
+        testId="welcome-choice"
+      >
+        <mn-icon name="chevron-right" [size]="18" />
+      </mn-row>
+    </mn-section>
   `,
 })
 export class LibraryWelcomeComponent {

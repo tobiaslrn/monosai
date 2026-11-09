@@ -19,8 +19,10 @@ export interface Fact {
 }
 
 /**
- * A read-only list of facts: each label on the left, its value on the right,
- * on one line at every width. The look is the shared `.mn-facts` role.
+ * A read-only list of facts as a compact definition list: the labels in one
+ * column sized to the longest, each value left-aligned beside its label, and
+ * label above value where the list itself is narrow. The look is the shared
+ * `.mn-facts` role.
  */
 @Component({
   selector: 'mn-facts',
@@ -52,6 +54,7 @@ export interface Fact {
     :host {
       display: block;
       min-width: 0;
+      container: mn-facts / inline-size;
     }
   `,
 })

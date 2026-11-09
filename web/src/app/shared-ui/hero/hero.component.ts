@@ -45,40 +45,31 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
     </div>
   `,
   styles: `
-    @use '../../../styles/breakpoints' as breakpoints;
-
+    /*
+     * Two columns on one axis: the words take what the picture leaves, and
+     * both are centred on the row, so the hero is exactly as tall as the
+     * taller of the two and the page's gap is the only space around it.
+     */
     :host {
       --hero-art-max: 16rem;
 
-      position: relative;
-      isolation: isolate;
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) min(45%, var(--hero-art-max));
+      gap: var(--stack-gap);
       align-items: center;
-      min-height: 12.8rem;
-      margin-block: var(--space-1) calc(var(--space-2) * -1);
-      padding-block: 0 var(--space-2);
     }
 
     :host(.is-compact) {
       --hero-art-max: 9rem;
-
-      min-height: 7.7rem;
     }
 
     .hero-text {
-      width: 57%;
       min-width: 0;
     }
 
     .hero-art {
-      position: absolute;
-      z-index: -1;
-      inset-block: 0;
-      inset-inline-end: 0;
-      margin-block: auto;
-      width: 55%;
-      max-width: var(--hero-art-max);
-      height: auto;
+      position: relative;
+      width: 100%;
       overflow: hidden;
       pointer-events: none;
     }
@@ -110,17 +101,6 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
       :host-context(html:not([data-theme='light'])) .hero-art-dark {
         display: block;
-      }
-    }
-
-    @media (max-width: breakpoints.$wide-max) {
-      :host(:not(.is-compact)) {
-        min-height: 10.7rem;
-      }
-
-      .hero-text {
-        /* The text ends a gap short of wherever the art really begins. */
-        width: min(59%, calc(100% - min(55%, var(--hero-art-max)) - var(--space-3)));
       }
     }
   `,

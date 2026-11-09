@@ -39,7 +39,7 @@ describe('AddTextPageComponent', () => {
     store.setPastedText('今日は天気がいいです。');
     fixture.detectChanges();
     const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
-      '.mn-actions button.mn-button--primary',
+      'mn-action-bar button.mn-button--primary',
     )!;
     expect(button.hasAttribute('aria-busy')).toBe(false);
 

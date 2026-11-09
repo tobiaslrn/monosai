@@ -148,6 +148,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
           <div class="mn-card level-card">
             <mn-list-row
               variant="overview"
+              [inCard]="true"
               [routerLink]="'/reading-level/level'"
               [state]="levelOriginState"
               [testId]="'reading-level-link'"
@@ -199,10 +200,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     </div>
   `,
   styles: `
-    .level-page {
-      gap: var(--space-5);
-    }
-
     /*
      * A deep link used to put a section heading flush at y=0, scrolling the page
      * title and the back link out of view — so a learner arriving from Generate
@@ -228,14 +225,17 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
       margin: 0;
     }
 
+    /* The row spans the card, so its words keep the same edge as every other row. */
     .level-card {
       display: grid;
-      gap: var(--space-2);
-      padding: var(--space-3);
+      gap: 0;
+      padding: 0 0 var(--surface-inset);
+      overflow: clip;
     }
 
     .example {
-      padding: var(--space-3);
+      margin-inline: var(--surface-inset);
+      padding: var(--stack-gap);
       border-radius: var(--radius-control);
       background: var(--surface-sunken-example);
     }
@@ -273,7 +273,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
       gap: var(--space-3);
       align-items: center;
       min-height: var(--row-min-height);
-      padding: var(--space-2) var(--space-3);
+      padding: var(--row-inset-block) var(--surface-inset);
       list-style: none;
       cursor: pointer;
       font-weight: var(--weight-medium);
@@ -323,7 +323,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     }
 
     .fold-body {
-      padding: var(--space-4);
+      padding: var(--surface-inset);
       border-top: 1px solid var(--border-subtle);
     }
 

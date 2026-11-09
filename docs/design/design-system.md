@@ -56,6 +56,23 @@ refusal of the adaptive multi-pane layouts that desktop patterns encourage: the
 reader is a single measure of Japanese, and a shell that reflows around it would
 make the desktop and the phone two different applications to learn.
 
+There is **one measure**. Every non-reader page — its bar's title, its section
+headings, its prose, its cards, its error screens and its blockers — fills the
+same column, so they all share one left and one right edge. The measure is a
+comfortable line of English rather than a share of the window: on a wide screen
+a page gains canvas around the column, never a wider column, and no page keeps
+a narrower or wider variant of its own. Prose inside the column fills it, so a
+paragraph and the card under it end on the same edge. A table of real columns
+may ask for more only when the common measure cannot hold it.
+
+The page's spacing is steered from **one set of layout tokens** in
+`web/src/styles/_tokens.scss`: the measure, the gutter beside it, the gap between
+a page's blocks, the gap inside a group, the gap between a card's items, a
+card's and a row's inset, and the height of a heading's row. Primitives consume
+those roles and restate no literal of their own for them; a feature never sets
+one at all. Changing how roomy Monosai feels is a change to those tokens and
+nothing else.
+
 There is one exception. **A form may carry one narrow settings aside** beside
 its fields on wide screens, where the settings frame a decision the fields
 express. The aside stacks below the fields when the width no longer supports it.
@@ -79,7 +96,18 @@ content has begun to pass beneath it. The bar's title column shares the page's
 bounded `--page-measure`, and Back and the last trailing control are pulled out
 by their own inset so their glyphs, not their hit areas, align with the column.
 The title tucks into Back's inset as well, so the arrow and the title read as
-one unit rather than two separate items.
+one unit rather than two separate items. Where the window leaves canvas beside
+the column, Back hangs in it, so the title's first letter sits on the column
+edge with the headings and cards below it.
+
+What the application has to say about itself — a new version, a word source
+that needs attention — is a **banner** above the bar. Its ground spans the
+window, but its words start on the column's edge and its actions end on the
+other, as one row on a wide screen and two short lines on a phone; it never
+stacks a sentence over a column of buttons. What the application offers about a
+page — the first-use pointer to the guide — is the page's own first block,
+under its bar, in its column; nothing floats above the bar as unexplained
+buttons.
 
 The Library is the home destination and therefore has no Back: its bar leads
 with the Monosai mark, then the Monosai wordmark in place of a visible title,
@@ -119,7 +147,9 @@ with one explicit Continue action; direct links are included so the status is
 not hidden by the route used to open the application.
 
 The home illustration blends into the canvas through an organic crop; the hero
-is not a card and therefore has no panel boundary or elevation.
+is not a card and therefore has no panel boundary or elevation. The headline
+and the illustration are two columns on one axis, so the hero is exactly as
+tall as the taller of them and the page's gap is the only space around it.
 The crop follows the illustration's arch and low foreground, preserving the
 whole reading character and books. The asset is cropped to the drawing itself,
 so the hero's frame is the picture rather than the empty space around it and
@@ -152,6 +182,21 @@ nearly the same words makes both harder to see.
 Pages are **top-aligned and grow downward**, like a document. Content is never
 centred vertically and never stretched to fill the viewport. A short page leaves
 the space below it empty, which is the honest result of having little to say.
+
+The rhythm has two steps: the **page gap** between distinct blocks — a hero, its
+action, a section, a form's commit — and the tighter **group gap** inside one
+block, such as a heading and its card or a heading and the sentence under it.
+A form's one action sits below the form's card, one page gap away, whatever
+form it commits; it is never inside the card on one screen and outside it on
+another.
+
+**One column edge.** Section headings, the sentences under them, prose, page
+titles and the outer edge of every card start on the same edge; a heading is
+never inset from the card it names. Inside a card, every row's words — a shelf
+row, a settings row, a fold's summary, a blocker — sit one card inset from the
+card's edge, the same inset a padded card gives its content, so text in a card
+of rows lines up with text in the padded card above it. An inset group inside a
+card of rows starts on that same inset.
 
 A section heading may carry one action opposite it, and that action opens work
 rather than holding it. What the learner is drafting — a pasted word list, an
@@ -202,9 +247,13 @@ A card's title is the section rank. A group inside it takes a **group title** �
 sentence case, small, semibold, secondary — or no title at all when its contents
 are self-evident.
 
-A read-only list of **facts** puts each label on the left and its value on the
-right, on one line at every width. Diagnostic versions are separate label/value
-pairs rather than a compressed prose line, so they remain easy to scan.
+A read-only list of **facts** is a definition list: the labels form one column
+as wide as the longest of them, and each value starts right beside its label,
+left-aligned, so the eye crosses a short gap rather than the width of a card.
+Where the list's own container is too narrow for both, each label sits above
+its value on the same start edge; a value is never set ragged against the right
+edge. Diagnostic versions are separate label/value pairs rather than a
+compressed prose line, so they remain easy to scan.
 
 ### Shared primitives
 
@@ -230,7 +279,7 @@ the way to build:
 | Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                        |
 | Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                     |
 | Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs)                                                                                                                              |
-| Status           | `mn-notice` beside what it describes, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` for a form in steps, `mn-working` for a wait in words |
+| Status           | `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` for a form in steps, `mn-working` for a wait in words |
 | Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen`, `mn-not-found-panel`                                                                                                            |
 | Overlays         | `mn-dialog`, `mn-confirm-dialog`, `mn-rename-dialog`, `mnPopup` with `mnPopupTrigger`, `mn-sheet-panel`                                                                                                                |
 | Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                           |
@@ -527,6 +576,12 @@ heading and the page to its top.
 A step's action is disabled only by what that step would spend. Leaving a step
 that only chooses costs nothing and is never blocked; leaving one that sends a
 request waits on the same prerequisites the request needs.
+
+What still stands in the way is said above the steps as **one grouped card**
+under a heading that names why it is there, one row per missing thing: a
+warning mark, the sentence, and the way to clear it at the row's end, like
+every other list of rows. It is never a column of loose notices with buttons
+floating between them.
 
 ### Choosing on several axes
 
@@ -997,8 +1052,10 @@ Four exceptions:
   sideways on a phone or breaks a model ID down to one character a line. A guide
   row is the one shelf row whose secondary line may wrap past one line, because
   it says what a topic answers rather than what a thing contains.
-  A quiet, non-modal first-use banner offers Help on a non-reader
-  surface without moving focus or covering the app. Dismissal records the preference for this local installation;
+  A quiet, non-modal first-use notice offers Help on a non-reader
+  surface without moving focus or covering the app: one sentence saying what
+  the guide is, the way to it, and a quiet dismissal, as the page's first block
+  under its bar. Dismissal records the preference for this local installation;
   the guide remains among the Library's utilities. Reader deep links are never
   interrupted. See [ADR 0079](../decisions/0079-help-is-a-hub-of-topics.md).
 
@@ -1009,7 +1066,9 @@ Four exceptions:
   stranger opening the public address sees, so it says what Monosai is and what
   it would do for them before it offers a way in. This is the one surface
   written in the first person: that a person made this is allowed to show here
-  and nowhere else. It ends, like any empty state, the moment there is content.
+  and nowhere else. Its ways in are one grouped card of rows, like every other
+  list, under a heading set at the section rank with its explanation in body
+  text below it. It ends, like any empty state, the moment there is content.
 - **Release-stage disclosure.** A new alpha installation may require one short
   acknowledgment before use. This is a product disclosure rather than Help;
   it is persisted locally and is not shown again after acknowledgment.
@@ -1061,7 +1120,8 @@ surface.
 What a result says is drawn one of three ways. A sentence that belongs to a
 surface — a failure, a warning, a success, or a fact to know before acting — is
 a **notice**: the status's soft background with its words in the status colour,
-an optional leading icon, and at most one action at its end. A short word that
+an optional leading icon, and at most one action at its end — or one action and
+a quiet way to dismiss it, kept together as one block. A short word that
 says where something stands — Ready, Unread, Test failed, a word's form — is a
 **status pill**, which is never pressable and so never takes the action colour.
 Its dashed variant marks a value code chose rather than the learner; the dash,

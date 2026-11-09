@@ -4,6 +4,8 @@ import { Router } from '@angular/router';
 import { ImportStore } from '../../application/reading/import.store';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
+import { ActionBarComponent } from '../../shared-ui/action-bar/action-bar.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { TextInputStepComponent } from './text-input-step.component';
 
@@ -17,7 +19,7 @@ import { TextInputStepComponent } from './text-input-step.component';
 @Component({
   selector: 'mn-add-text-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TextInputStepComponent, PageHeaderComponent],
+  imports: [ActionBarComponent, ButtonDirective, TextInputStepComponent, PageHeaderComponent],
   providers: [ImportStore],
   template: `
     <div class="mn-page">
@@ -65,20 +67,20 @@ import { TextInputStepComponent } from './text-input-step.component';
             </span>
           </p>
         }
-
-        <!-- The commit spans the form, as Generate's does. -->
-        <div class="mn-actions mn-actions--fill">
-          <button
-            type="button"
-            class="mn-button mn-button--primary"
-            [disabled]="!store.canSave()"
-            [attr.aria-busy]="store.isBusy() ? 'true' : null"
-            (click)="save()"
-          >
-            {{ store.duplicates().length > 0 ? 'Add another copy' : 'Add story' }}
-          </button>
-        </div>
       </section>
+
+      <!-- The commit sits below the form and spans it, as Generate's does. -->
+      <mn-action-bar>
+        <button
+          type="button"
+          mnButton="primary"
+          [disabled]="!store.canSave()"
+          [attr.aria-busy]="store.isBusy() ? 'true' : null"
+          (click)="save()"
+        >
+          {{ store.duplicates().length > 0 ? 'Add another copy' : 'Add story' }}
+        </button>
+      </mn-action-bar>
 
       <p class="mn-visually-hidden" role="status" aria-live="polite">{{ store.announcement() }}</p>
     </div>

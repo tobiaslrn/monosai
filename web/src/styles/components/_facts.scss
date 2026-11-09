@@ -1,33 +1,51 @@
 /*
- * A read-only fact list: the label on the left, its value on the right, on
- * one line at every width. The row wraps only when the value itself is too
- * long to sit beside its label, and then the value keeps to the right edge.
- * There is no breakpoint and no fixed label column, because neither knows how
- * long the words in it will be.
+ * A read-only fact list, read as a definition list: the labels form one column
+ * as wide as the longest of them, and each value starts right beside its
+ * label, left-aligned, so the eye reads across a short gap rather than the
+ * width of the card. Where the list's own container is too narrow for both
+ * columns, each label sits above its value, both on the same start edge.
+ *
+ * The column is sized by the labels themselves, up to a share of the row, so
+ * no breakpoint or fixed width has to guess how long they will be.
  */
 .mn-facts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: fit-content(40%) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
   margin: 0;
 }
 
 .mn-facts > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-3);
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: baseline;
-  justify-content: space-between;
 }
 
 .mn-facts dt {
+  min-width: 0;
   color: var(--text-secondary);
+  overflow-wrap: break-word;
 }
 
 .mn-facts dd {
   min-width: 0;
-  margin: 0 0 0 auto;
+  margin: 0;
   font-variant-numeric: tabular-nums;
-  text-align: end;
   overflow-wrap: anywhere;
+}
+
+@container mn-facts (max-width: 20rem) {
+  .mn-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .mn-facts > div {
+    gap: var(--line-gap);
+  }
+
+  .mn-facts dt {
+    font-size: var(--text-sm);
+  }
 }

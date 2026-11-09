@@ -20,7 +20,7 @@ let nextListRowId = 0;
   template: `
     <div
       class="mn-list-row"
-      [class.mn-list-row--flush]="variant() === 'flush'"
+      [class.mn-list-row--flush]="variant() === 'flush' || inCard()"
       [class.mn-list-row--muted]="variant() === 'muted'"
       [class.mn-list-row--overview]="variant() === 'overview'"
       [class.mn-list-row--plain]="variant() === 'plain'"
@@ -74,6 +74,8 @@ export class ListRowComponent {
   readonly state = input<NavigationExtras['state']>(undefined);
   readonly variant = input<ListRowVariant>('card');
   readonly mutedLeading = input(false);
+  /** The row is one of a card's own rows: the card draws its edge and corners. */
+  readonly inCard = input(false);
 
   /** For durable tests: the test id belongs on the interactive link. */
   readonly testId = input<string | null>(null);

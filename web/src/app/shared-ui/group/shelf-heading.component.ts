@@ -9,7 +9,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
  *   </section>
  *
  * The space above it separates one group from the last; the first heading on
- * the shelf only needs the space that sets it off the controls above. The
+ * the shelf needs none, because the page's own gap already sets it off the
+ * controls above. The
  * heading owns that space itself, rather than a gap between blocks, so a
  * virtualised list can measure it as part of the slot it occupies.
  */
@@ -21,10 +22,10 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   styles: `
     :host {
       display: block;
-      padding-block: var(--space-5) var(--space-2);
+      padding-block: var(--page-gap) var(--group-gap);
     }
     :host(.is-first) {
-      padding-block-start: var(--space-2);
+      padding-block-start: 0;
     }
   `,
 })

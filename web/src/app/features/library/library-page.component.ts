@@ -85,7 +85,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     LibraryVirtualListComponent,
   ],
   template: `
-    <mn-page [gap]="3">
+    <mn-page>
       <mn-page-header heading="Library" [home]="true" [showAlpha]="true">
         <nav aria-label="Utilities">
           <mn-cluster [gap]="1">

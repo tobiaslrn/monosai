@@ -14,8 +14,9 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
  * chevron that turns when it is open. The body is padded and stacks what it
  * holds across its width (a button goes in an `mn-cluster` to keep its own);
  * `[rows]` gives the padding up to rows that bring their own, indented under
- * the title, and `[flush]` drops the side padding for content that needs the
- * whole width, such as a set of cards or chips.
+ * the title, and `[flush]` is for a disclosure inside a padded card: the body
+ * drops its side padding for content that needs the whole width, such as a
+ * set of cards or chips, and the summary's words keep the card's content edge.
  *
  * `quiet` is a secondary branch of the card; `danger` is a destructive one,
  * such as deleting everything.
@@ -28,6 +29,7 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
   host: {
     '[class.mn-disclosure--quiet]': "tone() === 'quiet'",
     '[class.mn-disclosure--danger]': "tone() === 'danger'",
+    '[class.mn-disclosure--flush]': 'flush()',
   },
   template: `
     <details
@@ -133,6 +135,14 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
       overflow-wrap: normal;
       padding: var(--space-1) 0 var(--space-4);
       border-top: 0;
+    }
+
+    /*
+     * Flush inside a padded card: the summary reaches the card's edges, so its
+     * hover spans the card, while its words keep the card's content edge.
+     */
+    mn-disclosure.mn-disclosure--flush > .mn-disclosure__details > .mn-disclosure__summary {
+      margin-inline: calc(-1 * var(--surface-inset));
     }
 
     mn-disclosure > .mn-disclosure__details > .mn-disclosure__body--rows {
