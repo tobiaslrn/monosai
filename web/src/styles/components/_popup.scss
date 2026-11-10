@@ -1,5 +1,6 @@
 /*
- * A floating panel: a native popover anchored to the control that opened it.
+ * A menu of commands: a native popover anchored to the control that opened it,
+ * drawn from the overlay tokens every other overlay uses.
  *
  *   <button mnPopupTrigger …>   names the panel and takes `anchor-name`
  *   <div mnPopup …>             is `popover="auto"` and takes `position-anchor`
@@ -7,7 +8,7 @@
  * The browser dismisses it on a press outside or Escape and returns focus, and
  * the top layer keeps it above any card that clips. It opens below the control
  * with its end edges aligned and falls back to above, or to the other side,
- * when there is no room. `--start` aligns the start edges instead.
+ * when there is no room.
  *
  * `--menu` is a list of actions: items are `role="menuitem"` buttons and take
  * the button states in ADR 0082's order.
@@ -15,16 +16,16 @@
 .mn-popup {
   position: absolute;
   inset: auto;
-  max-width: calc(100vw - 2 * var(--space-2));
-  max-height: calc(100vh - 2 * var(--space-4));
-  margin: var(--space-1) 0 0;
+  max-width: calc(100vw - 2 * var(--overlay-margin));
+  max-height: calc(100dvh - 2 * var(--overlay-margin));
+  margin: var(--overlay-offset) 0 0;
   padding: 0;
   overflow: auto;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
+  border: 1px solid var(--overlay-edge);
+  border-radius: var(--overlay-radius);
   color: var(--text-primary);
-  background: var(--surface-panel);
-  box-shadow: var(--shadow-overlay);
+  background: var(--overlay-surface);
+  box-shadow: var(--overlay-shadow);
   position-area: bottom span-left;
   position-try-fallbacks:
     flip-block,
@@ -32,25 +33,25 @@
     flip-block flip-inline;
 }
 
-.mn-popup--start {
-  position-area: bottom span-right;
-}
-
 .mn-popup--menu:popover-open {
   display: flex;
   flex-direction: column;
-  min-width: 12rem;
+  min-width: var(--menu-min-width);
   padding: var(--space-1);
 }
 
+/*
+ * One row height, one inset, and one gap between glyph and label in every
+ * menu; the row's corners sit inside the menu's by the menu's own padding.
+ */
 .mn-menu-item {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--glyph-gap);
   align-items: center;
   min-height: var(--touch-target);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--control-inset);
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: calc(var(--overlay-radius) - var(--space-1));
   color: var(--text-primary);
   background: transparent;
   font: inherit;
@@ -59,7 +60,12 @@
   cursor: pointer;
 }
 
-.mn-menu-item--danger {
+.mn-menu-item > mn-icon {
+  color: var(--text-secondary);
+}
+
+.mn-menu-item--danger,
+.mn-menu-item--danger > mn-icon {
   color: var(--status-danger);
 }
 

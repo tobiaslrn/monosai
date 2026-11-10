@@ -34,10 +34,10 @@ import { wordReading } from '../../domain/reading/token-presentation';
       align-items: baseline;
       max-width: min(20rem, calc(100vw - 2 * var(--space-4)));
       padding: var(--space-2) var(--space-3);
-      border: 1px solid var(--border-subtle);
+      border: 1px solid var(--overlay-edge);
       border-radius: var(--radius-control);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
+      background: var(--overlay-surface);
+      box-shadow: var(--overlay-shadow);
       font-size: var(--text-sm);
     }
 

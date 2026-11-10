@@ -8,6 +8,7 @@ import {
   TEXT_SCALE_STEP,
   type ReaderPreferences,
 } from '../../domain/settings/settings';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 import { SwitchRowComponent } from '../../shared-ui/switch-row/switch-row.component';
 
 type AidToggle = 'furigana' | 'tokenSpacing' | 'sentencePerLine' | 'warningMarkers';
@@ -36,9 +37,9 @@ const AIDS: readonly AidOption[] = [
 @Component({
   selector: 'mn-reader-aids',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, SwitchRowComponent],
+  imports: [NoticeComponent, RouterLink, SwitchRowComponent],
   template: `
-    <section class="appearance mn-inset" role="group" aria-label="Reading appearance">
+    <section class="appearance" role="group" aria-label="Reading appearance">
       <h3 class="mn-group-title">Reading appearance</h3>
       <div class="scale">
         <label for="mn-text-scale">Text size</label>
@@ -54,70 +55,64 @@ const AIDS: readonly AidOption[] = [
         />
         <span class="scale-value" aria-hidden="true">{{ scaleLabel() }}</span>
       </div>
-
-      <div class="switches">
-        @for (aid of aids; track aid.key) {
-          <mn-switch-row
-            [checked]="settings.readerPreferences()[aid.key]"
-            (checkedChange)="setAid(aid.key, $event)"
-          >
-            {{ aid.label }}
-          </mn-switch-row>
-        }
-      </div>
+      @for (aid of aids; track aid.key) {
+        <mn-switch-row
+          [checked]="settings.readerPreferences()[aid.key]"
+          (checkedChange)="setAid(aid.key, $event)"
+        >
+          {{ aid.label }}
+        </mn-switch-row>
+      }
       @if (vocabularyNotice(); as notice) {
-        <p class="mn-notice mn-notice--warning" data-testid="reader-vocabulary-notice">
-          {{ notice }}
-          <a routerLink="/reading-level" fragment="words">What you can read</a>
-        </p>
+        <mn-notice tone="warning" data-testid="reader-vocabulary-notice">
+          <p>
+            {{ notice }}
+            <a routerLink="/reading-level" fragment="words">What you can read</a>
+          </p>
+        </mn-notice>
       }
     </section>
   `,
   styles: `
+    :host {
+      display: block;
+    }
+
+    /* Plain rows under a plain heading, a hairline between each. */
     .appearance {
       display: flex;
       flex-direction: column;
-      gap: var(--space-3);
     }
 
     h3 {
       margin: 0;
     }
-    .switches {
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .scale input {
-      min-width: 0;
-    }
-    .scale {
-      font-size: var(--text-sm);
-    }
-    :host {
-      display: block;
-    }
 
     .scale {
       display: grid;
       grid-template-columns: auto 1fr auto;
-      gap: var(--space-3);
+      gap: var(--stack-gap);
       align-items: center;
       min-height: var(--touch-target);
+      font-size: var(--text-sm);
     }
 
     .scale input {
       width: 100%;
+      min-width: 0;
     }
 
     .scale-value {
       color: var(--text-secondary);
-      font-size: var(--text-sm);
       font-variant-numeric: tabular-nums;
     }
 
-    mn-switch-row + mn-switch-row {
+    mn-switch-row {
       border-top: 1px solid var(--border-subtle);
+    }
+
+    mn-notice {
+      margin-top: var(--group-gap);
     }
   `,
 })

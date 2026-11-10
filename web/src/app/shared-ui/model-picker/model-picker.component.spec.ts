@@ -44,7 +44,7 @@ describe('ModelPickerComponent', () => {
     element.querySelector<HTMLButtonElement>('.trigger')!.click();
     fixture.detectChanges();
 
-    const panel = element.querySelector<HTMLElement>('.panel')!;
+    const panel = element.querySelector<HTMLElement>('mn-sheet-popover')!;
     expect(panel.querySelector('.favorites')?.textContent).toContain('Favourite');
     expect(panel.querySelector('.results')?.textContent).toContain('Ordinary');
 
@@ -67,7 +67,7 @@ describe('ModelPickerComponent', () => {
     element.querySelector<HTMLButtonElement>('.trigger')!.click();
     fixture.detectChanges();
 
-    const panel = element.querySelector<HTMLElement>('.panel')!;
+    const panel = element.querySelector<HTMLElement>('mn-sheet-popover')!;
     expect(panel.querySelector('.favorites')?.textContent).toContain('Favourite');
     expect(panel.querySelector('.state')).toBeNull();
   });
@@ -106,7 +106,7 @@ describe('ModelPickerComponent', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
       const trigger = element.querySelector<HTMLButtonElement>('.trigger')!;
-      const panel = element.querySelector<HTMLElement>('.panel')!;
+      const panel = element.querySelector<HTMLElement>('mn-sheet-popover')!;
       return { fixture, trigger, panel, element };
     }
 
@@ -149,6 +149,8 @@ describe('ModelPickerComponent', () => {
       expect(trigger.getAttribute('aria-expanded')).toBe('false');
       expect(element.querySelector('input[type="search"]')).toBeNull();
 
+      // A press on the trigger focuses it in a browser; jsdom's click does not.
+      trigger.focus();
       trigger.click();
       fixture.detectChanges();
       expect(trigger.getAttribute('aria-expanded')).toBe('true');

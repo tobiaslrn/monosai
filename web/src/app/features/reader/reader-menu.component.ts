@@ -12,76 +12,71 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { A11yModule } from '@angular/cdk/a11y';
 import { RouterLink } from '@angular/router';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ReaderAidsComponent } from './reader-aids.component';
 import type { ReaderContentState } from './reader-content-state';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
-import { ViewportService } from '../../core/platform/viewport.service';
-import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
+import {
+  OverlayTriggerDirective,
+  SheetPopoverComponent,
+} from '../../shared-ui/popover/sheet-popover.component';
 
 /** One reader options surface: appearance, saved content, and maintenance. */
 @Component({
   selector: 'mn-reader-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [A11yModule, RouterLink, IconComponent, ReaderAidsComponent, SheetPopoverComponent],
+  imports: [
+    RouterLink,
+    ButtonDirective,
+    IconComponent,
+    NoticeComponent,
+    OverlayTriggerDirective,
+    ReaderAidsComponent,
+    SheetPopoverComponent,
+  ],
   host: { '(document:keydown.escape)': 'onEscape($event)' },
   template: `
     <button
       #anchor
       type="button"
-      class="mn-icon-button anchor-button"
+      class="mn-icon-button"
       aria-label="Story options"
       title="Story options"
       aria-haspopup="dialog"
-      aria-controls="mn-reader-menu-panel"
-      [attr.aria-expanded]="menuOpen()"
-      popovertarget="mn-reader-menu-panel"
+      [mnOverlayTrigger]="panel"
     >
       <mn-icon name="overflow" />
     </button>
     <mn-sheet-popover
       #panel
       id="mn-reader-menu-panel"
-      class="panel"
       role="dialog"
-      aria-label="Story options"
-      anchorName="--mn-options-anchor"
+      heading="Story options"
       closeLabel="Close story options"
-      [cdkTrapFocus]="menuOpen()"
-      (toggle)="onToggle()"
-      (closed)="onSheetClosed()"
+      (opened)="onToggle()"
+      (closed)="onToggle()"
+      (dismissed)="close()"
     >
-      <header>
-        <h2>Story options</h2>
-        @if (!isMobile()) {
-          <button
-            #closeButton
-            type="button"
-            class="mn-icon-button"
-            aria-label="Close story options"
-            title="Close story options"
-            (click)="close()"
-          >
-            <mn-icon name="close" />
-          </button>
-        }
-      </header>
       <mn-reader-aids />
-      <section class="content mn-inset" aria-label="Content for this story">
+      <section class="content" aria-labelledby="mn-reader-content-title">
+        <h3 class="mn-group-title" id="mn-reader-content-title">Content for this story</h3>
         <!--
           One missing setup step blocks several layers at once — typically no
           OpenRouter key. It is said once, with its one way forward, instead of
           as the same sentence and the same button on every row.
         -->
         @if (sharedSetup(); as setup) {
-          <div class="setup-notice mn-notice mn-notice--info" data-testid="shared-setup">
+          <mn-notice tone="info" data-testid="shared-setup">
             <p>{{ setup.status }}</p>
-            <a class="mn-button" routerLink="/settings" (click)="close()">{{ setup.label }}</a>
-          </div>
+            <a mn-notice-action mnButton routerLink="/settings" (click)="close()">{{
+              setup.label
+            }}</a>
+          </mn-notice>
         }
-        <div class="content-rows mn-stack mn-stack--tight">
+        <div class="content-rows">
           @for (row of rows(); track row.layer) {
             <section
               class="content-row"
@@ -150,13 +145,17 @@ import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.com
                 </div>
               </div>
               @if (row.error) {
-                <p class="row-notice mn-notice mn-notice--error" role="alert">{{ row.error }}</p>
+                <mn-notice tone="error" role="alert">
+                  <p>{{ row.error }}</p>
+                </mn-notice>
               }
             </section>
           }
         </div>
         @if (error()) {
-          <p class="menu-notice mn-notice mn-notice--error" role="alert">{{ error() }}</p>
+          <mn-notice tone="error" role="alert">
+            <p>{{ error() }}</p>
+          </mn-notice>
         }
       </section>
     </mn-sheet-popover>
@@ -180,10 +179,7 @@ export class ReaderMenuComponent {
   readonly clearAidRequested = output<'english' | 'grammar'>();
   private readonly anchor = viewChild.required<ElementRef<HTMLButtonElement>>('anchor');
   private readonly panel = viewChild.required(SheetPopoverComponent);
-  private readonly closeButton = viewChild<ElementRef<HTMLButtonElement>>('closeButton');
-  private readonly viewport = inject(ViewportService);
   private readonly injector = inject(Injector);
-  protected readonly isMobile = this.viewport.isMobile;
   protected readonly menuOpen = signal(false);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   /** The row whose credit link holds focus, which the link's removal would drop. */
@@ -249,11 +245,6 @@ export class ReaderMenuComponent {
     this.shown.emit(open);
     if (open) {
       this.opened.emit();
-      if (this.isMobile()) {
-        this.panel().focusHandle();
-      } else {
-        this.closeButton()?.nativeElement.focus();
-      }
     }
   }
   protected onEscape(event: Event): void {
@@ -287,8 +278,5 @@ export class ReaderMenuComponent {
     }
     this.close();
     this.clearAidRequested.emit(layer);
-  }
-  protected onSheetClosed(): void {
-    this.close();
   }
 }

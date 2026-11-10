@@ -1,37 +1,16 @@
-.anchor-button {
-  anchor-name: --mn-options-anchor;
-}
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-}
-h2 {
-  margin: 0;
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-}
-h3 {
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-}
-.row-copy strong {
-  font-weight: var(--weight-medium);
-}
+/*
+ * Two plain groups under plain headings, a hairline between the groups and
+ * between the rows of each.
+ */
 .content {
-  margin-top: var(--space-4);
-}
-.content-rows {
-  width: 100%;
-}
-.setup-notice {
-  margin-bottom: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--group-gap);
+  padding-top: var(--stack-gap);
+  border-top: 1px solid var(--border-subtle);
 }
 .content-row {
-  padding-block: var(--space-2);
+  padding-block: var(--row-inset-block);
 }
 .content-row + .content-row {
   border-top: 1px solid var(--border-subtle);
@@ -48,15 +27,15 @@ h3 {
   /* The status keeps its full width; a wide action wraps below it instead. */
   min-width: fit-content;
 }
+.row-copy strong {
+  font-weight: var(--weight-medium);
+}
 /*
  * The controls move as one block. Letting them wrap individually put a pill
  * and a destructive control on separate lines of a narrow sheet, which read as
  * two unrelated rows.
  */
 .row-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
   flex: 0 0 auto;
   margin-left: auto;
 }
@@ -73,7 +52,6 @@ h3 {
 .clear {
   color: var(--status-danger);
 }
-.row-notice,
-.menu-notice {
+.content-row > mn-notice {
   margin-top: var(--space-2);
 }

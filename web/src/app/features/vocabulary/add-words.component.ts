@@ -23,7 +23,10 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ClusterComponent, StackComponent } from '../../shared-ui/layout/layout';
 import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 import { RowComponent } from '../../shared-ui/row/row.component';
-import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.component';
+import {
+  OverlayTriggerDirective,
+  SheetPopoverComponent,
+} from '../../shared-ui/popover/sheet-popover.component';
 import { ANKI_LINKS } from './anki-links';
 import { connectFailureCopy, NOTHING_SAVED } from './anki-error-copy';
 
@@ -38,8 +41,9 @@ type AddMode = 'closed' | 'choices' | 'anki';
  * so the platform decides the words and the adapter rather than the learner
  * choosing between two Anki entries that were never alternatives.
  *
- * The sheet hangs from its control on a wide screen and docks to the bottom
- * edge on a phone, where it is a temporary surface over a dimmed page.
+ * It is a task dialog: centred over a dimmed page on a wide screen and docked
+ * to the bottom edge on a phone. It is a native popover rather than a CDK
+ * dialog because it must stay open while a file chooser is up.
  */
 @Component({
   selector: 'mn-add-words',
@@ -55,6 +59,7 @@ type AddMode = 'closed' | 'choices' | 'anki';
     FieldComponent,
     IconComponent,
     NoticeComponent,
+    OverlayTriggerDirective,
     RowComponent,
     SheetPopoverComponent,
     StackComponent,
@@ -66,38 +71,27 @@ type AddMode = 'closed' | 'choices' | 'anki';
         type="button"
         mnButton="ghost"
         aria-haspopup="dialog"
-        aria-controls="mn-add-words-menu"
-        [attr.aria-expanded]="mode() === 'choices' || mode() === 'anki'"
-        popovertarget="mn-add-words-menu"
         data-testid="add-words"
-        [style.anchor-name]="anchorName"
+        [mnOverlayTrigger]="menu"
       >
         <mn-icon name="add" [size]="18" /> Add source
       </button>
     </mn-cluster>
 
     <mn-sheet-popover
-      #menu
+      #menu="mnSheetPopover"
       id="mn-add-words-menu"
       role="dialog"
-      aria-label="Add words"
-      [anchorName]="anchorName"
+      placement="centred"
+      label="Add words"
+      [heading]="mode() === 'anki' ? 'Anki' : 'Add words'"
+      [backLabel]="mode() === 'anki' ? 'Back to the list of sources' : null"
       [modal]="true"
       (toggle)="onMenuToggle($event)"
-      (closed)="dismiss()"
+      (back)="mode.set('choices')"
+      (dismissed)="dismiss()"
     >
       @if (mode() === 'anki') {
-        <mn-cluster>
-          <button
-            type="button"
-            mnButton="icon"
-            aria-label="Back to the list of sources"
-            (click)="mode.set('choices')"
-          >
-            <mn-icon name="back" />
-          </button>
-          <h3>Anki</h3>
-        </mn-cluster>
         @if (failure(); as copy) {
           <mn-stack [gap]="2" role="alert" data-testid="anki-connect-failed">
             <p>
@@ -113,24 +107,23 @@ type AddMode = 'closed' | 'choices' | 'anki';
               </p>
             }
             <p class="mn-hint">{{ unchanged }}</p>
-            <mn-disclosure heading="Advanced details" tone="quiet">
+            <mn-disclosure heading="Advanced details" tone="quiet" [flush]="true">
               @if (copy.offersPort) {
-                <mn-cluster>
-                  <mn-field label="Port">
-                    <input
-                      type="number"
-                      inputmode="numeric"
-                      min="1"
-                      max="65535"
-                      step="1"
-                      required
-                      [value]="portDraft()"
-                      [attr.aria-invalid]="portValid() ? null : 'true'"
-                      (input)="setPortDraft($event)"
-                      data-testid="anki-connect-port"
-                    />
-                  </mn-field>
-                </mn-cluster>
+                <mn-field label="Port">
+                  <input
+                    class="mn-control"
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    max="65535"
+                    step="1"
+                    required
+                    [value]="portDraft()"
+                    [attr.aria-invalid]="portValid() ? null : 'true'"
+                    (input)="setPortDraft($event)"
+                    data-testid="anki-connect-port"
+                  />
+                </mn-field>
               }
               @if (failureDetail(); as detail) {
                 <p class="mn-hint">{{ detail }}</p>
@@ -143,26 +136,13 @@ type AddMode = 'closed' | 'choices' | 'anki';
               </p>
             </mn-disclosure>
           </mn-stack>
-          <mn-cluster justify="end">
-            <button
-              type="button"
-              mnButton="primary"
-              [disabled]="refresh.isBusy() || !portValid()"
-              (click)="connectAnki()"
-              data-testid="anki-retry"
-            >
-              Try again
-            </button>
-          </mn-cluster>
         } @else {
           <p role="status">{{ connectingLabel() }}</p>
         }
       } @else {
-        <h3>Add words</h3>
-        <mn-stack [gap]="2">
+        <div class="mn-overlay__rows">
           @if (platform === 'ios') {
             <mn-row
-              surface="card"
               icon="anki-source"
               heading="Connect to Anki"
               testId="choose-anki"
@@ -171,14 +151,8 @@ type AddMode = 'closed' | 'choices' | 'anki';
             >
               <span mn-row-meta>iOS cannot be read directly — export a file instead</span>
             </mn-row>
-            <p class="mn-hint">
-              <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
-                >How to export from Anki</a
-              >
-            </p>
           } @else {
             <mn-row
-              surface="card"
               icon="anki-source"
               heading="Connect to Anki"
               testId="choose-anki"
@@ -191,7 +165,6 @@ type AddMode = 'closed' | 'choices' | 'anki';
             </mn-row>
           }
           <mn-row
-            surface="card"
             icon="file"
             heading="Import from Anki"
             testId="choose-package"
@@ -203,7 +176,6 @@ type AddMode = 'closed' | 'choices' | 'anki';
             <mn-icon name="chevron-right" />
           </mn-row>
           <mn-row
-            surface="card"
             icon="word-list"
             heading="Add a word list"
             testId="add-text-source"
@@ -213,11 +185,29 @@ type AddMode = 'closed' | 'choices' | 'anki';
             <span mn-row-meta>One word per line</span>
             <mn-icon name="chevron-right" />
           </mn-row>
-        </mn-stack>
+        </div>
+        @if (platform === 'ios') {
+          <p class="mn-hint">
+            <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
+              >How to export from Anki</a
+            >
+          </p>
+        }
         <mn-notice icon="info"
           >Your sources stay separate. Duplicate words are counted once.</mn-notice
         >
-        <button type="button" mnButton (click)="dismiss()">Cancel</button>
+      }
+      @if (mode() === 'anki' && failure() !== null) {
+        <button
+          mn-dialog-action
+          type="button"
+          mnButton="primary"
+          [disabled]="refresh.isBusy() || !portValid()"
+          (click)="connectAnki()"
+          data-testid="anki-retry"
+        >
+          Try again
+        </button>
       }
     </mn-sheet-popover>
     <input
@@ -242,7 +232,6 @@ export class AddWordsComponent {
   private readonly packageImport = inject(PackageImportStore);
   protected readonly platform = inject(HOST_PLATFORM);
   protected readonly links = ANKI_LINKS;
-  protected readonly anchorName = '--mn-add-words-anchor';
   protected readonly unchanged = NOTHING_SAVED;
 
   /** The one sentence naming what has to be installed for the Anki row to work. */
@@ -313,7 +302,7 @@ export class AddWordsComponent {
     this.toggleButton()?.nativeElement.focus();
   }
 
-  /** Cancel: nothing was chosen, so focus goes back to the control that opened it. */
+  /** Put away unanswered: nothing was chosen, so focus goes back to the control that opened it. */
   protected dismiss(): void {
     this.hideMenu();
     this.toggleButton()?.nativeElement.focus();

@@ -1,11 +1,9 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { hasModifierKey } from '@angular/cdk/keycodes';
+import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
+import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { FormsModule } from '@angular/forms';
 import { CLOCK } from '../../application/shared/repository-tokens';
-import { ViewportService } from '../../core/platform/viewport.service';
 import { ButtonDirective } from '../../shared-ui/button/button';
-import { SheetPanelComponent } from '../../shared-ui/sheet/sheet-panel.component';
+import { DialogComponent } from '../../shared-ui/dialog/dialog';
 import {
   applyBrowseQuery,
   DEFAULT_BROWSE_QUERY,
@@ -24,23 +22,13 @@ export interface VocabularyFilterSheetData {
   readonly sources: readonly CapturedSourceObservation[];
 }
 
-/** Longer than the departure, so a missed `transitionend` still closes the dialog. */
-const DEPARTURE_FALLBACK_MS = 400;
-
-/** CDK dialog content used as a bottom sheet below the desktop breakpoint. */
+/** The Filters task dialog: a centred card on a wide screen, a docked sheet on a phone. */
 @Component({
   selector: 'mn-vocabulary-filter-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ButtonDirective, SheetPanelComponent],
+  imports: [FormsModule, ButtonDirective, DialogComponent],
   template: `
-    <mn-sheet-panel
-      heading="Filters"
-      headingId="vocabulary-filter-heading"
-      handleLabel="Close filters"
-      [leaving]="leaving()"
-      (dismissed)="depart(undefined)"
-      (departed)="onDeparted()"
-    >
+    <mn-dialog heading="Filters" headingId="vocabulary-filter-heading" closeLabel="Close filters">
       <label class="mn-field">
         <span>Source</span>
         <select
@@ -115,42 +103,20 @@ const DEPARTURE_FALLBACK_MS = 400;
         </select>
       </label>
 
-      <button mn-sheet-action mnButton="primary" type="button" (click)="depart(draft())">
+      <button mn-dialog-action="start" mnButton="ghost" type="button" (click)="reset()">
+        Reset
+      </button>
+      <button mn-dialog-action mnButton="primary" type="button" (click)="show()">
         Show {{ formatCountOf(matchCount(), 'word') }}
       </button>
-      <button mn-sheet-action mnButton="ghost" type="button" (click)="reset()">Reset</button>
-    </mn-sheet-panel>
+    </mn-dialog>
   `,
 })
 export class VocabularyFilterSheetComponent {
-  constructor() {
-    // The dialog would remove the sheet the moment it closed. Taking over
-    // backdrop and Escape dismissal lets the surface depart before it does.
-    this.dialogRef.disableClose = true;
-    this.dialogRef.backdropClick.subscribe(() => {
-      this.depart(undefined);
-    });
-    this.dialogRef.keydownEvents.subscribe((event) => {
-      if (event.key === 'Escape' && !hasModifierKey(event)) {
-        event.preventDefault();
-        this.depart(undefined);
-      }
-    });
-    inject(DestroyRef).onDestroy(() => {
-      clearTimeout(this.fallback);
-    });
-  }
-
   protected readonly data = inject<VocabularyFilterSheetData>(DIALOG_DATA);
-  private readonly dialogRef = inject<DialogRef<BrowseQuery | undefined>>(DialogRef);
   private readonly clock = inject(CLOCK);
-  private readonly viewport = inject(ViewportService);
-  private fallback: ReturnType<typeof setTimeout> | undefined;
-  private result: BrowseQuery | undefined;
+  private readonly frame = viewChild.required(DialogComponent);
   protected readonly draft = signal<BrowseQuery>(this.data.query);
-
-  /** Set once a dismissal has begun, so a second one during the slide is ignored. */
-  protected readonly leaving = signal(false);
 
   protected readonly formatCountOf = formatCountOf;
   protected readonly matchCount = () =>
@@ -181,40 +147,11 @@ export class VocabularyFilterSheetComponent {
   }
 
   /**
-   * Sends the sheet away, then asks the dialog to close with `result`.
-   *
-   * The dialog removes its element the moment it closes, so the surface slides
-   * out first. Dragging the handle or dismissing from outside discards the
-   * draft (`undefined`); only Show commits it. A second dismissal while the
-   * sheet is already leaving is ignored.
+   * Commits the draft. Dismissing the dialog any other way — its close, the
+   * handle, the scrim, or Escape — discards it.
    */
-  protected depart(result: BrowseQuery | undefined): void {
-    if (this.leaving()) {
-      return;
-    }
-    this.result = result;
-    if (!this.viewport.isMobile() || this.viewport.prefersReducedMotion()) {
-      this.finish();
-      return;
-    }
-    this.leaving.set(true);
-    this.dialogRef.overlayRef.backdropElement?.classList.add('is-leaving');
-    // A transition that never runs (a hidden tab) must not strand the dialog.
-    this.fallback = setTimeout(() => {
-      this.finish();
-    }, DEPARTURE_FALLBACK_MS);
-  }
-
-  /** The handle springing back also ends a slide; only the slide away closes. */
-  protected onDeparted(): void {
-    if (this.leaving()) {
-      this.finish();
-    }
-  }
-
-  private finish(): void {
-    clearTimeout(this.fallback);
-    this.dialogRef.close(this.result);
+  protected show(): void {
+    this.frame().close(this.draft());
   }
 
   protected reset(): void {

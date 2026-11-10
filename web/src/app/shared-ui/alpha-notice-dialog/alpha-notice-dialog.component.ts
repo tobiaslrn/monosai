@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { ButtonDirective } from '../button/button';
+import { DialogComponent } from '../dialog/dialog';
+import { NoticeComponent } from '../notice/notice.component';
 
 export interface AlphaNoticeDialogData {
   readonly acknowledge: () => Promise<boolean>;
@@ -9,70 +12,31 @@ export interface AlphaNoticeDialogData {
 @Component({
   selector: 'mn-alpha-notice-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ButtonDirective, DialogComponent, NoticeComponent],
   template: `
-    <div class="dialog">
-      <h2 id="mn-alpha-title">Monosai is in alpha.</h2>
+    <mn-dialog kind="confirm" heading="Monosai is in alpha." headingId="mn-alpha-title">
       <p id="mn-alpha-message">
         It is still being built, so you may encounter bugs, missing features, or changes.
       </p>
 
       @if (saveFailed()) {
-        <p class="mn-notice mn-notice--error" role="alert">
-          Could not save your acknowledgment. Try again.
-        </p>
+        <mn-notice tone="error" role="alert">
+          <p>Could not save your acknowledgment. Try again.</p>
+        </mn-notice>
       }
 
-      <div class="mn-actions mn-actions--end">
-        <button
-          type="button"
-          class="mn-button mn-button--primary"
-          cdkFocusInitial
-          [disabled]="saving()"
-          [attr.aria-busy]="saving()"
-          (click)="continue()"
-        >
-          Continue
-        </button>
-      </div>
-    </div>
-  `,
-  styles: `
-    .dialog {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      width: min(30rem, calc(100vw - 2 * var(--space-4)));
-      padding: var(--space-5);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
-    }
-
-    h2,
-    p {
-      margin: 0;
-    }
-
-    h2 {
-      font-size: var(--text-xl);
-    }
-
-    #mn-alpha-message {
-      color: var(--text-secondary);
-    }
-
-    @media (max-width: 59.999em) {
-      .dialog {
-        width: 100%;
-        max-height: 90vh;
-        overflow-y: auto;
-        padding-block-end: calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
-        border-inline: 0;
-        border-block-end: 0;
-        border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-      }
-    }
+      <button
+        mn-dialog-action
+        mnButton="primary"
+        type="button"
+        cdkFocusInitial
+        [disabled]="saving()"
+        [attr.aria-busy]="saving()"
+        (click)="continue()"
+      >
+        Continue
+      </button>
+    </mn-dialog>
   `,
 })
 export class AlphaNoticeDialogComponent {

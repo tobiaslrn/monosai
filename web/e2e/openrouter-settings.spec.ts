@@ -33,7 +33,7 @@ test.describe('the model tree', () => {
   });
 
   /**
-   * Both panels are native popovers, so the browser dismisses them; this holds
+   * The key form and a picker are native popovers, so the browser dismisses them; this holds
    * the wiring to that: a press outside and Escape close them, and focus goes
    * back to the control that opened them.
    */
@@ -44,7 +44,7 @@ test.describe('the model tree', () => {
     await page.goto('./#/settings');
 
     const connect = page.getByTestId('connect-openrouter');
-    const connection = page.getByRole('dialog', { name: 'OpenRouter connection' });
+    const connection = page.getByRole('dialog', { name: 'OpenRouter key' });
     await connect.click();
     await expect(connection).toBeVisible();
     await expect(connect).toHaveAttribute('aria-expanded', 'true');

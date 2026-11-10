@@ -23,49 +23,7 @@
 @use 'styles/components/list-row';
 @use 'styles/components/settings';
 @use 'styles/components/popup';
-
-.cdk-overlay-dark-backdrop {
-  background: rgb(37 40 36 / 45%);
-}
-
-/* A dismissed sheet's scrim fades with it rather than cutting out behind it. */
-.cdk-overlay-dark-backdrop.is-leaving {
-  background-color: transparent;
-  transition: background-color var(--motion-medium) linear;
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
-}
-
-/* Sheets sit against the bottom edge on a phone and are centred on desktop. */
-.mn-sheet-panel {
-  display: block;
-}
-
-/* App-level filter dialogs centre on desktop and dock to the bottom on phones. */
-.cdk-overlay-pane.vocabulary-filter-pane {
-  max-width: calc(100vw - 2 * var(--space-4));
-}
-
-@media (max-width: 59.999em) {
-  .cdk-overlay-pane.vocabulary-filter-pane {
-    width: 100%;
-    max-width: 100%;
-  }
-}
-
-/* Confirmations and notices dock to the bottom edge, full width, on a phone. */
-@media (max-width: 59.999em) {
-  .cdk-global-overlay-wrapper:has(> .cdk-overlay-pane.mn-docked-pane) {
-    align-items: flex-end !important;
-    justify-content: stretch !important;
-  }
-
-  .cdk-overlay-pane.mn-docked-pane {
-    width: 100%;
-  }
-}
+@use 'styles/components/overlay';
 
 /*
  * A hover preview is a hint, not a surface: it must never swallow the pointer

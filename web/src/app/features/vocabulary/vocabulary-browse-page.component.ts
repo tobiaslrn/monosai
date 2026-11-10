@@ -1,14 +1,13 @@
-import { ChangeDetectionStrategy, Component, Injector, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
-import { createGlobalPositionStrategy } from '@angular/cdk/overlay';
 import { RouterLink } from '@angular/router';
 import { VocabularyBrowseStore } from '../../application/vocabulary/vocabulary-browse.store';
-import { ViewportService } from '../../core/platform/viewport.service';
 import { vocabularySourceId } from '../../domain/shared/ids';
 import { formatCount, formatCountOf } from '../../domain/shared/locale';
 import type { BrowseQuery } from '../../domain/vocabulary/vocabulary-browse';
 import type { VocabularyEntry } from '../../domain/vocabulary/vocabulary-repository';
 import { ButtonDirective } from '../../shared-ui/button/button';
+import { openDialog } from '../../shared-ui/dialog/dialog';
 import { EntryListComponent } from '../../shared-ui/entry-list/entry-list.component';
 import {
   FilterSelectComponent,
@@ -180,8 +179,6 @@ interface VirtualVocabularyEntry {
 export class VocabularyBrowsePageComponent {
   protected readonly store = inject(VocabularyBrowseStore);
   private readonly dialog = inject(Dialog);
-  private readonly injector = inject(Injector);
-  private readonly viewport = inject(ViewportService);
 
   protected readonly virtualEntries = computed<readonly VirtualVocabularyEntry[]>(() =>
     this.store.visible().map((entry) => ({ key: entry.itemId, entry })),
@@ -237,22 +234,15 @@ export class VocabularyBrowsePageComponent {
       entries: this.store.entries(),
       sources: this.store.sources(),
     };
-    const positionStrategy = createGlobalPositionStrategy(this.injector);
-    if (this.viewport.isMobile()) {
-      positionStrategy.bottom('0').left('0');
-    } else {
-      positionStrategy.centerHorizontally().centerVertically();
-    }
-    const ref = this.dialog.open<BrowseQuery | undefined, VocabularyFilterSheetData>(
-      VocabularyFilterSheetComponent,
-      {
-        data,
-        panelClass: 'vocabulary-filter-pane',
-        backdropClass: 'cdk-overlay-dark-backdrop',
-        ariaLabelledBy: 'vocabulary-filter-heading',
-        positionStrategy,
-      },
-    );
+    const ref = openDialog<
+      BrowseQuery | undefined,
+      VocabularyFilterSheetData,
+      VocabularyFilterSheetComponent
+    >(this.dialog, VocabularyFilterSheetComponent, {
+      data,
+      modal: true,
+      labelledBy: 'vocabulary-filter-heading',
+    });
     ref.closed.subscribe((query) => {
       if (query !== undefined) {
         this.store.applyQuery(query);

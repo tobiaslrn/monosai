@@ -247,6 +247,18 @@ A card's title is the section rank. A group inside it takes a **group title** �
 sentence case, small, semibold, secondary — or no title at all when its contents
 are self-evident.
 
+A **card of rows** — settings, most of all — never sinks a group of its rows into
+an inset. A group there (Text, Voice) is headed by a small-caps secondary row that
+carries its status, and its rows stay on the card's own inset with a hairline
+between each, so the card keeps one content edge. What a disclosure or a route
+opens beneath a row sits in from it by **one** indent and no more. Every field
+at a row's end — a select, an input, a picker's trigger, a segmented choice — is
+one width, so the card's controls form one column with one right edge.
+
+A sample sentence — what a level reads like — is a quiet block set in from the
+words around it by a rule (`mn-example`), not a sunken box: the card it sits in
+stays the only surface.
+
 A read-only list of **facts** is a definition list: the labels form one column
 as wide as the longest of them, and each value starts right beside its label,
 left-aligned, so the eye crosses a short gap rather than the width of a card.
@@ -269,29 +281,30 @@ is the reader, whose surfaces are its own, and the screens not yet moved.
 Each primitive documents its own inputs and slots beside its code. What each is
 the way to build:
 
-| Role             | Primitives                                                                                                                                                                                                             |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Page frame       | `mn-page`, and `mn-page-header` for the one bar                                                                                                                                                                        |
-| Layout           | `mn-stack` (one vertical rhythm), `mn-cluster` (one wrapping row), `mn-split` (a label and its end), `mn-grid`; `mn-divider` between blocks                                                                            |
-| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                       |
-| Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                  |
-| Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                    |
-| Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                        |
-| Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                     |
-| Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs)                                                                                                                              |
+| Role             | Primitives                                                                                                                                                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Page frame       | `mn-page`, and `mn-page-header` for the one bar                                                                                                                                                                                                                    |
+| Layout           | `mn-stack` (one vertical rhythm), `mn-cluster` (one wrapping row), `mn-split` (a label and its end), `mn-grid`; `mn-divider` between blocks                                                                                                                        |
+| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                                                                   |
+| Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                              |
+| Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                |
+| Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                                                                    |
+| Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                 |
+| Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                          |
 | Status           | `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` for a form in steps, `mn-working` for a wait in words |
-| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen`, `mn-not-found-panel`                                                                                                            |
-| Overlays         | `mn-dialog`, `mn-confirm-dialog`, `mn-rename-dialog`, `mnPopup` with `mnPopupTrigger`, `mn-sheet-panel`                                                                                                                |
-| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                           |
-| Glyphs           | `mn-icon`                                                                                                                                                                                                              |
+| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen`, `mn-not-found-panel`                                                                                                                                                        |
+| Overlays         | `mn-menu` (a menu), `mn-sheet-popover` with `mnOverlayTrigger` (a picker, a popover-held task dialog), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                      |
+| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                       |
+| Glyphs           | `mn-icon`                                                                                                                                                                                                                                                          |
 
-A panel that hangs from a control — an action menu, a model picker, the
-connection panel — is a popup. It is a native popover, so the browser dismisses
-it on a press outside or Escape and returns focus, the top layer keeps it above
-any card that clips, and no instance registers a listener, which is what lets
-one sit in every row of a virtualised shelf. A panel that hangs from a control
-never dims the page: only a sheet docked to a phone's bottom edge draws the
-scrim. The reader's floating surfaces and sheets stay on `PopoverService`,
+A menu is a native popover (`mn-menu`), so the browser dismisses it on a press
+outside or Escape and returns focus, the top layer keeps it above any card that
+clips, and no instance registers a listener, which is what lets one sit in every
+row of a virtualised shelf. A picker and a task dialog that must outlive a file
+chooser are native popovers too (`mn-sheet-popover`); the other task dialogs and
+the confirmations are CDK dialogs (`mn-dialog`). Which of the four kinds an
+overlay is, and what it looks like, is described under App-level overlays and
+sheets. The reader's floating surfaces and sheets stay on `PopoverService`,
 because they own gestures and docking a menu does not have
 ([ADR 0083](../decisions/0083-floating-panels-are-native-popovers.md)).
 
@@ -431,7 +444,11 @@ primary action of a surface — the play control in the transport, the primary
 button of a form.
 
 Text buttons share one pill silhouette, one touch-target height, one text size,
-and one weight. A bare `mnButton` is the secondary outline for an
+and one weight. A borderless button at the edge of a column — the end of a
+heading, a row, a banner, a bar — gives up its padding outward, so its label,
+the only thing drawn, lines up with the edge the column's text and cards keep,
+while its hit area keeps its size. Every primitive's trailing slot does this
+for the ghost button that ends it; nothing is nudged per screen. A bare `mnButton` is the secondary outline for an
 ordinary reversible action. `mnButton="primary"` is the one filled action that
 starts or commits the main work on a surface. `mnButton="ghost"` is action-colour
 text without a border for quiet verbs such as adding a source, testing, or
@@ -647,15 +664,62 @@ foot of the viewport while the ladder scrolls under it.
 
 ### App-level overlays and sheets
 
-An app-level modal surface uses the CDK Dialog pattern: focus moves into the
-surface, `Escape` dismisses it, outside dismissal follows the surface's
-semantics, and focus returns to the control that opened it. The surface is a
-centred card on a wide viewport. On a small viewport it becomes a bottom sheet
-(the Rename dialog stays a centred card, since its text field must stay above the
-on-screen keyboard) that is full width, owns its scrolling, and uses the sheet radius; it does not
-need an anchor in the page underneath it. The backdrop and focus treatment are
-shared, while the content decides whether its safe dismissal is Cancel, Close,
-or a committed primary action.
+Everything that floats over a page is one of **four kinds**, and the kind is
+decided by what the learner is doing in it, never by the screen it is on:
+
+| Kind             | What it is for                                                                                      | Wide viewport                                                        | Small viewport                                      |
+| ---------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------- |
+| **Menu**         | A short list of commands or destinations: a new story, a story's actions                            | Hangs from its trigger                                               | Hangs from its trigger                              |
+| **Picker**       | Choosing one value from a list too long for a select: a model                                       | Hangs from its trigger, at least as wide as it, search pinned on top | A bottom sheet: handle, title, search pinned on top |
+| **Task dialog**  | A form or a task in steps: adding words and every step of it, the OpenRouter key, Filters, renaming | A centred card over a scrim: header, body, footer                    | A bottom sheet with a handle                        |
+| **Confirmation** | A question with a safe answer before something is lost, or a notice that needs an answer            | A centred card over a scrim                                          | Docked to the bottom edge, no handle                |
+
+All four are drawn from **one overlay surface**: one fill, one edge, one radius,
+one elevation, the card's inset as padding, and one scrim behind a modal one —
+the overlay roles in the tokens, applied by the shared surface whatever holds it
+up. A menu wears the surface without its frame. A picker, a task dialog, and a
+confirmation share the frame as well: a **header** with the title, a back arrow
+when the step is below the first, and a close on a wide viewport; a **body** that
+is the one scroller, with anything that must stay put while it scrolls — a
+picker's search — pinned above it; and a **footer** of actions. Docked to a
+phone's edge, the same surface spans the width with the sheet radius on top.
+
+The footer's actions end at the inline end: the primary is the rightmost, the
+quiet secondary sits left of it, and a reset or a destructive branch goes to the
+far start as a ghost or danger button. A borderless action at either end gives
+up its padding outward, so its label keeps the surface's inset. Docked, the
+actions share the width, side by side while they fit and stacked when they do
+not. A task dialog has **no Cancel button**: its ways out are the close, Escape,
+the scrim, and on a phone the handle, all of which discard what it was drafting.
+Its commit goes through its own primary action.
+
+A **menu** is never a form: as soon as a panel holds a field, it is a task
+dialog. A **picker's** trigger is a field like any other — the select's border,
+height, radius, and chevron, the value in the field's own weight — so a card of
+settings has one control language. A choice of a few named options in a card is
+not an overlay at all but a disclosure row or radio cards in place, and stays so.
+
+Modal surfaces use the CDK Dialog pattern or a native popover that behaves like
+it: focus moves into the surface, is held there while it is open, `Escape`
+dismisses it, and focus returns to the control that opened it. A confirmation
+opens with its safe answer focused. The Rename dialog stays a centred card on a
+phone, since its text field must stay above the on-screen keyboard.
+
+Add words is the one task dialog held up by a native popover rather than a CDK
+dialog, because it must stay open while a file chooser is up. That is a
+mechanism, not a kind: on a wide screen it is a centred task dialog over a scrim
+like any other, its sub-steps take the back arrow in its header, and on a phone
+it is a docked sheet. Escape, the close, the handle, and a press on the scrim all
+put it away and return focus to Add source. The OpenRouter key form and the
+pickers are held up the same way, for the same light dismissal.
+
+The reader has two exceptions, both on the shared surface. A word's or a
+sentence's details stay **anchored to the word** on a wide screen, because the
+word is what they are about. **Story options** stays an anchored panel beside
+its trigger on a wide screen and does not dim the page, because its switches
+preview live on the text behind it; inside, it is flat — plain section headings
+and rows with hairlines between them, notices in the shared notice — never cards
+nested in the panel.
 
 Every docked content sheet carries the same grab handle, whatever surface it is
 built on, because the handle is its gesture way out. Confirmations and notices
@@ -675,11 +739,11 @@ A sheet leaves by its docked edge. However it is dismissed — the handle, the
 backdrop, Escape, a close or commit button — it slides back down its docked edge
 at the shared medium duration with the exit curve while the scrim fades with it,
 and only then does the dialog close and report its result. A native-popover sheet
-does this through its own transition; the Filters sheet, a dialog whose element
-the dialog would otherwise remove at once, animates itself out first and takes
-over the backdrop and Escape dismissal to do so. A second dismissal during the
-slide is ignored. With reduced motion, or on a wide viewport where the card is
-not docked, it closes at once.
+does this through its own transition; a task dialog, whose element the CDK would
+otherwise remove at once, animates itself out first and takes over the backdrop
+and Escape dismissal to do so. A second dismissal during the slide is ignored.
+With reduced motion, or on a wide viewport where the card is not docked, it
+closes at once.
 
 A confirmation or notice that is docked as a sheet already has its own way out,
 Cancel, Keep it, or Continue, so it carries no grab handle and no exit slide: it closes at
@@ -687,14 +751,6 @@ once. Escape and a press
 on the backdrop still dismiss a confirmation; the alpha notice is dismissed only
 by Continue. Like any docked sheet it stays within the viewport, scrolls when its
 content is taller, and leaves room for the system gesture area below it.
-
-Add words is the one sheet opened from a native popover rather than a dialog,
-because it must stay open while a file chooser is up. It follows the same
-placement — hanging from its control on a wide screen, docked to the bottom
-edge over a dimmed page on a phone — and the same dismissal: Escape, Cancel,
-and a press outside all close it, and Escape and Cancel return focus to Add
-source. On a small screen its grab handle is a real button: dragging it down
-dismisses the sheet, while pressing it closes it without a drag.
 
 ### Saved-story controls
 

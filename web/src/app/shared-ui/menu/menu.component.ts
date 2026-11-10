@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, Directive, inject, input } from '@a
 import { PopupDirective } from '../popup/popup.directive';
 
 /**
- * The one anchored panel: a menu of actions, a picker, or a small form that
- * hangs from the control that opened it.
+ * A menu: a short list of commands or destinations that hangs from the control
+ * that opened it, at every width.
  *
  *   <button mnButton="icon" type="button" [mnMenuTrigger]="actions" aria-haspopup="menu">…</button>
  *   <mn-menu #actions="mnMenu" [menu]="true" aria-label="Story actions">
@@ -17,8 +17,8 @@ import { PopupDirective } from '../popup/popup.directive';
  * end edges aligned, flipping above or to the other side only when there is
  * no room. `[menu]="true"` makes it a `role="menu"` with arrow-key movement.
  *
- * A surface that holds work of its own, or that must stop the page behind it,
- * is an `mn-dialog`, not a menu.
+ * Choosing a value is a picker, and a form or a task is a task dialog
+ * (`mn-sheet-popover`, `mn-dialog`); neither is a menu.
  */
 @Component({
   selector: 'mn-menu',
@@ -27,28 +27,21 @@ import { PopupDirective } from '../popup/popup.directive';
   hostDirectives: [{ directive: PopupDirective, inputs: ['menu'], outputs: ['opened', 'closed'] }],
   host: {
     '[attr.role]': "popup.menu() ? 'menu' : role()",
-    '[class.menu--form]': 'form()',
   },
   template: `<ng-content />`,
   styles: `
+    /* Every menu is one column of rows, whether or not it is a role="menu". */
     :host(:popover-open) {
-      display: block;
-    }
-    :host(:popover-open:not([role='menu'])) {
-      padding: var(--space-3);
-    }
-    :host(.menu--form:popover-open) {
-      display: grid;
-      gap: var(--space-3);
-      width: min(23rem, calc(100vw - 4 * var(--space-4)));
+      display: flex;
+      flex-direction: column;
+      min-width: var(--menu-min-width);
+      padding: var(--space-1);
     }
   `,
 })
 export class MenuComponent {
   readonly popup = inject(PopupDirective);
-  /** A small form rather than a list: its fields and actions in one column. */
-  readonly form = input(false);
-  /** The role of a panel that is not a menu, such as `dialog` for a small form. */
+  /** The role of a panel that is not a `role="menu"`, such as `dialog` for a list of links. */
   readonly role = input<string | null>(null);
 
   /** Closes the panel; the browser hands focus back to the trigger. */

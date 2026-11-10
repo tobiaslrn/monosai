@@ -93,19 +93,20 @@ const DISMISS_DISTANCE_PX = 80;
       box-sizing: border-box;
       width: min(23rem, calc(100vw - 2 * var(--space-4)));
       max-height: min(28rem, calc(100dvh - 6rem));
-      padding: var(--space-4) var(--space-4) var(--mn-popover-pad-bottom);
+      padding: var(--overlay-inset) var(--overlay-inset) var(--mn-popover-pad-bottom);
       overflow-y: auto;
       overscroll-behavior: contain;
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sheet);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
+      /* The shared overlay surface, anchored to the word it is about. */
+      border: 1px solid var(--overlay-edge);
+      border-radius: var(--overlay-radius);
+      background: var(--overlay-surface);
+      box-shadow: var(--overlay-shadow);
       /* The first row leaves room for the shared close control in its corner. */
       --mn-popover-close-inset: calc(var(--touch-target) + var(--space-3));
       /*
        * Published rather than only applied, for the card's own sticky footer.
        */
-      --mn-popover-pad-bottom: var(--space-4);
+      --mn-popover-pad-bottom: var(--overlay-inset);
       transition: opacity var(--motion-fast) var(--ease-standard);
 
       @starting-style {
@@ -139,7 +140,7 @@ const DISMISS_DISTANCE_PX = 80;
        * bottom position, while this card leaves the standard gap above that
        * boundary. Both resolve to zero whenever nothing else is docked.
        */
-      padding: 0 var(--space-4) var(--mn-popover-pad-bottom);
+      padding: 0 var(--overlay-inset) var(--mn-popover-pad-bottom);
       overflow: hidden auto;
       border-inline: 0;
       border-block-end: 0;

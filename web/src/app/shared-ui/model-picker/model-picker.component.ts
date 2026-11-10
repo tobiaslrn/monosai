@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  inject,
   input,
   output,
   signal,
@@ -10,117 +11,101 @@ import {
 } from '@angular/core';
 import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
-import { PopupDirective, PopupTriggerDirective } from '../popup/popup.directive';
+import { ViewportService } from '../../core/platform/viewport.service';
+import { NoticeComponent } from '../notice/notice.component';
+import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet-popover.component';
 
 @Component({
   selector: 'mn-model-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="picker">
-      <button
-        type="button"
-        class="mn-control trigger"
-        [class.trigger--compact]="compact()"
-        [class.trigger--unset]="selectedId() === ''"
-        aria-haspopup="listbox"
-        [mnPopupTrigger]="panel"
-        [disabled]="disabled()"
-      >
-        <span>
-          <strong>
-            @for (part of shownParts(); track $index) {
-              <ng-container>{{ part }}<wbr /></ng-container>
-            }
-          </strong>
-          @if (selected(); as model) {
-            <small>{{ model.modelId }}</small>
-          }
-        </span>
-        <svg
-          class="chevron"
-          [class.chevron--up]="panel.isOpen()"
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-        >
-          <path
-            d="M4 6.5 8 10.5 12 6.5"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.75"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+    <button
+      type="button"
+      class="mn-control mn-control--select trigger"
+      [class.trigger--unset]="selectedId() === ''"
+      aria-haspopup="listbox"
+      [mnOverlayTrigger]="panel"
+      [disabled]="disabled()"
+    >
+      @for (part of shownParts(); track $index) {
+        <ng-container>{{ part }}<wbr /></ng-container>
+      }
+    </button>
+
+    <mn-sheet-popover
+      #panel="mnSheetPopover"
+      role="dialog"
+      headerWhen="docked"
+      [heading]="title()"
+      [fitAnchor]="true"
+      [modal]="true"
+      (opened)="opened.emit()"
+      (closed)="reset()"
+      (dismissed)="panel.hide()"
+    >
+      @if (panel.isOpen()) {
+        <label class="search" mn-dialog-pinned>
+          <span class="mn-visually-hidden">Search {{ label() }}</span>
+          <input
+            class="mn-control"
+            type="search"
+            autocomplete="off"
+            data-testid="model-picker-search"
+            placeholder="Search by model or provider"
+            [attr.data-overlay-focus]="docked() ? null : ''"
+            [value]="query()"
+            (input)="setQuery($event)"
           />
-        </svg>
-      </button>
-
-      <div
-        mnPopup
-        #panel="mnPopup"
-        class="panel"
-        role="dialog"
-        [attr.aria-label]="label()"
-        (opened)="opened.emit()"
-        (closed)="reset()"
-      >
-        @if (panel.isOpen()) {
-          <label class="search">
-            <span class="mn-visually-hidden">Search {{ label() }}</span>
-            <input
-              class="mn-control"
-              type="search"
-              autocomplete="off"
-              data-testid="model-picker-search"
-              placeholder="Search by model or provider"
-              [value]="query()"
-              (input)="setQuery($event)"
-            />
-          </label>
-
-          @if (favorites().length > 0) {
-            <div class="favorites" aria-label="Favourite models">
-              <p class="mn-group-title">Favourites</p>
-              @for (model of favorites(); track model.modelId) {
-                <ng-container
-                  [ngTemplateOutlet]="modelRow"
-                  [ngTemplateOutletContext]="{ $implicit: model }"
-                />
-              }
-            </div>
-          }
-
-          <div class="results" role="listbox" [attr.aria-label]="label()">
-            @if (fallbackLabel(); as fallback) {
-              <button
-                type="button"
-                class="fallback"
-                data-testid="model-picker-fallback"
-                role="option"
-                [attr.aria-selected]="selectedId() === ''"
-                (click)="chooseFallback()"
-              >
-                <strong>{{ fallback }}</strong>
-              </button>
-            }
-            @if (loading()) {
-              <p class="state" role="status">Loading OpenRouter models…</p>
-            } @else if (failure()) {
-              <p class="state-notice mn-notice mn-notice--error" role="alert">{{ failure() }}</p>
-            } @else if (others().length === 0) {
-              @if (favorites().length === 0) {
-                <p class="state">No matching models.</p>
-              }
-            } @else {
-              @for (model of others(); track model.modelId) {
-                <ng-container
-                  [ngTemplateOutlet]="modelRow"
-                  [ngTemplateOutletContext]="{ $implicit: model }"
-                />
-              }
+        </label>
+      }
+      @if (panel.isOpen()) {
+        @if (favorites().length > 0) {
+          <div class="favorites" aria-label="Favourite models">
+            <p class="mn-group-title">Favourites</p>
+            @for (model of favorites(); track model.modelId) {
+              <ng-container
+                [ngTemplateOutlet]="modelRow"
+                [ngTemplateOutletContext]="{ $implicit: model }"
+              />
             }
           </div>
         }
-      </div>
-    </div>
+
+        <div class="results" role="listbox" [attr.aria-label]="label()">
+          @if (fallbackLabel(); as fallback) {
+            <button
+              type="button"
+              class="fallback"
+              data-testid="model-picker-fallback"
+              role="option"
+              [class.is-selected]="selectedId() === ''"
+              [attr.aria-selected]="selectedId() === ''"
+              (click)="chooseFallback()"
+            >
+              <strong>{{ fallback }}</strong>
+            </button>
+          }
+          @if (loading()) {
+            <p class="state" role="status">Loading OpenRouter models…</p>
+          } @else if (failure()) {
+            <mn-notice tone="error" role="alert"
+              ><p>{{ failure() }}</p></mn-notice
+            >
+          } @else if (others().length === 0) {
+            @if (favorites().length === 0) {
+              <p class="state">No matching models.</p>
+            }
+          } @else {
+            @for (model of others(); track model.modelId) {
+              <ng-container
+                [ngTemplateOutlet]="modelRow"
+                [ngTemplateOutletContext]="{ $implicit: model }"
+              />
+            }
+          }
+        </div>
+      }
+    </mn-sheet-popover>
 
     <ng-template #modelRow let-model>
       <div class="model-row" [class.is-selected]="model.modelId === selectedId()">
@@ -154,144 +139,85 @@ import { PopupDirective, PopupTriggerDirective } from '../popup/popup.directive'
       </div>
     </ng-template>
   `,
-  imports: [NgTemplateOutlet, PopupDirective, PopupTriggerDirective],
+  imports: [NgTemplateOutlet, NoticeComponent, OverlayTriggerDirective, SheetPopoverComponent],
   styles: `
     :host {
       display: block;
       min-width: 0;
     }
-    .picker {
-      position: relative;
-      min-width: 0;
-    }
+
+    /*
+     * The trigger is a field like the select beside it: the same border,
+     * height, radius, and chevron, and the value in the field's own weight.
+     */
     .trigger {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-3);
-      text-align: left;
-      cursor: pointer;
-    }
-    .trigger--compact {
-      width: 100%;
-      min-width: 0;
-      min-height: var(--touch-target);
-      padding-inline: var(--space-2);
-      border-color: transparent;
-      background: transparent;
-    }
-    :host-context(html[data-pointer='mouse']) .trigger--compact:hover:not(:disabled) {
-      border-color: transparent;
-      background: var(--surface-sunken);
-    }
-    .trigger > span:first-child {
-      display: grid;
-      min-width: 0;
-    }
-    .trigger--compact > span:first-child {
-      overflow: hidden;
-      text-align: end;
-    }
-    .trigger--compact strong {
       display: block;
       overflow: hidden;
+      text-align: start;
       text-overflow: ellipsis;
       white-space: nowrap;
+      cursor: pointer;
     }
+
+    /* Nothing chosen yet is a prompt, not a value; it should not read as one. */
+    .trigger--unset {
+      color: var(--text-secondary);
+    }
+
     /* On a line of its own, the full model name wraps rather than being cut. */
     @container (max-width: 16em) {
-      .trigger--compact {
-        padding-inline: min(var(--space-2), 8px);
-        gap: min(var(--space-3), 8px);
-      }
-      .trigger--compact > span:first-child {
-        text-align: start;
-      }
-      .trigger--compact strong {
+      .trigger {
         overflow-wrap: anywhere;
-        text-overflow: clip;
         white-space: normal;
       }
     }
-    /* Nothing chosen yet is a prompt, not a value; it should not read as one. */
-    .trigger--unset strong {
-      color: var(--text-secondary);
-      font-weight: var(--weight-regular);
-    }
-    .chevron {
-      flex: none;
-      width: 1rem;
-      height: 1rem;
-      color: var(--text-secondary);
-      transition: transform var(--motion-fast) var(--ease-standard);
-    }
-    .chevron--up {
-      transform: rotate(180deg);
-    }
-    .trigger--compact small {
-      display: none;
-    }
-    small {
-      color: var(--text-secondary);
-      font-size: var(--text-xs);
-      font-weight: var(--weight-regular);
-    }
-    .model-id {
-      color: var(--text-primary);
-      overflow-wrap: anywhere;
-    }
-    .model-meta {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .panel:popover-open {
-      display: flex;
-      flex-direction: column;
-      width: min(20rem, calc(100vw - 4 * var(--space-4)));
-      max-height: min(28rem, 70vh);
-      overflow: hidden;
-    }
+
     .search {
       display: block;
-      padding: var(--space-2);
-      border-bottom: 1px solid var(--border-subtle);
-      background: var(--surface-panel);
     }
+
     .search input {
       width: 100%;
     }
-    .favorites {
-      flex: none;
-      max-height: 11rem;
-      overflow: auto;
-      border-bottom: 1px solid var(--border-subtle);
-      background: var(--action-primary-soft);
-    }
-    .favorites p {
-      position: sticky;
-      z-index: 1;
-      top: 0;
-      margin: 0;
-      padding: var(--space-2) var(--space-3) var(--space-1);
-      background: var(--action-primary-soft);
-    }
+
+    /*
+     * The rows reach the surface's edges, so a row's hover and its selection
+     * mark span it, while their words keep the surface's inset.
+     */
+    .favorites,
     .results {
-      min-height: 3rem;
-      overflow: auto;
+      margin-inline: calc(-1 * var(--overlay-inset));
     }
+
+    .favorites {
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .favorites p {
+      margin: 0;
+      padding: var(--space-2) var(--overlay-inset) var(--space-1);
+    }
+
+    .results {
+      min-height: var(--touch-target);
+    }
+
     .model-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) var(--touch-target);
       align-items: stretch;
       border-bottom: 1px solid var(--border-subtle);
     }
+
     .model-row:last-child {
       border-bottom: 0;
     }
-    .model-row.is-selected {
+
+    .model-row.is-selected,
+    .fallback.is-selected {
       box-shadow: var(--shadow-model-indicator);
     }
+
     .model-choice,
     .star,
     .fallback {
@@ -301,39 +227,62 @@ import { PopupDirective, PopupTriggerDirective } from '../popup/popup.directive'
       font: inherit;
       cursor: pointer;
     }
+
     .model-choice {
       display: grid;
-      gap: 2px;
+      gap: var(--line-gap);
       align-content: center;
       min-height: var(--touch-target);
-      padding: var(--space-2) var(--space-3);
-      text-align: left;
+      padding: var(--row-inset-block) 0 var(--row-inset-block) var(--overlay-inset);
+      text-align: start;
     }
+
     :host-context(html[data-pointer='mouse']) .model-choice:hover,
     :host-context(html[data-pointer='mouse']) .star:hover,
     :host-context(html[data-pointer='mouse']) .fallback:hover {
       background: var(--surface-sunken);
     }
+
     .star {
       min-width: var(--touch-target);
       color: var(--action-primary);
       font-size: var(--text-xl);
     }
+
     .fallback {
       width: 100%;
       min-height: var(--touch-target);
-      padding: var(--space-2) var(--space-3);
+      padding: var(--row-inset-block) var(--overlay-inset);
       border-bottom: 1px solid var(--border-subtle);
-      text-align: left;
+      text-align: start;
     }
+
+    small {
+      color: var(--text-secondary);
+      font-size: var(--text-xs);
+      font-weight: var(--weight-regular);
+    }
+
+    .model-id {
+      color: var(--text-primary);
+      overflow-wrap: anywhere;
+    }
+
+    .model-meta {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .state {
       margin: 0;
-      padding: var(--space-4);
+      padding: var(--overlay-inset);
       color: var(--text-secondary);
       text-align: center;
     }
-    .state-notice {
-      margin: var(--space-2);
+
+    .results > mn-notice {
+      margin: var(--space-2) var(--overlay-inset);
     }
   `,
 })
@@ -354,14 +303,19 @@ export class ModelPickerComponent {
    * still a fine cheap voice, and a catalog entry can change.
    */
   readonly speech = input(false);
-  readonly compact = input(false);
   readonly opened = output<void>();
   readonly modelSelected = output<ModelCapabilities>();
   readonly favoriteToggled = output<string>();
   readonly fallbackSelected = output<void>();
 
   protected readonly query = signal('');
-  private readonly popup = viewChild.required(PopupDirective);
+  private readonly popup = viewChild.required(SheetPopoverComponent);
+  protected readonly docked = inject(ViewportService).isMobile;
+  /** The overlay's name, and the docked sheet's title: what is being chosen from. */
+  protected readonly title = computed(() => {
+    const label = this.label();
+    return label.charAt(0).toLocaleUpperCase() + label.slice(1);
+  });
 
   protected readonly selected = computed(
     () => this.models().find((model) => model.modelId === this.selectedId()) ?? null,

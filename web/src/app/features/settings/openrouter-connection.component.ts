@@ -14,8 +14,10 @@ import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { FieldComponent } from '../../shared-ui/field/field.component';
-import { ClusterComponent } from '../../shared-ui/layout/layout';
-import { MenuComponent, MenuTriggerDirective } from '../../shared-ui/menu/menu.component';
+import {
+  OverlayTriggerDirective,
+  SheetPopoverComponent,
+} from '../../shared-ui/popover/sheet-popover.component';
 import { ModelCatalogView } from './model-catalog-view';
 
 /** The OpenRouter key: where it stands, and connecting, replacing, or deleting it. */
@@ -25,11 +27,10 @@ import { ModelCatalogView } from './model-catalog-view';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ButtonDirective,
-    ClusterComponent,
     FieldComponent,
     IconComponent,
-    MenuComponent,
-    MenuTriggerDirective,
+    OverlayTriggerDirective,
+    SheetPopoverComponent,
   ],
   template: `
     <button
@@ -37,7 +38,7 @@ import { ModelCatalogView } from './model-catalog-view';
       class="mn-settings-row mn-settings-row--interactive"
       data-testid="connect-openrouter"
       aria-haspopup="dialog"
-      [mnMenuTrigger]="connection"
+      [mnOverlayTrigger]="connection"
     >
       <span class="mn-settings-row__label">
         <span class="mn-settings-row__title">OpenRouter key</span>
@@ -52,13 +53,21 @@ import { ModelCatalogView } from './model-catalog-view';
         <mn-icon class="mn-settings-chevron" name="chevron-right" [size]="18" />
       </span>
     </button>
-    <mn-menu #connection="mnMenu" [form]="true" role="dialog" aria-label="OpenRouter connection">
+    <mn-sheet-popover
+      #connection="mnSheetPopover"
+      heading="OpenRouter key"
+      placement="centred"
+      role="dialog"
+      closeLabel="Close"
+      [modal]="true"
+      (dismissed)="connection.hide()"
+    >
       @if (connection.isOpen()) {
         <!--
-                What OpenRouter is and where a key comes from, on the one screen
-                a first-run blocker sends people to. Money and an external
-                account are at stake, which is what standing prose is for.
-              -->
+          What OpenRouter is and where a key comes from, on the one screen
+          a first-run blocker sends people to. Money and an external
+          account are at stake, which is what standing prose is for.
+        -->
         <p class="mn-hint">
           OpenRouter is the one service Monosai sends text to. It bills your account per request;
           Monosai stores the key on this device only.
@@ -76,28 +85,30 @@ import { ModelCatalogView } from './model-catalog-view';
             type="password"
             autocomplete="off"
             spellcheck="false"
+            data-overlay-focus
             data-testid="api-key-input"
             placeholder="sk-or-…"
             [value]="keyDraft()"
             (input)="onKeyInput($event)"
           />
         </mn-field>
-        <mn-cluster justify="end">
-          <button
-            type="button"
-            mnButton="primary"
-            data-testid="save-key"
-            [disabled]="keyDraft().trim() === '' || credential.action() !== 'idle'"
-            (click)="saveKey()"
-          >
-            {{ credential.isConfigured() ? 'Replace key' : 'Connect' }}
-          </button>
-          @if (credential.isConfigured()) {
-            <button type="button" mnButton="danger" (click)="removeKey()">Delete key</button>
-          }
-        </mn-cluster>
       }
-    </mn-menu>
+      @if (credential.isConfigured()) {
+        <button mn-dialog-action="start" type="button" mnButton="danger" (click)="removeKey()">
+          Delete key
+        </button>
+      }
+      <button
+        mn-dialog-action
+        type="button"
+        mnButton="primary"
+        data-testid="save-key"
+        [disabled]="keyDraft().trim() === '' || credential.action() !== 'idle'"
+        (click)="saveKey()"
+      >
+        {{ credential.isConfigured() ? 'Replace key' : 'Connect' }}
+      </button>
+    </mn-sheet-popover>
   `,
 })
 export class OpenRouterConnectionComponent {
@@ -115,7 +126,7 @@ export class OpenRouterConnectionComponent {
       ? 'Connected'
       : 'Key saved';
   });
-  private readonly connectionPanel = viewChild.required<MenuComponent>('connection');
+  private readonly connectionPanel = viewChild.required<SheetPopoverComponent>('connection');
 
   protected onKeyInput(event: Event): void {
     this.keyDraft.set((event.target as HTMLInputElement).value);

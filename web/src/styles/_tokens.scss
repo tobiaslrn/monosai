@@ -174,9 +174,67 @@
   --row-inset-block: var(--space-2);
   --line-gap: 0.125rem;
   --heading-row: 1.75rem;
+  /*
+   * inline-gap       between things side by side in one row: buttons, chips, a
+   *                  field and its button
+   * glyph-gap        between a row's leading glyph and its words
+   * badge-size       the soft round mark a row leads with
+   * control-inset    a field's padding from its border to its text
+   * control-width    the one width of a field that sits at a row's end, and of
+   *                  a filter beside a list, so every trailing control in a
+   *                  card shares one column and one right edge
+   * button-inset     a text button's padding from its edge to its label. A
+   *                  borderless button at the end of a row is pulled outward
+   *                  by this much, so its label, not its hit area, lines up
+   *                  with the column edge
+   * block-inset      the padding of a tinted block inside a card: a notice,
+   *                  an inset, a quiet sample
+   * nest-indent      how far what a disclosure opens sits in from its summary
+   */
+  --inline-gap: var(--space-2);
+  --glyph-gap: min(var(--space-3), 12px);
+  --badge-size: min(2.25rem, 40px);
+  --control-inset: min(var(--space-3), 12px);
+  --control-width: 12rem;
+  --button-inset: var(--space-4);
+  --block-inset: var(--space-3);
+  --nest-indent: var(--space-5);
+
+  /*
+   * Overlays. Every floating surface — a menu, a picker, a task dialog, a
+   * confirmation, and the reader's panels — is drawn from these and nothing
+   * else, whatever mechanism holds it up.
+   *
+   * overlay-surface     its fill
+   * overlay-edge        its border colour
+   * overlay-radius      its corners where it floats; docked to a phone's
+   *                     bottom edge it takes the sheet radius on top instead
+   * overlay-shadow      its elevation
+   * overlay-inset       its padding: the same inset as a card
+   * overlay-scrim       the dimmed page behind a modal overlay
+   * overlay-offset      the gap between an anchored overlay and its trigger
+   * overlay-margin      the least room kept between a floating overlay and the
+   *                     viewport's edge
+   * dialog-width        a task dialog's or a confirmation's width on a wide
+   *                     viewport
+   * panel-width         an anchored panel's width: Story options
+   * picker-max-height   how tall an anchored picker grows before its list scrolls
+   * menu-min-width      the narrowest a menu of commands is drawn
+   */
+  --overlay-surface: var(--surface-panel);
+  --overlay-edge: var(--border-subtle);
+  --overlay-radius: var(--radius-card);
+  --overlay-shadow: var(--shadow-overlay);
+  --overlay-inset: var(--surface-inset);
+  --overlay-scrim: rgb(0 0 0 / 38%);
+  --overlay-offset: var(--space-1);
+  --overlay-margin: var(--space-4);
+  --dialog-width: 30rem;
+  --panel-width: 25rem;
+  --picker-max-height: 28rem;
+  --menu-min-width: 12rem;
 
   /* Shared composite surfaces keep component styles token-only. */
-  --backdrop-scrim: rgb(0 0 0 / 38%);
   --border-subtle-faint: color-mix(in srgb, var(--border-subtle) 35%, transparent);
   --surface-sunken-faint: color-mix(in srgb, var(--surface-sunken) 70%, transparent);
   --surface-sunken-hover: color-mix(in srgb, var(--surface-sunken) 60%, transparent);

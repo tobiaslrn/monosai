@@ -138,7 +138,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         </button>
         <mn-menu #newStory="mnMenu" role="dialog" aria-label="New story">
           <a mnMenuItem routerLink="/add" [state]="libraryOriginState" (click)="newStory.hide()">
-            <mn-icon name="add" [size]="20" />
+            <mn-icon name="add" />
             <span>Paste text</span>
           </a>
           <a
@@ -147,7 +147,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
             [state]="libraryOriginState"
             (click)="newStory.hide()"
           >
-            <mn-icon name="generate" [size]="20" />
+            <mn-icon name="generate" />
             <span>Write with AI</span>
           </a>
         </mn-menu>

@@ -12,20 +12,19 @@ export const ALPHA_DIALOG_OPENER = new InjectionToken<AlphaDialogOpener>('Alpha 
     const environmentInjector = inject(EnvironmentInjector);
     return {
       open: async (data: AlphaNoticeDialogData): Promise<void> => {
-        const [{ Dialog }, { AlphaNoticeDialogComponent }] = await Promise.all([
+        const [{ Dialog }, { AlphaNoticeDialogComponent }, { openDialog }] = await Promise.all([
           import('@angular/cdk/dialog'),
           import('../../shared-ui/alpha-notice-dialog/alpha-notice-dialog.component'),
+          import('../../shared-ui/dialog/dialog'),
         ]);
         const dialog = environmentInjector.get(Dialog);
-        dialog.open<void, AlphaNoticeDialogData>(AlphaNoticeDialogComponent, {
+        openDialog(dialog, AlphaNoticeDialogComponent, {
           data,
+          modal: true,
           role: 'alertdialog',
-          ariaLabelledBy: 'mn-alpha-title',
-          ariaDescribedBy: 'mn-alpha-message',
-          hasBackdrop: true,
-          panelClass: 'mn-docked-pane',
-          maxWidth: '100vw',
-          disableClose: true,
+          labelledBy: 'mn-alpha-title',
+          describedBy: 'mn-alpha-message',
+          requireAnswer: true,
         });
       },
     };

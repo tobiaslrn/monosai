@@ -8,7 +8,12 @@ import { SheetPopoverComponent } from './sheet-popover.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SheetPopoverComponent],
   template: `
-    <mn-sheet-popover #sheet popover anchorName="--test-anchor" closeLabel="Close test sheet">
+    <mn-sheet-popover
+      #sheet
+      heading="Test sheet"
+      anchorName="--test-anchor"
+      closeLabel="Close test sheet"
+    >
       <p>Sheet content</p>
     </mn-sheet-popover>
   `,
@@ -64,7 +69,7 @@ describe('SheetPopoverComponent', () => {
   it('springs back after a short drag without closing', () => {
     const { fixture, sheet } = render();
     let closed = 0;
-    fixture.componentInstance.sheet().closed.subscribe(() => {
+    fixture.componentInstance.sheet().dismissed.subscribe(() => {
       closed += 1;
     });
     const button = handle(sheet);
@@ -84,7 +89,7 @@ describe('SheetPopoverComponent', () => {
   it('emits one close after a drag reaches the dismissal threshold', () => {
     const { fixture, sheet } = render();
     let closed = 0;
-    fixture.componentInstance.sheet().closed.subscribe(() => {
+    fixture.componentInstance.sheet().dismissed.subscribe(() => {
       closed += 1;
     });
     const button = handle(sheet);

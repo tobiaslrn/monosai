@@ -1,0 +1,198 @@
+@use '../breakpoints';
+
+/*
+ * The one overlay surface. Every floating panel that holds more than a list of
+ * commands — a picker, a task dialog, a confirmation, Story options — is this
+ * surface, whichever mechanism holds it up (a CDK dialog or a native popover):
+ *
+ *   <… class="mn-overlay">                  the surface: fill, edge, radius, elevation
+ *     <mn-sheet-handle />                   only while docked to a phone's bottom edge
+ *     <mn-overlay-header />                 back arrow, title, close
+ *     <div class="mn-overlay__pinned">      what stays put while the body scrolls
+ *     <div class="mn-overlay__body">        the content, one stack, and the scroller
+ *     <div class="mn-overlay__footer">      the actions
+ *
+ * Floating, it is a card with the overlay radius; `--docked` puts it against a
+ * phone's bottom edge, full width, with the sheet radius on top. A menu of
+ * commands is not this surface's frame, but it is drawn from the same tokens
+ * (`_popup.scss`).
+ */
+.mn-overlay {
+  display: flex;
+  flex-direction: column;
+  gap: var(--stack-gap);
+  box-sizing: border-box;
+  max-width: calc(100vw - 2 * var(--overlay-margin));
+  max-height: calc(100dvh - 2 * var(--overlay-margin));
+  margin: 0;
+  padding: var(--overlay-inset) 0;
+  overflow: hidden;
+  border: 1px solid var(--overlay-edge);
+  border-radius: var(--overlay-radius);
+  background: var(--overlay-surface);
+  color: var(--text-primary);
+  box-shadow: var(--overlay-shadow);
+}
+
+/* A task dialog and a confirmation share one width on a wide viewport. */
+.mn-overlay--dialog {
+  width: min(var(--dialog-width), calc(100vw - 2 * var(--overlay-margin)));
+}
+
+.mn-overlay--panel {
+  width: min(var(--panel-width), calc(100vw - 2 * var(--overlay-margin)));
+}
+
+.mn-overlay--docked {
+  width: 100%;
+  max-width: none;
+  max-height: calc(100dvh - var(--overlay-margin));
+  /* The grab handle sits flush against the docked edge. */
+  padding-block: 0 max(var(--overlay-inset), env(safe-area-inset-bottom, 0px));
+  padding-inline: 0;
+  border-width: 1px 0 0;
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+}
+
+/* A docked surface without a handle (a confirmation) still starts at the inset. */
+.mn-overlay--docked:not(:has(> mn-sheet-handle)) {
+  padding-block-start: var(--overlay-inset);
+}
+
+.mn-overlay > mn-sheet-handle {
+  flex: none;
+  margin-block-end: calc(-1 * var(--stack-gap));
+}
+
+.mn-overlay__pinned {
+  flex: none;
+  padding-inline: var(--overlay-inset);
+}
+
+.mn-overlay__pinned:empty {
+  display: none;
+}
+
+/*
+ * The body is the one scroller. A thin band above and below it keeps a focus
+ * ring on its first and last control from being cut by its own edge.
+ */
+.mn-overlay__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--stack-gap);
+  min-height: 0;
+  padding: var(--space-1) var(--overlay-inset);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--text-primary);
+}
+
+.mn-overlay__body > :where(p, ul, h3) {
+  margin: 0;
+}
+
+.mn-overlay__body > :where(ul) {
+  padding-inline-start: var(--space-5);
+}
+
+.mn-overlay__body :where(fieldset) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--stack-gap);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mn-overlay__body :where(legend) {
+  margin-block-end: var(--group-gap);
+  padding: 0;
+  font-weight: var(--weight-medium);
+}
+
+/*
+ * A list of rows to choose from runs edge to edge of the surface, a hairline
+ * between each and around the list, its words on the surface's inset — rows,
+ * not cards inside the card.
+ */
+.mn-overlay__rows {
+  display: flex;
+  flex-direction: column;
+  margin-inline: calc(-1 * var(--overlay-inset));
+  border-block: 1px solid var(--border-subtle);
+}
+
+.mn-overlay__rows > * {
+  border-radius: 0;
+}
+
+.mn-overlay__rows > * + * {
+  border-top: 1px solid var(--border-subtle);
+}
+
+/*
+ * The actions: right-aligned in reading order, so the primary — written last —
+ * ends the row. One marked `mn-dialog-action="start"` (a reset, a destructive
+ * branch) goes to the far start instead. A borderless one at either end gives
+ * up its padding outward, so its label keeps the surface's inset.
+ */
+.mn-overlay__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--inline-gap);
+  align-items: center;
+  justify-content: flex-end;
+  padding-inline: var(--overlay-inset);
+}
+
+.mn-overlay__footer:empty {
+  display: none;
+}
+
+.mn-overlay__footer > [mn-dialog-action='start'] {
+  margin-inline-end: auto;
+}
+
+.mn-overlay__footer > .mn-button--ghost[mn-dialog-action='start'] {
+  margin-inline-start: calc(-1 * var(--button-inset));
+}
+
+.mn-overlay__footer > .mn-button--ghost:last-child {
+  margin-inline-end: calc(-1 * var(--button-inset));
+}
+
+/* Docked, the actions share the width: side by side while they fit, stacked when not. */
+.mn-overlay--docked .mn-overlay__footer > * {
+  flex: 1 1 auto;
+  margin-inline: 0;
+}
+
+/* The dimmed page behind a modal CDK dialog. */
+.cdk-overlay-dark-backdrop {
+  background: var(--overlay-scrim);
+}
+
+/* A dismissed sheet's scrim fades with it rather than cutting out behind it. */
+.cdk-overlay-dark-backdrop.is-leaving {
+  background-color: transparent;
+  transition: background-color var(--motion-medium) linear;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/* A dialog that docks: against the bottom edge, full width, below the wide breakpoint. */
+@media (max-width: breakpoints.$wide-max) {
+  .cdk-global-overlay-wrapper:has(> .cdk-overlay-pane.mn-docked-pane) {
+    align-items: flex-end !important;
+    justify-content: stretch !important;
+  }
+
+  .cdk-overlay-pane.mn-docked-pane {
+    width: 100%;
+  }
+}

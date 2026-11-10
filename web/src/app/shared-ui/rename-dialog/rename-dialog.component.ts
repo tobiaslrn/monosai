@@ -10,6 +10,9 @@ import {
 } from '@angular/core';
 import type { Dialog } from '@angular/cdk/dialog';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { ButtonDirective } from '../button/button';
+import { DialogComponent, dialogResult, openDialog } from '../dialog/dialog';
+import { FieldComponent } from '../field/field.component';
 import { MAXIMUM_TITLE_LENGTH, renamedTitle } from '../../domain/reading/import-title';
 
 export interface RenameDialogData {
@@ -28,48 +31,29 @@ export interface RenameDialogData {
 @Component({
   selector: 'mn-rename-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ButtonDirective, DialogComponent, FieldComponent],
   template: `
-    <form class="dialog" (submit)="save($event)">
-      <h2 id="mn-rename-title">Rename story</h2>
-      <div class="mn-field">
-        <label for="mn-rename-input">Title</label>
-        <input
-          #field
-          id="mn-rename-input"
-          type="text"
-          lang="ja"
-          autocomplete="off"
-          [attr.maxlength]="maximumLength"
-          [value]="entry()"
-          (input)="onInput($event)"
-        />
-      </div>
+    <form (submit)="save($event)">
+      <mn-dialog heading="Rename story" headingId="mn-rename-title">
+        <mn-field label="Title">
+          <input
+            #field
+            id="mn-rename-input"
+            class="mn-control"
+            type="text"
+            lang="ja"
+            autocomplete="off"
+            [attr.maxlength]="maximumLength"
+            [value]="entry()"
+            (input)="onInput($event)"
+          />
+        </mn-field>
 
-      <div class="mn-actions mn-actions--end">
-        <button type="button" class="mn-button" (click)="cancel()">Keep current name</button>
-        <button type="submit" class="mn-button mn-button--primary" [disabled]="!canSave()">
+        <button mn-dialog-action mnButton="primary" type="submit" [disabled]="!canSave()">
           Save name
         </button>
-      </div>
+      </mn-dialog>
     </form>
-  `,
-  styles: `
-    .dialog {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      width: min(30rem, calc(100vw - 2 * var(--space-4)));
-      padding: var(--space-5);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
-    }
-
-    h2 {
-      margin: 0;
-      font-size: var(--text-xl);
-    }
   `,
 })
 export class RenameDialogComponent {
@@ -102,10 +86,6 @@ export class RenameDialogComponent {
       this.dialogRef.close(title);
     }
   }
-
-  protected cancel(): void {
-    this.dialogRef.close(null);
-  }
 }
 
 /** Opens the rename field and resolves to the new title, or null if cancelled. */
@@ -113,15 +93,12 @@ export async function openRenameDialog(
   dialog: Dialog,
   data: RenameDialogData,
 ): Promise<string | null> {
-  const ref = dialog.open<string | null, RenameDialogData>(RenameDialogComponent, {
-    data,
-    ariaLabelledBy: 'mn-rename-title',
-    hasBackdrop: true,
-  });
-  const result = await new Promise<string | null | undefined>((resolve) => {
-    ref.closed.subscribe((value) => {
-      resolve(value);
-    });
-  });
+  // The field must stay above the on-screen keyboard, so this one never docks.
+  const ref = openDialog<string | null, RenameDialogData, RenameDialogComponent>(
+    dialog,
+    RenameDialogComponent,
+    { data, modal: true, labelledBy: 'mn-rename-title', docks: false },
+  );
+  const result = await dialogResult(ref);
   return result ?? null;
 }

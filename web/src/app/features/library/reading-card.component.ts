@@ -100,11 +100,11 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
           [attr.aria-label]="'Actions for ' + reading().title"
         >
           <button mnMenuItem type="button" (click)="requestRename()">
-            <mn-icon name="rename" [size]="18" />
+            <mn-icon name="rename" />
             <span>Rename</span>
           </button>
           <button mnMenuItem="danger" type="button" (click)="requestDelete()">
-            <mn-icon name="delete" [size]="18" />
+            <mn-icon name="delete" />
             <span>Delete</span>
           </button>
         </mn-menu>

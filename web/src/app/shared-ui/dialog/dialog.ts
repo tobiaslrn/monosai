@@ -1,6 +1,22 @@
-import type { Dialog, DialogRef } from '@angular/cdk/dialog';
+import type { Dialog } from '@angular/cdk/dialog';
+import { DialogRef } from '@angular/cdk/dialog';
+import { hasModifierKey } from '@angular/cdk/keycodes';
 import type { ComponentType } from '@angular/cdk/portal';
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  input,
+  type OnInit,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { ViewportService } from '../../core/platform/viewport.service';
+import { SheetHandleComponent } from '../sheet/sheet-handle.component';
+import { OverlayHeaderComponent } from './overlay-header.component';
 
 export interface DialogOptions<D> {
   readonly data: D;
@@ -16,7 +32,17 @@ export interface DialogOptions<D> {
   readonly describedBy?: string;
   /** Escape and the scrim do not close it; only its own answer does. */
   readonly requireAnswer?: boolean;
+  /**
+   * Whether it docks to a phone's bottom edge (the default). A dialog whose
+   * text field must stay above the on-screen keyboard stays a centred card.
+   */
+  readonly docks?: boolean;
 }
+
+/** The pane class of a dialog that stays a centred card at every width. */
+const FLOATING_PANE = 'mn-floating-pane';
+/** Longer than the departure, so a missed `transitionend` still closes the dialog. */
+const DEPARTURE_FALLBACK_MS = 400;
 
 /**
  * Opens a dialog in the one way the app has: a centred card on a wide screen
@@ -37,13 +63,13 @@ export function openDialog<R, D, C>(
     ariaModal: options.modal,
     hasBackdrop: options.modal,
     disableClose: options.requireAnswer ?? false,
-    panelClass: 'mn-docked-pane',
+    panelClass: options.docks === false ? FLOATING_PANE : 'mn-docked-pane',
     maxWidth: '100vw',
   });
 }
 
 /** Resolves with the dialog's answer, or `undefined` when it was dismissed. */
-export function dialogResult<R>(ref: DialogRef<R, unknown>): Promise<R | undefined> {
+export function dialogResult<R, C>(ref: DialogRef<R, C>): Promise<R | undefined> {
   return new Promise((resolve) => {
     ref.closed.subscribe((value) => {
       resolve(value);
@@ -52,73 +78,179 @@ export function dialogResult<R>(ref: DialogRef<R, unknown>): Promise<R | undefin
 }
 
 /**
- * The frame inside a dialog: its title, its body in one stack, and its actions
- * at the foot, ending at the inline end.
+ * The frame inside a CDK dialog: the shared overlay surface (`_overlay.scss`)
+ * with its header, its body in one stack, and its actions at the foot.
  *
- *   <mn-dialog heading="Delete everything?" headingId="mn-delete-title">
- *     <p id="mn-delete-message">…</p>
- *     <button mn-dialog-action mnButton type="button">Cancel</button>
- *     <button mn-dialog-action mnButton="danger" type="button">Delete</button>
+ *   <mn-dialog heading="Filters" headingId="filters-title" closeLabel="Close filters">
+ *     <label class="mn-field">…</label>
+ *     <button mn-dialog-action="start" mnButton="ghost" type="button">Reset</button>
+ *     <button mn-dialog-action mnButton="primary" type="button" (click)="frame.close(draft)">
+ *       Show
+ *     </button>
  *   </mn-dialog>
+ *
+ * The actions end at the inline end, the primary written last; one marked
+ * `mn-dialog-action="start"` goes to the far start.
+ *
+ * `kind` is what the dialog is:
+ *
+ *   task      a form or a task. A close in the header on a wide viewport; on a
+ *             phone it is a sheet with a grab handle. However it is put away —
+ *             the close, the handle, the scrim, Escape, or its own commit
+ *             through `close()` — a docked sheet slides back down its edge
+ *             first, and the dialog then closes with the result.
+ *   confirm   a confirmation or a notice: its own answers are its only ways
+ *             out besides Escape and the scrim, so it has neither a close nor a
+ *             handle, and it closes at once.
  */
 @Component({
   selector: 'mn-dialog',
+  exportAs: 'mnDialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [OverlayHeaderComponent, SheetHandleComponent],
+  host: {
+    class: 'mn-overlay mn-overlay--dialog',
+    '[class.mn-overlay--docked]': 'docked()',
+    '[class.is-dragging]': 'dragOffset() > 0 && !leaving()',
+    '[class.is-leaving]': 'leaving()',
+    '[style.transform]': 'leaving() ? null : dragTransform()',
+    '(transitionend)': 'onTransitionEnd($event)',
+  },
   template: `
-    <h2 [id]="headingId()">{{ heading() }}</h2>
-    <div class="body"><ng-content /></div>
-    <div class="actions"><ng-content select="[mn-dialog-action]" /></div>
+    @if (docked() && kind() === 'task') {
+      <mn-sheet-handle #handle [label]="closeLabel()" (dismissed)="dismiss()" />
+    }
+    <mn-overlay-header
+      [heading]="heading()"
+      [headingId]="headingId()"
+      [backLabel]="backLabel()"
+      [closeLabel]="kind() === 'task' && !docked() ? closeLabel() : null"
+      (back)="back.emit()"
+      (dismissed)="dismiss()"
+    />
+    <div class="mn-overlay__pinned"><ng-content select="[mn-dialog-pinned]" /></div>
+    <div class="mn-overlay__body"><ng-content /></div>
+    <div class="mn-overlay__footer"><ng-content select="[mn-dialog-action]" /></div>
   `,
   styles: `
     :host {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      box-sizing: border-box;
-      width: min(30rem, calc(100vw - 2 * var(--space-4)));
-      max-height: calc(100dvh - 2 * var(--space-4));
-      overflow-y: auto;
-      padding: var(--space-5);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-card);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-overlay);
+      transition: transform var(--motion-medium) var(--ease-settle);
     }
-    h2 {
-      margin: 0;
-      overflow-wrap: anywhere;
-      font-size: var(--text-xl);
+
+    :host(.is-dragging) {
+      transition: none;
     }
-    .body {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      min-width: 0;
-      color: var(--text-secondary);
+
+    /* Leaving, it is no longer a surface to press. */
+    :host(.is-leaving) {
+      pointer-events: none;
     }
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      justify-content: flex-end;
+
+    /* Leaving accelerates, as a native sheet does; springing back keeps the settle curve. */
+    :host(.mn-overlay--docked.is-leaving) {
+      transform: translateY(100%);
+      transition: transform var(--motion-medium) var(--ease-exit);
     }
-    .actions:empty {
-      display: none;
-    }
-    @media (max-width: 59.999em) {
-      :host {
-        width: 100%;
-        max-height: 90vh;
-        padding-block-end: calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
-        border-inline: 0;
-        border-block-end: 0;
-        border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+
+    @media (prefers-reduced-motion: reduce) {
+      :host,
+      :host(.mn-overlay--docked.is-leaving) {
+        transition: none;
       }
     }
   `,
 })
-export class DialogComponent {
+export class DialogComponent implements OnInit {
   readonly heading = input.required<string>();
   /** Named by the opener as `labelledBy`, so the dialog has its accessible name. */
   readonly headingId = input.required<string>();
+  readonly kind = input<'task' | 'confirm'>('task');
+  /** Names the back arrow of a step below the first; without one there is none. */
+  readonly backLabel = input<string | null>(null);
+  /** Names the close on a wide viewport and the grab handle when docked. */
+  readonly closeLabel = input('Close');
+  readonly back = output<void>();
+
+  private readonly ref = inject<DialogRef<unknown>>(DialogRef, { optional: true });
+  private readonly viewport = inject(ViewportService);
+  private readonly handle = viewChild<SheetHandleComponent>('handle');
+  private readonly docks = !(this.ref?.config.panelClass ?? '').includes(FLOATING_PANE);
+  private fallback: ReturnType<typeof setTimeout> | undefined;
+  private result: unknown;
+
+  protected readonly docked = computed(() => this.docks && this.viewport.isMobile());
+  /** Set once a dismissal has begun, so a second one during the slide is ignored. */
+  protected readonly leaving = signal(false);
+  protected readonly dragOffset = computed(() => this.handle()?.offset() ?? 0);
+  protected readonly dragTransform = computed(() => {
+    const offset = this.dragOffset();
+    return offset === 0 ? null : `translateY(${String(offset)}px)`;
+  });
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(this.fallback);
+    });
+  }
+
+  ngOnInit(): void {
+    const ref = this.ref;
+    if (ref === null || this.kind() !== 'task' || ref.disableClose) {
+      return;
+    }
+    // The dialog would remove the sheet the moment it closed. Taking over
+    // backdrop and Escape dismissal lets the surface depart before it does.
+    ref.disableClose = true;
+    ref.backdropClick.subscribe(() => {
+      this.dismiss();
+    });
+    ref.keydownEvents.subscribe((event) => {
+      if (event.key === 'Escape' && !hasModifierKey(event)) {
+        event.preventDefault();
+        this.dismiss();
+      }
+    });
+  }
+
+  /** Puts the dialog away without an answer. */
+  dismiss(): void {
+    this.close(undefined);
+  }
+
+  /**
+   * Closes the dialog with `result`. A docked task sheet slides back down its
+   * edge first; a second close while it is leaving is ignored.
+   */
+  close(result: unknown): void {
+    if (this.leaving()) {
+      return;
+    }
+    this.result = result;
+    if (this.kind() !== 'task' || !this.docked() || this.viewport.prefersReducedMotion()) {
+      this.finish();
+      return;
+    }
+    this.leaving.set(true);
+    this.ref?.overlayRef.backdropElement?.classList.add('is-leaving');
+    // A transition that never runs (a hidden tab) must not strand the dialog.
+    this.fallback = setTimeout(() => {
+      this.finish();
+    }, DEPARTURE_FALLBACK_MS);
+  }
+
+  /** The handle springing back also ends a slide; only the slide away closes. */
+  protected onTransitionEnd(event: TransitionEvent): void {
+    if (
+      this.leaving() &&
+      event.target === event.currentTarget &&
+      event.propertyName === 'transform'
+    ) {
+      this.finish();
+    }
+  }
+
+  private finish(): void {
+    clearTimeout(this.fallback);
+    this.ref?.close(this.result);
+  }
 }

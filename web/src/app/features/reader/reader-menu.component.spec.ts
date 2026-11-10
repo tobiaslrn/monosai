@@ -41,7 +41,9 @@ describe('Story options', () => {
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     const hide = vi.fn();
-    Object.defineProperty(element.querySelector('.panel'), 'hidePopover', { value: hide });
+    Object.defineProperty(element.querySelector('mn-sheet-popover'), 'hidePopover', {
+      value: hide,
+    });
     // By accessible name, because the destructive controls shorten their
     // visible word and carry the whole phrase as their label.
     const press = (label: string) =>
@@ -52,14 +54,14 @@ describe('Story options', () => {
         ?.click();
     return { fixture, element, hide, press };
   }
-  it('groups appearance and content behind a single dialog button without a cost note', () => {
+  it('groups appearance and content under plain headings behind one dialog button without a cost note', () => {
     const { element } = render();
-    expect(element.querySelector('.anchor-button')?.getAttribute('aria-label')).toBe(
-      'Story options',
-    );
-    expect(element.querySelector('.panel')?.getAttribute('role')).toBe('dialog');
+    expect(
+      element.querySelector('button[aria-haspopup="dialog"]')?.getAttribute('aria-label'),
+    ).toBe('Story options');
+    expect(element.querySelector('mn-sheet-popover')?.getAttribute('role')).toBe('dialog');
     expect(element.textContent).toContain('Reading appearance');
-    expect(element.textContent).not.toContain('Content for this story');
+    expect(element.textContent).toContain('Content for this story');
     expect(element.textContent).not.toMatch(/cost|charges|OpenRouter/);
   });
   it('says a setup step every layer shares once, with one way to Settings', () => {
@@ -130,7 +132,7 @@ describe('Story options', () => {
 
   it('moves focus into the panel and returns it on Escape', () => {
     const { fixture, element, hide } = render();
-    const panel = element.querySelector<HTMLElement>('.panel')!;
+    const panel = element.querySelector<HTMLElement>('mn-sheet-popover')!;
     const shown = vi.fn();
     Object.defineProperty(panel, 'showPopover', { value: shown });
     const matches = vi.spyOn(panel, 'matches').mockReturnValue(true);
@@ -148,11 +150,13 @@ describe('Story options', () => {
     );
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(hide).toHaveBeenCalledOnce();
-    expect(document.activeElement).toBe(element.querySelector('.anchor-button'));
+    expect(document.activeElement).toBe(element.querySelector('button[aria-haspopup="dialog"]'));
     matches.mockReturnValue(false);
     panel.dispatchEvent(new Event('toggle'));
     fixture.detectChanges();
-    expect(element.querySelector('.anchor-button')?.getAttribute('aria-expanded')).toBe('false');
+    expect(
+      element.querySelector('button[aria-haspopup="dialog"]')?.getAttribute('aria-expanded'),
+    ).toBe('false');
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(hide).toHaveBeenCalledOnce();
   });
@@ -248,7 +252,7 @@ describe('Story options', () => {
 
     it('leaves focus alone when it had already moved elsewhere', async () => {
       const { fixture, element } = followCredit();
-      const elsewhere = element.querySelector<HTMLElement>('.anchor-button')!;
+      const elsewhere = element.querySelector<HTMLElement>('button[aria-haspopup="dialog"]')!;
       elsewhere.focus();
       fixture.componentRef.setInput('rows', [{ ...CREDIT, action: 'prepare', label: 'Continue' }]);
       fixture.detectChanges();

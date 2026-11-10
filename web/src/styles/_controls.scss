@@ -17,7 +17,7 @@
 :where(.mn-control, .mn-field input, .mn-field textarea, .mn-field select) {
   width: 100%;
   min-height: var(--touch-target);
-  padding: var(--space-2) min(var(--space-3), 12px);
+  padding: var(--space-2) var(--control-inset);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
   background: var(--surface-raised);
@@ -45,7 +45,12 @@
   border-color: var(--status-danger);
 }
 
-:where(select.mn-control, .mn-field select) {
+/*
+ * A field that opens a choice — a native select, or a button that opens a
+ * picker (`.mn-control--select`) — carries one chevron, so a card of fields
+ * reads as one control language.
+ */
+:where(select.mn-control, .mn-field select, .mn-control--select) {
   appearance: none;
   /* The arrow is placed in pixels, so large text must not widen the room kept for it. */
   padding-inline-end: min(calc(var(--space-6) + var(--space-1)), 36px);
