@@ -2,6 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnostics';
+import { atLeast } from '../../application/shared/minimum-duration';
 import { DATABASE_SCHEMA_VERSION } from '../../application/shared/repository-tokens';
 import {
   AI_ENDPOINT_VERSION,
@@ -37,10 +38,16 @@ import { SectionComponent } from '../../shared-ui/section/section.component';
         <span mn-settings-row-detail class="mn-settings-row__hint">
           {{ build.appVersion }} · {{ install.isStandalone() ? 'Installed' : 'Not installed' }}
         </span>
-        @if (updateStatusLabel(update); as statusLabel) {
-          <span mn-settings-row-detail class="mn-settings-row__result" aria-live="polite">
-            {{ statusLabel }}
-          </span>
+        <!--
+          The result's line is made when the check starts and filled when it ends, so the
+          answer arrives into room already kept for it, and a live region that exists
+          before its words change is announced reliably.
+        -->
+        @let statusLabel = checking() ? '' : updateStatusLabel(update);
+        @if (checking() || statusLabel !== '') {
+          <span mn-settings-row-detail class="mn-settings-row__result" aria-live="polite">{{
+            statusLabel
+          }}</span>
         }
         @if (!install.isStandalone() && install.canInstall()) {
           <button type="button" mnButton (click)="installApp()">Install Monosai</button>
@@ -53,7 +60,7 @@ import { SectionComponent } from '../../shared-ui/section/section.component';
           (click)="checkForUpdates()"
         >
           <mn-icon name="sync" [size]="17" />
-          {{ checking() ? 'Checking for updates…' : 'Check for updates' }}
+          Check for updates
         </button>
       </mn-settings-row>
 
@@ -109,7 +116,11 @@ export class AboutSectionComponent {
     await this.install.install();
   }
 
-  /** While a check the learner asked for is running, its control is busy. */
+  /**
+   * While a check the learner asked for is running, its control is busy: it keeps its label and
+   * size, and its glyph turns. The busy state is held for a perceivable moment, and the answer
+   * is shown once it ends.
+   */
   protected readonly checking = signal(false);
 
   protected async checkForUpdates(): Promise<void> {
@@ -118,7 +129,7 @@ export class AboutSectionComponent {
     }
     this.checking.set(true);
     try {
-      await this.updates.check();
+      await atLeast(this.updates.check());
     } finally {
       this.checking.set(false);
     }
