@@ -1,0 +1,233 @@
+@use '../motion';
+
+/*
+ * The dropdown and the menu: the two lists that drop from the control that
+ * opened them. A dropdown (`mn-dropdown`) is a choice of one value — every
+ * select and the model picker; a menu (`mn-menu`, held up by `mnPopup`) is a
+ * short list of commands. They are one surface with one set of rows, so the
+ * two differ only in what their rows do and in their width:
+ *
+ *   <… class="mn-dropdown | mn-popup">     the surface
+ *     <div class="mn-dropdown__pinned">    a dropdown's search, kept above the list
+ *     <div class="mn-dropdown__scroller">  the one scroller (a menu is its own)
+ *       <div class="mn-dropdown__content"> the rows
+ *         <… class="mn-dropdown-row">      one row
+ *
+ * Both are native popovers in the top layer, placed in script by
+ * `AnchoredPlacement` (below the trigger, above it only when it fits only
+ * there, aligned to the trigger's edge on the column's edge, never outside the
+ * column), which hands them the room it found as `--anchored-room-inline` and
+ * `--anchored-room-block`. A dropdown is one width everywhere
+ * (`--dropdown-width`), narrower only where the column is; a menu fits its
+ * commands between `--menu-min-width` and `--menu-max-width`.
+ */
+.mn-dropdown,
+.mn-popup {
+  position: fixed;
+  inset: auto;
+  box-sizing: border-box;
+  max-height: min(
+    var(--dropdown-max-height),
+    var(--anchored-room-block, calc(100dvh - 2 * var(--overlay-margin)))
+  );
+  margin: 0;
+  padding: var(--dropdown-inset-block) 0;
+  border: 1px solid var(--overlay-edge);
+  border-radius: var(--overlay-radius);
+  color: var(--text-primary);
+  background: var(--overlay-surface);
+  box-shadow: var(--overlay-shadow);
+  /*
+   * The column is the surface's own layout, not the open state's: while it
+   * fades out it is no longer :popover-open, and rows laid out by that state
+   * would reflow.
+   */
+  flex-direction: column;
+  @include motion.drop;
+}
+
+.mn-dropdown:popover-open,
+.mn-popup:popover-open {
+  display: flex;
+}
+
+.mn-dropdown {
+  width: min(
+    var(--dropdown-width),
+    var(--anchored-room-inline, calc(100vw - 2 * var(--overlay-margin)))
+  );
+  overflow: hidden;
+}
+
+.mn-popup {
+  width: max-content;
+  min-width: min(
+    var(--menu-min-width),
+    var(--anchored-room-inline, calc(100vw - 2 * var(--overlay-margin)))
+  );
+  max-width: min(
+    var(--menu-max-width),
+    var(--anchored-room-inline, calc(100vw - 2 * var(--overlay-margin)))
+  );
+}
+
+.mn-popup,
+.mn-dropdown__scroller {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mn-dropdown__scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* What stays put above the list while it scrolls: a search, as its first row. */
+.mn-dropdown__pinned {
+  flex: none;
+  padding: 0 var(--overlay-inset) var(--dropdown-inset-block);
+}
+
+.mn-dropdown__pinned:empty {
+  display: none;
+}
+
+.mn-dropdown__content {
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * One row in every dropdown and every menu: one height, one inset, a hairline
+ * between rows, and a hover that spans the surface. Its words are a label and,
+ * optionally, one muted line under it; a chosen option's label is semibold and
+ * a check ends the row. A row with a control of its own (the model picker's
+ * favourite star) holds a `__choice` that takes the press and the control after
+ * it, so the row still reads as one.
+ */
+.mn-dropdown-row {
+  display: flex;
+  flex: none;
+  gap: var(--inline-gap);
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--touch-target);
+  margin: 0;
+  padding: var(--row-inset-block) var(--overlay-inset);
+  border: 0;
+  border-radius: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  @include motion.state(background-color);
+}
+
+.mn-dropdown-row + .mn-dropdown-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.mn-dropdown-row:has(> .mn-dropdown-row__choice) {
+  align-items: stretch;
+  padding: 0;
+}
+
+.mn-dropdown-row__choice,
+.mn-dropdown-row__control {
+  display: flex;
+  gap: var(--inline-gap);
+  align-items: center;
+  margin: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.mn-dropdown-row__choice {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--row-inset-block) 0 var(--row-inset-block) var(--overlay-inset);
+}
+
+/* The row's own control keeps the row's end inset, so its glyph ends where a check does. */
+.mn-dropdown-row__control {
+  flex: none;
+  justify-content: center;
+  min-width: var(--touch-target);
+  padding: 0 var(--overlay-inset) 0 var(--inline-gap);
+  color: var(--action-primary);
+}
+
+.mn-dropdown-row__words {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--line-gap);
+  min-width: 0;
+}
+
+.mn-dropdown-row__label {
+  overflow-wrap: anywhere;
+}
+
+.mn-dropdown-row[aria-selected='true'] .mn-dropdown-row__label,
+.mn-dropdown-row__choice[aria-selected='true'] .mn-dropdown-row__label {
+  font-weight: var(--weight-semibold);
+}
+
+.mn-dropdown-row__description {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  overflow-wrap: anywhere;
+}
+
+.mn-dropdown-row__check {
+  flex: none;
+}
+
+:where(html[data-pointer='mouse']) .mn-dropdown-row:where(:hover):not([aria-disabled='true']),
+.mn-dropdown-row:where(:active):not([aria-disabled='true']) {
+  background: var(--surface-sunken);
+}
+
+/* The row the keys are on — focused itself, or named by a focused listbox — wears the ring inside it. */
+.mn-dropdown-row:focus-visible,
+.mn-dropdown-row__choice:focus-visible,
+.mn-dropdown-row__control:focus-visible,
+:focus-visible > .mn-dropdown-row.is-active {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+.mn-dropdown-row[aria-disabled='true'] {
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+/* A command: its glyph leads its label, as in every row with a glyph. */
+.mn-menu-item {
+  gap: var(--glyph-gap);
+}
+
+.mn-menu-item > mn-icon {
+  color: var(--text-secondary);
+}
+
+.mn-menu-item--danger,
+.mn-menu-item--danger > mn-icon {
+  color: var(--status-danger);
+}
+
+/* A line in place of rows: loading, or nothing matching. */
+.mn-dropdown__state {
+  margin: 0;
+  padding: var(--row-inset-block) var(--overlay-inset);
+  color: var(--text-secondary);
+}

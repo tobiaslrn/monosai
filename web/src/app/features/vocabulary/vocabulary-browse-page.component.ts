@@ -73,7 +73,6 @@ interface VirtualVocabularyEntry {
 
       <mn-cluster justify="between">
         <mn-select
-          [inline]="true"
           label="Filter by source"
           testId="vocabulary-source-filter"
           [options]="sourceOptions()"

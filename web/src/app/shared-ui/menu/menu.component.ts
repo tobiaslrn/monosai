@@ -13,12 +13,15 @@ import { PopupDirective } from '../popup/popup.directive';
  *
  * It is a native popover in the top layer, so no card clips it, a press
  * outside or Escape closes it, and focus returns to the trigger; there is no
- * close button and no scrim. It has one alignment: below the trigger with the
- * end edges aligned, flipping above or to the other side only when there is
- * no room. `[menu]="true"` makes it a `role="menu"` with arrow-key movement.
+ * close button and no scrim. It is placed and drawn as a dropdown is — the same
+ * surface, padding, rows, motion, and placement (`_dropdown.scss`) — and only
+ * its width differs: it fits its commands between the menu's least and
+ * greatest width. `[menu]="true"` makes it a `role="menu"` with arrow-key
+ * movement.
  *
- * Choosing a value is a picker, and a form or a task is a task dialog
- * (`mn-sheet-popover`, `mn-dialog`); neither is a menu.
+ * Choosing a value is a dropdown (`mn-select`, `mn-model-picker`), and a form
+ * or a task is a task dialog (`mn-sheet-popover`, `mn-dialog`); neither is a
+ * menu.
  */
 @Component({
   selector: 'mn-menu',
@@ -28,23 +31,7 @@ import { PopupDirective } from '../popup/popup.directive';
   host: {
     '[attr.role]': "popup.menu() ? 'menu' : role()",
   },
-  template: `<ng-content />`,
-  styles: `
-    /*
-     * Every menu is one column of rows, whether or not it is a role="menu". The
-     * layout is the menu's own, not the open state's: while it fades out it is
-     * no longer :popover-open, and rows laid out by that state would reflow.
-     */
-    :host(.mn-popup) {
-      flex-direction: column;
-      min-width: var(--menu-min-width);
-      padding: var(--space-1);
-    }
-
-    :host(:popover-open) {
-      display: flex;
-    }
-  `,
+  template: `<div class="mn-dropdown__content"><ng-content /></div>`,
 })
 export class MenuComponent {
   readonly popup = inject(PopupDirective);
@@ -68,7 +55,6 @@ export class MenuComponent {
     '[attr.popovertarget]': 'menu().popup.id',
     '[attr.aria-controls]': 'menu().popup.id',
     '[attr.aria-expanded]': 'menu().popup.isOpen()',
-    '[style.anchor-name]': 'menu().popup.anchorName',
   },
 })
 export class MenuTriggerDirective {
@@ -83,7 +69,7 @@ export class MenuTriggerDirective {
 @Directive({
   selector: 'button[mnMenuItem], a[mnMenuItem]',
   host: {
-    class: 'mn-menu-item',
+    class: 'mn-dropdown-row mn-menu-item',
     '[attr.role]': "panel?.popup.menu() ? 'menuitem' : null",
     '[class.mn-menu-item--danger]': "mnMenuItem() === 'danger'",
   },

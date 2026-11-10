@@ -12,9 +12,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { ViewportService } from '../../core/platform/viewport.service';
+import { DropdownComponent } from '../dropdown/dropdown.component';
 import { IconComponent } from '../icon/icon.component';
-import { SheetPopoverComponent } from '../popover/sheet-popover.component';
 
 /** What a choice is made of: the value it stands for, and the words that name it. */
 export type SelectValue = string | number;
@@ -45,10 +44,10 @@ const TYPE_AHEAD_RESET_MS = 600;
 
 /**
  * Every choice of one value from a short list. It is the app's own select: the
- * field is the one the model picker's trigger is, and the list is the picker
- * overlay, anchored under the field on a wide viewport and a bottom sheet on a
- * phone. Native selects are not used, because their popup is the platform's and
- * matches nothing else in the app.
+ * field is the one the model picker's trigger is, and the list is the app's one
+ * dropdown (`mn-dropdown`), hung under the field on every screen size. Native
+ * selects are not used, because their popup is the platform's and matches
+ * nothing else in the app.
  *
  *   <mn-select label="Voice" labelledBy="voice-label" [options]="voices" [(value)]="voice" />
  *
@@ -63,8 +62,7 @@ const TYPE_AHEAD_RESET_MS = 600;
 @Component({
   selector: 'mn-select',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, SheetPopoverComponent],
-  host: { '[class.is-inline]': 'inline()' },
+  imports: [DropdownComponent, IconComponent],
   providers: [
     { provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => SelectComponent), multi: true },
   ],
@@ -79,25 +77,19 @@ const TYPE_AHEAD_RESET_MS = 600;
       [attr.aria-labelledby]="labelledBy()"
       [attr.aria-expanded]="panel.isOpen()"
       [attr.aria-controls]="listId"
-      [attr.popovertarget]="panel.id()"
+      [attr.popovertarget]="panel.id"
       [attr.data-testid]="testId()"
-      [style.anchor-name]="panel.anchorName()"
       [disabled]="isDisabled()"
       (keydown)="onTriggerKeydown($event)"
     >
       {{ shown() }}
     </button>
 
-    <mn-sheet-popover
-      #panel="mnSheetPopover"
-      role="dialog"
-      headerWhen="docked"
-      [heading]="title()"
-      [fitAnchor]="true"
-      [modal]="true"
+    <mn-dropdown
+      #panel="mnDropdown"
+      [label]="title()"
       (opened)="onOpened()"
       (closed)="onClosed()"
-      (dismissed)="panel.hide()"
       (click)="keepFromLabel($event)"
     >
       <div
@@ -118,39 +110,33 @@ const TYPE_AHEAD_RESET_MS = 600;
           -->
           <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
           <div
-            class="option"
+            class="mn-dropdown-row"
             role="option"
             [id]="optionId(index)"
-            [class.is-selected]="index === selectedIndex()"
             [class.is-active]="index === active()"
             [attr.aria-selected]="index === selectedIndex()"
             [attr.aria-disabled]="option.disabled === true ? 'true' : null"
             [attr.data-value]="option.value"
             (click)="choose(index)"
           >
-            <span class="words">
-              <span class="label">{{ option.label }}</span>
+            <span class="mn-dropdown-row__words">
+              <span class="mn-dropdown-row__label">{{ option.label }}</span>
               @if (option.description) {
-                <small class="description">{{ option.description }}</small>
+                <small class="mn-dropdown-row__description">{{ option.description }}</small>
               }
             </span>
             @if (index === selectedIndex()) {
-              <mn-icon class="check" name="check" [size]="18" tone="accent" />
+              <mn-icon class="mn-dropdown-row__check" name="check" [size]="18" tone="accent" />
             }
           </div>
         }
       </div>
-    </mn-sheet-popover>
+    </mn-dropdown>
   `,
   styles: `
     :host {
       display: block;
       min-width: 0;
-    }
-
-    :host(.is-inline) {
-      flex: 1 1 9rem;
-      max-width: var(--control-width);
     }
 
     /*
@@ -179,72 +165,17 @@ const TYPE_AHEAD_RESET_MS = 600;
       }
     }
 
-    /*
-     * The rows reach the surface's edges, so a row's hover and its mark span it,
-     * while their words keep the surface's inset.
-     */
+    /* The listbox holds the keys; the row they are on wears the ring. */
     .list {
-      /* The body's own thin band is given back, so the rows sit one inset from both edges. */
-      margin: calc(-1 * var(--space-1)) calc(-1 * var(--overlay-inset));
+      display: flex;
+      flex-direction: column;
       min-height: var(--touch-target);
       outline: none;
-    }
-
-    .option {
-      display: flex;
-      gap: var(--inline-gap);
-      align-items: center;
-      justify-content: space-between;
-      min-height: var(--touch-target);
-      padding: var(--row-inset-block) var(--overlay-inset);
-      border-bottom: 1px solid var(--border-subtle);
-      cursor: pointer;
-    }
-
-    .option:last-child {
-      border-bottom: 0;
-    }
-
-    .words {
-      display: grid;
-      gap: var(--line-gap);
-      min-width: 0;
-    }
-
-    .label {
-      overflow-wrap: anywhere;
-    }
-
-    .is-selected .label {
-      font-weight: var(--weight-semibold);
-    }
-
-    .description {
-      color: var(--text-secondary);
-      font-size: var(--text-xs);
-      font-weight: var(--weight-regular);
-    }
-
-    :host-context(html[data-pointer='mouse']) .option:hover:not([aria-disabled='true']),
-    .option:active:not([aria-disabled='true']) {
-      background: var(--surface-sunken);
-    }
-
-    /* The option keyboard movement is on: the focus ring, drawn inside the row. */
-    .list:focus-visible .option.is-active {
-      outline: 3px solid var(--focus-ring);
-      outline-offset: -3px;
-    }
-
-    .option[aria-disabled='true'] {
-      color: var(--text-secondary);
-      cursor: not-allowed;
-      opacity: 0.72;
     }
   `,
 })
 export class SelectComponent implements ControlValueAccessor {
-  /** What is being chosen: the field's name when no label names it, and the sheet's title. */
+  /** What is being chosen: the field's name when no label names it, and the list's. */
   readonly label = input('');
   /** The id of the visible label that names the field, as a settings row gives it. */
   readonly labelledBy = input<string | null>(null);
@@ -253,12 +184,6 @@ export class SelectComponent implements ControlValueAccessor {
   /** What the field says while no option matches the value. */
   readonly placeholder = input('Choose');
   readonly disabled = input(false);
-  /**
-   * A select that narrows a list, beside its neighbours in a row: it keeps a
-   * readable width and never grows past one, so with the text too large for
-   * both the neighbour wraps below it rather than the value being cut off.
-   */
-  readonly inline = input(false);
   /** For durable tests: on the field. */
   readonly testId = input<string | null>(null);
   /** The learner chose an option; the value is the option's own, string or number. */
@@ -266,8 +191,7 @@ export class SelectComponent implements ControlValueAccessor {
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly instance = nextSelectId++;
-  private readonly panel = viewChild.required<SheetPopoverComponent>('panel');
-  protected readonly docked = inject(ViewportService).isMobile;
+  private readonly panel = viewChild.required<DropdownComponent>('panel');
   protected readonly listId = `mn-select-${String(this.instance)}-list`;
   protected readonly title = computed(() => this.label() || 'Choose');
 

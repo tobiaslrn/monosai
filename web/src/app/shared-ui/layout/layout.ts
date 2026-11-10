@@ -133,6 +133,15 @@ export type ClusterJustify = 'start' | 'end' | 'between';
     mn-cluster.cluster--fill-first {
       flex-wrap: nowrap;
     }
+    /*
+     * A field beside its neighbours keeps the one width of a field at a row's
+     * end and never grows past it, so with text too large for both the
+     * neighbour wraps below it rather than the value being cut off.
+     */
+    mn-cluster > :is(mn-select, mn-model-picker) {
+      flex: 1 1 9rem;
+      max-width: var(--control-width);
+    }
     mn-cluster.cluster--fill-first > :first-child {
       flex: 1;
       min-width: 0;

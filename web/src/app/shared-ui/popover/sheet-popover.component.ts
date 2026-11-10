@@ -23,8 +23,9 @@ interface NativePopoverElement extends Omit<HTMLElement, 'hidePopover' | 'showPo
 let nextOverlayId = 0;
 
 /**
- * The overlay surface held up by a native popover: a picker, a task dialog that
- * must outlive a file chooser, and the reader's Story options.
+ * The overlay surface held up by a native popover: a task dialog that must
+ * outlive a file chooser or wants light dismissal, and the reader's Story
+ * options. A choice from a list is never this but the dropdown (`mn-dropdown`).
  *
  *   <button mnButton [mnOverlayTrigger]="panel" aria-haspopup="dialog">Add source</button>
  *   <mn-sheet-popover #panel="mnSheetPopover" heading="Add words" placement="centred"
@@ -39,8 +40,8 @@ let nextOverlayId = 0;
  * grab handle instead. On a wide viewport `placement` decides where it floats:
  *
  *   centred    a task dialog: in the middle of the window, over a scrim
- *   anchored   hanging from its trigger, end edges aligned; `fitAnchor` makes
- *              it at least as wide as the trigger, for a picker
+ *   anchored   hanging from its trigger, from the edge the trigger shares
+ *              with the page's column (Story options)
  *
  * The native popover stays on the host so it light-dismisses, survives a file
  * chooser, keeps the accessible relationship with its trigger, and returns
@@ -59,14 +60,13 @@ let nextOverlayId = 0;
     popover: 'auto',
     class: 'mn-overlay',
     '[attr.id]': 'id()',
-    '[attr.aria-labelledby]': 'label() === null && showsHeader() ? headingId : null',
-    '[attr.aria-label]': 'label() ?? (showsHeader() ? null : heading())',
+    '[attr.aria-labelledby]': 'label() === null ? headingId : null',
+    '[attr.aria-label]': 'label()',
     '[class.mn-overlay--docked]': 'docked()',
     '[class.mn-overlay--dialog]': "!docked() && placement() === 'centred'",
     '[class.mn-overlay--panel]': "!docked() && placement() === 'anchored'",
     '[class.is-centred]': "!docked() && placement() === 'centred'",
     '[class.is-anchored]': "!docked() && placement() === 'anchored'",
-    '[class.fits-anchor]': 'fitAnchor()',
     '[class.is-dragging]': 'dragOffset() > 0',
     '[style.transform]': 'dragTransform()',
     '[style.position-anchor]': "!docked() && placement() === 'anchored' ? anchorName() : null",
@@ -78,16 +78,14 @@ let nextOverlayId = 0;
     @if (docked()) {
       <mn-sheet-handle #handle [label]="closeLabel()" (dismissed)="dismissed.emit()" />
     }
-    @if (showsHeader()) {
-      <mn-overlay-header
-        [heading]="heading()"
-        [headingId]="headingId"
-        [backLabel]="backLabel()"
-        [closeLabel]="docked() ? null : closeLabel()"
-        (back)="back.emit()"
-        (dismissed)="dismissed.emit()"
-      />
-    }
+    <mn-overlay-header
+      [heading]="heading()"
+      [headingId]="headingId"
+      [backLabel]="backLabel()"
+      [closeLabel]="docked() ? null : closeLabel()"
+      (back)="back.emit()"
+      (dismissed)="dismissed.emit()"
+    />
     <div class="mn-overlay__pinned"><ng-content select="[mn-dialog-pinned]" /></div>
     <div class="mn-overlay__body"><ng-content /></div>
     <div class="mn-overlay__footer"><ng-content select="[mn-dialog-action]" /></div>
@@ -132,15 +130,6 @@ let nextOverlayId = 0;
      */
     :host(.is-anchored.is-start) {
       position-area: bottom span-right;
-    }
-
-    /* A picker: at least as wide as the field that opened it, and a list that scrolls. */
-    :host(.is-anchored.fits-anchor) {
-      min-width: anchor-size(width);
-      max-height: min(
-        var(--picker-max-height),
-        calc(100dvh - 2 * var(--overlay-margin) - var(--touch-target))
-      );
     }
 
     :host(.mn-overlay--docked) {
@@ -199,11 +188,7 @@ export class SheetPopoverComponent {
    * keeps one name while each step titles itself.
    */
   readonly label = input<string | null>(null);
-  /** Whether the title row shows only once docked, as a picker's does. */
-  readonly headerWhen = input<'always' | 'docked'>('always');
   readonly placement = input<'anchored' | 'centred'>('anchored');
-  /** At least as wide as its trigger, for a picker. */
-  readonly fitAnchor = input(false);
   /** Names the back arrow of a step below the first; without one there is none. */
   readonly backLabel = input<string | null>(null);
   /** Names the close on a wide viewport and the grab handle when docked. */
@@ -226,7 +211,6 @@ export class SheetPopoverComponent {
   /** Whether it is showing, set before the first frame of showing. */
   readonly isOpen = this.openState.asReadonly();
   protected readonly docked = this.viewport.isMobile;
-  protected readonly showsHeader = computed(() => this.headerWhen() === 'always' || this.docked());
   protected readonly dragOffset = computed(() => this.handle()?.offset() ?? 0);
   protected readonly dragTransform = computed(() => {
     const offset = this.dragOffset();

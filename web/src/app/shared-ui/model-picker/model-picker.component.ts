@@ -3,7 +3,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  inject,
   input,
   output,
   signal,
@@ -11,10 +10,15 @@ import {
 } from '@angular/core';
 import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
-import { ViewportService } from '../../core/platform/viewport.service';
+import { DropdownComponent } from '../dropdown/dropdown.component';
+import { IconComponent } from '../icon/icon.component';
 import { NoticeComponent } from '../notice/notice.component';
-import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet-popover.component';
 
+/**
+ * Choosing a model from OpenRouter's catalogue. It is the app's one dropdown
+ * (`mn-dropdown`), the select's, with a search as its first row and a
+ * favourite star beside each option's check; the list scrolls under the search.
+ */
 @Component({
   selector: 'mn-model-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -24,7 +28,9 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
       class="mn-control mn-control--select trigger"
       [class.trigger--unset]="selectedId() === ''"
       aria-haspopup="listbox"
-      [mnOverlayTrigger]="panel"
+      [attr.popovertarget]="panel.id"
+      [attr.aria-controls]="panel.id"
+      [attr.aria-expanded]="panel.isOpen()"
       [disabled]="disabled()"
       [attr.title]="selected()?.modelId ?? null"
     >
@@ -37,19 +43,9 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
       }
     </button>
 
-    <mn-sheet-popover
-      #panel="mnSheetPopover"
-      role="dialog"
-      headerWhen="docked"
-      [heading]="title()"
-      [fitAnchor]="true"
-      [modal]="true"
-      (opened)="opened.emit()"
-      (closed)="reset()"
-      (dismissed)="panel.hide()"
-    >
+    <mn-dropdown #panel="mnDropdown" [label]="title()" (opened)="opened.emit()" (closed)="reset()">
       @if (panel.isOpen()) {
-        <label class="search" mn-dialog-pinned>
+        <label class="search" mn-dropdown-pinned>
           <span class="mn-visually-hidden">Search {{ label() }}</span>
           <input
             class="mn-control"
@@ -57,12 +53,13 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
             autocomplete="off"
             data-testid="model-picker-search"
             placeholder="Search by model or provider"
-            [attr.data-overlay-focus]="docked() ? null : ''"
+            data-overlay-focus
             [value]="query()"
             (input)="setQuery($event)"
           />
         </label>
       }
+      <!-- Its own block: a block of one element is projected by that element's slot. -->
       @if (panel.isOpen()) {
         @if (favorites().length > 0) {
           <div class="favorites" aria-label="Favourite models">
@@ -80,25 +77,29 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
           @if (fallbackLabel(); as fallback) {
             <button
               type="button"
-              class="fallback"
+              class="mn-dropdown-row fallback"
               data-testid="model-picker-fallback"
               role="option"
-              [class.is-selected]="selectedId() === ''"
               [attr.aria-selected]="selectedId() === ''"
               (click)="chooseFallback()"
             >
-              <strong>{{ fallback }}</strong>
+              <span class="mn-dropdown-row__words">
+                <span class="mn-dropdown-row__label">{{ fallback }}</span>
+              </span>
+              @if (selectedId() === '') {
+                <mn-icon class="mn-dropdown-row__check" name="check" [size]="18" tone="accent" />
+              }
             </button>
           }
           @if (loading()) {
-            <p class="state" role="status">Loading OpenRouter models…</p>
+            <p class="mn-dropdown__state state" role="status">Loading OpenRouter models…</p>
           } @else if (failure()) {
             <mn-notice tone="error" role="alert"
               ><p>{{ failure() }}</p></mn-notice
             >
           } @else if (others().length === 0) {
             @if (favorites().length === 0) {
-              <p class="state">No matching models.</p>
+              <p class="mn-dropdown__state state">No matching models.</p>
             }
           } @else {
             @for (model of others(); track model.modelId) {
@@ -110,29 +111,30 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
           }
         </div>
       }
-    </mn-sheet-popover>
+    </mn-dropdown>
 
     <ng-template #modelRow let-model>
-      <div class="model-row" [class.is-selected]="model.modelId === selectedId()">
+      <div class="mn-dropdown-row">
         <button
           type="button"
-          class="model-choice"
+          class="mn-dropdown-row__choice"
           role="option"
           [attr.data-testid]="'model-option-' + model.modelId"
           [attr.aria-selected]="model.modelId === selectedId()"
           (click)="choose(model)"
         >
-          <strong>{{ model.name }}</strong>
-          <!--
-            The identifier is what the row exists to show, so it is never the
-            half that is cut: only the numbers after it truncate.
-          -->
-          <small class="model-id">{{ model.modelId }}</small>
-          <small class="model-meta">{{ meta(model) }}</small>
+          <span class="mn-dropdown-row__words">
+            <span class="mn-dropdown-row__label">{{ model.name }}</span>
+            <!-- The identifier is what the row exists to show, so it leads the line. -->
+            <small class="mn-dropdown-row__description">{{ description(model) }}</small>
+          </span>
+          @if (model.modelId === selectedId()) {
+            <mn-icon class="mn-dropdown-row__check" name="check" [size]="18" tone="accent" />
+          }
         </button>
         <button
           type="button"
-          class="star"
+          class="mn-dropdown-row__control star"
           [attr.aria-label]="
             isFavorite(model.modelId) ? 'Remove from favourites' : 'Add to favourites'
           "
@@ -144,10 +146,8 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
       </div>
     </ng-template>
   `,
-  imports: [NgTemplateOutlet, NoticeComponent, OverlayTriggerDirective, SheetPopoverComponent],
+  imports: [DropdownComponent, IconComponent, NgTemplateOutlet, NoticeComponent],
   styles: `
-    @use '../../../styles/motion' as motion;
-
     :host {
       display: block;
       min-width: 0;
@@ -187,112 +187,32 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
       width: 100%;
     }
 
-    /*
-     * The rows reach the surface's edges, so a row's hover and its selection
-     * mark span it, while their words keep the surface's inset.
-     */
     .favorites,
     .results {
-      margin-inline: calc(-1 * var(--overlay-inset));
+      display: flex;
+      flex-direction: column;
     }
 
+    /* The favourites are a group of rows above the catalogue, a hairline between the two. */
     .favorites {
       border-bottom: 1px solid var(--border-subtle);
     }
 
     .favorites p {
       margin: 0;
-      padding: var(--space-2) var(--overlay-inset) var(--space-1);
+      padding: var(--row-inset-block) var(--overlay-inset) 0;
     }
 
     .results {
       min-height: var(--touch-target);
     }
 
-    .model-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) var(--touch-target);
-      align-items: stretch;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .model-row:last-child {
-      border-bottom: 0;
-    }
-
-    .model-row.is-selected,
-    .fallback.is-selected {
-      box-shadow: var(--shadow-model-indicator);
-    }
-
-    .model-choice,
-    .star,
-    .fallback {
-      border: 0;
-      background: transparent;
-      color: inherit;
-      font: inherit;
-      cursor: pointer;
-    }
-
-    .model-choice {
-      display: grid;
-      gap: var(--line-gap);
-      align-content: center;
-      min-height: var(--touch-target);
-      padding: var(--row-inset-block) 0 var(--row-inset-block) var(--overlay-inset);
-      text-align: start;
-    }
-
-    :host-context(html[data-pointer='mouse']) .model-choice:hover,
-    :host-context(html[data-pointer='mouse']) .star:hover,
-    :host-context(html[data-pointer='mouse']) .fallback:hover,
-    .model-choice:active,
-    .star:active,
-    .fallback:active {
-      background: var(--surface-sunken);
-    }
-
     .star {
-      min-width: var(--touch-target);
-      color: var(--action-primary);
       font-size: var(--text-xl);
     }
 
-    .fallback {
-      width: 100%;
-      min-height: var(--touch-target);
-      padding: var(--row-inset-block) var(--overlay-inset);
-      border-bottom: 1px solid var(--border-subtle);
-      text-align: start;
-    }
-
-    small {
-      color: var(--text-secondary);
-      font-size: var(--text-xs);
-      font-weight: var(--weight-regular);
-    }
-
-    .model-id {
-      color: var(--text-primary);
-      overflow-wrap: anywhere;
-    }
-
-    .model-meta {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .state {
-      margin: 0;
-      padding: var(--overlay-inset);
-      color: var(--text-secondary);
-      text-align: center;
-    }
-
     .results > mn-notice {
-      margin: var(--space-2) var(--overlay-inset);
+      margin: var(--row-inset-block) var(--overlay-inset);
     }
   `,
 })
@@ -326,9 +246,8 @@ export class ModelPickerComponent {
   readonly fallbackSelected = output<void>();
 
   protected readonly query = signal('');
-  private readonly popup = viewChild.required(SheetPopoverComponent);
-  protected readonly docked = inject(ViewportService).isMobile;
-  /** The overlay's name, and the docked sheet's title: what is being chosen from. */
+  private readonly popup = viewChild.required(DropdownComponent);
+  /** The dropdown's name: what is being chosen from. */
   protected readonly title = computed(() => {
     const label = this.label();
     return label.charAt(0).toLocaleUpperCase() + label.slice(1);
@@ -379,7 +298,11 @@ export class ModelPickerComponent {
   protected isFavorite(modelId: string): boolean {
     return this.favoriteIds().includes(modelId);
   }
-  protected meta(model: ModelCapabilities): string {
+  /** The option's one muted line: its identifier, then what it can take. */
+  protected description(model: ModelCapabilities): string {
+    return [model.modelId, this.meta(model)].filter(Boolean).join(' · ');
+  }
+  private meta(model: ModelCapabilities): string {
     const context = model.contextLength
       ? `${Math.round(model.contextLength / 1_000)}k context`
       : '';

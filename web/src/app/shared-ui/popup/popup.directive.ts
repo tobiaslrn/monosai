@@ -1,4 +1,5 @@
 import { Directive, ElementRef, inject, input, output, signal } from '@angular/core';
+import { AnchoredPlacement } from '../dropdown/anchored-placement';
 
 let nextPopupId = 0;
 
@@ -9,8 +10,9 @@ let nextPopupId = 0;
  * it, `Escape` and `hide()` hand focus back to what had it, and the panel sits in the top layer, so no
  * card's `overflow` clips it and no `z-index` has to out-bid its neighbours. No
  * listener is registered by any instance, which is what lets one live in every
- * row of a virtualised list. Position comes from CSS anchoring to the trigger
- * (`_popup.scss`).
+ * row of a virtualised list. It is placed by the rule every dropdown shares
+ * (`AnchoredPlacement`), which listens only while the panel is open, and drawn
+ * by `_dropdown.scss`.
  *
  *   <button [mnPopupTrigger]="menu" aria-haspopup="menu">…</button>
  *   <div mnPopup menu #menu="mnPopup" role="menu">…</div>
@@ -25,7 +27,6 @@ let nextPopupId = 0;
     class: 'mn-popup',
     popover: 'auto',
     '[attr.id]': 'id',
-    '[style.position-anchor]': 'anchorName',
     '[class.mn-popup--menu]': 'menu()',
     '(beforetoggle)': 'onBeforeToggle($event)',
     '(toggle)': 'onToggle()',
@@ -38,8 +39,11 @@ export class PopupDirective {
   private readonly instance = nextPopupId++;
 
   readonly id = `mn-popup-${String(this.instance)}`;
-  /** The name the trigger gives itself, which the panel anchors to. */
-  readonly anchorName = `--mn-popup-${String(this.instance)}`;
+  private readonly placement = new AnchoredPlacement({
+    panel: this.element,
+    trigger: () => document.querySelector(`[popovertarget="${this.id}"]`),
+    scroller: () => this.element,
+  });
   /** A list of actions: items are `role="menuitem"` and take the arrow keys. */
   readonly menu = input(false);
 
@@ -59,7 +63,11 @@ export class PopupDirective {
    * open is there on the first frame and not one `toggle` later.
    */
   protected onBeforeToggle(event: Event): void {
-    this.isOpen.set((event as ToggleEvent).newState === 'open');
+    const open = (event as ToggleEvent).newState === 'open';
+    this.isOpen.set(open);
+    if (open) {
+      this.placement.open();
+    }
   }
 
   /**
@@ -77,6 +85,7 @@ export class PopupDirective {
       }
       this.opened.emit();
     } else {
+      this.placement.close();
       this.closed.emit();
     }
   }
@@ -141,7 +150,6 @@ export class PopupDirective {
     '[attr.popovertarget]': 'popup().id',
     '[attr.aria-controls]': 'popup().id',
     '[attr.aria-expanded]': 'popup().isOpen()',
-    '[style.anchor-name]': 'popup().anchorName',
   },
 })
 export class PopupTriggerDirective {

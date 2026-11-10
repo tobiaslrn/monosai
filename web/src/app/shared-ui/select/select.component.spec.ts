@@ -78,7 +78,9 @@ describe('SelectComponent', () => {
   }
 
   const optionLabels = (list: HTMLElement): string[] =>
-    Array.from(list.querySelectorAll('[role="option"] .label')).map((label) => label.textContent);
+    Array.from(list.querySelectorAll('[role="option"] .mn-dropdown-row__label')).map(
+      (label) => label.textContent,
+    );
 
   it('is a select-only combobox over a listbox of options', async () => {
     await TestBed.configureTestingModule({ imports: [HostComponent] }).compileComponents();
@@ -102,7 +104,9 @@ describe('SelectComponent', () => {
       'false',
     ]);
     expect(options[2]!.getAttribute('aria-disabled')).toBe('true');
-    expect(options[0]!.querySelector('.description')?.textContent).toBe('As spoken');
+    expect(options[0]!.querySelector('.mn-dropdown-row__description')?.textContent).toBe(
+      'As spoken',
+    );
     expect(list().getAttribute('aria-activedescendant')).toBe(options[1]!.id);
   });
 

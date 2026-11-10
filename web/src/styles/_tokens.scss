@@ -224,8 +224,14 @@
    *                     viewport
    * panel-width         an anchored panel's width: Story options
    * player-width        the reader's floating audio player on a wide viewport
-   * picker-max-height   how tall an anchored picker grows before its list scrolls
+   * dropdown-width      the one width of every dropdown (a select's list, the
+   *                     model picker), at every size; narrower only where the
+   *                     page's column is
+   * dropdown-max-height how tall a dropdown or a menu grows before its list scrolls
+   * dropdown-inset-block the space above a dropdown's or a menu's first row and
+   *                     below its last, the same at both ends
    * menu-min-width      the narrowest a menu of commands is drawn
+   * menu-max-width      the widest a menu of commands is drawn
    */
   --overlay-surface: var(--surface-panel);
   --overlay-edge: var(--border-subtle);
@@ -238,8 +244,11 @@
   --dialog-width: 30rem;
   --panel-width: 25rem;
   --player-width: 34rem;
-  --picker-max-height: 28rem;
+  --dropdown-width: 25rem;
+  --dropdown-max-height: 28rem;
+  --dropdown-inset-block: var(--space-2);
   --menu-min-width: 12rem;
+  --menu-max-width: 20rem;
 
   /* Shared composite surfaces keep component styles token-only. */
   --border-subtle-faint: color-mix(in srgb, var(--border-subtle) 35%, transparent);

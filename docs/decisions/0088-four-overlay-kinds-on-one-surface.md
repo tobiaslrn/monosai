@@ -1,7 +1,7 @@
 # 0088 — Four overlay kinds on one overlay surface
 
 Date: 2026-11-09
-Status: Accepted
+Status: Accepted. Its picker kind is superseded by [0089](0089-one-dropdown-on-every-screen.md).
 
 ## Context
 

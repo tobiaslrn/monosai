@@ -2,9 +2,9 @@
 @use '../breakpoints';
 
 /*
- * The one overlay surface. Every floating panel that holds more than a list of
- * commands — a picker, a task dialog, a confirmation, Story options — is this
- * surface, whichever mechanism holds it up (a CDK dialog or a native popover):
+ * The one overlay surface. Every floating panel that holds more than a list —
+ * a task dialog, a confirmation, Story options — is this surface, whichever
+ * mechanism holds it up (a CDK dialog or a native popover):
  *
  *   <… class="mn-overlay">                  the surface: fill, edge, radius, elevation
  *     <mn-sheet-handle />                   only while docked to a phone's bottom edge
@@ -14,9 +14,9 @@
  *     <div class="mn-overlay__footer">      the actions
  *
  * Floating, it is a card with the overlay radius; `--docked` puts it against a
- * phone's bottom edge, full width, with the sheet radius on top. A menu of
- * commands is not this surface's frame, but it is drawn from the same tokens
- * (`_popup.scss`).
+ * phone's bottom edge, full width, with the sheet radius on top. A dropdown
+ * and a menu are not this surface's frame, but they are drawn from the same
+ * tokens (`_dropdown.scss`).
  */
 .mn-overlay {
   display: flex;

@@ -151,6 +151,40 @@
   }
 }
 
+/*
+ * A dropdown or a menu fading in from the field or button it hangs from: a
+ * few pixels of travel from the trigger's side — down from a trigger above it,
+ * up from one below it (`.is-above`) — and back out the same way, faster. It
+ * never resizes, and it stays painted and in the top layer until it has gone.
+ */
+@mixin drop {
+  --drop-from: -1;
+
+  opacity: 0;
+  transform: translateY(calc(var(--drop-from) * var(--motion-nudge)));
+  transition:
+    opacity var(--motion-fast) var(--ease-exit),
+    transform var(--motion-fast) var(--ease-exit),
+    display var(--motion-fast) allow-discrete,
+    overlay var(--motion-fast) allow-discrete;
+
+  &.is-above {
+    --drop-from: 1;
+  }
+
+  &:popover-open {
+    opacity: 1;
+    transform: none;
+    transition-duration: var(--motion-medium);
+    transition-timing-function: var(--ease-enter);
+
+    @starting-style {
+      opacity: 0;
+      transform: translateY(calc(var(--drop-from) * var(--motion-nudge)));
+    }
+  }
+}
+
 /* The page dimming behind a modal surface, for a `::backdrop` or a CDK backdrop. */
 @mixin scrim-transition {
   transition:

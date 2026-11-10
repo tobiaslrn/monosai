@@ -61,17 +61,18 @@ describe('PopupDirective', () => {
     target.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }));
   };
 
-  it('is a native auto popover that the trigger names and anchors', () => {
+  it('is a native auto popover that the trigger names and that is placed as it opens', () => {
     const { panel, trigger } = render();
 
     expect(panel.getAttribute('popover')).toBe('auto');
     expect(panel.classList.contains('mn-popup')).toBe(true);
     expect(trigger.getAttribute('popovertarget')).toBe(panel.id);
     expect(trigger.getAttribute('aria-controls')).toBe(panel.id);
-    expect(trigger.style.getPropertyValue('anchor-name')).toBe(
-      panel.style.getPropertyValue('position-anchor'),
-    );
-    expect(trigger.style.getPropertyValue('anchor-name')).toMatch(/^--mn-popup-\d+$/);
+    expect(panel.style.getPropertyValue('--anchored-room-inline')).toBe('');
+
+    trigger.click();
+
+    expect(panel.style.getPropertyValue('--anchored-room-inline')).toMatch(/^\d+(\.\d+)?px$/);
   });
 
   it('gives every panel its own id', () => {

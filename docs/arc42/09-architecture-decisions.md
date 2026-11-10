@@ -148,3 +148,4 @@ shared its number until it was given the next free one.
 | [0085](../decisions/0085-sha256-padding-is-fixed.md)                                     | The synchronous SHA-256 pads correctly                                     |
 | [0087](../decisions/0087-features-compose-shared-ui.md)                                  | Features compose shared-ui primitives and write no styles                  |
 | [0088](../decisions/0088-four-overlay-kinds-on-one-surface.md)                           | Every overlay is a menu, a picker, a task dialog, or a confirmation        |
+| [0089](../decisions/0089-one-dropdown-on-every-screen.md)                                | A choice from a list is one anchored dropdown on every screen size         |

@@ -298,20 +298,21 @@ the way to build:
 | Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                                                                                                                                                 |
 | Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                                                                                                            |
 | Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                                                                                              |
-| Choices          | `mn-select` (one value from a list), `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips                                                                                                                                                                                  |
+| Choices          | `mn-select` (one value from a list) and `mn-model-picker` (a model from the catalogue), both on `mn-dropdown`, `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips                                                                                                                                                                                  |
 | Fields           | `mn-field` (label, hint, and error around a control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                               |
 | Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                                                                                        |
 | Status           | `mn-checklist` with `mn-checklist-step` for first steps, `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
 | Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen` and `mn-not-found-panel` on the one whole-page state                                                                                                                                                                                                       |
-| Overlays         | `mn-menu` (a menu), `mn-sheet-popover` with `mnOverlayTrigger` (a picker, a popover-held task dialog), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                                                                                                    |
+| Overlays         | `mn-menu` (a menu), `mn-dropdown` (the list a select or the model picker drops), `mn-sheet-popover` with `mnOverlayTrigger` (a popover-held task dialog, Story options), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                                                                                                    |
 | Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                                                                                                     |
 | Glyphs           | `mn-icon`                                                                                                                                                                                                                                                                                                                                        |
 
 A menu is a native popover (`mn-menu`), so the browser dismisses it on a press
 outside or Escape and returns focus, the top layer keeps it above any card that
-clips, and no instance registers a listener, which is what lets one sit in every
-row of a virtualised shelf. A picker and a task dialog that must outlive a file
-chooser are native popovers too (`mn-sheet-popover`); the other task dialogs and
+clips, and no instance listens to anything while it is closed, which is what lets
+one sit in every row of a virtualised shelf. A dropdown is a native popover too (`mn-dropdown`),
+and so is a task dialog that must outlive a file chooser (`mn-sheet-popover`);
+the other task dialogs and
 the confirmations are CDK dialogs (`mn-dialog`). Which of the four kinds an
 overlay is, and what it looks like, is described under App-level overlays and
 sheets. The reader's floating surfaces and sheets stay on `PopoverService`,
@@ -324,7 +325,7 @@ are intentionally separate, but its bar follows the same shape.
 ### Density
 
 Interactive targets are **one size at every width and every pointer**. There is
-no denser desktop variant, and no compact variant of a control inside a picker:
+no denser desktop variant, and no compact variant of a control inside a dropdown:
 a row in an open list is a target like any other. A pointer-conditional target size requires knowing
 the current pointer, and a hit area that changes during a gesture breaks that
 gesture's own click (ADR 0032) — the cost of getting it wrong is larger than the
@@ -637,12 +638,31 @@ Custom. Filling every axis at random is a ghost action in the card's heading.
 
 **Every choice of one value from a list uses the app's select (`mn-select`);
 native selects are not used**, because their popup is the platform's and matches
-no other menu. The closed select is the field every picker's trigger is: the
-same border, height, radius, and chevron. Open, it is the picker overlay: hung
-under its field, at least as wide as it, on a wide viewport, and a bottom sheet
-with a handle and a title on a phone. Its rows are the surface's rows: a label,
-an optional muted line saying what choosing it does, and a check on the chosen
-one. An option that needs explaining gets that line rather than a hint under the
+no other menu. The closed select is the field the model picker's trigger is: the
+same border, height, radius, and chevron. Open, both are **the dropdown**
+(`mn-dropdown`, [ADR 0089](../decisions/0089-one-dropdown-on-every-screen.md)),
+and the dropdown has one look on every screen size:
+
+- **Placement.** Directly below its field, and above it only when its content
+  does not fit below and there is more room above, measured in the visual
+  viewport so an on-screen keyboard counts as a lack of room. It hangs from the
+  field's edge that lies on the page column's edge — the start edge for a field
+  at the column's start, the end edge for one at its end — and it never leaves
+  the column or the screen. Never a bottom sheet, never a centred dialog.
+- **Width.** One width for every dropdown, narrower only where the column is:
+  on a phone it is the column's width. Never sized by its content or its field.
+- **Anatomy.** The overlay surface, the same space above its first row as below
+  its last, and one row: a label, an optional muted line, and a check at the
+  end of the chosen option, at one height and one inset. No title, no handle.
+- **Motion.** It fades in from its field with a few pixels of travel from the
+  field's side and fades back out the same way.
+
+The model picker is the same dropdown with a search as its first row — the
+shared field look, kept in view while the list scrolls under it — and a
+favourite star after each option's check. Nothing about the dropdown is chosen
+by the place that uses it: there is no input that changes it for one screen.
+
+An option that needs explaining gets the muted line rather than a hint under the
 whole control; an unexplained choice (a voice name) stays a bare label. A first
 "Automatic" or "Not mapped" option is an ordinary option. It is a select-only
 combobox: the field is the combobox and the list its listbox. Enter, Space, or
@@ -700,19 +720,20 @@ decided by what the learner is doing in it, never by the screen it is on:
 
 | Kind             | What it is for                                                                                      | Wide viewport                                                        | Small viewport                                      |
 | ---------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------- |
-| **Menu**         | A short list of commands or destinations: a new story, a story's actions                            | Hangs from its trigger                                               | Hangs from its trigger                              |
-| **Picker**       | Choosing one value from a list: any select, or a model from a searchable catalogue                  | Hangs from its trigger, at least as wide as it, search pinned on top | A bottom sheet: handle, title, search pinned on top |
+| **Menu**         | A short list of commands or destinations: a new story, a story's actions                            | Hangs from its trigger, as a dropdown does, fitted to its commands   | The same                                            |
+| **Dropdown**     | Choosing one value from a list: any select, or a model from a searchable catalogue                  | Hangs from its field at the one dropdown width, search on top        | The same, at the column's width                     |
 | **Task dialog**  | A form or a task in steps: adding words and every step of it, the OpenRouter key, Filters, renaming | A centred card over a scrim: header, body, footer                    | A bottom sheet with a handle                        |
 | **Confirmation** | A question with a safe answer before something is lost, or a notice that needs an answer            | A centred card over a scrim                                          | Docked to the bottom edge, no handle                |
 
 All four are drawn from **one overlay surface**: one fill, one edge, one radius,
 one elevation, the card's inset as padding, and one scrim behind a modal one —
 the overlay roles in the tokens, applied by the shared surface whatever holds it
-up. A menu wears the surface without its frame. A picker, a task dialog, and a
-confirmation share the frame as well: a **header** with the title, a back arrow
-when the step is below the first, and a close on a wide viewport; a **body** that
-is the one scroller, with anything that must stay put while it scrolls — a
-picker's search — pinned above it; and a **footer** of actions. Docked to a
+up. A menu and a dropdown wear the surface without its frame, and share one
+padding, one row, one placement, and one motion between them; only a menu's
+width differs. A task dialog and a confirmation share the frame as well: a
+**header** with the title, a back arrow when the step is below the first, and a
+close on a wide viewport; a **body** that is the one scroller, with anything that
+must stay put while it scrolls pinned above it; and a **footer** of actions. Docked to a
 phone's edge, the same surface spans the width with the sheet radius on top.
 
 The footer's actions end at the inline end: the primary is the rightmost, the
@@ -724,16 +745,14 @@ not. A task dialog has **no Cancel button**: its ways out are the close, Escape,
 the scrim, and on a phone the handle, all of which discard what it was drafting.
 Its commit goes through its own primary action.
 
-On a wide viewport an overlay anchored to a trigger never leaves the page's
-column. It hangs from the trigger's end edge when the trigger sits at the
-column's end (a settings row) and from its start edge when the trigger sits at
-the column's start (an inline filter), and it is never narrower than its
-trigger. The choice is made once, by the shared overlay, for the select and the
-model picker alike. A list in a picker has the same space above its first row
-as below its last.
+An overlay anchored to a trigger never leaves the page's column. It hangs from
+the trigger's end edge when the trigger sits at the column's end (a settings
+row) and from its start edge when the trigger sits at the column's start (an
+inline filter). The choice is made once, by the shared placement, for every
+dropdown and every menu alike.
 
 A **menu** is never a form: as soon as a panel holds a field, it is a task
-dialog. A **picker's** trigger is a field like any other — the select's border,
+dialog. A **dropdown's** field is a field like any other — the select's border,
 height, radius, and chevron, the value in the field's own weight — so a card of
 settings has one control language. A choice of a few named options in a card
 that must be compared at a glance is not an overlay at all but a segmented
@@ -750,8 +769,8 @@ dialog, because it must stay open while a file chooser is up. That is a
 mechanism, not a kind: on a wide screen it is a centred task dialog over a scrim
 like any other, its sub-steps take the back arrow in its header, and on a phone
 it is a docked sheet. Escape, the close, the handle, and a press on the scrim all
-put it away and return focus to Add source. The OpenRouter key form and the
-pickers are held up the same way, for the same light dismissal.
+put it away and return focus to Add source. The OpenRouter key form is held up
+the same way, for the same light dismissal.
 
 The reader has two exceptions, both on the shared surface. A word's or a
 sentence's details stay **anchored to the word** on a wide screen, because the
@@ -775,7 +794,7 @@ length, sends the sheet away, and anything less settles it back against its
 edge. Speed counts because a short flick is how a sheet is usually put away,
 and a sheet that waits to be dragged the full distance feels deaf to it.
 
-Every overlay arrives and leaves; none is cut in or out. A menu and a picker
+Every overlay arrives and leaves; none is cut in or out. A menu and a dropdown
 fade in from their trigger with a few pixels of travel and fade back out; a
 centred dialog or confirmation fades in over the page and fades back out; none
 of them changes size on the way. A sheet leaves by its docked edge. A surface
@@ -1076,7 +1095,8 @@ screen:
 | **enter**           | A message or block arrives where it will stay: a notice, a field's error, an outcome, the working line        |
 | **reveal, conceal** | A banner arrives at the top of the window and later leaves: its row opens and closes, so the page moves once  |
 | **dialog**          | A centred task dialog or confirmation fades in over the page, and fades back out when put away                |
-| **grow**            | A menu or a picker fades in from the control that opened it, and back out, never resizing                   |
+| **grow**            | An anchored panel (Story options) fades in from the control that opened it, and back out, never resizing    |
+| **drop**            | A menu or a dropdown fades in from the trigger's side — down from above, up from below — and back out       |
 | **sheet**           | A docked sheet rises from its edge and goes back down it, continuing a drag from where the finger let go      |
 | **scrim**           | The page behind a modal surface dims as it arrives and clears as it leaves                                    |
 | **expand, turn**    | A disclosure opens or closes its height while its chevron turns                                               |

@@ -44,7 +44,7 @@ describe('ModelPickerComponent', () => {
     element.querySelector<HTMLButtonElement>('.trigger')!.click();
     fixture.detectChanges();
 
-    const panel = element.querySelector<HTMLElement>('mn-sheet-popover')!;
+    const panel = element.querySelector<HTMLElement>('mn-dropdown')!;
     expect(panel.querySelector('.favorites')?.textContent).toContain('Favourite');
     expect(panel.querySelector('.results')?.textContent).toContain('Ordinary');
 
@@ -67,7 +67,7 @@ describe('ModelPickerComponent', () => {
     element.querySelector<HTMLButtonElement>('.trigger')!.click();
     fixture.detectChanges();
 
-    const panel = element.querySelector<HTMLElement>('mn-sheet-popover')!;
+    const panel = element.querySelector<HTMLElement>('mn-dropdown')!;
     expect(panel.querySelector('.favorites')?.textContent).toContain('Favourite');
     expect(panel.querySelector('.state')).toBeNull();
   });
@@ -106,7 +106,7 @@ describe('ModelPickerComponent', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
       const trigger = element.querySelector<HTMLButtonElement>('.trigger')!;
-      const panel = element.querySelector<HTMLElement>('mn-sheet-popover')!;
+      const panel = element.querySelector<HTMLElement>('mn-dropdown')!;
       return { fixture, trigger, panel, element };
     }
 
@@ -177,7 +177,7 @@ describe('ModelPickerComponent', () => {
       fixture.detectChanges();
       expect(trigger.getAttribute('aria-expanded')).toBe('true');
 
-      element.querySelector<HTMLButtonElement>('.model-choice')!.click();
+      element.querySelector<HTMLButtonElement>('[role="option"]')!.click();
       fixture.detectChanges();
 
       expect(chosen).toEqual(['vendor/one']);
