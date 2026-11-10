@@ -48,7 +48,14 @@
    */
   --playing-sentence-soft: #f2e6d2;
 
-  --focus-ring: #4a3c86;
+  /*
+   * The one focus role: the brand's action colour at its text strength, so the
+   * ring belongs to the palette in either theme. Against canvas, panel and
+   * raised grounds it measures light 6.0, 6.4, 6.5 and dark 8.4, 7.6, 6.8 (3:1
+   * is the minimum). Every outline sits off its control by a gap of the ground,
+   * so it stays visible around a filled action.
+   */
+  --focus-ring: var(--action-primary-text);
   --shadow-raised: 0 1px 2px rgb(37 40 36 / 8%), 0 4px 12px rgb(37 40 36 / 6%);
   --shadow-overlay: 0 8px 32px rgb(37 40 36 / 16%);
 }
@@ -87,7 +94,7 @@
 
   --playing-sentence-soft: #3b3324;
 
-  --focus-ring: #b7a9f0;
+  --focus-ring: var(--action-primary-text);
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 40%);
   --shadow-overlay: 0 8px 32px rgb(0 0 0 / 55%);
 }
@@ -248,7 +255,7 @@
   );
   --surface-reader-progress: color-mix(in srgb, var(--border-strong) 50%, var(--surface-sunken));
   --surface-canvas-fade: linear-gradient(to top, var(--surface-canvas) 72%, transparent);
-  --shadow-focus: 0 0 0 1px var(--action-primary);
+  --shadow-thumb-ring: 0 0 0 1px var(--action-primary);
   --shadow-model-indicator: inset 3px 0 var(--action-primary);
   --radius-token: 0.25rem;
 

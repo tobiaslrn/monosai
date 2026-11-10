@@ -34,6 +34,13 @@ function extractMixin(source: string, mixinName: string): Palette {
   for (const match of body.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{6});/g)) {
     palette.set(match[1]!, match[2]!.toLowerCase());
   }
+  // A token that is another token (`var(--action-primary-text)`) is that colour.
+  for (const match of body.matchAll(/--([a-z0-9-]+):\s*var\(--([a-z0-9-]+)\);/g)) {
+    const target = palette.get(match[2]!);
+    if (target !== undefined) {
+      palette.set(match[1]!, target);
+    }
+  }
   return palette;
 }
 
@@ -100,6 +107,8 @@ const PAIRINGS: readonly {
   { foreground: 'border-strong', background: 'surface-canvas', kind: 'ui' },
   { foreground: 'border-strong', background: 'surface-panel', kind: 'ui' },
   { foreground: 'focus-ring', background: 'surface-canvas', kind: 'ui' },
+  { foreground: 'focus-ring', background: 'surface-panel', kind: 'ui' },
+  { foreground: 'focus-ring', background: 'surface-raised', kind: 'ui' },
   // The reader's only two markers, drawn against the canvas they sit on.
   { foreground: 'marker-vocabulary', background: 'surface-canvas', kind: 'ui' },
   { foreground: 'marker-grammar', background: 'surface-canvas', kind: 'ui' },

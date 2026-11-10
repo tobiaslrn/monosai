@@ -1363,7 +1363,10 @@ These are not aspirations; a change that breaks one of them is a regression.
   `details`/`summary`, a link navigates. ARIA supplements native elements; it
   does not replace them.
 - Focus is always visible, against every surface the application has, in both
-  themes.
+  themes. There is one focus ring: the action colour at its text strength, so it
+  belongs to the palette, set off from its control by a gap of the ground so it
+  shows around a filled action too. It is defined once, as a token, and reaches
+  3:1 against every ground in both themes.
 - Focus order follows visual order. Overlays trap focus, are labelled, close
   where closing is safe, and return focus to what opened them.
 - Every icon-only control has an accessible name that states its current state

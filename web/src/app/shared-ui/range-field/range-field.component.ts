@@ -111,7 +111,7 @@ let nextRangeId = 0;
       border-radius: var(--radius-pill);
       appearance: none;
       background: var(--action-primary);
-      box-shadow: var(--shadow-focus);
+      box-shadow: var(--shadow-thumb-ring);
     }
 
     input::-moz-range-track {
@@ -138,7 +138,7 @@ let nextRangeId = 0;
       border: 4px solid var(--surface-raised);
       border-radius: var(--radius-pill);
       background: var(--action-primary);
-      box-shadow: var(--shadow-focus);
+      box-shadow: var(--shadow-thumb-ring);
     }
 
     input:focus-visible {
