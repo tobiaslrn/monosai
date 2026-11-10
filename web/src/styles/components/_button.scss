@@ -1,3 +1,5 @@
+@use '../motion';
+
 /**
  * Shared button primitives. Feature styles may position these controls, but
  * their silhouette, type, palette, and interaction states live here.
@@ -25,11 +27,7 @@
   cursor: pointer;
   /* Keep the browser's rectangular touch flash from overpowering the pill. */
   -webkit-tap-highlight-color: transparent;
-  transition:
-    background-color var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard),
-    color var(--motion-fast) var(--ease-standard),
-    transform var(--motion-fast) var(--ease-standard);
+  @include motion.state(background-color, border-color, color, transform);
 }
 
 /*
@@ -113,7 +111,7 @@
 }
 
 .mn-button:where(:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
-  transform: translateY(1px);
+  @include motion.press;
 }
 
 /* A pressed toggle is selected, not primary: it gets a soft, readable tint. */
@@ -134,22 +132,14 @@
  * A busy control stays where it is and keeps its fill. It breathes, the way a
  * generation fill does, and its cursor says the work is in progress. The
  * component ignores a press while it is busy; the control is never removed or
- * swapped for another, so focus and position survive the work.
+ * swapped for another, so focus and position survive the work. A glyph that
+ * stands for work going round — sync, retry — turns while it runs, wherever the
+ * busy control is (`data-turns` on `mn-icon`).
  */
 .mn-button:where([aria-busy='true']) {
-  animation: mn-busy-breathe var(--motion-breathe) var(--ease-ambient) infinite;
-  cursor: progress;
-}
+  @include motion.breathe;
 
-/*
- * The trough is shallow on purpose: at 0.85 the light theme's filled primary
- * still holds 3.7:1 for its glyph on the fill and for the fill on the panel,
- * where 0.7 fell under the 3:1 non-text floor.
- */
-@keyframes mn-busy-breathe {
-  50% {
-    opacity: 0.85;
-  }
+  cursor: progress;
 }
 
 /*
@@ -167,6 +157,16 @@
   color: var(--text-secondary);
   cursor: not-allowed;
   animation: none;
+}
+
+/*
+ * A ghost button has no pill to draw, so disabled it stays without one: its
+ * label in the secondary colour is the whole state. A dashed sunken pill in a
+ * row's trailing slot sat flush against the card's edge.
+ */
+.mn-button--ghost:where(:disabled, [aria-disabled='true']) {
+  border-color: transparent;
+  background: transparent;
 }
 
 /*
@@ -198,10 +198,7 @@
   text-decoration: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    background-color var(--motion-fast) var(--ease-standard),
-    color var(--motion-fast) var(--ease-standard),
-    transform var(--motion-fast) var(--ease-standard);
+  @include motion.state(background-color, color, transform);
 }
 
 /*
@@ -231,13 +228,13 @@
 
 .mn-icon-button:where(:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
   background: var(--surface-sunken);
-  transform: translateY(1px);
+  @include motion.press;
 }
 
 /* A press keeps the fill; it only shrinks, so the control never turns grey. */
 .mn-icon-button--primary:where(:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
   background: var(--action-primary-hover);
-  transform: scale(0.96);
+  @include motion.press;
 }
 
 .mn-icon-button:where([aria-pressed='true']:not(:disabled, [aria-disabled='true'])) {
@@ -259,15 +256,18 @@
 
 /* Busy, as for the button: it keeps its fill and says the work is going on. */
 .mn-icon-button:where([aria-busy='true']) {
-  animation: mn-busy-breathe var(--motion-breathe) var(--ease-ambient) infinite;
+  @include motion.breathe;
+
   cursor: progress;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .mn-button:where([aria-busy='true']),
-  .mn-icon-button:where([aria-busy='true']) {
-    animation: none;
-  }
+/* The turning glyph of a busy control, whichever variant holds it. */
+:is(.mn-button, .mn-icon-button):where([aria-busy='true']) mn-icon[data-turns] {
+  @include motion.spin;
+}
+
+:is(.mn-button, .mn-icon-button):where([aria-busy='true']) mn-icon[data-turns='back'] {
+  @include motion.spin(back);
 }
 
 .mn-icon-button:where(:disabled, [aria-disabled='true']) {

@@ -1,4 +1,5 @@
 import { Dialog } from '@angular/cdk/dialog';
+import { installFakeMatchMedia, type FakeMediaMatcher } from '../../../testing/match-media';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONTRACT_COLLECTION } from '../../../testing/anki-collection';
@@ -41,10 +42,13 @@ const TEXT_LIST: TextListVocabularySource = {
  * off what looked like background syncing emptied the whole vocabulary instead.
  */
 describe('SourcePageComponent', () => {
+  let media: FakeMediaMatcher;
   let beds: VocabularyTestBed;
   let anki: SourceMapping;
 
   beforeEach(async () => {
+    // Still, so a confirmation answers at once rather than after it has left.
+    media = installFakeMatchMedia(1280, false, true);
     beds = configureVocabularyTestBed();
     TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, {
       useValue: () => new FakeAnkiProvider(CONTRACT_COLLECTION, { kind: 'desktop-connect' }),
@@ -60,6 +64,7 @@ describe('SourcePageComponent', () => {
 
   afterEach(() => {
     TestBed.inject(Dialog).closeAll();
+    media.restore();
   });
 
   async function settle(fixture: ComponentFixture<SourcePageComponent>): Promise<void> {

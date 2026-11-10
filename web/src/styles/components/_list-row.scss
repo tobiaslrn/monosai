@@ -1,3 +1,5 @@
+@use '../motion';
+
 /* A shelf row: one destination, one content column, and an optional menu. */
 .mn-list-row {
   display: flex;
@@ -6,7 +8,7 @@
   border: 1px solid var(--border-subtle-faint);
   border-radius: var(--radius-card);
   background: var(--surface-raised);
-  transition: background-color var(--motion-fast) var(--ease-standard);
+  @include motion.state(background-color);
 }
 
 .mn-list-row--flush,
@@ -237,13 +239,6 @@
 /* The group clips its corners, so a focused row draws its ring inside itself. */
 .mn-list-group .mn-list-row:has(.mn-list-row__link:focus-visible) {
   outline-offset: -3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mn-list-row,
-  .mn-list-row__link {
-    transition: none;
-  }
 }
 
 /*

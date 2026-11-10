@@ -43,6 +43,7 @@ import { IconComponent } from '../icon/icon.component';
     <ng-content />
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
     mn-entry-list {
       display: block;
       min-width: 0;
@@ -133,7 +134,7 @@ import { IconComponent } from '../icon/icon.component';
 
     mn-entry .mn-entry__chevron {
       color: var(--text-secondary);
-      transition: transform var(--motion-fast) var(--ease-standard);
+      @include motion.turn;
     }
 
     mn-entry > details[open] .mn-entry__chevron {
@@ -198,12 +199,6 @@ import { IconComponent } from '../icon/icon.component';
       overflow: hidden;
       clip-path: inset(50%);
       white-space: nowrap;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      mn-entry .mn-entry__chevron {
-        transition: none;
-      }
     }
 
     @container mn-entry-list (max-width: 20rem) {

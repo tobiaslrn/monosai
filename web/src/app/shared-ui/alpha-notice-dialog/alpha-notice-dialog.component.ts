@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
+import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { ButtonDirective } from '../button/button';
 import { DialogComponent } from '../dialog/dialog';
 import { NoticeComponent } from '../notice/notice.component';
@@ -40,7 +40,7 @@ export interface AlphaNoticeDialogData {
   `,
 })
 export class AlphaNoticeDialogComponent {
-  private readonly dialogRef = inject<DialogRef<void>>(DialogRef);
+  private readonly frame = viewChild.required(DialogComponent);
   private readonly data = inject<AlphaNoticeDialogData>(DIALOG_DATA);
   protected readonly saving = signal(false);
   protected readonly saveFailed = signal(false);
@@ -54,7 +54,7 @@ export class AlphaNoticeDialogComponent {
     const saved = await this.data.acknowledge();
     this.saving.set(false);
     if (saved) {
-      this.dialogRef.close();
+      this.frame().close(undefined);
     } else {
       this.saveFailed.set(true);
     }

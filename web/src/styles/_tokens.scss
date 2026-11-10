@@ -218,6 +218,7 @@
    * dialog-width        a task dialog's or a confirmation's width on a wide
    *                     viewport
    * panel-width         an anchored panel's width: Story options
+   * player-width        the reader's floating audio player on a wide viewport
    * picker-max-height   how tall an anchored picker grows before its list scrolls
    * menu-min-width      the narrowest a menu of commands is drawn
    */
@@ -231,6 +232,7 @@
   --overlay-margin: var(--space-4);
   --dialog-width: 30rem;
   --panel-width: 25rem;
+  --player-width: 34rem;
   --picker-max-height: 28rem;
   --menu-min-width: 12rem;
 
@@ -257,8 +259,12 @@
    * the long ones — one slow movement, a turn, a breath, a loop of steps, and a
    * toast's whole stay. Easings: standard for a state change, settle for a
    * surface moving to its place, enter and exit for a sheet arriving and
-   * leaving, ambient for what runs without being asked. Only paint properties
-   * animate; see the design system's motion section.
+   * leaving, ambient for what runs without being asked. Distances and scales
+   * say how far a named motion travels: a message rises, a menu nudges toward
+   * its trigger, a step shifts in from its side, a dialog and a menu grow from
+   * slightly smaller, a set mark pops past its size and back, and a pressed
+   * control gives way. The named motions themselves are `_motion.scss`; see the
+   * design system's motion section.
    */
   --motion-fast: 120ms;
   --motion-medium: 200ms;
@@ -274,6 +280,13 @@
   /* The wordmark's reel: a quick spin that lands softly without overshoot. */
   --ease-reel: cubic-bezier(0.2, 0.75, 0.25, 1);
   --ease-ambient: ease-in-out;
+  --motion-rise: 0.375rem;
+  --motion-nudge: 0.25rem;
+  --motion-shift: 1rem;
+  --motion-scale-from: 0.96;
+  --motion-pop-from: 0.6;
+  --motion-pop-peak: 1.15;
+  --motion-press-scale: 0.97;
 
   --touch-target: max(44px, 2.75rem);
   /* A shelf row, a vocabulary row and a fold's summary share one minimum. */

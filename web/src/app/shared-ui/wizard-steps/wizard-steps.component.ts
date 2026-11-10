@@ -39,6 +39,8 @@ import { IconComponent } from '../icon/icon.component';
     </ol>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
+
     :host {
       display: block;
       min-width: 0;
@@ -53,23 +55,48 @@ import { IconComponent } from '../icon/icon.component';
       list-style: none;
     }
 
+    /*
+     * Each step's rail is a track with a fill drawn over it, uncovered from the
+     * start as the learner reaches the step and covered again if they go back,
+     * so moving between steps reads as progress rather than a recolour.
+     */
     li {
+      position: relative;
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-1) var(--space-2);
       align-items: center;
       min-width: 0;
-      padding-top: var(--space-2);
-      border-top: 3px solid var(--border-subtle);
+      padding-top: calc(var(--space-2) + 3px);
       color: var(--text-secondary);
       font-size: var(--text-sm);
       font-weight: var(--weight-semibold);
       overflow-wrap: anywhere;
+      @include motion.state(color);
     }
 
-    li.is-done,
-    li.is-current {
-      border-top-color: var(--action-primary);
+    li::before,
+    li::after {
+      position: absolute;
+      inset: 0 0 auto;
+      height: 3px;
+      border-radius: var(--radius-pill);
+      content: '';
+    }
+
+    li::before {
+      background: var(--border-subtle);
+    }
+
+    li::after {
+      background: var(--action-primary);
+      clip-path: inset(0 100% 0 0);
+      @include motion.fill;
+    }
+
+    li.is-done::after,
+    li.is-current::after {
+      clip-path: inset(0);
     }
 
     li.is-done {
@@ -91,10 +118,19 @@ import { IconComponent } from '../icon/icon.component';
       font-size: var(--text-xs);
     }
 
+    .mark {
+      @include motion.state(background-color, border-color, color);
+    }
+
     .is-done .mark {
       border-color: var(--action-primary);
       background: var(--action-primary);
       color: var(--text-on-action);
+    }
+
+    /* The check pops in as the step is finished. */
+    .is-done .mark mn-icon {
+      @include motion.emphasis(var(--motion-fast));
     }
 
     .is-current .mark {

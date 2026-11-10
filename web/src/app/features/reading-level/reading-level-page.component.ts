@@ -199,6 +199,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     </div>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
     /*
      * A deep link used to put a section heading flush at y=0, scrolling the page
      * title and the back link out of view — so a learner arriving from Generate
@@ -294,17 +295,15 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     .fold-chevron {
       flex: none;
       color: var(--text-secondary);
-      transition: transform var(--motion-fast) var(--ease-standard);
+      @include motion.turn;
     }
 
     .fold[open] .fold-chevron {
       transform: rotate(90deg);
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .fold-chevron {
-        transition: none;
-      }
+    .fold {
+      @include motion.expand;
     }
 
     .fold-body {

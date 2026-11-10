@@ -216,7 +216,7 @@ export class GridComponent {
     .split {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: var(--space-2) var(--space-3);
+      gap: var(--inline-gap) var(--stack-gap);
       align-items: center;
     }
     .start {
@@ -225,7 +225,7 @@ export class GridComponent {
     .end {
       display: flex;
       flex-wrap: wrap;
-      gap: var(--space-2);
+      gap: var(--inline-gap);
       align-items: center;
       justify-content: flex-end;
       min-width: 0;

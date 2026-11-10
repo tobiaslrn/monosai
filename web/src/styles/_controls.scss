@@ -1,3 +1,5 @@
+@use 'motion';
+
 /**
  * Shared form fields, the switch, and the disclosure. Feature styles consume
  * these classes and the semantic tokens; they never hard-code palette values.
@@ -23,10 +25,7 @@
   background: var(--surface-raised);
   color: var(--text-primary);
   line-height: var(--leading-snug);
-  transition:
-    background-color var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard),
-    box-shadow var(--motion-fast) var(--ease-standard);
+  @include motion.state(background-color, border-color, box-shadow);
 }
 
 :where(html[data-pointer='mouse'])
@@ -73,10 +72,25 @@ textarea.mn-control,
  * What is wrong with the value in the field above it. Inline rather than a
  * notice: it belongs to one control, and it goes the moment the value is fixed.
  */
+/*
+ * What is wrong with one field's value: directly under the field, in the
+ * danger colour, led by the warning glyph on its first line, and named by the
+ * field's `aria-describedby`. One message, never a count and a fix on two lines.
+ */
 .mn-field-error {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
   margin: 0;
   color: var(--status-danger);
   font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  @include motion.enter;
+}
+
+.mn-field-error > mn-icon {
+  height: 1lh;
+  align-items: center;
 }
 
 input[type='checkbox'],
@@ -85,6 +99,14 @@ input[type='radio'] {
   height: var(--control-check-size);
   margin: 0;
   accent-color: var(--action-primary);
+}
+
+/*
+ * A choice the learner has just set pops once. The press leaves focus on the
+ * control, so a box that was already ticked when the page arrived does not.
+ */
+input:where([type='checkbox'], [type='radio']):not(.mn-switch):checked:focus {
+  @include motion.emphasis;
 }
 
 input[type='range'] {
@@ -110,9 +132,7 @@ input.mn-switch {
   appearance: none;
   background: var(--surface-sunken);
   cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard);
+  @include motion.state(background-color, border-color);
 }
 
 input.mn-switch::after {
@@ -124,7 +144,8 @@ input.mn-switch::after {
   border-radius: 50%;
   background: var(--text-secondary);
   content: '';
-  transition: transform var(--motion-fast) var(--ease-standard);
+  /* The thumb slides across at the surface's pace, so the change reads as travel. */
+  @include motion.settle;
 }
 
 input.mn-switch:checked {
@@ -145,13 +166,6 @@ input.mn-switch:focus-visible {
 input.mn-switch:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  input.mn-switch,
-  input.mn-switch::after {
-    transition: none;
-  }
 }
 
 /*
@@ -182,7 +196,7 @@ input.mn-switch:disabled {
   border-block-end: 2px solid currentColor;
   content: '';
   transform: rotate(-45deg);
-  transition: transform var(--motion-fast) var(--ease-standard);
+  @include motion.turn;
 }
 
 .mn-disclosure[open] > summary::before {

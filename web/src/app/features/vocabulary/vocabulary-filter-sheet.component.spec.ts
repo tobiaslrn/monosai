@@ -156,12 +156,17 @@ describe('VocabularyFilterSheetComponent', () => {
     expect(closed).toEqual([undefined]);
   });
 
-  it('closes at once on a wide viewport, where the card does not dock', () => {
+  it('leaves before it closes on a wide viewport too, where the card does not dock', () => {
     media.setWidth(1280);
-    const { closed } = open();
+    const { closed, sheet } = open();
 
     pressEscape();
+    detect();
 
+    expect(closed).toEqual([]);
+    expect(sheet.classList.contains('mn-overlay--docked')).toBe(false);
+    expect(sheet.classList.contains('is-leaving')).toBe(true);
+    endSlide(sheet);
     expect(closed).toEqual([undefined]);
   });
 });

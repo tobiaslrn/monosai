@@ -86,6 +86,8 @@ import { TextInputStepComponent } from './text-input-step.component';
     </div>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
+
     .busy {
       display: flex;
       gap: var(--space-2);
@@ -100,13 +102,7 @@ import { TextInputStepComponent } from './text-input-step.component';
       border: 2px solid var(--border-strong);
       border-block-start-color: var(--action-primary);
       border-radius: var(--radius-pill);
-      animation: mn-spin var(--motion-spin) linear infinite;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .spinner {
-        animation: none;
-      }
+      @include motion.spin;
     }
   `,
 })

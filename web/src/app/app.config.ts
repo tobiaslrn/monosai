@@ -8,11 +8,14 @@ import {
 import { provideServiceWorker } from '@angular/service-worker';
 import type { ApplicationConfig } from '@angular/core';
 import {
+  type ActivatedRouteSnapshot,
   provideRouter,
   withComponentInputBinding,
   withHashLocation,
   withInMemoryScrolling,
+  withViewTransitions,
 } from '@angular/router';
+import { ViewportService } from './core/platform/viewport.service';
 import { LanguageStore } from './application/language/language.store';
 import { AutomaticAnkiSyncCoordinator } from './application/vocabulary/automatic-anki-sync.coordinator';
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
@@ -32,6 +35,15 @@ import { providePersistence } from './infrastructure/persistence/persistence.pro
 import { providePwa } from './infrastructure/pwa/pwa.providers';
 import { readBuildInfo } from './core/diagnostics/build-info';
 
+/** Whether the deepest route of a snapshot is the reader. */
+function isReaderRoute(snapshot: ActivatedRouteSnapshot): boolean {
+  let leaf = snapshot;
+  while (leaf.firstChild !== null) {
+    leaf = leaf.firstChild;
+  }
+  return leaf.pathFromRoot.some((route) => route.url[0]?.path === 'reader');
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
     AutomaticAnkiSyncCoordinator,
@@ -45,6 +57,24 @@ export const appConfig: ApplicationConfig = {
       // Route parameters reach components as signal inputs, so the reader takes
       // its reading id without injecting ActivatedRoute.
       withComponentInputBinding(),
+      // A route change cross-fades the page under a bar that stays put (the
+      // `route` motion in styles/_motion.scss). Still, it is a plain swap.
+      withViewTransitions({
+        // Opening the application is not moving between pages.
+        skipInitialTransition: true,
+        // The reader is the still surface: opening and leaving it is a plain
+        // swap, so a press on the text the moment it appears is never lost to
+        // a page that is still fading in.
+        onViewTransitionCreated: ({ transition, from, to }) => {
+          if (
+            inject(ViewportService).prefersReducedMotion() ||
+            isReaderRoute(from) ||
+            isReaderRoute(to)
+          ) {
+            transition.skipTransition();
+          }
+        },
+      }),
     ),
     // The shell owns the browser events; the application layer sees a signal.
     { provide: NETWORK_STATUS, useExisting: NetworkStatusService },

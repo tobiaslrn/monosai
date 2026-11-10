@@ -45,6 +45,8 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
     </div>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
+
     /*
      * Two columns on one axis: the words take what the picture leaves, and
      * both are centred on the row, so the hero is exactly as tall as the
@@ -72,6 +74,14 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
       width: 100%;
       overflow: hidden;
       pointer-events: none;
+    }
+
+    /*
+     * The full-size illustration — a library still empty — arrives once with
+     * the page. The compact one a returning learner sees every day stands still.
+     */
+    :host(:not(.is-compact)) .hero-art {
+      @include motion.enter(var(--motion-fast));
     }
 
     .hero-art img {

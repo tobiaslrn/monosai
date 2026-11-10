@@ -47,6 +47,8 @@ function other(variant: WordmarkVariant): WordmarkVariant {
     }
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
+
     :host {
       display: block;
       container-type: inline-size;
@@ -69,7 +71,7 @@ function other(variant: WordmarkVariant): WordmarkVariant {
       color: var(--text-primary);
       cursor: default;
       user-select: none;
-      transition: clip-path var(--motion-medium) var(--ease-standard);
+      @include motion.fill;
       -webkit-tap-highlight-color: transparent;
     }
 
@@ -81,7 +83,7 @@ function other(variant: WordmarkVariant): WordmarkVariant {
 
     .is-spinning .strip {
       /* Decelerates onto the landing without overshooting, so no neighbour peeks in. */
-      animation: mn-reel-spin var(--motion-slow) var(--ease-reel) both;
+      @include motion.reel;
     }
 
     .frame {
@@ -90,22 +92,6 @@ function other(variant: WordmarkVariant): WordmarkVariant {
       width: calc(var(--frame-width) * var(--frame));
       height: var(--frame);
       fill: currentcolor;
-    }
-
-    @keyframes mn-reel-spin {
-      from {
-        transform: translateY(0);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .reel {
-        transition: none;
-      }
-
-      .is-spinning .strip {
-        animation: none;
-      }
     }
   `,
 })

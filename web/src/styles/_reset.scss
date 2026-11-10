@@ -57,20 +57,3 @@ a {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
-
-/*
- * Timed animation and transitions are cut to a single frame. A scroll-driven
- * animation (the top bar's edge) is unaffected: Chromium takes its progress
- * from the scroll position and ignores an explicit duration, which is the
- * behaviour a scroll-linked colour fade needs. It moves nothing.
- */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}

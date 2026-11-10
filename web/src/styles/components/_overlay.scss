@@ -1,3 +1,4 @@
+@use '../motion';
 @use '../breakpoints';
 
 /*
@@ -170,19 +171,21 @@
   margin-inline: 0;
 }
 
-/* The dimmed page behind a modal CDK dialog. */
+/*
+ * The dimmed page behind a modal CDK dialog. It fades in as the dialog
+ * arrives, and out with it: a dismissed surface's scrim never cuts out from
+ * behind it. The CDK's own fade is replaced by the shared scrim motion.
+ */
 .cdk-overlay-dark-backdrop {
   background: var(--overlay-scrim);
 }
 
-/* A dismissed sheet's scrim fades with it rather than cutting out behind it. */
+.cdk-overlay-backdrop {
+  @include motion.scrim-transition;
+}
+
 .cdk-overlay-dark-backdrop.is-leaving {
   background-color: transparent;
-  transition: background-color var(--motion-medium) linear;
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
 }
 
 /* A dialog that docks: against the bottom edge, full width, below the wide breakpoint. */

@@ -253,7 +253,7 @@ import { ReadingTrackComponent } from './reading-track.component';
     .player {
       display: flex;
       flex-direction: column;
-      gap: var(--space-3);
+      gap: var(--stack-gap);
       min-width: 0;
     }
 
@@ -264,7 +264,7 @@ import { ReadingTrackComponent } from './reading-track.component';
      */
     .controls {
       display: flex;
-      gap: var(--space-2);
+      gap: var(--inline-gap);
       align-items: center;
       justify-content: space-between;
     }

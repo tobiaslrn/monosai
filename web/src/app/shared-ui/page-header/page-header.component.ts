@@ -93,6 +93,7 @@ import { PageNoticeSlot } from './page-notice-slot';
     }
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
     @use '../../../styles/breakpoints' as breakpoints;
 
     /*
@@ -116,6 +117,8 @@ import { PageNoticeSlot } from './page-notice-slot';
       min-height: var(--touch-target);
       padding-block: var(--space-2);
       background: var(--surface-canvas);
+      /* Captured on its own in a route change, so the bar stays where it is. */
+      view-transition-name: mn-top-bar;
     }
 
     /*
@@ -134,12 +137,8 @@ import { PageNoticeSlot } from './page-notice-slot';
       pointer-events: none;
     }
 
-    @supports (animation-timeline: scroll()) {
-      .head::before {
-        animation: mn-bar-edge linear both;
-        animation-timeline: scroll(root);
-        animation-range: 0 var(--space-4);
-      }
+    .head::before {
+      @include motion.bar-edge;
     }
 
     /*

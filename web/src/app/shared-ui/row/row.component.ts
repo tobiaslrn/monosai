@@ -108,6 +108,7 @@ let nextRowId = 0;
     <span class="mn-row__menu"><ng-content select="[mn-row-menu]" /></span>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
     mn-row {
       display: flex;
       min-width: 0;
@@ -241,10 +242,8 @@ let nextRowId = 0;
       }
     }
 
-    @media (prefers-reduced-motion: no-preference) {
-      mn-row.mn-row--link {
-        transition: background-color var(--motion-fast) var(--ease-standard);
-      }
+    mn-row.mn-row--link {
+      @include motion.state(background-color);
     }
   `,
 })

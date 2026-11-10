@@ -28,6 +28,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
     </svg>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
     :host {
       position: absolute;
       inset: 0;
@@ -55,13 +56,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
     .ring-fill {
       stroke: currentcolor;
       stroke-linecap: round;
-      transition: stroke-dashoffset var(--motion-medium) var(--ease-standard);
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .ring-fill {
-        transition: none;
-      }
+      @include motion.fill(stroke-dashoffset);
     }
   `,
 })

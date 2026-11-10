@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, viewChild } from '@angular/core';
 import type { Dialog } from '@angular/cdk/dialog';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { ButtonDirective } from '../button/button';
 import { DialogComponent, openDialog, dialogResult } from '../dialog/dialog';
 
@@ -57,15 +57,15 @@ export interface ConfirmDialogData {
   `,
 })
 export class ConfirmDialogComponent {
-  private readonly dialogRef = inject<DialogRef<boolean>>(DialogRef);
+  private readonly frame = viewChild.required(DialogComponent);
   protected readonly data = inject<ConfirmDialogData>(DIALOG_DATA);
 
   protected confirm(): void {
-    this.dialogRef.close(true);
+    this.frame().close(true);
   }
 
   protected cancel(): void {
-    this.dialogRef.close(false);
+    this.frame().close(false);
   }
 }
 

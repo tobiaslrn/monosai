@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { connectAnki, openVocabulary, refuseAnkiConnect, stubAnkiConnect } from './anki';
 import { openGenerate, prepareGeneration } from './generation';
 import { importReading } from './reading';
+import { expectMotionSettled } from './sheets';
 import { GENERATION_READY_STATE, TTS_READY_STATE } from './state';
 
 /**
@@ -38,6 +39,8 @@ async function brokenText(page: Page, zoom: number): Promise<string[]> {
     for (const details of document.querySelectorAll('details')) details.open = true;
   });
   await page.evaluate(() => document.fonts.ready);
+  // A fold opens its height and a step slides in: measure where they rest.
+  await expectMotionSettled(page);
   await page.evaluate(
     () =>
       new Promise((resolve) => {

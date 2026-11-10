@@ -51,6 +51,10 @@ describe('CountingCountComponent', () => {
 
   beforeEach(() => {
     clock = frames();
+    // Moving: what the motion setting is must not depend on another spec.
+    TestBed.configureTestingModule({
+      providers: [{ provide: ViewportService, useValue: { prefersReducedMotion: signal(false) } }],
+    });
   });
 
   afterEach(() => {

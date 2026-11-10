@@ -2,7 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import stylelint from 'stylelint';
-import { globalStylesConfig } from '../stylelint.config.mjs';
+import { globalStylesConfig, motionModuleConfig } from '../stylelint.config.mjs';
 import { checkComposition } from './composition-freeze.mjs';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -71,7 +71,7 @@ async function lintGlobalStyles(code, filePath) {
   const result = await stylelint.lint({
     code,
     codeFilename: filePath,
-    config: globalStylesConfig,
+    config: filePath.endsWith('_motion.scss') ? motionModuleConfig : globalStylesConfig,
     formatter: 'json',
   });
   const warnings = result.results.flatMap((entry) => entry.warnings);

@@ -1,3 +1,5 @@
+@use '../motion';
+
 /*
  * A card one of several is picked from, as a native radio.
  *
@@ -34,9 +36,7 @@
   border-radius: var(--radius-card);
   background: var(--surface-raised);
   cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard);
+  @include motion.state(background-color, border-color);
 }
 
 /* Drafted options sit sunken inside the card that offers them, with no edge. */
@@ -121,10 +121,4 @@
 
 .mn-option-card:where(:has(input:disabled)) {
   cursor: default;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mn-option-card {
-    transition: none;
-  }
 }

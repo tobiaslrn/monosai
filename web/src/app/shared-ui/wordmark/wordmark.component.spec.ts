@@ -1,13 +1,19 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { WordmarkComponent } from './wordmark.component';
 import { kana } from './wordmark-glyphs';
 import { WORDMARK_RANDOM } from './wordmark.state';
+import { ViewportService } from '../../core/platform/viewport.service';
 
 async function render() {
   TestBed.configureTestingModule({
     imports: [WordmarkComponent],
     // Lands on kana.
-    providers: [{ provide: WORDMARK_RANDOM, useValue: () => 0.9 }],
+    providers: [
+      { provide: WORDMARK_RANDOM, useValue: () => 0.9 },
+      // Moving: what the motion setting is must not depend on another spec.
+      { provide: ViewportService, useValue: { prefersReducedMotion: signal(false) } },
+    ],
   });
   const fixture = TestBed.createComponent(WordmarkComponent);
   fixture.detectChanges();

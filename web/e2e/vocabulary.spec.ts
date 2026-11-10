@@ -178,6 +178,7 @@ test.describe('vocabulary', () => {
 
     // A dragged-away sheet discards its draft, so the list keeps every word.
     await filters.getByLabel('First studied').selectOption('last-7-days');
+    await expectSheetAtRest(page.locator('mn-vocabulary-filter-sheet mn-dialog'));
     const handle = filters.getByRole('button', { name: 'Close filters' });
     const box = await handle.boundingBox();
     if (box === null) throw new Error('The Filters handle has no box.');

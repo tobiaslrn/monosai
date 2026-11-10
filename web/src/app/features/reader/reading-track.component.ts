@@ -42,6 +42,7 @@ import { coveragePercent } from './reading-player-view';
     </div>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
     /* The track is a flex item of the card, not a box of its own. */
     :host {
       display: contents;
@@ -95,7 +96,7 @@ import { coveragePercent } from './reading-player-view';
       position: absolute;
       inset: 0;
       clip-path: inset(0 calc((1 - var(--fill, 0)) * 100%) 0 0 round var(--radius-pill));
-      transition: clip-path var(--motion-medium) var(--ease-standard);
+      @include motion.fill;
     }
 
     /*
@@ -158,7 +159,7 @@ import { coveragePercent } from './reading-player-view';
       box-shadow: var(--shadow-raised);
       opacity: 1;
       appearance: none;
-      transition: opacity var(--motion-fast) var(--ease-standard);
+      @include motion.fade;
     }
 
     .scrub::-moz-range-thumb {
@@ -169,7 +170,7 @@ import { coveragePercent } from './reading-player-view';
       background: var(--action-primary);
       box-shadow: var(--shadow-raised);
       opacity: 1;
-      transition: opacity var(--motion-fast) var(--ease-standard);
+      @include motion.fade;
     }
 
     .scrub:disabled::-webkit-slider-thumb {
@@ -178,18 +179,6 @@ import { coveragePercent } from './reading-player-view';
 
     .scrub:disabled::-moz-range-thumb {
       opacity: 0;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .fill,
-      .scrub::-webkit-slider-thumb {
-        transition: none;
-      }
-
-      /* Its own rule: a browser drops a whole list holding a pseudo it does not know. */
-      .scrub::-moz-range-thumb {
-        transition: none;
-      }
     }
   `,
 })

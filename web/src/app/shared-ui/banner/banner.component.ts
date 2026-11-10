@@ -26,6 +26,7 @@ export type BannerTone = 'info' | 'warning' | 'error';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconComponent],
   host: {
+    'animate.leave': 'is-leaving',
     '[class.banner--warning]': "tone() === 'warning'",
     '[class.banner--error]': "tone() === 'error'",
   },
@@ -39,17 +40,28 @@ export type BannerTone = 'info' | 'warning' | 'error';
     </div>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
+
+    /*
+     * It opens its own row at the top of the window, so the page below moves
+     * once, smoothly, rather than jumping; leaving, it closes the row again.
+     */
     :host {
       --banner-soft: var(--action-primary-soft);
       --banner-ink: var(--text-primary);
 
       display: block;
+      @include motion.reveal;
       padding-inline: var(--page-gutter);
       border-bottom: 1px solid var(--border-subtle);
       background: var(--banner-soft);
       color: var(--banner-ink);
       font-size: var(--text-sm);
       line-height: var(--leading-snug);
+    }
+
+    :host(.is-leaving) {
+      @include motion.conceal;
     }
 
     :host(.banner--warning) {

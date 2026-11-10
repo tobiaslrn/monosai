@@ -42,7 +42,7 @@ import { ButtonDirective } from '../../shared-ui/button/button';
             }
           }
           @case ('activating') {
-            <p>Updating…</p>
+            <p>A new version of Monosai is ready.</p>
           }
           @case ('failed') {
             <p>{{ status.message }}</p>
@@ -65,6 +65,10 @@ import { ButtonDirective } from '../../shared-ui/button/button';
                 </button>
                 <button mnButton="ghost" type="button" (click)="dismiss()">Later</button>
               }
+            }
+            @case ('activating') {
+              <!-- The same control, now busy: it stays where the press left it. -->
+              <button mnButton="primary" type="button" aria-busy="true">Updating…</button>
             }
             @case ('failed') {
               @if (status.recovery === 'reload') {

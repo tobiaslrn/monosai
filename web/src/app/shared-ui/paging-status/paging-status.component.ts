@@ -25,6 +25,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     <ng-content />
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
+
     :host {
       display: flex;
       flex-direction: column;
@@ -47,22 +49,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       height: 0.5rem;
       border-radius: var(--radius-pill);
       background: var(--action-primary);
-      animation: paging-status-pulse var(--motion-slow) var(--ease-ambient) infinite alternate;
-    }
-
-    @keyframes paging-status-pulse {
-      from {
-        opacity: 0.45;
-      }
-      to {
-        opacity: 1;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .dot {
-        animation: none;
-      }
+      @include motion.pulse;
     }
   `,
 })

@@ -93,12 +93,12 @@ let nextOverlayId = 0;
     <div class="mn-overlay__footer"><ng-content select="[mn-dialog-action]" /></div>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
     @use '../../../styles/breakpoints' as breakpoints;
 
     :host {
       position: fixed;
       z-index: 10;
-      transition: transform var(--motion-medium) var(--ease-settle);
     }
 
     :host(:not(:popover-open)) {
@@ -110,6 +110,7 @@ let nextOverlayId = 0;
       inset: 0;
       height: fit-content;
       margin: auto;
+      @include motion.grow(center);
     }
 
     :host(.is-anchored) {
@@ -121,6 +122,7 @@ let nextOverlayId = 0;
         flip-inline,
         flip-block flip-inline;
       max-height: calc(100dvh - 2 * var(--overlay-margin) - var(--touch-target));
+      @include motion.grow(top right);
     }
 
     /* A picker: at least as wide as the field that opened it, and a list that scrolls. */
@@ -139,33 +141,12 @@ let nextOverlayId = 0;
       position-area: none;
       inset: auto 0 0;
       margin: 0;
-      /*
-       * Closed, the sheet sits below the edge it docks to: it rises from there
-       * when it opens and goes back down the same way, so a dismissal carries
-       * on from wherever the finger let go instead of cutting the sheet out
-       * from under it. The discrete properties keep it painted and in the top
-       * layer until that slide has finished.
-       */
-      transform: translateY(100%);
-      transition:
-        transform var(--motion-medium) var(--ease-exit),
-        display var(--motion-medium) allow-discrete,
-        overlay var(--motion-medium) allow-discrete;
+      @include motion.sheet;
     }
 
     /* On its way out it is no longer a surface: a tap lands on the page behind it. */
     :host(.mn-overlay--docked:not(:popover-open)) {
       pointer-events: none;
-    }
-
-    /* Arriving decelerates and leaving accelerates, as a native sheet does. */
-    :host(.mn-overlay--docked:popover-open) {
-      transform: translateY(0);
-      transition-timing-function: var(--ease-enter);
-
-      @starting-style {
-        transform: translateY(100%);
-      }
     }
 
     /*
@@ -176,19 +157,16 @@ let nextOverlayId = 0;
       background-color: var(--overlay-scrim);
     }
 
-    /* The scrim fades with the sheet rather than cutting out from behind it. */
-    :host([data-modal].mn-overlay--docked)::backdrop {
-      transition:
-        background-color var(--motion-medium) linear,
-        display var(--motion-medium) allow-discrete,
-        overlay var(--motion-medium) allow-discrete;
+    /* The scrim fades in with the surface and out with it, never cutting out from behind it. */
+    :host([data-modal]:is(.mn-overlay--docked, .is-centred))::backdrop {
+      @include motion.scrim-transition;
     }
 
-    :host([data-modal].mn-overlay--docked:not(:popover-open))::backdrop {
+    :host([data-modal]:is(.mn-overlay--docked, .is-centred):not(:popover-open))::backdrop {
       background-color: transparent;
     }
 
-    :host([data-modal].mn-overlay--docked:popover-open)::backdrop {
+    :host([data-modal]:is(.mn-overlay--docked, .is-centred):popover-open)::backdrop {
       @starting-style {
         background-color: transparent;
       }
@@ -196,14 +174,6 @@ let nextOverlayId = 0;
 
     :host(.is-dragging) {
       transition: none;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      :host,
-      :host(.mn-overlay--docked),
-      :host([data-modal].mn-overlay--docked)::backdrop {
-        transition: none;
-      }
     }
   `,
 })

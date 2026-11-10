@@ -141,6 +141,8 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
   `,
   imports: [NgTemplateOutlet, NoticeComponent, OverlayTriggerDirective, SheetPopoverComponent],
   styles: `
+    @use '../../../styles/motion' as motion;
+
     :host {
       display: block;
       min-width: 0;
@@ -247,6 +249,11 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
       min-width: var(--touch-target);
       color: var(--action-primary);
       font-size: var(--text-xl);
+    }
+
+    /* A star the learner has just set pops once; the press left focus on it. */
+    .star[aria-pressed='true']:focus {
+      @include motion.emphasis;
     }
 
     .fallback {

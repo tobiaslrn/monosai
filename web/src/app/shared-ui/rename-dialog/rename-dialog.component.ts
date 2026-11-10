@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import type { Dialog } from '@angular/cdk/dialog';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { ButtonDirective } from '../button/button';
 import { DialogComponent, dialogResult, openDialog } from '../dialog/dialog';
 import { FieldComponent } from '../field/field.component';
@@ -57,7 +57,7 @@ export interface RenameDialogData {
   `,
 })
 export class RenameDialogComponent {
-  private readonly dialogRef = inject<DialogRef<string | null>>(DialogRef);
+  private readonly frame = viewChild.required(DialogComponent);
   private readonly data = inject<RenameDialogData>(DIALOG_DATA);
 
   protected readonly maximumLength = MAXIMUM_TITLE_LENGTH;
@@ -83,7 +83,7 @@ export class RenameDialogComponent {
     event.preventDefault();
     const title = renamedTitle(this.entry());
     if (title !== null) {
-      this.dialogRef.close(title);
+      this.frame().close(title);
     }
   }
 }

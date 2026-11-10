@@ -47,6 +47,8 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
     }
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
+
     .toast {
       position: fixed;
       right: max(var(--space-4), env(safe-area-inset-right));
@@ -60,31 +62,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
       color: var(--text-primary);
       box-shadow: var(--shadow-overlay);
       font-size: var(--text-sm);
-      animation: vocabulary-sync-toast var(--motion-toast) var(--ease-ambient) both;
-    }
-
-    @keyframes vocabulary-sync-toast {
-      0% {
-        opacity: 0;
-        transform: translate(1rem, 1rem);
-      }
-
-      12%,
-      75% {
-        opacity: 1;
-        transform: translate(0, 0);
-      }
-
-      100% {
-        opacity: 0;
-        transform: translate(1rem, 1rem);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .toast {
-        animation: none;
-      }
+      @include motion.toast;
     }
   `,
 })

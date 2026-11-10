@@ -95,13 +95,16 @@ export function dialogResult<R, C>(ref: DialogRef<R, C>): Promise<R | undefined>
  * `kind` is what the dialog is:
  *
  *   task      a form or a task. A close in the header on a wide viewport; on a
- *             phone it is a sheet with a grab handle. However it is put away —
- *             the close, the handle, the scrim, Escape, or its own commit
- *             through `close()` — a docked sheet slides back down its edge
- *             first, and the dialog then closes with the result.
+ *             phone it is a sheet with a grab handle.
  *   confirm   a confirmation or a notice: its own answers are its only ways
  *             out besides Escape and the scrim, so it has neither a close nor a
- *             handle, and it closes at once.
+ *             handle.
+ *
+ * However either is put away — the close, the handle, the scrim, Escape, or
+ * its own answer through `close()` — it leaves first: a centred card shrinks
+ * back into the page and a docked sheet slides down its edge, and the dialog
+ * then closes with the result. A dialog's own answers therefore go through
+ * `close()` on this frame, never straight to the `DialogRef`.
  */
 @Component({
   selector: 'mn-dialog',
@@ -133,8 +136,19 @@ export function dialogResult<R, C>(ref: DialogRef<R, C>): Promise<R | undefined>
     <div class="mn-overlay__footer"><ng-content select="[mn-dialog-action]" /></div>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
+    /* Let go mid-drag, a docked sheet settles back to its edge. */
     :host {
-      transition: transform var(--motion-medium) var(--ease-settle);
+      @include motion.settle;
+    }
+
+    /* Arriving: a centred card grows in over the page; a docked sheet rises. */
+    :host(:not(.mn-overlay--docked)) {
+      @include motion.dialog-enter;
+    }
+
+    :host(.mn-overlay--docked) {
+      @include motion.sheet-enter;
     }
 
     :host(.is-dragging) {
@@ -146,17 +160,13 @@ export function dialogResult<R, C>(ref: DialogRef<R, C>): Promise<R | undefined>
       pointer-events: none;
     }
 
-    /* Leaving accelerates, as a native sheet does; springing back keeps the settle curve. */
-    :host(.mn-overlay--docked.is-leaving) {
-      transform: translateY(100%);
-      transition: transform var(--motion-medium) var(--ease-exit);
+    /* Leaving accelerates away: a centred card shrinks back, a docked sheet slides down. */
+    :host(.is-leaving:not(.mn-overlay--docked)) {
+      @include motion.dialog-leave;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      :host,
-      :host(.mn-overlay--docked.is-leaving) {
-        transition: none;
-      }
+    :host(.mn-overlay--docked.is-leaving) {
+      @include motion.sheet-leave;
     }
   `,
 })
@@ -195,10 +205,10 @@ export class DialogComponent implements OnInit {
 
   ngOnInit(): void {
     const ref = this.ref;
-    if (ref === null || this.kind() !== 'task' || ref.disableClose) {
+    if (ref === null || ref.disableClose) {
       return;
     }
-    // The dialog would remove the sheet the moment it closed. Taking over
+    // The dialog would remove the surface the moment it closed. Taking over
     // backdrop and Escape dismissal lets the surface depart before it does.
     ref.disableClose = true;
     ref.backdropClick.subscribe(() => {
@@ -218,15 +228,16 @@ export class DialogComponent implements OnInit {
   }
 
   /**
-   * Closes the dialog with `result`. A docked task sheet slides back down its
-   * edge first; a second close while it is leaving is ignored.
+   * Closes the dialog with `result`. The surface leaves first — a centred card
+   * shrinks back, a docked sheet slides down its edge — and a second close
+   * while it is leaving is ignored.
    */
   close(result: unknown): void {
     if (this.leaving()) {
       return;
     }
     this.result = result;
-    if (this.kind() !== 'task' || !this.docked() || this.viewport.prefersReducedMotion()) {
+    if (this.viewport.prefersReducedMotion()) {
       this.finish();
       return;
     }

@@ -88,6 +88,7 @@ const DISMISS_DISTANCE_PX = 80;
     </div>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
     .popover {
       position: relative;
       box-sizing: border-box;
@@ -107,7 +108,7 @@ const DISMISS_DISTANCE_PX = 80;
        * Published rather than only applied, for the card's own sticky footer.
        */
       --mn-popover-pad-bottom: var(--overlay-inset);
-      transition: opacity var(--motion-fast) var(--ease-standard);
+      @include motion.fade;
 
       @starting-style {
         opacity: 0;
@@ -145,9 +146,7 @@ const DISMISS_DISTANCE_PX = 80;
       border-inline: 0;
       border-block-end: 0;
       border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-      transition:
-        opacity var(--motion-fast) var(--ease-standard),
-        transform var(--motion-medium) var(--ease-settle);
+      @include motion.follow;
 
       @starting-style {
         opacity: 1;
@@ -244,13 +243,6 @@ const DISMISS_DISTANCE_PX = 80;
 
     .handle:active .grip {
       opacity: 1;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .popover,
-      :host(.is-sheet) .popover {
-        transition: none;
-      }
     }
   `,
 })

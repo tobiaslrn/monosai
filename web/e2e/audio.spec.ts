@@ -9,6 +9,7 @@ import {
   type StubOptions,
 } from './openrouter';
 import { TTS_READY_STATE } from './state';
+import { expectMotionSettled } from './sheets';
 import { readSettingsRecord } from './storage';
 
 /** Four sentences: short enough to prepare in full, long enough to fail partway. */
@@ -386,6 +387,8 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await page.getByRole('button', { name: 'Delete audio…', exact: true }).click();
     const confirmation = page.getByRole('alertdialog', { name: 'Delete audio for this story?' });
     await expect(confirmation).toBeVisible();
+    // Measured where it comes to rest, not a frame of its rise.
+    await expectMotionSettled(page);
     // The dialog's modal hides the page root from the accessibility tree, so the
     // player is looked up including hidden elements.
     await expect(

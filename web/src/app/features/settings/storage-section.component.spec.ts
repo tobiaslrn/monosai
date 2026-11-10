@@ -1,4 +1,5 @@
 import { Dialog } from '@angular/cdk/dialog';
+import { installFakeMatchMedia, type FakeMediaMatcher } from '../../../testing/match-media';
 import { TestBed } from '@angular/core/testing';
 import { computed, signal } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -73,11 +74,14 @@ class FakeCompressionStore {
  * harmless button, while the narrower per-reading deletion asked first.
  */
 describe('StorageSectionComponent', () => {
+  let media: FakeMediaMatcher;
   let storage: FakeStorageStore;
   let playback: FakePlaybackStore;
   let compression: FakeCompressionStore;
 
   beforeEach(() => {
+    // Still, so a confirmation answers at once rather than after it has left.
+    media = installFakeMatchMedia(1280, false, true);
     TestBed.resetTestingModule();
     storage = new FakeStorageStore();
     playback = new FakePlaybackStore();
@@ -96,6 +100,7 @@ describe('StorageSectionComponent', () => {
 
   afterEach(() => {
     TestBed.inject(Dialog).closeAll();
+    media.restore();
   });
 
   async function settle(fixture: {

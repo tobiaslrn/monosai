@@ -28,11 +28,13 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     }
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
+
     :host {
       display: block;
       max-width: var(--page-measure);
       text-align: center;
-      animation: working-in var(--motion-medium) var(--ease-standard);
+      @include motion.enter;
     }
 
     h2 {
@@ -53,38 +55,13 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       width: 0.9em;
       vertical-align: bottom;
       white-space: nowrap;
-      clip-path: inset(0 100% 0 0);
-      animation: dots-reveal var(--motion-loop) steps(4, end) infinite;
+      @include motion.dots;
     }
 
     p {
       margin: var(--space-3) 0 0;
       color: var(--text-secondary);
       line-height: var(--leading-relaxed);
-    }
-
-    @keyframes dots-reveal {
-      to {
-        clip-path: inset(0);
-      }
-    }
-
-    @keyframes working-in {
-      from {
-        opacity: 0;
-        transform: translateY(0.375rem);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      :host,
-      .loading-dots__reveal {
-        animation: none;
-      }
-
-      .loading-dots__reveal {
-        clip-path: none;
-      }
     }
   `,
 })

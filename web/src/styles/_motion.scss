@@ -1,12 +1,527 @@
 /*
- * Keyframes shared by more than one surface. A component that animates with one
- * of these names it and nothing else: Angular renames a component's own
- * keyframes but leaves a global name alone. Durations and easings are tokens.
+ * Motion, defined once.
+ *
+ * Durations, easings, distances and scales are tokens in `_tokens.scss`. This
+ * module turns them into a small set of *named motions*, and every moving thing
+ * in Monosai is one of them:
+ *
+ *   state     a control settling into a new colour or tint (hover, focus, selection)
+ *   press     a control answering the finger or the click that pressed it
+ *   enter     a message or a block arriving where it will stay: fades in, rising a little
+ *   reveal    a banner arriving at the top of the window: its row opens, then its words fade in
+ *   conceal   the same leaving
+ *   dialog    a centred dialog arriving over the page and leaving it
+ *   grow      a menu or a picker opening from the control that opened it
+ *   sheet     a sheet rising from the edge it docks to, and going back down it
+ *   scrim     the dimmed page behind a modal surface fading in and out
+ *   expand    a disclosure opening and closing its height
+ *   turn      a chevron turning to say a fold is open
+ *   step      a step of a form arriving from the side it was travelled to
+ *   fill      a bar uncovered up to how far a workflow has come
+ *   emphasis  a mark that has just been set: a check, a star, a radio's dot pops once
+ *   draw      a success check drawing itself once
+ *   spin      a glyph turning while the work it stands for runs
+ *   breathe   a busy control, or a wait with no stages, breathing
+ *   route     a page replacing another (the router's view transition)
+ *
+ * A component uses this module as `@use '…/styles/motion' as motion;` and
+ * includes a named motion; using it emits nothing. `global` is included once,
+ * by `styles.scss`, and holds every keyframe, the view transition, and the one
+ * reduction for `prefers-reduced-motion`. No other file writes a keyframe, a
+ * duration, or a curve: the style scan rejects one.
  */
 
-/* One full turn, for anything that says work is going on by turning. */
-@keyframes mn-spin {
-  to {
-    transform: rotate(1turn);
+@use 'sass:list';
+
+/* ---------- named motions ---------- */
+
+/*
+ * A control settling into a new state. `$properties` are the paint properties
+ * that change; transform is added for a control that also answers a press.
+ */
+@mixin state($properties...) {
+  $list: ();
+  @if list.length($properties) == 0 {
+    $properties: (background-color, border-color, color, box-shadow);
+  }
+  @each $property in $properties {
+    $list: list.append($list, $property var(--motion-fast) var(--ease-standard), comma);
+  }
+  transition: $list;
+}
+
+/*
+ * Something shown and hidden in place, such as a bar's repeated title: it
+ * fades and shifts at the state's pace and leaves the accessibility tree only
+ * once it has faded. The shown state includes `appear-shown`.
+ */
+@mixin appear {
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard),
+    visibility 0s linear var(--motion-fast);
+}
+
+@mixin appear-shown {
+  transition-delay: 0s;
+}
+
+/* Something that fades where it stands, such as a floating card or a preview. */
+@mixin fade {
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+/*
+ * A sheet that follows the finger and settles where it is let go: it fades at
+ * the state's pace and moves at the surface's.
+ */
+@mixin follow {
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-medium) var(--ease-settle);
+}
+
+/*
+ * The lower edge of a sticky top bar, faded in by the scroll position over the
+ * first `$range` of travel. It is driven by scrolling, not by time.
+ */
+@mixin bar-edge($range: var(--space-4)) {
+  @supports (animation-timeline: scroll()) {
+    animation: mn-bar-edge linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 $range;
+  }
+}
+
+/* What a pressed control does while it is held: it gives way slightly. */
+@mixin press($scale: var(--motion-press-scale)) {
+  transform: scale($scale);
+}
+
+/* A block or a message arriving. Fills backwards only, so it never holds a transform. */
+@mixin enter($delay: 0s) {
+  animation: mn-enter var(--motion-medium) var(--ease-enter) $delay backwards;
+}
+
+/* A banner opening its own row, so the page below moves once and smoothly. */
+@mixin reveal {
+  interpolate-size: allow-keywords;
+  overflow: clip;
+  animation: mn-reveal var(--motion-medium) var(--ease-settle) backwards;
+}
+
+@mixin conceal {
+  interpolate-size: allow-keywords;
+  overflow: clip;
+  animation: mn-conceal var(--motion-medium) var(--ease-exit) forwards;
+}
+
+/* A centred dialog: in, rising a little out of a slightly smaller size. */
+@mixin dialog-enter {
+  animation: mn-dialog-in var(--motion-medium) var(--ease-enter) backwards;
+}
+
+/* Out, the reverse, faster; applied while the dialog is leaving. */
+@mixin dialog-leave {
+  opacity: 0;
+  transform: translateY(var(--motion-rise)) scale(var(--motion-scale-from));
+  transition:
+    opacity var(--motion-fast) var(--ease-exit),
+    transform var(--motion-fast) var(--ease-exit);
+}
+
+/*
+ * A native popover growing from its trigger. Open, it comes in from a few
+ * pixels toward the trigger and a little smaller; closed, it goes back the same
+ * way, faster, while the discrete properties keep it painted and in the top
+ * layer until it has gone. `$origin` is the corner nearest the trigger.
+ */
+@mixin grow($origin: top right) {
+  transform-origin: $origin;
+  opacity: 0;
+  transform: translateY(calc(-1 * var(--motion-nudge))) scale(var(--motion-scale-from));
+  transition:
+    opacity var(--motion-fast) var(--ease-exit),
+    transform var(--motion-fast) var(--ease-exit),
+    display var(--motion-fast) allow-discrete,
+    overlay var(--motion-fast) allow-discrete;
+
+  &:popover-open {
+    opacity: 1;
+    transform: none;
+    transition-duration: var(--motion-medium);
+    transition-timing-function: var(--ease-enter);
+
+    @starting-style {
+      opacity: 0;
+      transform: translateY(calc(-1 * var(--motion-nudge))) scale(var(--motion-scale-from));
+    }
+  }
+}
+
+/* The page dimming behind a modal surface, for a `::backdrop` or a CDK backdrop. */
+@mixin scrim-transition {
+  transition:
+    background-color var(--motion-medium) var(--ease-standard),
+    opacity var(--motion-medium) var(--ease-standard),
+    display var(--motion-medium) allow-discrete,
+    overlay var(--motion-medium) allow-discrete;
+}
+
+/* A sheet put up by script (a CDK dialog) rising from the edge it docks to. */
+@mixin sheet-enter {
+  animation: mn-sheet-in var(--motion-medium) var(--ease-enter) backwards;
+}
+
+/* The same sheet going back down; applied while it is leaving. */
+@mixin sheet-leave {
+  transform: translateY(100%);
+  transition: transform var(--motion-medium) var(--ease-exit);
+}
+
+/*
+ * A native popover sheet against its docked edge. Closed, it sits below the
+ * edge: it rises from there when it opens, decelerating, and goes back down the
+ * same way, accelerating, so a dismissal carries on from wherever the finger
+ * let go. The discrete properties keep it painted and in the top layer until
+ * that slide has finished.
+ */
+@mixin sheet {
+  transform: translateY(100%);
+  transition:
+    transform var(--motion-medium) var(--ease-exit),
+    display var(--motion-medium) allow-discrete,
+    overlay var(--motion-medium) allow-discrete;
+
+  &:popover-open {
+    transform: translateY(0);
+    transition-timing-function: var(--ease-enter);
+
+    @starting-style {
+      transform: translateY(100%);
+    }
+  }
+}
+
+/* A surface returning to its place after a drag. */
+@mixin settle {
+  transition: transform var(--motion-medium) var(--ease-settle);
+}
+
+/*
+ * A native `details` opening and closing its height. Included on the
+ * `details` element; the content is clipped while it moves.
+ */
+@mixin expand {
+  interpolate-size: allow-keywords;
+
+  &::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition:
+      block-size var(--motion-medium) var(--ease-settle),
+      content-visibility var(--motion-medium) allow-discrete;
+  }
+
+  &[open]::details-content {
+    block-size: auto;
+  }
+}
+
+/* A chevron turning toward what it opened. */
+@mixin turn {
+  transition: transform var(--motion-medium) var(--ease-settle);
+}
+
+/* A step of a form arriving; `$direction` is `forward` or `back`. */
+@mixin step($direction: forward) {
+  @if $direction == back {
+    animation: mn-step-back var(--motion-medium) var(--ease-enter) backwards;
+  } @else {
+    animation: mn-step-forward var(--motion-medium) var(--ease-enter) backwards;
+  }
+}
+
+/*
+ * A bar uncovered from its start; the element sets `clip-path` per state. A
+ * drawn ring is the same movement on its stroke (`stroke-dashoffset`).
+ */
+@mixin fill($property: clip-path) {
+  transition: $property var(--motion-medium) var(--ease-settle);
+}
+
+/* A mark that has just been set pops once. */
+@mixin emphasis($delay: 0s) {
+  animation: mn-pop var(--motion-medium) var(--ease-settle) $delay backwards;
+}
+
+/*
+ * A success check drawing itself once. Included on the stroked SVG shape;
+ * `$length` is at least the stroke's length in its own user units.
+ */
+@mixin draw($length: 1, $delay: var(--motion-fast)) {
+  --motion-draw-length: #{$length};
+
+  stroke-dasharray: $length;
+  animation: mn-draw var(--motion-slow) var(--ease-settle) $delay backwards;
+}
+
+/* Turning while work runs; `back` for a glyph whose arrows point the other way. */
+@mixin spin($direction: forward) {
+  @if $direction == back {
+    animation: mn-spin var(--motion-spin) linear infinite reverse;
+  } @else {
+    animation: mn-spin var(--motion-spin) linear infinite;
+  }
+}
+
+/* Breathing while busy; the trough stays above the non-text contrast floor. */
+@mixin breathe {
+  animation: mn-breathe var(--motion-breathe) var(--ease-ambient) infinite;
+}
+
+/* A softer, slower pulse for a mark that stands for a wait. */
+@mixin pulse {
+  animation: mn-pulse var(--motion-slow) var(--ease-ambient) infinite alternate;
+}
+
+/*
+ * Three dots counting up after a wait's words, uncovered from the start so the
+ * line never reflows. Still, they are simply shown.
+ */
+@mixin dots {
+  clip-path: inset(0 100% 0 0);
+  animation: mn-dots-reveal var(--motion-loop) steps(4, end) infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    clip-path: none;
+    animation: none;
+  }
+}
+
+/* A background toast's whole stay, arriving and leaving on its own. */
+@mixin toast {
+  animation: mn-toast var(--motion-toast) var(--ease-ambient) both;
+
+  /* Still, it simply stays: cut to its last frame, it would never be seen. */
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/* The wordmark's reel landing on its spelling. */
+@mixin reel {
+  animation: mn-reel-spin var(--motion-slow) var(--ease-reel) both;
+}
+
+/* ---------- emitted once ---------- */
+
+@mixin global {
+  @keyframes mn-enter {
+    from {
+      opacity: 0;
+      transform: translateY(var(--motion-rise));
+    }
+  }
+
+  @keyframes mn-reveal {
+    from {
+      block-size: 0;
+      opacity: 0;
+    }
+  }
+
+  @keyframes mn-conceal {
+    to {
+      block-size: 0;
+      opacity: 0;
+    }
+  }
+
+  @keyframes mn-dialog-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--motion-rise)) scale(var(--motion-scale-from));
+    }
+  }
+
+  @keyframes mn-sheet-in {
+    from {
+      transform: translateY(100%);
+    }
+  }
+
+  @keyframes mn-step-forward {
+    from {
+      opacity: 0;
+      transform: translateX(var(--motion-shift));
+    }
+  }
+
+  @keyframes mn-step-back {
+    from {
+      opacity: 0;
+      transform: translateX(calc(-1 * var(--motion-shift)));
+    }
+  }
+
+  @keyframes mn-pop {
+    0% {
+      transform: scale(var(--motion-pop-from));
+    }
+
+    60% {
+      transform: scale(var(--motion-pop-peak));
+    }
+
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes mn-draw {
+    from {
+      stroke-dashoffset: var(--motion-draw-length);
+    }
+
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* One full turn, for anything that says work is going on by turning. */
+  @keyframes mn-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  /*
+   * The trough is shallow on purpose: at 0.85 the light theme's filled primary
+   * still holds 3.7:1 for its glyph on the fill and for the fill on the panel,
+   * where 0.7 fell under the 3:1 non-text floor.
+   */
+  @keyframes mn-breathe {
+    50% {
+      opacity: 0.85;
+    }
+  }
+
+  @keyframes mn-pulse {
+    from {
+      opacity: 0.45;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* The working line's three dots, uncovered one after another. */
+  @keyframes mn-dots-reveal {
+    to {
+      clip-path: inset(0);
+    }
+  }
+
+  /* A background toast's whole stay: in, a while, out. */
+  @keyframes mn-toast {
+    0% {
+      opacity: 0;
+      transform: translate(var(--motion-shift), var(--motion-shift));
+    }
+
+    12%,
+    75% {
+      opacity: 1;
+      transform: translate(0, 0);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translate(var(--motion-shift), var(--motion-shift));
+    }
+  }
+
+  /* The wordmark's reel, from wherever the strip stands to its landing. */
+  @keyframes mn-reel-spin {
+    from {
+      transform: translateY(0);
+    }
+  }
+
+  /*
+   * The lower edge of a sticky top bar, faded in as content starts to pass
+   * beneath it. Driven by the scroll position, not by time.
+   */
+  @keyframes mn-bar-edge {
+    from {
+      border-bottom-color: transparent;
+    }
+  }
+
+  @keyframes mn-route-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes mn-route-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--motion-nudge));
+    }
+  }
+
+  /*
+   * A route change cross-fades the page under a bar that stays where it is.
+   * The bar is captured on its own (`view-transition-name` on the page
+   * header), so its group does not move; only its words cross over.
+   */
+  ::view-transition-old(root) {
+    animation: mn-route-out var(--motion-fast) var(--ease-exit) both;
+  }
+
+  ::view-transition-new(root) {
+    animation: mn-route-in var(--motion-medium) var(--ease-enter) both;
+  }
+
+  ::view-transition-group(mn-top-bar) {
+    animation: none;
+  }
+
+  ::view-transition-old(mn-top-bar),
+  ::view-transition-new(mn-top-bar) {
+    animation-duration: var(--motion-fast);
+    animation-timing-function: var(--ease-standard);
+  }
+
+  /*
+   * Reduced motion: timed animation and transitions are cut to a single frame,
+   * everywhere, from here. A scroll-driven animation (the top bar's edge) is
+   * unaffected: Chromium takes its progress from the scroll position and
+   * ignores an explicit duration, which is the behaviour a scroll-linked colour
+   * fade needs. It moves nothing. A component that decides in script asks the
+   * viewport service, which follows the same setting live.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after,
+    *::details-content,
+    *::backdrop {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0s !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
+      scroll-behavior: auto !important;
+    }
+
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+      animation: none !important;
+    }
   }
 }

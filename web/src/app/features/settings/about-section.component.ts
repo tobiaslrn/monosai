@@ -49,10 +49,11 @@ import { SectionComponent } from '../../shared-ui/section/section.component';
           type="button"
           mnButton="ghost"
           [disabled]="update.kind === 'activating'"
+          [attr.aria-busy]="checking() ? 'true' : null"
           (click)="checkForUpdates()"
         >
           <mn-icon name="sync" [size]="17" />
-          Check for updates
+          {{ checking() ? 'Checking for updates…' : 'Check for updates' }}
         </button>
       </mn-settings-row>
 
@@ -108,8 +109,19 @@ export class AboutSectionComponent {
     await this.install.install();
   }
 
-  protected checkForUpdates(): void {
-    void this.updates.check();
+  /** While a check the learner asked for is running, its control is busy. */
+  protected readonly checking = signal(false);
+
+  protected async checkForUpdates(): Promise<void> {
+    if (this.checking()) {
+      return;
+    }
+    this.checking.set(true);
+    try {
+      await this.updates.check();
+    } finally {
+      this.checking.set(false);
+    }
   }
 
   protected updateStatusLabel(status: ReturnType<AppUpdateStore['status']>): string {

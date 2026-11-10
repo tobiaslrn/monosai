@@ -18,10 +18,39 @@ const hoverGuardMessage = (selector) =>
   `selector with :host-context(html[data-pointer='mouse']) in a component, or ` +
   `:where(html[data-pointer='mouse']) in src/styles.`;
 
+// Motion is defined once, in src/styles/_motion.scss: durations, curves, the
+// keyframes and the named motions built from them. Everywhere else a moving
+// thing includes a named motion (`@include motion.enter;`), so a transition or
+// an animation written out by hand — or a keyframe of a component's own — is
+// rejected. `none` stays allowed, for a state that must not move.
+const handWrittenMotion = {
+  'at-rule-disallowed-list': [
+    ['keyframes'],
+    { message: () => 'Keyframes live in src/styles/_motion.scss; include a named motion.' },
+  ],
+  'declaration-property-value-allowed-list': [
+    { '/^(transition|animation)(-[a-z-]+)?$/': ['none'] },
+    {
+      message: (property) =>
+        `Unexpected hand-written "${property}": include a named motion from ` +
+        `src/styles/_motion.scss instead.`,
+    },
+  ],
+};
+
 // src/styles is outside the component config (it owns the tokens and the .mn-*
 // primitives), but its hover rules need the same guard. The scan applies this
 // one rule to it.
 export const globalStylesConfig = {
+  customSyntax: 'postcss-scss',
+  rules: {
+    'selector-disallowed-list': [[unguardedHover], { splitList: true, message: hoverGuardMessage }],
+    ...handWrittenMotion,
+  },
+};
+
+// The motion module itself is where durations, curves and keyframes are written.
+export const motionModuleConfig = {
   customSyntax: 'postcss-scss',
   rules: {
     'selector-disallowed-list': [[unguardedHover], { splitList: true, message: hoverGuardMessage }],
@@ -40,7 +69,9 @@ export default {
     'comment-empty-line-before': null,
     'declaration-block-no-redundant-longhand-properties': null,
     'declaration-empty-line-before': null,
+    ...handWrittenMotion,
     'declaration-property-value-allowed-list': {
+      '/^(transition|animation)(-[a-z-]+)?$/': ['none'],
       background: [tokenValue],
       'background-color': [tokenValue],
       'border-color': [tokenValue],

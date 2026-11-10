@@ -248,8 +248,8 @@ sentence case, small, semibold, secondary — or no title at all when its conten
 are self-evident.
 
 A **card of rows** — settings, most of all — never sinks a group of its rows into
-an inset. A group there (Text, Voice) is headed by a small-caps secondary row that
-carries its status, and its rows stay on the card's own inset with a hairline
+an inset. A group there (Text, Voice) is headed by a row carrying its group title
+— the one plain sub-heading, never small caps — and its status, and its rows stay on the card's own inset with a hairline
 between each, so the card keeps one content edge. What a disclosure or a route
 opens beneath a row sits in from it by **one** indent and no more. Every field
 at a row's end — a select, an input, a picker's trigger, a segmented choice — is
@@ -281,21 +281,21 @@ is the reader, whose surfaces are its own, and the screens not yet moved.
 Each primitive documents its own inputs and slots beside its code. What each is
 the way to build:
 
-| Role             | Primitives                                                                                                                                                                                                                                                         |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Page frame       | `mn-page`, and `mn-page-header` for the one bar                                                                                                                                                                                                                    |
-| Layout           | `mn-stack` (one vertical rhythm), `mn-cluster` (one wrapping row), `mn-split` (a label and its end), `mn-grid`; `mn-divider` between blocks                                                                                                                        |
-| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                                                                   |
-| Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                              |
-| Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                |
-| Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                                                                    |
-| Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                 |
-| Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                          |
-| Status           | `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` for a form in steps, `mn-working` for a wait in words |
-| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen`, `mn-not-found-panel`                                                                                                                                                        |
-| Overlays         | `mn-menu` (a menu), `mn-sheet-popover` with `mnOverlayTrigger` (a picker, a popover-held task dialog), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                      |
-| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                       |
-| Glyphs           | `mn-icon`                                                                                                                                                                                                                                                          |
+| Role             | Primitives                                                                                                                                                                                                                                                                              |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page frame       | `mn-page`, and `mn-page-header` for the one bar                                                                                                                                                                                                                                         |
+| Layout           | `mn-stack` (one vertical rhythm), `mn-cluster` (one wrapping row), `mn-split` (a label and its end), `mn-grid`; `mn-divider` between blocks                                                                                                                                             |
+| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                                                                                        |
+| Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                                                   |
+| Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                                     |
+| Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                                                                                         |
+| Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                      |
+| Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                               |
+| Status           | `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
+| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen`, `mn-not-found-panel`                                                                                                                                                                             |
+| Overlays         | `mn-menu` (a menu), `mn-sheet-popover` with `mnOverlayTrigger` (a picker, a popover-held task dialog), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                                           |
+| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                                            |
+| Glyphs           | `mn-icon`                                                                                                                                                                                                                                                                               |
 
 A menu is a native popover (`mn-menu`), so the browser dismisses it on a press
 outside or Escape and returns focus, the top layer keeps it above any card that
@@ -458,7 +458,8 @@ filled primary control; selected toggles use a soft selection tint instead.
 
 A choice of one out of a few — the theme — is a **segmented** control (`mn-segmented-control`): native radios drawn at the
 button's height, size, and weight, the chosen one wearing the same selection tint
-as a pressed toggle rather than the filled primary. When each choice needs a
+as a pressed toggle rather than the filled primary. The tint is one shape that
+slides to the chosen option, so changing the choice reads as one movement. When each choice needs a
 sentence to be understood before it is picked — how strict a story is about
 vocabulary — it is a radio card instead, with every sentence visible.
 
@@ -473,7 +474,9 @@ alone. A feature never recolours a shared control.
 Disabled controls are drawn with the sunken surface, secondary text, and a
 distinct boundary. Opacity alone is not a disabled state: disabled must be
 recognisable in both themes and must not resemble either an active secondary
-outline or a selected control. A chosen toggle that is disabled keeps its
+outline or a selected control. A ghost button has no pill to draw, so disabled it
+stays without one: its label in the secondary colour is the whole state, and it
+never draws a sunken pill against the edge of the card it ends. A chosen toggle that is disabled keeps its
 selection tint behind the dashed boundary, so a choice that cannot be changed
 still reads as chosen.
 
@@ -482,7 +485,8 @@ unavailable. Busy is `aria-busy='true'` and nothing else: no class, and never
 `aria-disabled`, which would draw the disabled boundary. A busy control keeps
 its variant's fill and text colour, so a filled primary stays the filled
 primary, and breathes gently (still, under `prefers-reduced-motion`) with a
-`progress` cursor. It does not answer the pointer — no hover change, no press —
+`progress` cursor; a glyph in it that draws work going round — sync, retry —
+turns until the work ends. It does not answer the pointer — no hover change, no press —
 and the component ignores a press until the work ends. It stays **where it is**:
 a control that is working is never removed from its row, swapped for another
 element, or replaced by a hint line, because that reflows what is under the
@@ -735,19 +739,20 @@ length, sends the sheet away, and anything less settles it back against its
 edge. Speed counts because a short flick is how a sheet is usually put away,
 and a sheet that waits to be dragged the full distance feels deaf to it.
 
-A sheet leaves by its docked edge. However it is dismissed — the handle, the
-backdrop, Escape, a close or commit button — it slides back down its docked edge
-at the shared medium duration with the exit curve while the scrim fades with it,
-and only then does the dialog close and report its result. A native-popover sheet
-does this through its own transition; a task dialog, whose element the CDK would
-otherwise remove at once, animates itself out first and takes over the backdrop
-and Escape dismissal to do so. A second dismissal during the slide is ignored.
-With reduced motion, or on a wide viewport where the card is not docked, it
-closes at once.
+Every overlay arrives and leaves; none is cut in or out. A menu and a picker
+grow from their trigger and go back into it; a centred dialog or confirmation
+grows in over the page and shrinks back into it; a sheet leaves by its docked
+edge. However it is dismissed — the handle, the backdrop, Escape, a close, a
+commit, or a confirmation's own answer — the surface leaves first while the
+scrim fades with it, and only then does the dialog close and report its result.
+A native popover does this through its own transition; a CDK dialog, whose
+element the CDK would otherwise remove at once, animates itself out first and
+takes over the backdrop and Escape dismissal to do so, so a dialog's answers go
+through its frame rather than straight to the CDK. A second dismissal during the
+departure is ignored. With reduced motion it closes at once.
 
 A confirmation or notice that is docked as a sheet already has its own way out,
-Cancel, Keep it, or Continue, so it carries no grab handle and no exit slide: it closes at
-once. Escape and a press
+Cancel, Keep it, or Continue, so it carries no grab handle. Escape and a press
 on the backdrop still dismiss a confirmation; the alpha notice is dismissed only
 by Continue. Like any docked sheet it stays within the viewport, scrolls when its
 content is taller, and leaves room for the system gesture area below it.
@@ -1005,43 +1010,67 @@ a sheet bounded to a fraction of the screen is bounded by the _screen_.
 ## 7. Motion
 
 Motion is functional first: it shows where something came from, that something
-is still working, or that a value changed. A popover sheet rises from the edge it
-docks to. A generation fill breathes while requests are open. A control settles
-into its new state rather than cutting to it.
+is still working, or that a value changed. It is quick and it settles; nothing
+bounces, overshoots twice, or drifts. Arrival decelerates into place and
+departure accelerates away, which is what makes the same distance read as
+settling one way and leaving the other. A surface that is cut away between
+frames reads as a fault, not as an answer — and so does one that appears from
+nowhere.
 
-A popover sheet leaves by the edge it arrived from, and a dismissal continues the
-gesture that asked for it: the slide starts wherever the finger let go rather
-than from the docked position, and the scrim of a modal sheet fades with it.
-Arrival decelerates into place and departure accelerates away, which is what
-makes the same distance read as settling one way and leaving the other. A
-surface that is cut away between frames reads as a fault, not as an answer.
+**Motion is defined once.** Every duration, easing, distance and scale is a
+token, and [`_motion.scss`](../../web/src/styles/_motion.scss) turns them into a
+small set of **named motions**; every keyframe lives there and nowhere else. A
+primitive includes the named motion its job calls for; a feature never writes a
+transition, an animation, a duration or a curve, and the style scan rejects one
+written by hand anywhere outside that module. A new kind of movement is a new
+named motion there first, and then a use of it. Durations name how long a thing
+may take — a state settling, a surface moving, one slow movement, a turn, a
+breath, a loop, a toast's stay — and easings name the kind of movement: a state
+change eases out, a surface settles, a sheet arrives decelerating and leaves
+accelerating, and what runs without being asked eases in and out.
 
-**Every duration and easing is a token.** Durations name how long a thing is
-allowed to take: a state settling (`--motion-fast`), a surface moving
-(`--motion-medium`), one slow movement such as the wordmark's reel
-(`--motion-slow`), a turn that says work is going on (`--motion-spin`), a
-breathing control (`--motion-breathe`), a loop of steps (`--motion-loop`), and a
-toast's whole stay (`--motion-toast`). Easings name the kind of movement: a
-state change eases out (`--ease-standard`); a surface moving to its place
-settles (`--ease-settle`); a sheet arrives decelerating (`--ease-enter`) and
-leaves accelerating (`--ease-exit`); what runs without being asked eases in and
-out (`--ease-ambient`). A transition names its easing, never the browser's
-default, and a component picks a token rather than writing a duration or a
-curve. Keyframes shared across component files live in
-[`_motion.scss`](../../web/src/styles/_motion.scss); one used only by a
-shared primitive stays in that primitive's partial.
+Which named motion applies is decided by what is happening, never by the
+screen:
 
-**Only paint properties animate.** Opacity, transform, colour, and clip move
-without asking the layout to be worked out again; width, height, inset, margin,
-and padding do not animate, however small the change. A bar that fills is drawn
-full width and uncovered up to its fraction by a clip, which keeps its rounded
-ends where a scale would squash them; a word that reveals is uncovered the same
-way; a thing that
-changes width keeps its box and changes what is shown of it.
+| Named motion        | When                                                                                                                 |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **state**           | A control, a row, a field or a menu item changes colour or tint: hover, focus, selection, a chip being chosen        |
+| **press**           | A control is held down: it gives way slightly, and a filled one keeps its fill                                       |
+| **enter**           | A message or block arrives where it will stay: a notice, a field's error, an outcome, the working line               |
+| **reveal, conceal** | A banner arrives at the top of the window and later leaves: its row opens and closes, so the page moves once         |
+| **dialog**          | A centred task dialog or confirmation arrives over the page, and shrinks back into it when put away                  |
+| **grow**            | A menu or a picker opens from the control that opened it, and goes back into it                                      |
+| **sheet**           | A docked sheet rises from its edge and goes back down it, continuing a drag from where the finger let go             |
+| **scrim**           | The page behind a modal surface dims as it arrives and clears as it leaves                                           |
+| **expand, turn**    | A disclosure opens or closes its height while its chevron turns                                                      |
+| **step, fill**      | A form in steps moves: the new step arrives from the side travelled to, and the step row's rail fills                |
+| **emphasis**        | A mark the learner has just set pops once: a check, a radio, a favourite star, a finished step's check               |
+| **draw**            | A success check draws itself once, after its mark has popped                                                         |
+| **spin**            | A glyph that draws work going round turns while that work runs                                                       |
+| **breathe, pulse**  | A busy control, or a wait with no stages to name, breathes                                                           |
+| **route**           | One page replaces another: the page cross-fades while the top bar stays where it is; never into or out of the reader |
 
-Beyond that, **a little character is allowed, and only on apparatus**: a spring
-on the play control, a settle on a popover arriving. The budget for it is small
-and it is spent on things the learner acts on or waits for.
+Emphasis answers the learner's own press: a box that was already ticked when
+the page arrived does not pop. A busy control's turning glyph is the one shared
+busy behaviour — any refresh, sync, retry, check or test whose button holds a
+turning glyph turns it while its work runs, from the button's own busy state,
+with no code of its own. The full home illustration of an empty library arrives
+once with the page; nothing on the application moves perpetually for
+decoration.
+
+A disclosure opening is the one change of size that animates, because the fold
+pushes what is below it either way and a height that jumps reads as a fault.
+Otherwise **only paint properties animate**. Opacity, transform, colour, and
+clip move without asking the layout to be worked out again; width, inset,
+margin, and padding do not animate, however small the change. A bar that fills
+is drawn full width and uncovered up to its fraction by a clip, which keeps its
+rounded ends where a scale would squash them; a selection that slides is one
+shape moved by a transform; a word that reveals is uncovered the same way; a
+thing that changes width keeps its box and changes what is shown of it.
+
+Beyond that, **a little character is allowed, and only on apparatus**: a pop on
+a mark just set, a settle on a surface arriving. The budget for it is small and
+it is spent on things the learner acts on or waits for.
 
 A **count the learner has earned rises when it changes**: the Library's standing
 line counts up to the number of words they know whenever a sync finds words they
@@ -1063,12 +1092,16 @@ fade is feedback to a state and shifts nothing; position, size, and layout never
 animate there. A page of Japanese that shifts while being read is unreadable.
 
 Every non-essential transition is removed under `prefers-reduced-motion`,
-including the expressive ones. Character is the first thing cut, not the last.
-The setting is read live: a component that decides in script asks the viewport
-service, which follows the system, rather than reading the media query once. A
-top bar's edge that fades in as the page scrolls is driven by the scroll
-position, not by time; it moves nothing, so the global reduction that shortens
-timed animations leaves it as it is.
+including the expressive ones, and it is removed **in one place**: the motion
+module cuts every timed animation and transition to a single frame and turns
+the route cross-fade off, so no component carries a reduced-motion rule of its
+own for movement. What a still screen still needs is decided there too — the
+working line shows its dots, a toast simply stays. Character is the first
+thing cut, not the last. The setting is read live: a component that decides in
+script asks the viewport service, which follows the system, rather than reading
+the media query once. A top bar's edge that fades in as the page scrolls is
+driven by the scroll position, not by time; it moves nothing, so the reduction
+leaves it as it is.
 
 ## 8. Words
 
@@ -1184,6 +1217,16 @@ Its dashed variant marks a value code chose rather than the learner; the dash,
 not a colour, is what says so.
 What is wrong with the value of one field is plain danger-coloured text directly
 under that field, not a notice.
+
+short word that
+says where something stands — Ready, Unread, Test failed, a word's form — is a
+**status pill**, which is never pressable and so never takes the action colour.
+Its dashed variant marks a value code chose rather than the learner; the dash,
+not a colour, is what says so.
+What is wrong with the value of one field is plain danger-coloured text directly
+under that field, led by the warning mark and named by the field's
+`aria-describedby` — not a notice, and one message: a field over its limit says
+the count and the fix in one sentence, never on two red lines.
 
 **Toasts are for work the learner did not trigger**: a background vocabulary
 refresh that changed something, an update becoming available. That is the whole

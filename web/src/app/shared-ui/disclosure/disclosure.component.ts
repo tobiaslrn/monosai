@@ -64,6 +64,7 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
     </details>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
     /* Its row lays out against its own width, wherever the disclosure sits. */
     mn-disclosure {
       display: block;
@@ -94,7 +95,12 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
     mn-disclosure .mn-disclosure__chevron {
       flex: none;
       color: var(--text-secondary);
-      transition: transform var(--motion-fast) var(--ease-standard);
+      @include motion.turn;
+    }
+
+    /* The fold opens its height rather than appearing under the summary. */
+    mn-disclosure > .mn-disclosure__details {
+      @include motion.expand;
     }
 
     mn-disclosure
@@ -156,12 +162,6 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
     @container (max-width: 16em) {
       mn-disclosure > .mn-disclosure__details > .mn-disclosure__body--rows {
         padding-inline-start: min(var(--space-2), 8px);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      mn-disclosure .mn-disclosure__chevron {
-        transition: none;
       }
     }
   `,

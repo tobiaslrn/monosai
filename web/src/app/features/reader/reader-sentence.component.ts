@@ -95,6 +95,7 @@ export interface TokenActivation {
     </span>
   `,
   styles: `
+    @use '../../../styles/motion' as motion;
     :host {
       display: inline;
     }
@@ -139,7 +140,7 @@ export interface TokenActivation {
     .sentence {
       /* A tint fades in rather than snapping, which is what a press on a
        * sentence feels like on a phone. */
-      transition: background-color var(--motion-fast) var(--ease-standard);
+      @include motion.state(background-color);
       /* The platform's grey flash would fight every tint defined here. */
       -webkit-tap-highlight-color: transparent;
       /*
@@ -179,12 +180,6 @@ export interface TokenActivation {
      */
     :host-context(html[data-pointer='mouse']) .sentence:hover {
       background: var(--surface-sunken);
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .sentence {
-        transition: none;
-      }
     }
 
     /*

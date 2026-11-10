@@ -1,3 +1,5 @@
+@use '../motion';
+
 /* Shared card-row and group layout for settings-like pages. */
 .mn-settings-section {
   display: flex;
@@ -108,7 +110,7 @@
 .mn-settings-chevron {
   flex: none;
   color: var(--text-secondary);
-  transition: transform var(--motion-fast) var(--ease-standard);
+  @include motion.turn;
 }
 
 /* A group's host is its feature component, so it is made a block here. */
@@ -120,7 +122,8 @@
 
 /*
  * A group of rows inside a card of rows — Text, Voice — is not a second
- * surface. It is headed by a small-caps secondary row carrying its status, and
+ * surface. It is headed by a group title — the one plain sub-heading, sentence
+ * case, semibold, secondary — on a row carrying its status, and
  * its rows sit on the card's own inset with a hairline between each, so the
  * card keeps one edge and one column of controls.
  */
@@ -136,8 +139,6 @@
 
 .mn-settings-group__header > .mn-group-title {
   flex: 1;
-  font-variant-caps: all-small-caps;
-  letter-spacing: 0.04em;
 }
 
 /* What a disclosure or a route opens sits in from its row by one indent. */
@@ -230,11 +231,5 @@
 
   .mn-settings-row .mn-actions {
     justify-content: flex-start;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mn-settings-chevron {
-    transition: none;
   }
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, model } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, model } from '@angular/core';
 
 /** One choice in a segmented control. */
 export interface SegmentedOption<T extends string> {
@@ -26,6 +26,9 @@ let nextSegmentedId = 0;
     class: 'mn-segmented',
     role: 'radiogroup',
     '[class.mn-segmented--joined]': 'joined()',
+    '[class.mn-segmented--sliding]': 'chosenIndex() >= 0 && !disabled()',
+    '[style.--segment-count]': 'options().length',
+    '[style.--segment-index]': 'chosenIndex()',
     '[attr.aria-label]': 'label()',
   },
   template: `
@@ -53,4 +56,12 @@ export class SegmentedControlComponent<T extends string> {
   /** The compact variant for one short, stable choice set beside a label. */
   readonly joined = input(false);
   readonly disabled = input(false);
+
+  /**
+   * Where the chosen option sits, so the selection is one shape that slides to
+   * it rather than a tint that jumps between options.
+   */
+  protected readonly chosenIndex = computed(() =>
+    this.options().findIndex((option) => option.value === this.value()),
+  );
 }
