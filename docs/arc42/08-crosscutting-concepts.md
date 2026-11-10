@@ -253,8 +253,9 @@ learner activates the new version from a banner. See
 
 ## 8.9 User interface
 
-[`docs/design-system.md`](../design/design-system.md) is the authority for structure, controls, colour,
-units, motion, voice, and state. It holds rules and intent. The values live in
+[`docs/design/rules.md`](../design/rules.md) holds the binding rules for every visual change and wins
+over everything else. [`docs/design-system.md`](../design/design-system.md) is the reasoning behind
+them: structure, controls, colour, units, motion, voice, and state. It holds rules and intent. The values live in
 `web/src/styles/_tokens.scss`, the form fields in `web/src/styles/_controls.scss`, and each shared
 primitive — button, card and inset, notice, status pill, facts, stack and actions, segmented control,
 list row, page frame, and icon badge — in its own file under

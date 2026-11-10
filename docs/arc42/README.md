@@ -26,26 +26,27 @@ decision — not when the code inside a building block changes.
 
 ## Chapters
 
-| # | Chapter | Content |
-| --- | --- | --- |
-| 1 | [Introduction and goals](01-introduction-and-goals.md) | What Monosai does, for whom, and the three quality goals |
-| 2 | [Architecture constraints](02-constraints.md) | Delivery, platform, technology, and organizational limits the design must accept |
-| 3 | [Context and scope](03-context-and-scope.md) | The learner, the external systems, and the adapter for each one |
-| 4 | [Solution strategy](04-solution-strategy.md) | The five decisions that shape everything else |
-| 5 | [Building block view](05-building-block-view.md) | The layers, the areas inside them, and the two seams worth expanding |
-| 6 | [Runtime view](06-runtime-view.md) | Startup, text import, story generation, and reading |
-| 7 | [Deployment view](07-deployment-view.md) | What runs in the browser, and how CI builds and ships it |
-| 8 | [Cross-cutting concepts](08-crosscutting-concepts.md) | Domain model, result types, validation, ports, persistence, caching, offline, security |
-| 9 | [Architecture decisions](09-architecture-decisions.md) | Index of every architecture decision record, grouped by area |
-| 10 | [Quality requirements](10-quality-requirements.md) | Quality goals and the gates that enforce them |
-| 11 | [Risks and technical debt](11-risks-and-technical-debt.md) | What is not yet verified against real external systems |
-| 12 | [Glossary](12-glossary.md) | The domain terms used in the code and in these chapters |
+| #   | Chapter                                                    | Content                                                                                |
+| --- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 1   | [Introduction and goals](01-introduction-and-goals.md)     | What Monosai does, for whom, and the three quality goals                               |
+| 2   | [Architecture constraints](02-constraints.md)              | Delivery, platform, technology, and organizational limits the design must accept       |
+| 3   | [Context and scope](03-context-and-scope.md)               | The learner, the external systems, and the adapter for each one                        |
+| 4   | [Solution strategy](04-solution-strategy.md)               | The five decisions that shape everything else                                          |
+| 5   | [Building block view](05-building-block-view.md)           | The layers, the areas inside them, and the two seams worth expanding                   |
+| 6   | [Runtime view](06-runtime-view.md)                         | Startup, text import, story generation, and reading                                    |
+| 7   | [Deployment view](07-deployment-view.md)                   | What runs in the browser, and how CI builds and ships it                               |
+| 8   | [Cross-cutting concepts](08-crosscutting-concepts.md)      | Domain model, result types, validation, ports, persistence, caching, offline, security |
+| 9   | [Architecture decisions](09-architecture-decisions.md)     | Index of every architecture decision record, grouped by area                           |
+| 10  | [Quality requirements](10-quality-requirements.md)         | Quality goals and the gates that enforce them                                          |
+| 11  | [Risks and technical debt](11-risks-and-technical-debt.md) | What is not yet verified against real external systems                                 |
+| 12  | [Glossary](12-glossary.md)                                 | The domain terms used in the code and in these chapters                                |
 
 ## Related documents
 
 - **[Architecture decision records](../decisions/)** — the records that give the reason for each
   decision. These chapters link to them. They never repeat them.
-- **[Design system](../design/design-system.md)** — the authority for structure, controls, colour, units,
-  motion, voice, and state. Read it before you change anything visual.
+- **[Design rules](../design/rules.md)** — the binding rulebook; read it before you change anything
+  visual. **[Design system](../design/design-system.md)** — the reasoning behind it: structure,
+  controls, colour, units, motion, voice, and state.
 - **The in-app guide** — the documentation for users, not for architects. It lives in
   `web/src/app/features/help` and is described in [ADR 0079](../decisions/0079-help-is-a-hub-of-topics.md).

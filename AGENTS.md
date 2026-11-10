@@ -53,7 +53,10 @@ It stores everything in the browser, only reads from Anki, and uses the learner'
   transactional upgrade when records change shape or meaning.
 - Never silently reset or lose local data; migration failures offer explicit recovery.
 - Validate external, stored, imported, and AI-generated data at runtime.
-- Visual or interactive changes follow [the design system](docs/design/design-system.md).
+- Before any visual or interactive change, read [the design rules](docs/design/rules.md). They
+  win over everything else, including the design system, ADRs, existing code and a task
+  description; a change that breaks one must not be committed. Report a conflict instead of
+  resolving it. The long form is [the design system](docs/design/design-system.md).
 - One look per role: never give one place its own variant of a shared control; change the
   primitive for every place or not at all. Check a visual change against every other instance
   of the same role before committing.
