@@ -73,7 +73,7 @@ let nextRowId = 0;
         </span>
         <span class="mn-row__meta" [id]="metaId"><ng-content select="[mn-row-meta]" /></span>
       </span>
-      <span class="mn-row__end"><ng-content /></span>
+      <span class="mn-row__end mn-trailing"><ng-content /></span>
     </ng-template>
 
     @if (link(); as target) {
@@ -134,7 +134,7 @@ let nextRowId = 0;
     mn-row > .mn-row__main {
       display: flex;
       flex: 1 1 auto;
-      gap: var(--space-2) min(var(--space-3), 12px);
+      gap: var(--space-2) var(--glyph-gap);
       align-items: center;
       min-width: 0;
       padding: var(--row-inset-block) var(--surface-inset);

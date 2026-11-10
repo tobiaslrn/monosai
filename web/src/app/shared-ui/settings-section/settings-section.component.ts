@@ -20,7 +20,7 @@ let nextSettingsSectionId = 0;
     >
       <header class="mn-settings-section__header">
         <h2 [id]="headingId">{{ heading() }}</h2>
-        <div class="mn-settings-section__action">
+        <div class="mn-settings-section__action mn-trailing">
           <ng-content select="[mn-settings-section-action]" />
         </div>
       </header>

@@ -107,6 +107,7 @@ export type ClusterJustify = 'start' | 'end' | 'between';
   host: {
     '[style.gap]': 'gapValue()',
     '[class.cluster--end]': "justify() === 'end'",
+    '[class.mn-trailing]': "justify() === 'end'",
     '[class.cluster--between]': "justify() === 'between'",
     '[class.cluster--fill-narrow]': "fill() === 'narrow'",
     '[class.cluster--fill-first]': "fill() === 'first'",
@@ -118,6 +119,7 @@ export type ClusterJustify = 'start' | 'end' | 'between';
     mn-cluster {
       display: flex;
       flex-wrap: wrap;
+      gap: var(--inline-gap);
       align-items: center;
       justify-content: flex-start;
       min-width: 0;
@@ -145,10 +147,14 @@ export type ClusterJustify = 'start' | 'end' | 'between';
   `,
 })
 export class ClusterComponent {
-  readonly gap = input<Space>(2);
+  /** Omitted, the inline gap every row of side-by-side things shares. */
+  readonly gap = input<Space | null>(null);
   readonly justify = input<ClusterJustify>('start');
   readonly fill = input<'none' | 'narrow' | 'first'>('none');
-  protected readonly gapValue = computed(() => spaceToken(this.gap()));
+  protected readonly gapValue = computed(() => {
+    const step = this.gap();
+    return step === null ? null : spaceToken(step);
+  });
 }
 
 /**
@@ -166,6 +172,7 @@ export class ClusterComponent {
     :host {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--mn-grid-min)), 1fr));
+      gap: var(--stack-gap);
       min-width: 0;
     }
   `,
@@ -173,8 +180,12 @@ export class ClusterComponent {
 export class GridComponent {
   /** The narrowest a column may be, in rem so it grows with the text. */
   readonly min = input<'9rem' | '12rem'>('12rem');
-  readonly gap = input<Space>(3);
-  protected readonly gapValue = computed(() => spaceToken(this.gap()));
+  /** Omitted, the stack gap between the items inside a card. */
+  readonly gap = input<Space | null>(null);
+  protected readonly gapValue = computed(() => {
+    const step = this.gap();
+    return step === null ? null : spaceToken(step);
+  });
 }
 
 /**

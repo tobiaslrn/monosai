@@ -22,7 +22,7 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
 @Component({
   selector: 'mn-text-models',
   host: {
-    class: 'node mn-inset mn-settings-group',
+    class: 'node mn-settings-group',
     role: 'region',
     'aria-labelledby': 'mn-text-model-label',
     'data-capability': 'text',
@@ -62,7 +62,6 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
 
     <mn-settings-row label="Model">
       <mn-model-picker
-        [compact]="true"
         data-testid="text-model-picker"
         label="text models"
         [models]="textModels()"
@@ -138,7 +137,6 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
               <span class="mn-status-pill mn-status-pill--success">Ready</span>
             }
             <mn-model-picker
-              [compact]="true"
               [attr.data-testid]="task.id + '-model-picker'"
               [label]="task.label + ' models'"
               fallbackLabel="Same as text"

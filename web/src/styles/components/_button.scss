@@ -8,7 +8,7 @@
   align-items: center;
   justify-content: center;
   min-height: var(--touch-target);
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--button-inset);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-pill);
   background: transparent;
@@ -72,6 +72,24 @@
 .mn-button--danger {
   border-color: var(--status-danger);
   color: var(--status-danger);
+}
+
+/*
+ * A borderless button at the edge of a column gives up its padding outward, so
+ * its label — the only thing drawn — lines up with the edge the column's text
+ * and cards keep, while its hit area keeps its size. Every primitive's trailing
+ * slot (`.mn-trailing`) does this for the ghost button that ends it; `edge` on
+ * `mnButton` does it anywhere else.
+ */
+.mn-trailing > .mn-button--ghost:last-child,
+.mn-button--edge-end {
+  max-width: calc(100% + var(--button-inset));
+  margin-inline-end: calc(-1 * var(--button-inset));
+}
+
+.mn-button--edge-start {
+  max-width: calc(100% + var(--button-inset));
+  margin-inline-start: calc(-1 * var(--button-inset));
 }
 
 :where(html[data-pointer='mouse'])

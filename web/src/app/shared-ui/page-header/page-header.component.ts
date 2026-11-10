@@ -84,7 +84,7 @@ import { PageNoticeSlot } from './page-notice-slot';
           <p class="subtitle" data-testid="page-subtitle">{{ line }}</p>
         }
       </div>
-      <div class="trailing">
+      <div class="trailing mn-trailing">
         <ng-content />
       </div>
     </header>

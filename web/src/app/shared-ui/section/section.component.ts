@@ -35,7 +35,9 @@ let nextSectionId = 0;
     <section class="mn-section__frame" [id]="sectionId()" [attr.aria-labelledby]="headingId">
       <header class="mn-section__header">
         <h2 [id]="headingId">{{ heading() }}</h2>
-        <span class="mn-section__action"><ng-content select="[mn-section-action]" /></span>
+        <span class="mn-section__action mn-trailing"
+          ><ng-content select="[mn-section-action]"
+        /></span>
       </header>
       <div class="mn-section__lead"><ng-content select="[mn-section-lead]" /></div>
       <div class="mn-section__card" [class.mn-section__card--rows]="rows()">
@@ -109,7 +111,7 @@ let nextSectionId = 0;
       gap: var(--stack-gap);
       min-width: 0;
       padding: var(--surface-inset);
-      border: 1px solid color-mix(in srgb, var(--border-subtle) 35%, transparent);
+      border: 1px solid var(--border-subtle-faint);
       border-radius: var(--radius-card);
       background: var(--surface-raised);
       container-type: inline-size;

@@ -24,7 +24,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       <span class="mn-settings-row__title" [attr.id]="labelId()">{{ label() }}</span>
       <ng-content select="[mn-settings-row-detail]" />
     </div>
-    <div class="mn-settings-row__end" [class.mn-actions]="actions()">
+    <div class="mn-settings-row__end mn-trailing" [class.mn-actions]="actions()">
       <ng-content />
     </div>
   `,

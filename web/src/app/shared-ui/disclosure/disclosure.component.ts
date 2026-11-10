@@ -14,7 +14,7 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
  * chevron that turns when it is open. The body is padded and stacks what it
  * holds across its width (a button goes in an `mn-cluster` to keep its own);
  * `[rows]` gives the padding up to rows that bring their own, indented under
- * the title, and `[flush]` is for a disclosure inside a padded card: the body
+ * the title by one indent, and `[flush]` is for a disclosure inside a padded card: the body
  * drops its side padding for content that needs the whole width, such as a
  * set of cards or chips, and the summary's words keep the card's content edge.
  *
@@ -124,16 +124,16 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
     mn-disclosure > .mn-disclosure__details > .mn-disclosure__body {
       display: flex;
       flex-direction: column;
-      gap: var(--space-3);
+      gap: var(--stack-gap);
       min-width: 0;
-      padding: var(--space-2) var(--space-4) var(--space-3);
+      padding: var(--group-gap) var(--surface-inset) var(--stack-gap);
       overflow-wrap: anywhere;
       border-top: 1px solid var(--border-subtle);
     }
 
     mn-disclosure > .mn-disclosure__details > .mn-disclosure__body--flush {
       overflow-wrap: normal;
-      padding: var(--space-1) 0 var(--space-4);
+      padding: var(--space-1) 0 var(--surface-inset);
       border-top: 0;
     }
 
@@ -145,22 +145,17 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
       margin-inline: calc(-1 * var(--surface-inset));
     }
 
+    /* Rows bring their own inset; the fold adds one indent and nothing else. */
     mn-disclosure > .mn-disclosure__details > .mn-disclosure__body--rows {
       gap: 0;
       overflow-wrap: normal;
-      padding: 0 var(--space-4) var(--space-2) var(--space-7);
+      padding: 0 0 var(--row-inset-block) var(--nest-indent);
       border-top: 0;
-    }
-
-    @media (max-width: 30rem) {
-      mn-disclosure > .mn-disclosure__details > .mn-disclosure__body--rows {
-        padding-inline: var(--space-3);
-      }
     }
 
     @container (max-width: 16em) {
       mn-disclosure > .mn-disclosure__details > .mn-disclosure__body--rows {
-        padding-inline: min(var(--space-2), 8px);
+        padding-inline-start: min(var(--space-2), 8px);
       }
     }
 

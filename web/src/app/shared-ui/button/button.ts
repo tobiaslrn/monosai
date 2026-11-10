@@ -27,11 +27,19 @@ export type ButtonVariant = 'default' | 'primary' | 'ghost' | 'danger' | 'icon' 
     '[class.mn-button--danger]': "variant() === 'danger'",
     '[class.mn-icon-button]': 'isIcon()',
     '[class.mn-icon-button--primary]': "variant() === 'icon-primary'",
+    '[class.mn-button--edge-start]': "edge() === 'start'",
+    '[class.mn-button--edge-end]': "edge() === 'end'",
   },
 })
 export class ButtonDirective {
   /** An empty attribute (`mnButton`) is the default, reversible action. */
   readonly mnButton = input<ButtonVariant | ''>('');
+  /**
+   * For a borderless button at a column's edge that no primitive's trailing
+   * slot holds: it gives up its padding on that side, so its label, not its
+   * hit area, lines up with the edge.
+   */
+  readonly edge = input<'start' | 'end' | null>(null);
 
   constructor() {
     const written = inject(new HostAttributeToken('mnButton'), { optional: true });

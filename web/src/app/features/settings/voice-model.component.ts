@@ -33,7 +33,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
 @Component({
   selector: 'mn-voice-model',
   host: {
-    class: 'node mn-inset mn-settings-group',
+    class: 'node mn-settings-group',
     role: 'region',
     'aria-labelledby': 'mn-audio-model-label',
     'data-capability': 'audio',
@@ -81,7 +81,6 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
 
     <mn-settings-row label="Model">
       <mn-model-picker
-        [compact]="true"
         data-testid="audio-model-picker"
         label="speech models"
         [speech]="true"

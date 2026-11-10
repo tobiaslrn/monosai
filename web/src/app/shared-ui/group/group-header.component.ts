@@ -16,7 +16,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   host: { class: 'mn-settings-group__header' },
   template: `
     <h3 class="mn-group-title" [id]="headingId()">{{ heading() }}</h3>
-    <div class="status mn-actions"><ng-content /></div>
+    <div class="status mn-actions mn-trailing"><ng-content /></div>
   `,
   styles: `
     .status {

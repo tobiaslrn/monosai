@@ -35,7 +35,7 @@ export type BannerTone = 'info' | 'warning' | 'error';
         <mn-icon class="mn-lead" [name]="name" [size]="18" />
       }
       <div class="words"><ng-content /></div>
-      <div class="actions"><ng-content select="[mn-banner-action]" /></div>
+      <div class="actions mn-trailing"><ng-content select="[mn-banner-action]" /></div>
     </div>
   `,
   styles: `

@@ -39,7 +39,7 @@
   display: grid;
   grid-template-columns: minmax(min-content, 1fr) auto;
   min-width: 0;
-  min-height: 3.625rem;
+  min-height: var(--row-min-height);
   gap: var(--space-2) var(--space-3);
   align-items: center;
   padding: var(--row-inset-block) var(--surface-inset);
@@ -68,7 +68,7 @@
 }
 
 .mn-settings-row__hint {
-  margin-top: 2px;
+  margin-top: var(--line-gap);
   color: var(--text-secondary);
   font-size: var(--text-sm);
   line-height: var(--leading-snug);
@@ -118,49 +118,36 @@
   min-width: 0;
 }
 
-.mn-section__card--rows > .mn-settings-group {
-  margin: var(--surface-inset);
-  padding: 0;
-  overflow: clip;
-  border-top: 0;
-}
-
+/*
+ * A group of rows inside a card of rows — Text, Voice — is not a second
+ * surface. It is headed by a small-caps secondary row carrying its status, and
+ * its rows sit on the card's own inset with a hairline between each, so the
+ * card keeps one edge and one column of controls.
+ */
 .mn-settings-group__header {
   display: flex;
   flex-wrap: wrap;
   min-width: 0;
-  min-height: 2.75rem;
-  gap: var(--space-2);
+  min-height: var(--touch-target);
+  gap: var(--inline-gap);
   align-items: center;
-  padding: var(--row-inset-block) var(--surface-inset);
-  border-bottom: 1px solid var(--border-subtle);
-  background: transparent;
+  padding: var(--stack-gap) var(--surface-inset) 0;
 }
 
 .mn-settings-group__header > .mn-group-title {
   flex: 1;
-  color: var(--text-primary);
-  font-size: var(--text-md);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.04em;
 }
 
-.mn-settings-group > .mn-settings-row {
-  padding-inline: var(--surface-inset);
-}
-
+/* What a disclosure or a route opens sits in from its row by one indent. */
 .mn-settings-subrows {
-  padding: 0 var(--surface-inset) var(--row-inset-block) var(--space-7);
-}
-
-.mn-settings-subrows > .mn-settings-row {
-  padding-inline: 0;
+  padding-block-end: var(--row-inset-block);
+  padding-inline-start: var(--nest-indent);
 }
 
 .mn-settings-group > mn-disclosure {
   border-top: 1px solid var(--border-subtle);
-}
-
-.mn-disclosure__body--rows .mn-settings-subrows {
-  padding-inline: var(--surface-inset) 0;
 }
 
 .mn-settings-feedback {
@@ -170,15 +157,14 @@
   font-size: var(--text-sm);
 }
 
+/*
+ * Every field at a row's end — a select, an input, a picker, a segmented
+ * choice — is one width, so a card's controls share one column and one edge.
+ */
 .mn-settings-row :where(select.mn-control, input.mn-control),
-.mn-settings-row mn-token-budget-field,
-.mn-settings-row mn-model-picker {
-  width: min(10.625rem, 50cqi);
+.mn-settings-row :where(mn-token-budget-field, mn-model-picker, mn-segmented-control) {
+  width: min(var(--control-width), 50cqi);
   max-width: 100%;
-}
-
-.mn-settings-row__end > mn-model-picker {
-  flex: 1 1 auto;
 }
 
 .mn-settings-row .mn-actions {
@@ -204,30 +190,6 @@
   outline-offset: -3px;
 }
 
-@media (max-width: 30rem) {
-  .mn-settings-row__end {
-    max-width: 100%;
-  }
-
-  .mn-settings-row :where(select.mn-control, input.mn-control),
-  .mn-settings-row mn-token-budget-field,
-  .mn-settings-row mn-model-picker {
-    width: min(9.375rem, 50cqi);
-  }
-
-  /*
-   * A phone has no room to spend on a second level: the inset group and its
-   * sub-rows keep a slimmer gutter, so a row's control stays beside its label.
-   */
-  .mn-section__card--rows > .mn-settings-group {
-    margin: var(--stack-gap);
-  }
-
-  .mn-settings-subrows {
-    padding-inline: var(--stack-gap);
-  }
-}
-
 /* Narrow or large text: the control takes a line of its own, the full row wide. */
 @container (max-width: 16em) {
   .mn-settings-row {
@@ -240,21 +202,16 @@
 
   /* Rem-based gutters grow with the text, so the control gets the width back. */
   .mn-settings-row,
-  .mn-settings-group > .mn-settings-row {
+  .mn-settings-group__header {
     padding-inline: min(var(--space-2), 8px);
-  }
-
-  .mn-section__card--rows > .mn-settings-group {
-    margin: min(var(--space-1), 4px);
   }
 
   .mn-settings-subrows {
-    padding-inline: min(var(--space-2), 8px);
+    padding-inline-start: min(var(--space-2), 8px);
   }
 
   .mn-settings-row :where(select.mn-control, input.mn-control),
-  .mn-settings-row mn-token-budget-field,
-  .mn-settings-row mn-model-picker {
+  .mn-settings-row :where(mn-token-budget-field, mn-model-picker, mn-segmented-control) {
     width: 100%;
   }
 

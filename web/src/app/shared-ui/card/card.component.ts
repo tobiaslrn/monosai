@@ -18,7 +18,7 @@ let nextCardId = 0;
   host: { '[attr.aria-labelledby]': 'heading() ? headingId : null' },
   template: `
     @if (heading(); as title) {
-      <div class="head">
+      <div class="head mn-trailing">
         @if (level() === 2) {
           <h2 class="title" [id]="headingId" [attr.tabindex]="focusable() ? -1 : null">
             {{ title }}
@@ -40,7 +40,7 @@ let nextCardId = 0;
       gap: var(--stack-gap);
       min-width: 0;
       padding: var(--surface-inset);
-      border: 1px solid color-mix(in srgb, var(--border-subtle) 35%, transparent);
+      border: 1px solid var(--border-subtle-faint);
       border-radius: var(--radius-card);
       background: var(--surface-raised);
     }
