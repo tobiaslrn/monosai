@@ -128,11 +128,6 @@ import { IconComponent } from '../icon/icon.component';
       color: var(--text-on-action);
     }
 
-    /* The check pops in as the step is finished. */
-    .is-done .mark mn-icon {
-      @include motion.emphasis(var(--motion-fast));
-    }
-
     .is-current .mark {
       border-color: var(--action-primary);
     }

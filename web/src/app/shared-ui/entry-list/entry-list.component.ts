@@ -102,7 +102,8 @@ import { IconComponent } from '../icon/icon.component';
       display: none;
     }
 
-    :where(html[data-pointer='mouse']) mn-entry summary:where(:hover) {
+    :where(html[data-pointer='mouse']) mn-entry summary:where(:hover),
+    mn-entry summary:where(:active) {
       background: var(--surface-sunken-hover);
     }
 

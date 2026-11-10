@@ -36,12 +36,12 @@
   line-height: var(--leading-tight);
   white-space: nowrap;
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
   @include motion.state(background-color, border-color, color);
 }
 
 /* States follow in source order at one specificity: rest, hover, chosen, chosen and hovered. */
-:where(html[data-pointer='mouse']) .mn-segmented > label:where(:hover) {
+:where(html[data-pointer='mouse']) .mn-segmented > label:where(:hover),
+.mn-segmented > label:where(:active) {
   background: var(--surface-sunken);
 }
 
@@ -51,7 +51,8 @@
   color: var(--action-primary-text);
 }
 
-:where(html[data-pointer='mouse']) .mn-segmented > label:where(:has(input:checked):hover) {
+:where(html[data-pointer='mouse']) .mn-segmented > label:where(:has(input:checked):hover),
+.mn-segmented > label:where(:has(input:checked):active) {
   background: var(--action-primary-soft-hover);
 }
 

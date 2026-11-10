@@ -141,8 +141,6 @@ export interface TokenActivation {
       /* A tint fades in rather than snapping, which is what a press on a
        * sentence feels like on a phone. */
       @include motion.state(background-color);
-      /* The platform's grey flash would fight every tint defined here. */
-      -webkit-tap-highlight-color: transparent;
       /*
        * Constant, never introduced by a state: switching from the initial
        * slice to clone re-applies the inline padding to every wrapped line, so

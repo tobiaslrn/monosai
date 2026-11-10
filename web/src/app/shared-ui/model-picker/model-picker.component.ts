@@ -246,7 +246,10 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
 
     :host-context(html[data-pointer='mouse']) .model-choice:hover,
     :host-context(html[data-pointer='mouse']) .star:hover,
-    :host-context(html[data-pointer='mouse']) .fallback:hover {
+    :host-context(html[data-pointer='mouse']) .fallback:hover,
+    .model-choice:active,
+    .star:active,
+    .fallback:active {
       background: var(--surface-sunken);
     }
 
@@ -254,11 +257,6 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
       min-width: var(--touch-target);
       color: var(--action-primary);
       font-size: var(--text-xl);
-    }
-
-    /* A star the learner has just set pops once; the press left focus on it. */
-    .star[aria-pressed='true']:focus {
-      @include motion.emphasis;
     }
 
     .fallback {

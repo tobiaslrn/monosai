@@ -1,24 +1,22 @@
 /*
  * Motion, defined once.
  *
- * Durations, easings, distances and scales are tokens in `_tokens.scss`. This
+ * Durations, easings and distances are tokens in `_tokens.scss`. This
  * module turns them into a small set of *named motions*, and every moving thing
  * in Monosai is one of them:
  *
- *   state     a control settling into a new colour or tint (hover, focus, selection)
- *   press     a control answering the finger or the click that pressed it
+ *   state     a control settling into a new colour or tint (hover, press, focus, selection)
  *   enter     a message or a block arriving where it will stay: fades in, rising a little
  *   reveal    a banner arriving at the top of the window: its row opens, then its words fade in
  *   conceal   the same leaving
  *   dialog    a centred dialog arriving over the page and leaving it
- *   grow      a menu or a picker opening from the control that opened it
+ *   grow      a menu or a picker fading in from the control that opened it
  *   sheet     a sheet rising from the edge it docks to, and going back down it
  *   scrim     the dimmed page behind a modal surface fading in and out
  *   expand    a disclosure opening and closing its height
  *   turn      a chevron turning to say a fold is open
  *   step      a step of a form arriving from the side it was travelled to
  *   fill      a bar uncovered up to how far a workflow has come
- *   emphasis  a mark that has just been set: a check, a star, a radio's dot pops once
  *   draw      a success check drawing itself once
  *   spin      a glyph turning while the work it stands for runs
  *   breathe   a busy control, or a wait with no stages, breathing
@@ -36,7 +34,7 @@
 
 /*
  * A control settling into a new state. `$properties` are the paint properties
- * that change; transform is added for a control that also answers a press.
+ * that change. A press is one of these: a tint, never a movement.
  */
 @mixin state($properties...) {
   $list: ();
@@ -92,11 +90,6 @@
   }
 }
 
-/* What a pressed control does while it is held: it gives way slightly. */
-@mixin press($scale: var(--motion-press-scale)) {
-  transform: scale($scale);
-}
-
 /* A block or a message arriving. Fills backwards only, so it never holds a transform. */
 @mixin enter($delay: 0s) {
   animation: mn-enter var(--motion-medium) var(--ease-enter) $delay backwards;
@@ -115,7 +108,7 @@
   animation: mn-conceal var(--motion-medium) var(--ease-exit) forwards;
 }
 
-/* A centred dialog: in, rising a little out of a slightly smaller size. */
+/* A centred dialog: in, fading and rising a little. */
 @mixin dialog-enter {
   animation: mn-dialog-in var(--motion-medium) var(--ease-enter) backwards;
 }
@@ -123,22 +116,22 @@
 /* Out, the reverse, faster; applied while the dialog is leaving. */
 @mixin dialog-leave {
   opacity: 0;
-  transform: translateY(var(--motion-rise)) scale(var(--motion-scale-from));
+  transform: translateY(var(--motion-rise));
   transition:
     opacity var(--motion-fast) var(--ease-exit),
     transform var(--motion-fast) var(--ease-exit);
 }
 
 /*
- * A native popover growing from its trigger. Open, it comes in from a few
- * pixels toward the trigger and a little smaller; closed, it goes back the same
+ * A native popover fading in from its trigger. Open, it comes in from a few
+ * pixels toward the trigger, never resizing; closed, it fades back the same
  * way, faster, while the discrete properties keep it painted and in the top
  * layer until it has gone. `$origin` is the corner nearest the trigger.
  */
 @mixin grow($origin: top right) {
   transform-origin: $origin;
   opacity: 0;
-  transform: translateY(calc(-1 * var(--motion-nudge))) scale(var(--motion-scale-from));
+  transform: translateY(calc(-1 * var(--motion-nudge)));
   transition:
     opacity var(--motion-fast) var(--ease-exit),
     transform var(--motion-fast) var(--ease-exit),
@@ -153,7 +146,7 @@
 
     @starting-style {
       opacity: 0;
-      transform: translateY(calc(-1 * var(--motion-nudge))) scale(var(--motion-scale-from));
+      transform: translateY(calc(-1 * var(--motion-nudge)));
     }
   }
 }
@@ -249,11 +242,6 @@
   transition: $property var(--motion-medium) var(--ease-settle);
 }
 
-/* A mark that has just been set pops once. */
-@mixin emphasis($delay: 0s) {
-  animation: mn-pop var(--motion-medium) var(--ease-settle) $delay backwards;
-}
-
 /*
  * A success check drawing itself once. Included on the stroked SVG shape;
  * `$length` is at least the stroke's length in its own user units.
@@ -340,7 +328,7 @@
   @keyframes mn-dialog-in {
     from {
       opacity: 0;
-      transform: translateY(var(--motion-rise)) scale(var(--motion-scale-from));
+      transform: translateY(var(--motion-rise));
     }
   }
 
@@ -361,20 +349,6 @@
     from {
       opacity: 0;
       transform: translateX(calc(-1 * var(--motion-shift)));
-    }
-  }
-
-  @keyframes mn-pop {
-    0% {
-      transform: scale(var(--motion-pop-from));
-    }
-
-    60% {
-      transform: scale(var(--motion-pop-peak));
-    }
-
-    100% {
-      transform: scale(1);
     }
   }
 

@@ -30,12 +30,19 @@ import { PopupDirective } from '../popup/popup.directive';
   },
   template: `<ng-content />`,
   styles: `
-    /* Every menu is one column of rows, whether or not it is a role="menu". */
-    :host(:popover-open) {
-      display: flex;
+    /*
+     * Every menu is one column of rows, whether or not it is a role="menu". The
+     * layout is the menu's own, not the open state's: while it fades out it is
+     * no longer :popover-open, and rows laid out by that state would reflow.
+     */
+    :host(.mn-popup) {
       flex-direction: column;
       min-width: var(--menu-min-width);
       padding: var(--space-1);
+    }
+
+    :host(:popover-open) {
+      display: flex;
     }
   `,
 })

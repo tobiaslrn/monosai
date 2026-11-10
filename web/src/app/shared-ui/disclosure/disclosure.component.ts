@@ -79,7 +79,8 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
     :where(html[data-pointer='mouse'])
       mn-disclosure
       > .mn-disclosure__details
-      > .mn-disclosure__summary:where(:hover) {
+      > .mn-disclosure__summary:where(:hover),
+    mn-disclosure > .mn-disclosure__details > .mn-disclosure__summary:where(:active) {
       background: var(--surface-sunken-hover);
     }
 

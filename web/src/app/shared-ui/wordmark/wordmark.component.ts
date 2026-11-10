@@ -72,7 +72,6 @@ function other(variant: WordmarkVariant): WordmarkVariant {
       cursor: default;
       user-select: none;
       @include motion.fill;
-      -webkit-tap-highlight-color: transparent;
     }
 
     .strip {

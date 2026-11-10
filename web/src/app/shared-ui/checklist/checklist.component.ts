@@ -204,7 +204,8 @@ export class ChecklistComponent {
       @include motion.state(background-color);
     }
 
-    :where(html[data-pointer='mouse']) mn-checklist-step > a.mn-checklist-step__main:where(:hover) {
+    :where(html[data-pointer='mouse']) mn-checklist-step > a.mn-checklist-step__main:where(:hover),
+    mn-checklist-step > a.mn-checklist-step__main:where(:active) {
       background: var(--surface-sunken);
     }
 
@@ -220,7 +221,8 @@ export class ChecklistComponent {
 
     :where(html[data-pointer='mouse'])
       mn-checklist-step[data-state='next']
-      > a.mn-checklist-step__main:where(:hover) {
+      > a.mn-checklist-step__main:where(:hover),
+    mn-checklist-step[data-state='next'] > a.mn-checklist-step__main:where(:active) {
       background: var(--action-primary-soft-hover);
     }
 
@@ -249,10 +251,6 @@ export class ChecklistComponent {
       border-color: var(--status-success);
       background: var(--status-success-soft);
       color: var(--status-success);
-    }
-
-    mn-checklist-step[data-state='done'] .mn-checklist-step__mark mn-icon {
-      @include motion.emphasis;
     }
 
     mn-checklist-step[data-state='waiting'] .mn-checklist-step__mark {

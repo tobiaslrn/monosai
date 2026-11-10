@@ -115,8 +115,6 @@ export interface TokenActivationSource {
       cursor: pointer;
       /* A mouse drag may begin on a word just as it can on punctuation. */
       user-select: text;
-      /* The platform's own grey flash would fight the tint below. */
-      -webkit-tap-highlight-color: transparent;
       @include motion.state(background-color);
     }
 

@@ -264,12 +264,11 @@
    * the long ones — one slow movement, a turn, a breath, a loop of steps, and a
    * toast's whole stay. Easings: standard for a state change, settle for a
    * surface moving to its place, enter and exit for a sheet arriving and
-   * leaving, ambient for what runs without being asked. Distances and scales
+   * leaving, ambient for what runs without being asked. Distances
    * say how far a named motion travels: a message rises, a menu nudges toward
-   * its trigger, a step shifts in from its side, a dialog and a menu grow from
-   * slightly smaller, a set mark pops past its size and back, and a pressed
-   * control gives way. The named motions themselves are `_motion.scss`; see the
-   * design system's motion section.
+   * its trigger, a step shifts in from its side. Nothing scales or overshoots,
+   * and a press is a colour, not a movement. The named motions themselves are
+   * `_motion.scss`; see the design system's motion section.
    */
   --motion-fast: 120ms;
   --motion-medium: 200ms;
@@ -288,10 +287,6 @@
   --motion-rise: 0.375rem;
   --motion-nudge: 0.25rem;
   --motion-shift: 1rem;
-  --motion-scale-from: 0.96;
-  --motion-pop-from: 0.6;
-  --motion-pop-peak: 1.15;
-  --motion-press-scale: 0.97;
 
   --touch-target: max(44px, 2.75rem);
   /* A shelf row, a vocabulary row and a fold's summary share one minimum. */

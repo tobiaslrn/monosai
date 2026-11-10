@@ -41,11 +41,13 @@
  * after a tap and leaves it stuck on the row that was opened, so it keys off
  * the pointer the learner is actually using rather than the media query.
  */
-:where(html[data-pointer='mouse']) .mn-list-row:where(:hover) {
+:where(html[data-pointer='mouse']) .mn-list-row:where(:hover),
+.mn-list-row:where(:active) {
   background: var(--surface-sunken);
 }
 
-:where(html[data-pointer='mouse']) .mn-list-row--muted:where(:hover) {
+:where(html[data-pointer='mouse']) .mn-list-row--muted:where(:hover),
+.mn-list-row--muted:where(:active) {
   background: var(--surface-sunken-muted);
 }
 

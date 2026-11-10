@@ -128,7 +128,8 @@ let nextRowId = 0;
     }
 
     /* Hover is a mouse state, and only a destination or an action takes it (ADR 0082). */
-    :where(html[data-pointer='mouse']) mn-row.mn-row--link:where(:hover):not(:has(> :disabled)) {
+    :where(html[data-pointer='mouse']) mn-row.mn-row--link:where(:hover):not(:has(> :disabled)),
+    mn-row.mn-row--link:where(:active):not(:has(> :disabled)) {
       background: var(--surface-sunken);
     }
 

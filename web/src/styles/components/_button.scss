@@ -25,9 +25,7 @@
   white-space: normal;
   overflow-wrap: break-word;
   cursor: pointer;
-  /* Keep the browser's rectangular touch flash from overpowering the pill. */
-  -webkit-tap-highlight-color: transparent;
-  @include motion.state(background-color, border-color, color, transform);
+  @include motion.state(background-color, border-color, color);
 }
 
 /*
@@ -110,8 +108,24 @@
   background: var(--status-danger-soft);
 }
 
+/*
+ * A press is colour, never movement: the control keeps its size and place and
+ * takes the tint of its hover, on touch as well as with a mouse.
+ */
 .mn-button:where(:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
-  @include motion.press;
+  background: var(--surface-sunken);
+}
+
+.mn-button--primary:where(:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
+  background: var(--action-primary-hover);
+}
+
+.mn-button--ghost:where(:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
+  background: var(--action-primary-soft);
+}
+
+.mn-button--danger:where(:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
+  background: var(--status-danger-soft);
 }
 
 /* A pressed toggle is selected, not primary: it gets a soft, readable tint. */
@@ -125,6 +139,12 @@
   .mn-button:where(
     [aria-pressed='true']:hover:not(:disabled, [aria-disabled='true'], [aria-busy='true'])
   ) {
+  background: var(--action-primary-soft-hover);
+}
+
+.mn-button:where(
+  [aria-pressed='true']:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])
+) {
   background: var(--action-primary-soft-hover);
 }
 
@@ -197,8 +217,7 @@
   color: var(--text-primary);
   text-decoration: none;
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  @include motion.state(background-color, color, transform);
+  @include motion.state(background-color, color);
 }
 
 /*
@@ -228,13 +247,11 @@
 
 .mn-icon-button:where(:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
   background: var(--surface-sunken);
-  @include motion.press;
 }
 
-/* A press keeps the fill; it only shrinks, so the control never turns grey. */
+/* A press keeps the fill and deepens it, so the control never turns grey. */
 .mn-icon-button--primary:where(:active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])) {
   background: var(--action-primary-hover);
-  @include motion.press;
 }
 
 .mn-icon-button:where([aria-pressed='true']:not(:disabled, [aria-disabled='true'])) {

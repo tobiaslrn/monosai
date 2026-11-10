@@ -51,10 +51,11 @@ test.describe('grammar profile', () => {
     await tap(page, summary);
     await expect(page.locator('#forms')).toHaveAttribute('open', /.*/);
 
-    // The phone still reports the last tap as a hover; the fold must look as it did before.
-    expect(await summary.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
-      resting,
-    );
+    // The phone still reports the last tap as a hover; once the press tint has faded the fold
+    // must look as it did before.
+    await expect
+      .poll(() => summary.evaluate((element) => getComputedStyle(element).backgroundColor))
+      .toBe(resting);
   });
 
   test('saves a chosen level only when asked and says what changed @smoke', async ({ page }) => {

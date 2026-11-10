@@ -99,7 +99,8 @@
  * States follow in source order at one specificity: rest, hover, picked, picked and
  * hovered. A card that cannot be changed takes no hover, and keeps its picked tint.
  */
-:where(html[data-pointer='mouse']) .mn-option-card:where(:hover:not(:has(input:disabled))) {
+:where(html[data-pointer='mouse']) .mn-option-card:where(:hover:not(:has(input:disabled))),
+.mn-option-card:where(:active:not(:has(input:disabled))) {
   background: var(--surface-sunken);
 }
 
@@ -109,7 +110,8 @@
 }
 
 :where(html[data-pointer='mouse'])
-  .mn-option-card:where(:has(input:checked):hover:not(:has(input:disabled))) {
+  .mn-option-card:where(:has(input:checked):hover:not(:has(input:disabled))),
+.mn-option-card:where(:has(input:checked):active:not(:has(input:disabled))) {
   background: var(--action-primary-soft-hover);
 }
 

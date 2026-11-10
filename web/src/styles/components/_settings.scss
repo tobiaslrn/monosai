@@ -88,6 +88,8 @@
 
 .mn-settings-row__result {
   display: block;
+  /* A result's line holds its place while the work that fills it runs. */
+  min-block-size: 1lh;
   margin-top: var(--space-1);
   color: var(--text-secondary);
   font-size: var(--text-sm);
@@ -192,7 +194,8 @@
 }
 
 /* Hover is a mouse state and adds no specificity (ADR 0082). */
-:where(html[data-pointer='mouse']) .mn-settings-row--interactive:where(:hover) {
+:where(html[data-pointer='mouse']) .mn-settings-row--interactive:where(:hover),
+.mn-settings-row--interactive:where(:active) {
   background: var(--surface-sunken-hover);
 }
 

@@ -9,6 +9,14 @@ body {
   height: 100%;
 }
 
+/*
+ * The browser's rectangular tap flash is off everywhere, once. Every tappable
+ * thing answers a press with its own pressed tint instead, drawn to its shape.
+ */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
   background: var(--surface-canvas);

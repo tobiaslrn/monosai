@@ -101,14 +101,6 @@ input[type='radio'] {
   accent-color: var(--action-primary);
 }
 
-/*
- * A choice the learner has just set pops once. The press leaves focus on the
- * control, so a box that was already ticked when the page arrived does not.
- */
-input:where([type='checkbox'], [type='radio']):not(.mn-switch):checked:focus {
-  @include motion.emphasis;
-}
-
 input[type='range'] {
   min-height: var(--touch-target);
   margin: 0;
@@ -156,6 +148,15 @@ input.mn-switch:checked {
 input.mn-switch:checked::after {
   background: var(--surface-raised);
   transform: translateX(1.25rem);
+}
+
+/* A press tints the track, not the row around it: the answer to a finger is local. */
+input.mn-switch:active:not(:disabled) {
+  background: var(--action-primary-soft);
+}
+
+input.mn-switch:checked:active:not(:disabled) {
+  background: var(--action-primary-hover);
 }
 
 input.mn-switch:focus-visible {

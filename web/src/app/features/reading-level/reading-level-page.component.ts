@@ -269,7 +269,8 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
       display: none;
     }
 
-    :host-context(html[data-pointer='mouse']) .fold > summary:hover {
+    :host-context(html[data-pointer='mouse']) .fold > summary:hover,
+    .fold > summary:active {
       background: var(--surface-sunken);
     }
 

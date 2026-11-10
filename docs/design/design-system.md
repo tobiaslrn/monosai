@@ -472,7 +472,7 @@ vocabulary — it is a radio card instead, with every sentence visible.
 
 The filled primary icon control is `.mn-icon-button--primary`: a large circle in
 the action colour, as the play control of the transport. It has its own hover and
-press (it shrinks slightly and keeps its fill; it never turns grey) and is drawn
+press (the fill deepens and the circle keeps its size; it never turns grey) and is drawn
 disabled like any other button. While the work it started is going on it is
 **busy**, not disabled, and stays the filled circle (see below). `--icon-button-primary-size` sets its diameter
 (4rem by default); a labelled one that says a word widens through layout rules
@@ -747,9 +747,11 @@ edge. Speed counts because a short flick is how a sheet is usually put away,
 and a sheet that waits to be dragged the full distance feels deaf to it.
 
 Every overlay arrives and leaves; none is cut in or out. A menu and a picker
-grow from their trigger and go back into it; a centred dialog or confirmation
-grows in over the page and shrinks back into it; a sheet leaves by its docked
-edge. However it is dismissed — the handle, the backdrop, Escape, a close, a
+fade in from their trigger with a few pixels of travel and fade back out; a
+centred dialog or confirmation fades in over the page and fades back out; none
+of them changes size on the way. A sheet leaves by its docked edge. A surface
+that is leaving keeps the layout it had while open, so rows never reflow as it
+fades. However it is dismissed — the handle, the backdrop, Escape, a close, a
 commit, or a confirmation's own answer — the surface leaves first while the
 scrim fades with it, and only then does the dialog close and report its result.
 A native popover does this through its own transition; a CDK dialog, whose
@@ -1041,31 +1043,42 @@ screen:
 
 | Named motion        | When                                                                                                          |
 | ------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **state**           | A control, a row, a field or a menu item changes colour or tint: hover, focus, selection, a chip being chosen |
-| **press**           | A control is held down: it gives way slightly, and a filled one keeps its fill                                |
+| **state**           | A control, a row, a field or a menu item changes colour or tint: hover, press, focus, selection, a chip being chosen |
 | **enter**           | A message or block arrives where it will stay: a notice, a field's error, an outcome, the working line        |
 | **reveal, conceal** | A banner arrives at the top of the window and later leaves: its row opens and closes, so the page moves once  |
-| **dialog**          | A centred task dialog or confirmation arrives over the page, and shrinks back into it when put away           |
-| **grow**            | A menu or a picker opens from the control that opened it, and goes back into it                               |
+| **dialog**          | A centred task dialog or confirmation fades in over the page, and fades back out when put away                |
+| **grow**            | A menu or a picker fades in from the control that opened it, and back out, never resizing                   |
 | **sheet**           | A docked sheet rises from its edge and goes back down it, continuing a drag from where the finger let go      |
 | **scrim**           | The page behind a modal surface dims as it arrives and clears as it leaves                                    |
 | **expand, turn**    | A disclosure opens or closes its height while its chevron turns                                               |
 | **step, fill**      | A form in steps moves: the new step arrives from the side travelled to, and the step row's rail fills         |
-| **emphasis**        | A mark the learner has just set pops once: a check, a radio, a favourite star, a finished step's check        |
-| **draw**            | A success check draws itself once, after its mark has popped                                                  |
+| **draw**            | A success check draws itself once                                                                            |
 | **spin**            | A glyph that draws work going round turns while that work runs                                                |
 | **breathe, pulse**  | A busy control, or a wait with no stages to name, breathes                                                    |
 
 Pages replace each other instantly; motion never sits between a tap and the
 next page.
 
-Emphasis answers the learner's own press: a box that was already ticked when
-the page arrived does not pop. A busy control's turning glyph is the one shared
+**A press is colour, never movement.** A button, a chip, a row, a menu item or a
+switch answers a finger or a click with a pressed tint drawn from the shared
+tokens, on touch as well as with a mouse; it never scales, bounces or shifts,
+and nothing changes width, height or layout while it is held or let go. A choice
+that is set simply takes its new state with the state motion: nothing pops, and
+no easing overshoots. The browser's own tap flash is switched off once, for the
+whole document, so the pressed tint is the only feedback; a row that wraps a
+switch does not tint, and only the switch's track and thumb change. A busy
+control's turning glyph is the one shared
 busy behaviour — any refresh, sync, retry, check or test whose button holds a
 turning glyph turns it while its work runs, from the button's own busy state,
 with no code of its own. The full home illustration of an empty library arrives
 once with the page; nothing on the application moves perpetually for
 decoration.
+
+A control that starts work keeps its label and its size while it works: the
+glyph turns and the control breathes, and a result that follows is given its
+line when the work starts, so it arrives into room already kept for it. Work
+that answers instantly is still held busy for a perceivable moment; a busy
+state that lasts a single frame reads as a flicker.
 
 A disclosure opening is the one change of size that animates, because the fold
 pushes what is below it either way and a height that jumps reads as a fault.
@@ -1077,9 +1090,9 @@ rounded ends where a scale would squash them; a selection that slides is one
 shape moved by a transform; a word that reveals is uncovered the same way; a
 thing that changes width keeps its box and changes what is shown of it.
 
-Beyond that, **a little character is allowed, and only on apparatus**: a pop on
-a mark just set, a settle on a surface arriving. The budget for it is small and
-it is spent on things the learner acts on or waits for.
+Beyond that, **a little character is allowed, and only on apparatus**: a settle
+on a surface arriving, a check drawing itself. The budget for it is small and it
+is spent on things the learner acts on or waits for.
 
 A **count the learner has earned rises when it changes**: the Library's standing
 line counts up to the number of words they know whenever a sync finds words they

@@ -81,10 +81,9 @@ let nextOutcomeId = 0;
       border-radius: var(--radius-mark);
       background: var(--status-success-soft);
       color: var(--status-success);
-      @include motion.emphasis(var(--motion-fast));
     }
 
-    /* The check draws itself once the mark has popped. The glyph's stroke is shorter than 24 units. */
+    /* The check draws itself once. The glyph's stroke is shorter than 24 units. */
     mn-outcome .mn-outcome__mark path {
       @include motion.draw(24, var(--motion-medium));
     }
