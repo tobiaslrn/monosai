@@ -45,6 +45,10 @@ scaling, focus and touch semantics stay whatever the device says they are.
 5. **Everything scales from the reader's own settings.** The browser's font
    size, the OS text scale, and the learner's reader scale are inputs the
    layout obeys. Nothing is pinned to a size the user cannot influence.
+6. **One look per role.** Every instance of a role — a dropdown, a button of
+   one emphasis, a row, a chip, a note, a dialog — looks and behaves the same
+   everywhere and on every screen size. A difference between two places is a
+   defect, not a variant. A role changes for everyone or not at all.
 
 ## 2. Structure
 

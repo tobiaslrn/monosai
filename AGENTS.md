@@ -54,6 +54,9 @@ It stores everything in the browser, only reads from Anki, and uses the learner'
 - Never silently reset or lose local data; migration failures offer explicit recovery.
 - Validate external, stored, imported, and AI-generated data at runtime.
 - Visual or interactive changes follow [the design system](docs/design/design-system.md).
+- One look per role: never give one place its own variant of a shared control; change the
+  primitive for every place or not at all. Check a visual change against every other instance
+  of the same role before committing.
 - Features and core compose `web/src/app/shared-ui/` primitives and write no styles. A
   missing visual need changes or adds a primitive first; the composition allowlist only
   shrinks.
