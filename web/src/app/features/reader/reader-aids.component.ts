@@ -64,7 +64,10 @@ const AIDS: readonly AidOption[] = [
         </mn-switch-row>
       }
       @if (vocabularyNotice(); as notice) {
-        <mn-notice tone="warning" data-testid="reader-vocabulary-notice">
+        <mn-notice
+          [tone]="vocabularyUnreadable() ? 'warning' : 'setup'"
+          data-testid="reader-vocabulary-notice"
+        >
           <p>
             {{ notice }}
             <a routerLink="/reading-level" fragment="words">What you can read</a>
@@ -137,6 +140,11 @@ export class ReaderAidsComponent {
    * very words. This says so beside the switch that draws the markers, which is
    * the control a learner reaches for when the page suddenly looks wrong.
    */
+  /** Words that could not be read make the marking wrong; no words is a step still to take. */
+  protected readonly vocabularyUnreadable = computed(
+    () => this.vocabulary.state().kind === 'unavailable',
+  );
+
   protected readonly vocabularyNotice = computed(() => {
     const state = this.vocabulary.state();
     switch (state.kind) {
