@@ -2,7 +2,9 @@
 
 Date: 2026-11-10
 Status: Accepted. Supersedes the picker kind of
-[0088](0088-four-overlay-kinds-on-one-surface.md).
+[0088](0088-four-overlay-kinds-on-one-surface.md). Amended by
+[0090](0090-settings-overview-and-searchable-picker.md): a searched list is a picker
+dialog, and a dropdown hangs from its row.
 
 ## Context
 

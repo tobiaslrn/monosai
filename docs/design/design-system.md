@@ -1,5 +1,9 @@
 # Monosai design system
 
+**Binding rules are in [rules.md](rules.md). Where this document and rules.md
+disagree, rules.md wins and this document is wrong.** This document is the long
+form: the reasoning behind those rules, and the detail they do not repeat.
+
 This document holds the design language: what Monosai's surfaces mean, which
 choice applies when, and what each rule rules out. It is the authority for
 _why_ an interface looks and behaves the way it does.
@@ -45,7 +49,7 @@ scaling, focus and touch semantics stay whatever the device says they are.
 5. **Everything scales from the reader's own settings.** The browser's font
    size, the OS text scale, and the learner's reader scale are inputs the
    layout obeys. Nothing is pinned to a size the user cannot influence.
-6. **One look per role.** Every instance of a role — a dropdown, a button of
+6. **One look per role** (R3). Every instance of a role — a dropdown, a button of
    one emphasis, a row, a chip, a note, a dialog — looks and behaves the same
    everywhere and on every screen size. A difference between two places is a
    defect, not a variant. A role changes for everyone or not at all.
@@ -198,7 +202,8 @@ another.
 
 **One column edge.** Section headings, the sentences under them, prose, page
 titles and the outer edge of every card start on the same edge; a heading is
-never inset from the card it names. Inside a card, every row's words — a shelf
+never inset from the card it names, except the small section label over a card
+of rows (see List section labels). Inside a card, every row's words — a shelf
 row, a settings row, a fold's summary, a blocker — sit one card inset from the
 card's edge, the same inset a padded card gives its content, so text in a card
 of rows lines up with text in the padded card above it. An inset group inside a
@@ -212,28 +217,28 @@ yet. An editor rendered in the action slot instead gets the width a button asks
 for and grows the heading row around itself, which centres the heading beside a
 column of squeezed fields.
 
-Settings uses the same page frame as every other non-reader screen. Each
-top-level group is one quiet raised card with a compact section heading. The
-heading sits close to its card and relies on type, weight, and spacing for rank;
-it carries no decorative rail or marker. A settings row keeps its label in one
-explicit left column and its value or action against the right edge; it does not
-let individual children wrap themselves into staggered rows. Only when the row's
-own container cannot support both columns does the complete trailing block move
-below the label. Actions use the same pill silhouette as the Library's filters
-and creation control.
-Complex model fields may use sunken groups inside that card, but may not
-introduce a second competing hierarchy of raised panels. The model fields appear
-once OpenRouter is connected: drawn disabled before that, they read as values
-nobody had chosen. The connection control is an ordinary outline action, not the
-page's filled primary, because it is pressed once. A card with one self-evident
-choice, such as the theme, carries its card title and no second group title.
+Settings uses the same page frame as every other non-reader screen, and it is an
+**overview**: short rows, each showing its label and its current value or
+status, in a few quiet raised cards, each under a small section label. A topic
+with its own groups, or with more than about eight settings (the AI models), is
+a **sub-page**. The overview carries it as one navigation row whose label is the
+sub-page's title and whose summary leads with its status and then its current
+value. A setting that needs the OpenRouter key is drawn disabled and says "Needs
+a key" until one is saved. The connection row opens the key dialog; it is pressed
+once, so it is a row and never the page's filled primary. A card with one
+self-evident choice, such as the theme, carries no second title. About stays on
+the overview, as short rows, because a PWA has no system app-info screen where a
+version and an update check could live. The rows, their five kinds and their
+status are in
+[rules.md](rules.md) (R13 to R19, R29) and described below
+([ADR 0090](../decisions/0090-settings-overview-and-searchable-picker.md)).
 
-The voice card uses a select labelled **Speaking style** with the three
-stable choices Natural, Clear, and Very clear when the selected model accepts
-instructions. It also carries a **Pace** select with Natural, Slow, and Very
-slow for every model: it is a model request preference, so both choices sit
-beside the voice and the sample's Play control. The player's local reading speed remains
-its own fine-tuning control.
+Speaking style (Natural, Clear, Very clear, only when the selected model accepts
+instructions) and Pace (Natural, Slow, Very slow, every model) are radio lists on
+the Voice sub-page, each option with its own line, because each choice needs a
+sentence. Both are model request preferences, so they sit beside the voice and
+the sample's Play row. The player's local reading speed remains its own
+fine-tuning control.
 
 ### Surfaces and groups
 
@@ -254,35 +259,57 @@ sentence case, small, semibold, secondary — or no title at all when its conten
 are self-evident.
 
 A **card of rows** — settings, most of all — never sinks a group of its rows into
-an inset. A group there (Text, Translation, Grammar, Voice) is headed by a row
-carrying its group title — the one plain sub-heading, never small caps — and its
-own status, and its rows stay on the card's own inset with a hairline between
-each, so the card keeps one content edge. Every group a task can override gets
-its own header, so the rows that belong to it never read as a continuation of the
-group above. Nothing in a group is indented: what belongs to a setting, such as
-the reasoning and limit of a task's own model, follows it as rows on the same
-edge. An action belongs in the
-row of what it acts on, not in the group's header, and it is a row (below). A setting that inherits shows
-the value that will actually apply, muted, never a label for the inheritance
-alone. A number a learner reads at rest is grouped; a hint says what the control
-cannot, in one muted line. A text input or a
-segmented choice at a row's end is one width, so the card's controls form one
-column with one right edge; a typed value sits in the row as plain text and shows
-a field's edge only while it is edited or wrong.
+an inset, and has no header row of its own: its rows stay on the card's inset
+with a hairline between each, inset from the text edge to the card's end, so the
+card keeps one content edge. What belongs to a setting, such as the reasoning and
+limit of a task's own model, follows it as rows on the same edge, never
+indented. A setting that inherits shows the value that will actually apply,
+muted, never a label for the inheritance alone.
 
-**A setting is a row: the row shows the label and the current value and the
-whole row is the control. Choices open the shared dropdown at the value; actions
-are rows, not buttons inside rows.** A *choice row* ends in the current value as
-plain secondary text and the up-down chevron, with no box, border, or field
-background; the whole row is its one button (a combobox named by the row's
-label), pressed anywhere, and the label never wraps under the value — the value
-is cut with an ellipsis first. An *action row* is one button across the whole
-row: its label is in the accent colour, or the danger colour when it destroys
-something and asks to confirm, with a status or one glyph at the end and never a
-button. One state layer — a translucent layer of the text colour — is what every
-row (settings, choice, action, shelf, dropdown and menu rows) shows under a
-pointer or a finger, so it lightens a dark surface and darkens a light one. A
-filter above a list is the same value-and-chevron button on its own.
+**One row, five kinds** (R14). A setting is a row: it shows its label and its
+current value, and the whole row is the control, a native button or a switch. The
+kinds differ only in their trailing end, which says what a press does:
+
+- A **navigation row** (`›`) opens a page or a dialog: a sub-page, the key, a
+  single typed value, the model picker.
+- A **choice row** (`⌃⌄`) opens the shared dropdown in place.
+- A **switch row** changes a setting now, and the whole row toggles.
+- A **segmented row** changes a setting now (the theme).
+- A **plain row**, with nothing at its end, acts or informs: an action row in the
+  accent colour (the danger colour when it destroys something and asks to
+  confirm), a fact row, a destructive row.
+
+A row never holds a field, a button, a pill or a boxed select. One state layer — a
+translucent layer of the text colour — is what every row (settings, choice,
+action, shelf, dropdown and menu rows) shows under a pointer or a finger, so it
+lightens a dark surface and darkens a light one. A filter above a list is the
+same value-and-chevron button on its own.
+
+**Values sit under the label.** The value of a navigation or choice row is its
+secondary line, so a long model name is never squeezed to nothing; the label never
+wraps under a value. A fact's value is at the row's end. Status leads the
+secondary line when it needs attention, so it survives truncation.
+
+**Status is a line, not a chip.** A row's own state is its secondary line. A
+group's state is one line under its card, a tone icon, words, and at most one
+action as a link at its end. A result of an action replaces that row's secondary
+line, and a failure that blocks the overview shows in the overview row's summary,
+with the cause on the sub-page. Group headers with a pill and a Test button are
+retired, and settings rows carry no pill.
+
+**Typed values open a field dialog.** A number, a name or a key in Settings is a
+navigation row that shows the value and opens a dialog holding the field. Fields
+live only in forms and dialogs.
+
+**One destructive pattern.** A destructive action is a row in the danger colour
+whose secondary line says what goes, then a confirmation that names it. It is
+never an inline fold or a button inside the row.
+
+**List section labels.** Over a card of rows, the section label is small,
+secondary and inset to the row text, as in Android and iOS settings. This is the
+one exception to the column edge below, and it holds for cards of rows only; a
+page section heading with an action (Word sources and Add source) keeps the
+column edge.
 
 A sample sentence — what a level reads like — is a quiet block set in from the
 words around it by a rule (`mn-example`), not a sunken box: the card it sits in
@@ -314,15 +341,15 @@ the way to build:
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Page frame       | `mn-page`, and `mn-page-header` for the one bar                                                                                                                                                                                                                                                                                                  |
 | Layout           | `mn-stack` (one vertical rhythm), `mn-cluster` (one wrapping row), `mn-split` (a label and its end), `mn-grid`; `mn-divider` between blocks                                                                                                                                                                                                      |
-| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                                                                                                                                                 |
+| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header` (never in settings); `mn-settings-section` and `mn-settings-row` for settings                                                                                                                             |
 | Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                                                                                                            |
 | Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                                                                                              |
-| Choices          | `mn-select` (one value from a list) and `mn-model-picker` (a model from the catalogue), both on `mn-dropdown`, `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips                                                                                                                                                                                  |
-| Fields           | `mn-field` (label, hint, and error around a control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                               |
+| Choices          | `mn-select` (one value from a short list, on `mn-dropdown`) and `mn-model-picker` (a model from the catalogue, the searchable picker), `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips                                                               |
+| Fields           | `mn-field` (label, hint, and error around a control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                                      |
 | Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                                                                                        |
 | Status           | `mn-checklist` with `mn-checklist-step` for first steps, `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
 | Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen` and `mn-not-found-panel` on the one whole-page state                                                                                                                                                                                                       |
-| Overlays         | `mn-menu` (a menu), `mn-dropdown` (the list a select or the model picker drops), `mn-sheet-popover` with `mnOverlayTrigger` (a popover-held task dialog, Story options), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                                                                                                    |
+| Overlays         | `mn-menu` (a menu), `mn-dropdown` (the list a select drops), the searchable model picker (`mn-model-picker`, on the task-dialog frame), `mn-sheet-popover` with `mnOverlayTrigger` (a popover-held task dialog, Story options), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`           |
 | Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                                                                                                     |
 | Glyphs           | `mn-icon`                                                                                                                                                                                                                                                                                                                                        |
 
@@ -332,7 +359,7 @@ clips, and no instance listens to anything while it is closed, which is what let
 one sit in every row of a virtualised shelf. A dropdown is a native popover too (`mn-dropdown`),
 and so is a task dialog that must outlive a file chooser (`mn-sheet-popover`);
 the other task dialogs and
-the confirmations are CDK dialogs (`mn-dialog`). Which of the four kinds an
+the confirmations are CDK dialogs (`mn-dialog`). Which of the five kinds an
 overlay is, and what it looks like, is described under App-level overlays and
 sheets. The reader's floating surfaces and sheets stay on `PopoverService`,
 because they own gestures and docking a menu does not have
@@ -395,10 +422,14 @@ stopping them — and holds the one control that can change that.
 ### Lists with filters
 
 A list that helps the learner find a known item keeps one quiet column and a
-compact toolbar: search first, the most useful quick filter beside it, and a
-labelled Filters action for the less frequent choices. The current sort is
-visible as one line of text, and the result count is both visible near the list
-and announced through a polite live region.
+compact toolbar: the search field, then one labelled Filters action (with a count
+when filters are on). **A filter is never in both the toolbar and the Filters
+dialog**: every less frequent choice lives in the dialog, as choice rows, and a
+range (a difficulty band) is one two-thumb slider. Under the toolbar, one line
+holds the result count (visible, and announced through a polite live region) and,
+at its end, the current sort as a text button with the up-down chevron that opens
+a menu. **Sort is a menu on that line, never a field in the Filters dialog.** The
+dialog's footer is Reset at the start and the primary "Show N" at the end.
 
 Rows show the value that makes them recognisable, the meaning or secondary
 line beneath it, and only the metadata needed to choose between rows. Where
@@ -464,7 +495,8 @@ supposed to be obvious. A control that genuinely needs its tooltip read before
 it can be pressed has failed the repetition test and should carry a label.
 
 One concept gets one icon, and one icon means one concept across the whole
-application.
+application. Icons come in three sizes, by role: inline, control and feature
+(R35).
 
 ### Appearance
 
@@ -486,12 +518,15 @@ previewing. `mnButton="danger"` keeps a destructive action outlined in the
 danger colour and is used where confirmation follows. A surface has at most one
 filled primary control; selected toggles use a soft selection tint instead.
 
-A choice of one out of a few — the theme — is a **segmented** control (`mn-segmented-control`): native radios drawn at the
-button's height, size, and weight, the chosen one wearing the same selection tint
-as a pressed toggle rather than the filled primary. The tint is one shape that
-slides to the chosen option, so changing the choice reads as one movement. When each choice needs a
-sentence to be understood before it is picked — how strict a story is about
-vocabulary — it is a radio card instead, with every sentence visible.
+A choice of one out of a few short, unexplained options — the theme — is a
+**segmented** control (`mn-segmented-control`): native radios drawn at the
+button's height, size, and weight. The chosen segment is a **neutral raised
+thumb**, one shape that slides to the chosen option, so changing the choice reads
+as one movement and the action colour keeps its one meaning, "press this". When
+each choice needs a sentence to be understood before it is picked — how strict a
+story is about vocabulary — it is a radio list instead, with every sentence
+visible. A segmented control that cannot fit its row becomes a radio list, by a
+container query on the control and not a breakpoint.
 
 The filled primary icon control is `.mn-icon-button--primary`: a large circle in
 the action colour, as the play control of the transport. It has its own hover and
@@ -599,7 +634,9 @@ states its mapping and lets the learner replace it with a new export.
 A disclosure hides detail that is set once and rarely revisited — a mapping, a
 list the learner is entitled to see but does not read. It is always
 native `details`/`summary`; it is never used to hide a control the surface's
-main action depends on, which is what a switch group is for.
+main action depends on, which is what a switch group is for. A disclosure never
+holds a destructive action: that is a row and a confirmation (see One destructive
+pattern).
 
 **A closed disclosure states its current value.** The summary carries the label
 and, opposite it, what is currently selected — a mapped field, a count of what
@@ -655,25 +692,29 @@ Custom. Filling every axis at random is a ghost action in the card's heading.
 
 ### Options to pick from
 
-**Every choice of one value from a list uses the app's select (`mn-select`);
-native selects are not used**, because their popup is the platform's and matches
-no other menu. The closed select is the model picker's trigger: the current
-value as plain text and the up-down chevron, not a form field (see "A setting is
-a row" above). Open, both are **the dropdown**
-(`mn-dropdown`, [ADR 0089](../decisions/0089-one-dropdown-on-every-screen.md)),
-and the dropdown has one look on every screen size:
+**Each kind of input has one control** (R20); the table is in rules.md. This
+section says how the list-shaped ones behave.
 
-- **Placement.** Directly below its field, a small token's gap away, and above
-  it only when its content does not fit below and there is more room above,
-  measured in the visual viewport so an on-screen keyboard counts as a lack of
-  room. Its start edge is its field's start edge; where it would leave the page
-  column from there, its end edge is the field's end edge instead. It never
-  leaves the column or the screen. Never a bottom sheet, never a centred dialog.
-- **Width.** At least as wide as its field and at least one minimum width
-  (`--dropdown-min-width`), so it is never cramped to a short value's width like
-  a native pop-up menu, growing with its content up to one maximum, and never
-  wider than the column. One rule on every screen size, with no phone variant. A
-  list that hangs from a value at a row's end ends at that value's end edge.
+**A short list is the dropdown.** Every choice of one value from about three to
+twelve known options uses the app's select (`mn-select`); native selects are not
+used, because their popup is the platform's and matches no other menu. Its
+trigger is a choice row: the current value as the row's secondary line and the
+up-down chevron at its end, not a form field. Open, it is **the dropdown**
+(`mn-dropdown`, [ADR 0089](../decisions/0089-one-dropdown-on-every-screen.md),
+amended by [ADR 0090](../decisions/0090-settings-overview-and-searchable-picker.md)),
+and it has one look on every screen size:
+
+- **Placement.** It hangs from its **row**, not from the value: its edge sits on
+  the card's edge, so its option text lines up with the row's text. It opens
+  below the row, a small token's gap away, and above only when its content does
+  not fit below and there is more room above, measured in the visual viewport so
+  an on-screen keyboard counts as a lack of room. A dropdown that is not in a row
+  (a filter above a list) hangs from its field's start edge, or its end edge
+  where it would leave the column. It never leaves the column or the screen.
+  Never a bottom sheet, never a centred dialog.
+- **Width.** The card's width, capped at `--dropdown-max-width` and never below
+  `--dropdown-min-width`, so it is never cramped to a short value's width like a
+  native pop-up menu. One rule on every screen size, with no phone variant.
 - **Anatomy.** The floating surface (white in light, a clearly lighter step above a card in
   dark) with its edge (a visible hairline in dark), the overlay radius and a shadow that reads on both, and one small padding the
   same on every side. Rows are inset in the panel, each with its own small
@@ -681,25 +722,18 @@ and the dropdown has one look on every screen size:
   label in normal weight and an optional muted line; the chosen option is
   marked only by a check in the accent colour at the row's end, never by
   weight or a tinted background. Hover, keyboard-active and pressed rows take
-  the neutral tint. A real split in a list (the fallback option from the
-  models, favourites from the rest) is one separator line or a muted group
-  label, inset with the rows. No title, no handle.
+  the neutral tint. A real split in a list is one separator line or a muted
+  group label, inset with the rows. No title, no handle.
 - **Scrolling.** Past its maximum height the rows scroll and the panel's
-  padding and any pinned search stay put.
+  padding stays put.
 - **Trigger.** Its chevron is the app's up-down stroke icon in the muted
   colour, never turned, and while the list is open its row keeps the state
-  layer. The list hangs from the value, not from the row.
-- **Back and outside presses.** Back closes an open dropdown or menu instead of
-  leaving the page, and a press outside only closes it: it never also activates
-  what was under the press.
-- **Motion.** It fades in from its field with a few pixels of travel from the
-  field's side and fades back out the same way.
-
-The model picker is the same dropdown with a search as its first row — a
-borderless row with the search glyph leading, no ring of its own because the
-panel is the focus context, one hairline under it, kept in view while the list
-scrolls under it — and a quiet favourite star before each option's check. Nothing about the dropdown is chosen
-by the place that uses it: there is no input that changes it for one screen.
+  layer.
+- **Back and outside presses** (R27). Back closes an open dropdown or menu
+  instead of leaving the page, and a press outside only closes it: it never also
+  activates what was under the press.
+- **Motion.** It fades in from its row with a few pixels of travel from the
+  row's side and fades back out the same way.
 
 An option that needs explaining gets the muted line rather than a hint under the
 whole control; an unexplained choice (a voice name) stays a bare label. A first
@@ -707,15 +741,29 @@ whole control; an unexplained choice (a voice name) stays a bare label. A first
 combobox: the field is the combobox and the list its listbox. Enter, Space, or
 an arrow opens it, the arrow keys, Home, End, and typing move through the
 options, Enter or Space chooses, and Escape closes it and returns focus to the
-field without choosing. A list that is searched, or that carries favourites, is a
-model picker instead. Two or three options a learner should compare at a glance
-stay a segmented control or radio cards in place.
+field without choosing.
+
+**A long or searched list is the picker dialog.** Choosing a model from the
+catalogue is a navigation row that opens a task dialog, not a dropdown, because
+a list that is searched needs room that a field-wide popup cannot give on a
+phone: a centred card of fixed height on a wide viewport (so filtering never
+makes it jump), a full-height sheet with a grab handle on a phone. The search
+field is pinned at its top and the keyboard leaves the list scrollable. Favourites
+form a group; the chosen model carries the check in the accent colour; a model's
+ID is monospace on one truncated line. Choosing closes it. It draws its rows as
+the dropdown does and is the one place a searched list lives (R25).
+
+**Two to five options that each need a line are a radio list in place**, on the
+sub-page or the form step, so every sentence stays visible: Pace, Speaking style,
+Anki word selection. Three short options compared at a glance are a segmented
+control. Radio cards remain only for drafted options the learner edits (the
+plots).
 
 Drafted options the learner picks one of — the plots — are **insets inside the
 card** that offers them, never cards of their own, so the page keeps its two
 levels of grouping. Each is a radio card (`mn-radio-card`, sunken when it sits in
 the card that offers it) with a native radio and a visible circle; the picked one
-wears the selection tint, the same one a segmented choice wears. Every checkbox and radio in the application, switches aside, is one size
+wears the selection tint, the same one a pressed toggle wears. Every checkbox and radio in the application, switches aside, is one size
 (`--control-check-size`), so a choice does not change how large its control is
 between screens. What an option was built from is a row of status
 pills: a value the learner chose is a plain pill, a value code chose is the
@@ -729,6 +777,15 @@ While options are being written the card names the wait in words — "Writing
 three plots…" — where the options will appear, and the commit is disabled. Options
 already on screen stay where they are, inert, until they are replaced. This is
 not a skeleton: nothing is drawn that pretends to be content.
+
+### Sliders
+
+An approximate value on an ordered scale — story length, the reader's text size —
+is a **slider row**: its value as text at the end of the label line, and the
+track under it. There is one look for every slider (R20): one track, ticks only
+for real stops, one thumb with a ring of the ground. A range is **one slider with
+two thumbs**, never two sliders. Where the exact value matters, the value is a
+field in a dialog instead.
 
 ### A glyph beside text that wraps
 
@@ -754,15 +811,16 @@ foot of the viewport while the ladder scrolls under it.
 
 ### App-level overlays and sheets
 
-Everything that floats over a page is one of **four kinds**, and the kind is
+Everything that floats over a page is one of **five kinds** (R23), and the kind is
 decided by what the learner is doing in it, never by the screen it is on:
 
-| Kind             | What it is for                                                                                      | Wide viewport                                                        | Small viewport                                      |
-| ---------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------- |
-| **Menu**         | A short list of commands or destinations: a new story, a story's actions                            | Hangs from its trigger, as a dropdown does, fitted to its commands   | The same                                            |
-| **Dropdown**     | Choosing one value from a list: any select, or a model from a searchable catalogue                  | Hangs from its field at the one dropdown width, search on top        | The same, at the column's width                     |
-| **Task dialog**  | A form or a task in steps: adding words and every step of it, the OpenRouter key, Filters, renaming | A centred card over a scrim: header, body, footer                    | A bottom sheet with a handle                        |
-| **Confirmation** | A question with a safe answer before something is lost, or a notice that needs an answer            | A centred card over a scrim                                          | Docked to the bottom edge, no handle                |
+| Kind                  | What it is for                                                                                                     | Wide viewport                                                      | Small viewport                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ | ---------------------------------------- |
+| **Menu**              | A short list of commands or destinations: a new story, a story's actions                                           | Hangs from its trigger, as a dropdown does, fitted to its commands | The same                                 |
+| **Dropdown**          | Choosing one value from a short list: any select                                                                   | Hangs from its row at the card's width, capped                     | The same                                 |
+| **Task dialog**       | A form or a task in steps: adding words and every step of it, the OpenRouter key, a typed value, Filters, renaming | A centred card over a scrim: header, body, footer                  | A bottom sheet with a handle             |
+| **Searchable picker** | Choosing from a long list people search: a model                                                                   | A task dialog of fixed height, search pinned at the top            | A full-height bottom sheet with a handle |
+| **Confirmation**      | A question with a safe answer before something is lost, or a notice that needs an answer                           | A centred card over a scrim                                        | Docked to the bottom edge, no handle     |
 
 All four are drawn from **one overlay surface**: one fill, one edge, one radius,
 one elevation, the card's inset as padding, and one scrim behind a modal one —
@@ -792,10 +850,9 @@ choice is made once, by the shared placement, for every dropdown and every menu
 alike.
 
 A **menu** is never a form: as soon as a panel holds a field, it is a task
-dialog. A **dropdown's** trigger is the value-and-chevron button of a choice row, so a
-card of settings has one control language. A choice of a few named options in a card
-that must be compared at a glance is not an overlay at all but a segmented
-control or radio cards in place, and stays so.
+dialog. A **dropdown's** trigger is a choice row, so a card of settings has one control
+language. A choice of a few named options that must be compared at a glance is
+not an overlay at all but a segmented control or a radio list in place.
 
 Modal surfaces use the CDK Dialog pattern or a native popover that behaves like
 it: focus moves into the surface, is held there while it is open, `Escape`
@@ -1009,6 +1066,11 @@ legibility.
 Colour is never the sole carrier of meaning. The two reading markers are drawn
 as squiggles as well as colours; status is named as well as tinted.
 
+Each tone has one meaning (R45), and the lavender accent is not a tone: it marks
+no status and nothing pressable, so a lavender Unread badge or favourite star is a
+defect. The favourite star uses the action colour. A token that changes is
+changed in the Android bridge too, in the same commit (R47).
+
 ## 5. Typography and units
 
 ### Type
@@ -1027,8 +1089,8 @@ font, and it is never used for text.
 The type scale is small on purpose: rank is carried by **size and weight within
 one scale**, not by a second system. All-caps micro-labels are not part of the
 language. The shared page or surface title uses the semantic
-`--text-page-title` token, a section uses `--text-xl`, and a group uses
-`--text-lg` one step below it. Body copy uses `--text-md`; metadata and
+`--text-page-title` token, a section uses `--text-xl`, and a group inside a
+card takes the small group title. Body copy uses `--text-md`; metadata and
 supporting copy use `--text-sm` or `--text-xs`; the Library hero uses
 `--text-display`. Weight follows the same hierarchy through the regular,
 medium, semibold, and bold weight tokens.
@@ -1113,7 +1175,7 @@ settling one way and leaving the other. A surface that is cut away between
 frames reads as a fault, not as an answer — and so does one that appears from
 nowhere.
 
-**Motion is defined once.** Every duration, easing, distance and scale is a
+**Motion is defined once** (R44). Every duration, easing, distance and scale is a
 token, and [`_motion.scss`](../../web/src/styles/_motion.scss) turns them into a
 small set of **named motions**; every keyframe lives there and nowhere else. A
 primitive includes the named motion its job calls for; a feature never writes a
@@ -1128,26 +1190,26 @@ accelerating, and what runs without being asked eases in and out.
 Which named motion applies is decided by what is happening, never by the
 screen:
 
-| Named motion        | When                                                                                                          |
-| ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Named motion        | When                                                                                                                 |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | **state**           | A control, a row, a field or a menu item changes colour or tint: hover, press, focus, selection, a chip being chosen |
-| **enter**           | A message or block arrives where it will stay: a notice, a field's error, an outcome, the working line        |
-| **reveal, conceal** | A banner arrives at the top of the window and later leaves: its row opens and closes, so the page moves once  |
-| **dialog**          | A centred task dialog or confirmation fades in over the page, and fades back out when put away                |
-| **grow**            | An anchored panel (Story options) fades in from the control that opened it, and back out, never resizing    |
-| **drop**            | A menu or a dropdown fades in from the trigger's side — down from above, up from below — and back out       |
-| **sheet**           | A docked sheet rises from its edge and goes back down it, continuing a drag from where the finger let go      |
-| **scrim**           | The page behind a modal surface dims as it arrives and clears as it leaves                                    |
-| **expand, turn**    | A disclosure opens or closes its height while its chevron turns                                               |
-| **step, fill**      | A form in steps moves: the new step arrives from the side travelled to, and the step row's rail fills         |
-| **draw**            | A success check draws itself once                                                                            |
-| **spin**            | A glyph that draws work going round turns while that work runs                                                |
-| **breathe, pulse**  | A busy control, or a wait with no stages to name, breathes                                                    |
+| **enter**           | A message or block arrives where it will stay: a notice, a field's error, an outcome, the working line               |
+| **reveal, conceal** | A banner arrives at the top of the window and later leaves: its row opens and closes, so the page moves once         |
+| **dialog**          | A centred task dialog or confirmation fades in over the page, and fades back out when put away                       |
+| **grow**            | An anchored panel (Story options) fades in from the control that opened it, and back out, never resizing             |
+| **drop**            | A menu or a dropdown fades in from the trigger's side — down from above, up from below — and back out                |
+| **sheet**           | A docked sheet rises from its edge and goes back down it, continuing a drag from where the finger let go             |
+| **scrim**           | The page behind a modal surface dims as it arrives and clears as it leaves                                           |
+| **expand, turn**    | A disclosure opens or closes its height while its chevron turns                                                      |
+| **step, fill**      | A form in steps moves: the new step arrives from the side travelled to, and the step row's rail fills                |
+| **draw**            | A success check draws itself once                                                                                    |
+| **spin**            | A glyph that draws work going round turns while that work runs                                                       |
+| **breathe, pulse**  | A busy control, or a wait with no stages to name, breathes                                                           |
 
 Pages replace each other instantly; motion never sits between a tap and the
 next page.
 
-**A press is colour, never movement.** A button, a chip, a row, a menu item or a
+**A press is colour, never movement** (R40). A button, a chip, a row, a menu item or a
 switch answers a finger or a click with a pressed tint drawn from the shared
 tokens, on touch as well as with a mouse; it never scales, bounces or shifts,
 and nothing changes width, height or layout while it is held or let go. A choice
@@ -1345,6 +1407,8 @@ The lavender accent is not a status colour: a setup step drawn in it read as a
 decoration rather than as what stands in the way. A short word that
 says where something stands — Ready, Unread, Test failed, a word's form — is a
 **status pill**, which is never pressable and so never takes the action colour.
+Pills are for shelves and plots; settings rows show status as text (see Status
+is a line, not a chip).
 Its dashed variant marks a value code chose rather than the learner; the dash,
 not a colour, is what says so.
 What is wrong with the value of one field is plain danger-coloured text directly
@@ -1405,7 +1469,8 @@ when it failed is not allowed to disappear.
 ### Irreversible actions
 
 Anything irreversible **asks first**, in a dialog that names the specific thing
-being destroyed. Undo is not used as a substitute: it requires holding deleted
+being destroyed, after a destructive row (never an inline fold with a second
+"Continue?" step). Undo is not used as a substitute: it requires holding deleted
 records in limbo, and the data model is better served by asking.
 
 The dialog states what is being deleted and what is kept. Its confirming action
@@ -1452,8 +1517,8 @@ These are not aspirations; a change that breaks one of them is a regression.
 - Text is resizable by browser zoom **and** by font-size preference, to 200%,
   without loss of content or function.
   A page heading other than the home wordmark wraps instead of ending in an
-  ellipsis; a control in a settings row takes a line of its own once the row is
-  too narrow for it; an end-slot value wraps; in a list row the badge, then the
+  ellipsis; a row's secondary line wraps at larger text sizes; a segmented control
+  that cannot fit becomes a radio list; in a list row the badge, then the
   title, then an overview row's value each take a line once the row is too narrow
   to hold them side by side, so a word is not broken to fit. The `narrow-screen`
   e2e spec holds this for Settings, Generate, What you can read, Help, the
@@ -1467,7 +1532,9 @@ These are not aspirations; a change that breaks one of them is a regression.
   themes. There is one focus ring: the action colour at its text strength, so it
   belongs to the palette, set off from its control by a gap of the ground so it
   shows around a filled action too. It is defined once, as a token, and reaches
-  3:1 against every ground in both themes.
+  3:1 against every ground in both themes. A text field is the one exception: it
+  shows focus as a heavier action-colour border and no ring, so the field never
+  draws a doubled edge.
 - Focus order follows visual order. Overlays trap focus, are labelled, close
   where closing is safe, and return focus to what opened them.
 - Every icon-only control has an accessible name that states its current state

@@ -10,7 +10,8 @@
  *   reveal    a banner arriving at the top of the window: its row opens, then its words fade in
  *   conceal   the same leaving
  *   dialog    a centred dialog arriving over the page and leaving it
- *   grow      a menu or a picker fading in from the control that opened it
+ *   grow      an anchored panel (Story options) fading in from the control that opened it
+ *   drop      a menu or a dropdown fading in from the trigger's side
  *   sheet     a sheet rising from the edge it docks to, and going back down it
  *   scrim     the dimmed page behind a modal surface fading in and out
  *   expand    a disclosure opening and closing its height

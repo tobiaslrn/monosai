@@ -135,17 +135,18 @@ shared its number until it was given the next free one.
 
 ### Platform and toolchain
 
-| ADR                                                                                      | Decision                                                                   |
-| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| [0001](../decisions/0001-angular-21-toolchain.md)                                        | Angular toolchain and unit-test environment                                |
-| [0003](../decisions/0003-architectural-boundary-enforcement.md)                          | Architectural boundary enforcement                                         |
-| [0013](../decisions/0013-cdk-overlay-stylesheet-requirement.md)                          | The CDK overlay and accessibility stylesheets are a hard build requirement |
-| [0027](../decisions/0027-pwa-caching-and-update-activation.md)                           | PWA caching boundaries and update activation                               |
-| [0043](../decisions/0043-voice-changes-hide-clips-and-say-so.md)                         | Changing the voice hides clips, and both screens say so                    |
-| [0082](../decisions/0082-interaction-states-have-equal-specificity-and-a-fixed-order.md) | Interaction states have equal specificity and a fixed order                |
-| [0083](../decisions/0083-floating-panels-are-native-popovers.md)                         | Floating panels that hang from a control are native popovers               |
-| [0084](../decisions/0084-unchecked-index-and-exact-optional-properties.md)               | Unchecked index access and exact optional properties                       |
-| [0085](../decisions/0085-sha256-padding-is-fixed.md)                                     | The synchronous SHA-256 pads correctly                                     |
-| [0087](../decisions/0087-features-compose-shared-ui.md)                                  | Features compose shared-ui primitives and write no styles                  |
-| [0088](../decisions/0088-four-overlay-kinds-on-one-surface.md)                           | Every overlay is a menu, a picker, a task dialog, or a confirmation        |
-| [0089](../decisions/0089-one-dropdown-on-every-screen.md)                                | A choice from a list is one anchored dropdown on every screen size         |
+| ADR                                                                                      | Decision                                                                       |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [0001](../decisions/0001-angular-21-toolchain.md)                                        | Angular toolchain and unit-test environment                                    |
+| [0003](../decisions/0003-architectural-boundary-enforcement.md)                          | Architectural boundary enforcement                                             |
+| [0013](../decisions/0013-cdk-overlay-stylesheet-requirement.md)                          | The CDK overlay and accessibility stylesheets are a hard build requirement     |
+| [0027](../decisions/0027-pwa-caching-and-update-activation.md)                           | PWA caching boundaries and update activation                                   |
+| [0043](../decisions/0043-voice-changes-hide-clips-and-say-so.md)                         | Changing the voice hides clips, and both screens say so                        |
+| [0082](../decisions/0082-interaction-states-have-equal-specificity-and-a-fixed-order.md) | Interaction states have equal specificity and a fixed order                    |
+| [0083](../decisions/0083-floating-panels-are-native-popovers.md)                         | Floating panels that hang from a control are native popovers                   |
+| [0084](../decisions/0084-unchecked-index-and-exact-optional-properties.md)               | Unchecked index access and exact optional properties                           |
+| [0085](../decisions/0085-sha256-padding-is-fixed.md)                                     | The synchronous SHA-256 pads correctly                                         |
+| [0087](../decisions/0087-features-compose-shared-ui.md)                                  | Features compose shared-ui primitives and write no styles                      |
+| [0088](../decisions/0088-four-overlay-kinds-on-one-surface.md)                           | Every overlay is a menu, a picker, a task dialog, or a confirmation            |
+| [0089](../decisions/0089-one-dropdown-on-every-screen.md)                                | A choice from a list is one anchored dropdown on every screen size             |
+| [0090](../decisions/0090-settings-overview-and-searchable-picker.md)                     | Settings is an overview with sub-pages, and a searched list is a picker dialog |
