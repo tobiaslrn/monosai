@@ -26,9 +26,14 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
       aria-haspopup="listbox"
       [mnOverlayTrigger]="panel"
       [disabled]="disabled()"
+      [attr.title]="selected()?.modelId ?? null"
     >
       @for (part of shownParts(); track $index) {
         <ng-container>{{ part }}<wbr /></ng-container>
+      }
+      @if (selected(); as model) {
+        <!-- Two vendors can share a display name; the id tells them apart. -->
+        <span class="mn-visually-hidden">, {{ model.modelId }}</span>
       }
     </button>
 
