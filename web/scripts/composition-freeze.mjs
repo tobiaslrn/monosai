@@ -21,7 +21,7 @@ const scannedRoots = ['src/app/features', 'src/app/core'];
 const readerRoot = 'src/app/features/reader/';
 
 /** Inline templates of a component file, or the whole file for .html. */
-function templatesOf(path, source) {
+export function templatesOf(path, source) {
   if (extname(path) === '.html') return [source];
   return [...source.matchAll(/\btemplate\s*:\s*`([\s\S]*?)`/g)].map((match) => match[1]);
 }
@@ -110,7 +110,7 @@ export function compare(found, allowlist, baseAllowlist) {
  * otherwise the merge base with origin/main. Null when git cannot tell, or
  * when the base predates the allowlist.
  */
-export function readBaseAllowlist(webRoot) {
+export function readBaseAllowlist(webRoot, allowlistPath = ALLOWLIST_PATH) {
   const git = (...args) =>
     execFileSync('git', args, {
       cwd: webRoot,
@@ -134,7 +134,7 @@ export function readBaseAllowlist(webRoot) {
     return null;
   }
   try {
-    return JSON.parse(git('show', `${base}:web/${ALLOWLIST_PATH}`));
+    return JSON.parse(git('show', `${base}:web/${allowlistPath}`));
   } catch {
     return null;
   }

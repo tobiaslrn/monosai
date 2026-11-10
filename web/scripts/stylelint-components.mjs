@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import stylelint from 'stylelint';
 import { globalStylesConfig, motionModuleConfig } from '../stylelint.config.mjs';
 import { checkComposition } from './composition-freeze.mjs';
+import { checkDesignRules } from './design-rules.mjs';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const webRoot = resolve(scriptDirectory, '..');
@@ -119,6 +120,7 @@ for (const filePath of styleFiles.sort()) {
 }
 
 warnings.push(...(await checkComposition(webRoot)));
+warnings.push(...(await checkDesignRules(webRoot)));
 
 if (warnings.length > 0) {
   console.error(warnings.join('\n'));
