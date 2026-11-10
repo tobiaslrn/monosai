@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, input, ViewEncapsulation } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink, type NavigationExtras } from '@angular/router';
 
 /**
@@ -20,6 +21,9 @@ import { RouterLink, type NavigationExtras } from '@angular/router';
  * breakable on a narrow screen, so the mark fragmented across lines instead of
  * pointing anywhere.
  *
+ * Without a `link` it is the same headline as plain words: what Monosai is for,
+ * on a first visit, has no page behind it.
+ *
  * Styles reach projected content and are therefore global, rooted at the
  * element.
  */
@@ -27,18 +31,27 @@ import { RouterLink, type NavigationExtras } from '@angular/router';
   selector: 'mn-standing',
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  imports: [RouterLink],
+  imports: [NgTemplateOutlet, RouterLink],
   template: `
-    <a
-      class="mn-standing__link"
-      [routerLink]="link()"
-      [fragment]="fragment()"
-      [state]="state()"
-      [attr.data-testid]="testId()"
-    >
+    <ng-template #lines>
       <span class="mn-standing__headline"><ng-content /></span>
       <span class="mn-standing__detail"><ng-content select="[mn-standing-detail]" /></span>
-    </a>
+    </ng-template>
+    @if (link(); as target) {
+      <a
+        class="mn-standing__link"
+        [routerLink]="target"
+        [fragment]="fragment()"
+        [state]="state()"
+        [attr.data-testid]="testId()"
+      >
+        <ng-container [ngTemplateOutlet]="lines" />
+      </a>
+    } @else {
+      <p class="mn-standing__link" [attr.data-testid]="testId()">
+        <ng-container [ngTemplateOutlet]="lines" />
+      </p>
+    }
   `,
   styles: `
     @use '../../../styles/breakpoints' as breakpoints;
@@ -49,6 +62,7 @@ import { RouterLink, type NavigationExtras } from '@angular/router';
     }
 
     mn-standing .mn-standing__link {
+      margin: 0;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -72,7 +86,7 @@ import { RouterLink, type NavigationExtras } from '@angular/router';
 
     :where(html[data-pointer='mouse'])
       mn-standing
-      .mn-standing__link:where(:hover)
+      a.mn-standing__link:where(:hover)
       .mn-standing__headline
       span {
       text-decoration: underline;
@@ -102,7 +116,8 @@ import { RouterLink, type NavigationExtras } from '@angular/router';
   `,
 })
 export class StandingComponent {
-  readonly link = input.required<string>();
+  /** The page the sentence leads to; without one it is plain words. */
+  readonly link = input<string | null>(null);
   readonly fragment = input<string | undefined>(undefined);
   readonly state = input<NavigationExtras['state']>(undefined);
   /** For durable tests: on the link. */

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LanguageStore } from '../../application/language/language.store';
 import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
@@ -41,38 +41,57 @@ type StandingHeadline =
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CountingCountComponent, StandingComponent],
   template: `
-    <mn-standing
-      link="/reading-level"
-      fragment="words"
-      [state]="libraryOriginState"
-      testId="library-standing"
-    >
-      @if (headline(); as line) {
-        @switch (line.kind) {
-          @case ('standing') {
-            @if (line.level !== null) {
-              <span
-                >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" /> and read
-                {{ line.level }}.</span
-              >
-            } @else {
-              <span
-                >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" />.</span
-              >
+    @if (introduces()) {
+      <!--
+        A first visit: nothing saved and no words. The line says what Monosai is
+        for; there is no standing to state yet, and no page behind it.
+      -->
+      <mn-standing testId="library-standing">
+        <span>Japanese you can actually read.</span>
+        <span mn-standing-detail
+          >Monosai writes short stories from the words you already know.</span
+        >
+      </mn-standing>
+    } @else {
+      <mn-standing
+        link="/reading-level"
+        fragment="words"
+        [state]="libraryOriginState"
+        testId="library-standing"
+      >
+        @if (headline(); as line) {
+          @switch (line.kind) {
+            @case ('standing') {
+              @if (line.level !== null) {
+                <span
+                  >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" /> and
+                  read {{ line.level }}.</span
+                >
+              } @else {
+                <span
+                  >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" />.</span
+                >
+              }
+            }
+            @case ('plain') {
+              <span>{{ line.text }}</span>
             }
           }
-          @case ('plain') {
-            <span>{{ line.text }}</span>
-          }
         }
-      }
-      @if (detail(); as note) {
-        <span mn-standing-detail>{{ note }}</span>
-      }
-    </mn-standing>
+        @if (detail(); as note) {
+          <span mn-standing-detail>{{ note }}</span>
+        }
+      </mn-standing>
+    }
   `,
 })
 export class LibraryStandingComponent {
+  /**
+   * Whether the shelf is empty. With no words either, the line introduces
+   * Monosai instead of stating a standing of nothing.
+   */
+  readonly firstVisit = input(false);
+
   protected readonly libraryOriginState = navigationOriginState('/library');
   private readonly vocabulary = inject(VocabularyAvailabilityStore);
   private readonly grammar = inject(GrammarProfileStore);
@@ -141,6 +160,16 @@ export class LibraryStandingComponent {
   });
 
   protected readonly detail = computed(() => this.vocabularyDetail(this.vocabulary.state()));
+
+  /** A first visit with no words: say what Monosai is for. */
+  protected readonly introduces = computed(() => {
+    const state = this.vocabulary.state();
+    return (
+      this.firstVisit() &&
+      state.kind === 'known' &&
+      (state.snapshot === null || state.snapshot.uniqueEntryCount === 0)
+    );
+  });
 
   constructor() {
     void this.vocabulary.refresh();

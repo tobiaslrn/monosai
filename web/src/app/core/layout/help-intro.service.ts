@@ -19,6 +19,17 @@ export class HelpIntroService {
     this.visible.set(true);
   }
 
+  /**
+   * A surface that already offers the guide in its own place — the Library's
+   * first steps — takes the offer over: the notice is not shown for the rest
+   * of this launch, and nothing is recorded, so it can still be offered on a
+   * later launch once that surface has gone.
+   */
+  absorb(): void {
+    this.offered = true;
+    this.visible.set(false);
+  }
+
   async retrySave(): Promise<void> {
     this.saveFailed.set(!(await this.settings.markHelpIntroSeen()));
   }

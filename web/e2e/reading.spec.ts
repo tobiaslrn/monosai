@@ -144,19 +144,33 @@ async function assertBunsetsuWrap(page: Page, label: string): Promise<void> {
 test.describe('scenario 1 — paste, save, inspect', () => {
   /**
    * A first visit is the one screen that has to say what Monosai is: it is what
-   * a stranger opening the public address sees. Both starting paths are on it,
-   * Anki first.
+   * a stranger opening the public address sees. It says what Monosai is for,
+   * then the way to a first story as numbered steps — words first — with
+   * writing waiting on them, and pasting text offered beside them with no setup.
    */
-  test('a first visit explains Monosai and needs no setup', async ({ page }) => {
+  test('a first visit explains Monosai and shows the first steps', async ({ page }) => {
     await page.goto('./');
 
     await expect(page).toHaveURL(/#\/library/);
+    await expect(page.getByTestId('library-standing')).toContainText(
+      'Japanese you can actually read.',
+    );
+    const steps = page.getByRole('region', { name: 'Get started' });
+    await expect(steps.getByRole('heading', { name: 'Get started', level: 2 })).toBeVisible();
+    await expect(steps.getByText('Everything stays on this device.')).toBeVisible();
+    const items = steps.getByRole('listitem');
+    await expect(items).toHaveCount(3);
+    await expect(items.nth(0)).toHaveAttribute('data-state', 'next');
+    await expect(steps.getByRole('link', { name: 'Add your words' })).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: /Japanese you can actually read/, level: 2 }),
+      steps.getByRole('link', { name: 'Connect OpenRouter and choose a model' }),
     ).toBeVisible();
-    await expect(page.getByText('Everything stays on this device.')).toBeVisible();
-    await expect(page.getByRole('link', { name: /Add a word list/ })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Paste Japanese text/ })).toBeVisible();
+    // Writing waits on the first two steps: it is a state, not a link.
+    await expect(items.nth(2)).toHaveAttribute('data-state', 'waiting');
+    await expect(steps.getByRole('link', { name: /Write your first story/ })).toHaveCount(0);
+    await expect(steps.getByRole('link', { name: /paste Japanese text/i })).toBeVisible();
+    // Nothing can be written yet, so the steps are the way in, not Create.
+    await expect(page.getByRole('button', { name: 'Create a new story' })).toHaveCount(0);
   });
 
   test('New story offers both ways in, and Paste text reaches the reader', async ({ page }) => {
@@ -1387,7 +1401,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 test.describe('scenario 2 — pasted text validation', () => {
   test('guards an unsaved import when navigating back', async ({ page }) => {
     await page.goto('./#/library');
-    await page.getByRole('link', { name: /Paste Japanese text/ }).click();
+    await page.getByRole('link', { name: /paste Japanese text/i }).click();
     await page.getByRole('textbox', { name: 'Japanese text' }).fill(SAMPLE_TEXT);
 
     await page.getByRole('button', { name: 'Back to library' }).click();
@@ -1398,7 +1412,7 @@ test.describe('scenario 2 — pasted text validation', () => {
 
   test('replaces the import form after saving', async ({ page }) => {
     await page.goto('./#/library');
-    await page.getByRole('link', { name: /Paste Japanese text/ }).click();
+    await page.getByRole('link', { name: /paste Japanese text/i }).click();
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
     await page.goBack();
@@ -1450,7 +1464,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
   test('says so rather than reopening a story deleted from another screen', async ({ page }) => {
     await page.goto('./#/library');
-    await page.getByRole('link', { name: /Paste Japanese text/ }).click();
+    await page.getByRole('link', { name: /paste Japanese text/i }).click();
     await pasteAndContinue(page, SAMPLE_TEXT);
     await saveAndOpenReader(page);
     const deletedUrl = page.url();
@@ -1650,7 +1664,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
     await dialog.getByRole('button', { name: 'Delete permanently' }).click();
 
-    await expect(page.getByRole('link', { name: /Paste Japanese text/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /paste Japanese text/i })).toBeVisible();
     const counts = await countOwnedRows(page);
     for (const [store, count] of Object.entries(counts)) {
       expect(count, `rows left in ${store}`).toBe(0);

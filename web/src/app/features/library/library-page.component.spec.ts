@@ -1,3 +1,4 @@
+import { SetupProgressStore } from '../../application/generation/setup-progress.store';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -100,7 +101,34 @@ class FakePlaybackStore {
   }
 }
 
+/** Where setup stands, set directly by each test rather than read from storage. */
+class FakeSetupProgressStore {
+  readonly known = signal(true);
+  readonly complete = signal(false);
+  readonly startingFromNothing = signal(true);
+  readonly words = signal({
+    id: 'vocabulary' as const,
+    label: 'Your words',
+    satisfied: false,
+    detail: 'Add words from Anki, an Anki package, or a pasted list.',
+    route: '/reading-level',
+    actionLabel: 'Open word sources',
+  });
+  readonly textModelCheck = signal({
+    id: 'text-model' as const,
+    label: 'Text model',
+    satisfied: false,
+    detail: 'Add an OpenRouter key.',
+    route: '/settings',
+    actionLabel: 'Open Settings',
+  });
+  load(): void {
+    // Nothing to read.
+  }
+}
+
 describe('LibraryPageComponent', () => {
+  let setup: FakeSetupProgressStore;
   let repository: FakeReadingRepository;
   let media: FakeMediaMatcher;
   let translationJob: FakeJobStore;
@@ -109,7 +137,9 @@ describe('LibraryPageComponent', () => {
   let jobs: FakeGenerationJobsStore;
 
   beforeEach(() => {
-    media = installFakeMatchMedia(1280);
+    // Still, so a confirmation answers at once rather than after it has left.
+    media = installFakeMatchMedia(1280, false, true);
+    setup = new FakeSetupProgressStore();
     repository = new FakeReadingRepository();
     translationJob = new FakeJobStore();
     audioJob = new FakeJobStore();
@@ -126,6 +156,7 @@ describe('LibraryPageComponent', () => {
         { provide: AudioJobStore, useValue: audioJob },
         { provide: AudioPlaybackStore, useValue: playback },
         { provide: GenerationJobsStore, useValue: jobs },
+        { provide: SetupProgressStore, useValue: setup },
         // The standing line has its own spec for the states it renders; here it
         // only has to exist without reaching the database.
         {
@@ -203,32 +234,61 @@ describe('LibraryPageComponent', () => {
    * The first-run screen has to explain what Monosai is: it is what a stranger
    * lands on at the public address, and nothing else on it says so.
    */
-  it('explains what Monosai is when nothing is saved yet, Anki first', async () => {
+  it('leads with the first steps when nothing is saved and nothing can be written yet', async () => {
     const fixture = await render();
+    const steps = element(fixture).querySelector('mn-library-first-steps');
 
-    expect(element(fixture).querySelector('mn-library-welcome h2')?.textContent).toContain(
-      'Japanese you can actually read',
-    );
-    expect(element(fixture).textContent).toContain('an Anki package, or a pasted list');
-    expect(element(fixture).textContent).toContain('Everything stays on this device.');
+    expect(steps?.querySelector('h2')?.textContent).toContain('Get started');
     expect(
-      [
-        ...element(fixture).querySelectorAll<HTMLAnchorElement>('[data-testid="welcome-choice"]'),
-      ].map((link) => link.getAttribute('href')),
-    ).toEqual(['/reading-level#words', '/add']);
+      [...(steps?.querySelectorAll<HTMLAnchorElement>('mn-checklist-step a') ?? [])].map((link) =>
+        link.getAttribute('href'),
+      ),
+    ).toEqual(['/reading-level#words', '/settings']);
+    expect(steps?.querySelector('[data-testid="first-step-paste"]')?.getAttribute('href')).toBe(
+      '/add',
+    );
+    expect(steps?.textContent).toContain('an Anki package, or a pasted list');
+    expect(steps?.textContent).toContain('Everything stays on this device.');
+    // Writing waits on the first two steps, so it is not a link and Create is not offered.
+    expect(steps?.querySelector('[data-testid="first-step-story"]')?.tagName).toBe('DIV');
+    expect(newReadingButton(fixture)).toBeNull();
     expect(element(fixture).querySelectorAll('mn-reading-card')).toHaveLength(0);
   });
 
+  it('marks the next step and what is done from where setup stands', async () => {
+    setup.words.update((check) => ({
+      ...check,
+      satisfied: true,
+      detail: '120 words are available.',
+    }));
+    const fixture = await render();
+    const states = [...element(fixture).querySelectorAll('mn-checklist-step')].map((step) =>
+      step.getAttribute('data-state'),
+    );
+
+    expect(states).toEqual(['done', 'next', 'waiting']);
+  });
+
   /**
-   * Nothing about a shelf until there is one. The standing line describes words
-   * the learner does not have yet, and there is no shelf to add to.
+   * Once a story could be written, the steps have done their job: the shelf's
+   * Create button is the way in again, and the empty shelf says what fills it.
    */
-  it('keeps the story action and vocabulary setup door above the empty shelf', async () => {
+  it('returns to the Create button once a story could be written', async () => {
+    setup.complete.set(true);
     const fixture = await render();
 
     expect(newReadingButton(fixture)).not.toBeNull();
-    expect(element(fixture).querySelector('mn-library-welcome')).not.toBeNull();
+    expect(element(fixture).querySelector('mn-library-first-steps')).toBeNull();
+    expect(element(fixture).querySelector('[data-testid="empty-shelf"]')).not.toBeNull();
     expect(element(fixture).querySelector('mn-library-standing')).not.toBeNull();
+  });
+
+  it('shows neither until it knows where setup stands', async () => {
+    setup.known.set(false);
+    const fixture = await render();
+
+    expect(newReadingButton(fixture)).toBeNull();
+    expect(element(fixture).querySelector('mn-library-first-steps')).toBeNull();
   });
 
   it('provides day and night artwork for the theme-specific hero', async () => {

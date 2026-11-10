@@ -5,7 +5,7 @@ import { expectSettingPersisted } from './storage';
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe('first-use Help', () => {
-  test('keeps New story available on first paint and explains offline generation @smoke @mobile', async ({
+  test('leads with the first steps on first paint and explains offline generation @smoke @mobile', async ({
     page,
   }) => {
     await page.goto('./#/library');
@@ -14,13 +14,18 @@ test.describe('first-use Help', () => {
     await alpha.getByRole('button', { name: 'Continue' }).click();
     await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
     await expect(page.getByRole('dialog')).toHaveCount(0);
+    // The steps carry the guide themselves, so the page-top offer of it is not shown too.
+    const steps = page.getByRole('region', { name: 'Get started' });
+    await expect(steps).toBeVisible();
+    await expect(steps.getByRole('link', { name: 'Read the guide' })).toBeVisible();
     await expect(
-      page.getByRole('button', { name: 'Create a new story', exact: true }),
-    ).toBeVisible();
-    await page.getByRole('button', { name: 'Create a new story', exact: true }).click();
-    await page.getByRole('link', { name: 'Write with AI', exact: true }).click();
-    await expect(page.locator('[data-check="text-model"] strong')).toHaveText('Text AI:');
-    await expect(page.locator('[data-check="vocabulary"] strong')).toHaveText('Word list:');
+      page.getByRole('complementary', { name: 'A little help getting started' }),
+    ).toHaveCount(0);
+    await expectNoSeriousAccessibilityViolations(page);
+    // What the steps say is missing is what Generate blocks on.
+    await page.goto('./#/generate');
+    await expect(page.locator('[data-check="text-model"] strong')).toHaveText('Text model:');
+    await expect(page.locator('[data-check="vocabulary"] strong')).toHaveText('Your words:');
     // Choosing words costs nothing; leaving the direction drafts plots, which
     // is the first thing the missing setup blocks.
     await page.getByTestId('wizard-next').click();
@@ -45,13 +50,31 @@ test.describe('first-use Help', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('mn-page-header')).toHaveCount(0);
 
-    await page.goto('./#/library');
+    // Settings rather than the Library: an empty Library's first steps carry the guide themselves.
+    await page.goto('./#/settings');
     const dialog = page.getByRole('complementary', { name: 'A little help getting started' });
     await expect(dialog).toBeVisible();
     await dialog.getByRole('button', { name: 'Got it' }).click();
     await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
     await page.reload();
     await expect(dialog).toHaveCount(0);
+  });
+
+  test('reading the guide from the first steps counts as the offer @smoke', async ({ page }) => {
+    await page.goto('./#/library');
+    await page
+      .getByRole('alertdialog', { name: 'Monosai is in alpha.' })
+      .getByRole('button', { name: 'Continue' })
+      .click();
+    await page
+      .getByRole('region', { name: 'Get started' })
+      .getByRole('link', { name: 'Read the guide' })
+      .click();
+    await expect(page.getByRole('heading', { name: 'Help', level: 1 })).toBeVisible();
+    await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
+    await expect(
+      page.getByRole('complementary', { name: 'A little help getting started' }),
+    ).toHaveCount(0);
   });
 
   test('opens the full guide and persists the choice @smoke', async ({ page }) => {

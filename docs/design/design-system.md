@@ -166,7 +166,9 @@ Home's primary action uses the shared primary action colour; each palette shows
 its own illustration unfiltered, as drawn.
 
 Below the bar the Library states **where the learner stands** — how many words
-Monosai can write from, and at what level. That line is the screen's lead and
+Monosai can write from, and at what level. On a first visit, with no words and
+no stories, it says what Monosai is for instead, as plain words with no page
+behind them. That line is the screen's lead and
 also the way to the page that explains it. In the image-led home hero it remains
 plain copy without a trailing navigation glyph; hover, focus, and link semantics
 identify the interaction without interrupting the headline. It states current
@@ -281,21 +283,21 @@ is the reader, whose surfaces are its own, and the screens not yet moved.
 Each primitive documents its own inputs and slots beside its code. What each is
 the way to build:
 
-| Role             | Primitives                                                                                                                                                                                                                                                                              |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Page frame       | `mn-page`, and `mn-page-header` for the one bar                                                                                                                                                                                                                                         |
-| Layout           | `mn-stack` (one vertical rhythm), `mn-cluster` (one wrapping row), `mn-split` (a label and its end), `mn-grid`; `mn-divider` between blocks                                                                                                                                             |
-| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                                                                                        |
-| Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                                                   |
-| Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                                     |
-| Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                                                                                         |
-| Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                      |
-| Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                               |
-| Status           | `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
-| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen`, `mn-not-found-panel`                                                                                                                                                                             |
-| Overlays         | `mn-menu` (a menu), `mn-sheet-popover` with `mnOverlayTrigger` (a picker, a popover-held task dialog), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                                           |
-| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                                            |
-| Glyphs           | `mn-icon`                                                                                                                                                                                                                                                                               |
+| Role             | Primitives                                                                                                                                                                                                                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Page frame       | `mn-page`, and `mn-page-header` for the one bar                                                                                                                                                                                                                                                                                                  |
+| Layout           | `mn-stack` (one vertical rhythm), `mn-cluster` (one wrapping row), `mn-split` (a label and its end), `mn-grid`; `mn-divider` between blocks                                                                                                                                                                                                      |
+| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                                                                                                                                                 |
+| Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                                                                                                            |
+| Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                                                                                              |
+| Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                                                                                                                                                  |
+| Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                               |
+| Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                                                                                        |
+| Status           | `mn-checklist` with `mn-checklist-step` for first steps, `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
+| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen`, `mn-not-found-panel`                                                                                                                                                                                                                                      |
+| Overlays         | `mn-menu` (a menu), `mn-sheet-popover` with `mnOverlayTrigger` (a picker, a popover-held task dialog), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                                                                                                    |
+| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                                                                                                     |
+| Glyphs           | `mn-icon`                                                                                                                                                                                                                                                                                                                                        |
 
 A menu is a native popover (`mn-menu`), so the browser dismisses it on a press
 outside or Escape and returns focus, the top layer keeps it above any card that
@@ -1152,12 +1154,22 @@ Four exceptions:
   so any empty list explains what belongs there and how to fill it. The
   exception ends the moment the surface has content.
 - **The first run introduces the application.** An empty Library is what a
-  stranger opening the public address sees, so it says what Monosai is and what
-  it would do for them before it offers a way in. This is the one surface
-  written in the first person: that a person made this is allowed to show here
-  and nowhere else. Its ways in are one grouped card of rows, like every other
-  list, under a heading set at the section rank with its explanation in body
-  text below it. It ends, like any empty state, the moment there is content.
+  stranger opening the public address sees, so its headline says what Monosai
+  is for before anything asks them to act; a standing of nothing — "No words
+  yet." — is not a headline. The way in is **one first-steps card**
+  (`mn-checklist`): numbered steps in order, each a row that leads to where it
+  is done, each showing where it stands — a finished step wears a tick and goes
+  quiet, the next step is the screen's one primary action, and a step that
+  cannot be done yet is dashed, is not a link, and says what it waits for as
+  its state rather than as advice. The steps are read from the same checks that
+  block Generate, so the two never disagree. A way round the steps that needs
+  no setup sits beside them, visibly secondary; the guide and the one promise a
+  stranger needs — nothing leaves the device — are the card's foot, so the
+  page-top offer of the guide is not shown beside it. While the card is there,
+  the shelf's Create button is not: two ways in with no order is what the card
+  replaced. It ends, like any empty state, the moment there is a story — or
+  once a story could be written, when Create is the primary action again and
+  the empty shelf says in one line what will fill it.
 - **Release-stage disclosure.** A new alpha installation may require one short
   acknowledgment before use. This is a product disclosure rather than Help;
   it is persisted locally and is not shown again after acknowledgment.

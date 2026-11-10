@@ -14,6 +14,8 @@ import { NavigationStart, Router, RouterLink } from '@angular/router';
 import { LibraryScrollMemoryService } from '../../core/routing/library-scroll-memory.service';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { LibraryStore } from '../../application/reading/library.store';
+import { SetupProgressStore } from '../../application/generation/setup-progress.store';
+import { HelpIntroService } from '../../core/layout/help-intro.service';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { AudioJobStore } from '../../application/enrichment/audio-job.store';
 import { TranslationJobStore } from '../../application/enrichment/translation-job.store';
@@ -24,7 +26,7 @@ import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog
 import { openRenameDialog } from '../../shared-ui/rename-dialog/rename-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ButtonDirective } from '../../shared-ui/button/button';
-import { CardComponent } from '../../shared-ui/card/card.component';
+import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { ShelfHeadingComponent } from '../../shared-ui/group/shelf-heading.component';
 import { HeroComponent } from '../../shared-ui/hero/hero.component';
 import { ClusterComponent, PageComponent } from '../../shared-ui/layout/layout';
@@ -40,7 +42,7 @@ import {
 import { GenerationJobCardComponent } from './generation-job-card.component';
 import { groupLibraryReadings } from './library-date-groups';
 import { LibraryStandingComponent } from './library-standing.component';
-import { LibraryWelcomeComponent } from './library-welcome.component';
+import { LibraryFirstStepsComponent } from './library-first-steps.component';
 import { LibraryVirtualListComponent } from './library-virtual-list.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 
@@ -69,7 +71,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   imports: [
     RouterLink,
     ButtonDirective,
-    CardComponent,
+    ErrorScreenComponent,
     ClusterComponent,
     HeroComponent,
     IconComponent,
@@ -81,7 +83,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
     ShelfHeadingComponent,
     GenerationJobCardComponent,
     LibraryStandingComponent,
-    LibraryWelcomeComponent,
+    LibraryFirstStepsComponent,
     LibraryVirtualListComponent,
   ],
   template: `
@@ -100,12 +102,15 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
       </mn-page-header>
 
       @if (store.status() === 'failed') {
-        <mn-card heading="Your library could not be loaded" [level]="2" role="alert">
-          <p class="mn-hint">{{ store.lastError()?.message }}</p>
-          <mn-cluster>
-            <button mnButton type="button" (click)="reload()">Try again</button>
-          </mn-cluster>
-        </mn-card>
+        <mn-error-screen
+          heading="Your library could not be loaded"
+          [description]="store.lastError()?.message ?? 'It could not be read from this device.'"
+          dataStatus="Your saved stories have not been changed."
+        >
+          <ng-container data-actions>
+            <button mnButton="primary" type="button" (click)="reload()">Try again</button>
+          </ng-container>
+        </mn-error-screen>
       } @else {
         <mn-hero
           role="region"
@@ -116,26 +121,34 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           [artHeight]="1070"
           [compact]="!isFirstRun()"
         >
-          <mn-library-standing />
+          <mn-library-standing [firstVisit]="isFirstRun()" />
         </mn-hero>
 
-        <!--
-          The action sits directly below the invitation it acts on. Generating
-          is a branch of adding rather than a destination of its own: it
-          produces the same thing by a different route, and giving it equal
-          billing in a navigation bar was what made Monosai look like an AI
-          tool with a reader attached.
-        -->
-        <button
-          mnButton="primary"
-          type="button"
-          aria-haspopup="dialog"
-          data-testid="new-story"
-          [mnMenuTrigger]="newStory"
-        >
-          <mn-icon name="add" [size]="18" />
-          <span>Create a new story</span>
-        </button>
+        @if (showsFirstSteps()) {
+          <!--
+            Nothing saved and nothing can be written yet: the first steps are
+            the way in, and their next step is the screen's one primary action.
+          -->
+          <mn-library-first-steps />
+        } @else if (!isFirstRun() || setup.known()) {
+          <!--
+            The action sits directly below the invitation it acts on. Generating
+            is a branch of adding rather than a destination of its own: it
+            produces the same thing by a different route, and giving it equal
+            billing in a navigation bar was what made Monosai look like an AI
+            tool with a reader attached.
+          -->
+          <button
+            mnButton="primary"
+            type="button"
+            aria-haspopup="dialog"
+            data-testid="new-story"
+            [mnMenuTrigger]="newStory"
+          >
+            <mn-icon name="add" [size]="18" />
+            <span>Create a new story</span>
+          </button>
+        }
         <mn-menu #newStory="mnMenu" role="dialog" aria-label="New story">
           <a mnMenuItem routerLink="/add" [state]="libraryOriginState" (click)="newStory.hide()">
             <mn-icon name="add" />
@@ -190,7 +203,11 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         }
 
         @if (isFirstRun()) {
-          <mn-library-welcome />
+          @if (!showsFirstSteps() && setup.known()) {
+            <p class="mn-hint" data-testid="empty-shelf">
+              Stories you write or paste will appear here.
+            </p>
+          }
         } @else if (store.isEmpty() && generationJobs().length === 0) {
           <p class="mn-hint">No {{ store.filter() }} stories yet.</p>
         } @else {
@@ -237,6 +254,17 @@ export class LibraryPageComponent {
     () => this.store.hasNoReadings() && this.generationJobs().length === 0,
   );
 
+  protected readonly setup = inject(SetupProgressStore);
+  private readonly intro = inject(HelpIntroService, { optional: true });
+
+  /**
+   * An empty shelf on which nothing can be written yet. Waits for the words to
+   * be read, so the steps never flash at a learner who is already set up.
+   */
+  protected readonly showsFirstSteps = computed(
+    () => this.isFirstRun() && this.setup.known() && !this.setup.complete(),
+  );
+
   protected readonly readingGroups = computed(() =>
     groupLibraryReadings(this.store.items(), this.clock.now()),
   );
@@ -268,6 +296,14 @@ export class LibraryPageComponent {
       this.scheduleScrollRestoration();
     });
     void this.store.load();
+    this.setup.load();
+    // The first steps carry the guide in their own foot, so the page-top
+    // offer of it would be the same thing twice.
+    effect(() => {
+      if (this.showsFirstSteps()) {
+        this.intro?.absorb();
+      }
+    });
     destroyRef.onDestroy(() => {
       this.restorationCancelled = true;
       if (this.restorationFrame !== null) {

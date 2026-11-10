@@ -17,7 +17,9 @@ import {
 import { expectSettingPersisted } from './storage';
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('./#/library');
+  // Settings rather than the Library: an empty Library's first steps carry the
+  // guide themselves and take the place of the offer this dismisses.
+  await page.goto('./#/settings');
   await page
     .getByRole('alertdialog', { name: 'Monosai is in alpha.' })
     .getByRole('button', {
