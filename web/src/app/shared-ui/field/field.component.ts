@@ -1,3 +1,4 @@
+import { IconComponent } from '../icon/icon.component';
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
@@ -17,7 +18,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 @Component({
   selector: 'mn-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet],
+  imports: [IconComponent, NgTemplateOutlet],
   host: { class: 'mn-field' },
   template: `
     <ng-template #control><ng-content /></ng-template>
@@ -31,7 +32,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       <ng-container [ngTemplateOutlet]="control" />
     }
     @if (error(); as message) {
-      <p class="mn-field-error" role="alert" [id]="errorId()">{{ message }}</p>
+      <p class="mn-field-error" role="alert" [id]="errorId()">
+        <mn-icon name="warning" [size]="16" /><span>{{ message }}</span>
+      </p>
     }
   `,
   styles: `

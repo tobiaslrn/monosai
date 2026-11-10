@@ -75,12 +75,12 @@ describe('prerequisiteChecks', () => {
       'pasted list',
     );
     expect(checkFor('vocabulary', { snapshot: null, hasSources: true }).detail).toContain(
-      'has not been read',
+      'have not been read',
     );
     expect(checkFor('vocabulary', { snapshot: snapshot(73) }).detail).toBe(
       '73 words are available.',
     );
-    expect(checkFor('vocabulary', { snapshot: snapshot(1) }).detail).toContain('has 1 word.');
+    expect(checkFor('vocabulary', { snapshot: snapshot(1) }).detail).toContain('have 1 word.');
     expect(checkFor('vocabulary', { snapshot: snapshot(1000) }).detail).toContain(
       '1,000 words are available.',
     );
@@ -161,7 +161,7 @@ describe('grammarPresetLine', () => {
 
     expect(line.warning).not.toBeNull();
     expect(line.warning).toContain('60');
-    expect(line.warning).toContain('You can still generate');
+    expect(line.warning).toContain('You can still write');
     expect(line.warning).not.toContain('snapshot');
     expect(line.warning).not.toContain('repair');
     expect(line.warning).not.toContain('validate');

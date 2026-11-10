@@ -48,7 +48,7 @@ test.describe('generate prerequisites', () => {
 
     // Only what is missing is listed, one line each.
     await expect(page.locator('[data-check]')).toHaveCount(2);
-    await expect(page.locator('[data-check="vocabulary"]')).toContainText('Add a word list');
+    await expect(page.locator('[data-check="vocabulary"]')).toContainText('Add words from Anki');
     // Choosing words costs nothing; drafting plots is the first request.
     await expect(page.getByTestId('wizard-next')).toBeEnabled();
     await page.getByTestId('wizard-next').click();

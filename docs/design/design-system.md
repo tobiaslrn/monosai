@@ -283,21 +283,21 @@ is the reader, whose surfaces are its own, and the screens not yet moved.
 Each primitive documents its own inputs and slots beside its code. What each is
 the way to build:
 
-| Role             | Primitives                                                                                                                                                                                                                                                                                                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Page frame       | `mn-page`, and `mn-page-header` for the one bar                                                                                                                                                                                                                                                                                                  |
-| Layout           | `mn-stack` (one vertical rhythm), `mn-cluster` (one wrapping row), `mn-split` (a label and its end), `mn-grid`; `mn-divider` between blocks                                                                                                                                                                                                      |
-| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                                                                                                                                                 |
-| Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                                                                                                            |
-| Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                                                                                              |
-| Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                                                                                                                                                  |
-| Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                               |
-| Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                                                                                        |
+| Role             | Primitives                                                                                                                                                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Page frame       | `mn-page`, and `mn-page-header` for the one bar                                                                                                                                                                                                                    |
+| Layout           | `mn-stack` (one vertical rhythm), `mn-cluster` (one wrapping row), `mn-split` (a label and its end), `mn-grid`; `mn-divider` between blocks                                                                                                                        |
+| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                                                                   |
+| Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                              |
+| Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                |
+| Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                                                                    |
+| Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                 |
+| Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                          |
 | Status           | `mn-checklist` with `mn-checklist-step` for first steps, `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
-| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen`, `mn-not-found-panel`                                                                                                                                                                                                                                      |
-| Overlays         | `mn-menu` (a menu), `mn-sheet-popover` with `mnOverlayTrigger` (a picker, a popover-held task dialog), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                                                                                                    |
-| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                                                                                                     |
-| Glyphs           | `mn-icon`                                                                                                                                                                                                                                                                                                                                        |
+| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen` and `mn-not-found-panel` on the one whole-page state                                                                                                                                                        |
+| Overlays         | `mn-menu` (a menu), `mn-sheet-popover` with `mnOverlayTrigger` (a picker, a popover-held task dialog), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                      |
+| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                       |
+| Glyphs           | `mn-icon`                                                                                                                                                                                                                                                          |
 
 A menu is a native popover (`mn-menu`), so the browser dismisses it on a press
 outside or Escape and returns focus, the top layer keeps it above any card that
@@ -1034,22 +1034,22 @@ accelerating, and what runs without being asked eases in and out.
 Which named motion applies is decided by what is happening, never by the
 screen:
 
-| Named motion        | When                                                                                                                 |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **state**           | A control, a row, a field or a menu item changes colour or tint: hover, focus, selection, a chip being chosen        |
-| **press**           | A control is held down: it gives way slightly, and a filled one keeps its fill                                       |
-| **enter**           | A message or block arrives where it will stay: a notice, a field's error, an outcome, the working line               |
-| **reveal, conceal** | A banner arrives at the top of the window and later leaves: its row opens and closes, so the page moves once         |
-| **dialog**          | A centred task dialog or confirmation arrives over the page, and shrinks back into it when put away                  |
-| **grow**            | A menu or a picker opens from the control that opened it, and goes back into it                                      |
-| **sheet**           | A docked sheet rises from its edge and goes back down it, continuing a drag from where the finger let go             |
-| **scrim**           | The page behind a modal surface dims as it arrives and clears as it leaves                                           |
-| **expand, turn**    | A disclosure opens or closes its height while its chevron turns                                                      |
-| **step, fill**      | A form in steps moves: the new step arrives from the side travelled to, and the step row's rail fills                |
-| **emphasis**        | A mark the learner has just set pops once: a check, a radio, a favourite star, a finished step's check               |
-| **draw**            | A success check draws itself once, after its mark has popped                                                         |
-| **spin**            | A glyph that draws work going round turns while that work runs                                                       |
-| **breathe, pulse**  | A busy control, or a wait with no stages to name, breathes                                                           |
+| Named motion        | When                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **state**           | A control, a row, a field or a menu item changes colour or tint: hover, focus, selection, a chip being chosen |
+| **press**           | A control is held down: it gives way slightly, and a filled one keeps its fill                                |
+| **enter**           | A message or block arrives where it will stay: a notice, a field's error, an outcome, the working line        |
+| **reveal, conceal** | A banner arrives at the top of the window and later leaves: its row opens and closes, so the page moves once  |
+| **dialog**          | A centred task dialog or confirmation arrives over the page, and shrinks back into it when put away           |
+| **grow**            | A menu or a picker opens from the control that opened it, and goes back into it                               |
+| **sheet**           | A docked sheet rises from its edge and goes back down it, continuing a drag from where the finger let go      |
+| **scrim**           | The page behind a modal surface dims as it arrives and clears as it leaves                                    |
+| **expand, turn**    | A disclosure opens or closes its height while its chevron turns                                               |
+| **step, fill**      | A form in steps moves: the new step arrives from the side travelled to, and the step row's rail fills         |
+| **emphasis**        | A mark the learner has just set pops once: a check, a radio, a favourite star, a finished step's check        |
+| **draw**            | A success check draws itself once, after its mark has popped                                                  |
+| **spin**            | A glyph that draws work going round turns while that work runs                                                |
+| **breathe, pulse**  | A busy control, or a wait with no stages to name, breathes                                                    |
 | **route**           | One page replaces another: the page cross-fades while the top bar stays where it is; never into or out of the reader |
 
 Emphasis answers the learner's own press: a box that was already ticked when
@@ -1220,17 +1220,22 @@ surface.
 
 What a result says is drawn one of three ways. A sentence that belongs to a
 surface — a failure, a warning, a success, or a fact to know before acting — is
-a **notice**: the status's soft background with its words in the status colour,
-an optional leading icon, and at most one action at its end — or one action and
-a quiet way to dismiss it, kept together as one block. A short word that
-says where something stands — Ready, Unread, Test failed, a word's form — is a
-**status pill**, which is never pressable and so never takes the action colour.
-Its dashed variant marks a value code chose rather than the learner; the dash,
-not a colour, is what says so.
-What is wrong with the value of one field is plain danger-coloured text directly
-under that field, not a notice.
+a **notice**: one anatomy everywhere — the tone's leading mark, the words, and
+at most one action at its end, or one action and a quiet way to dismiss it,
+kept together as one block. It arrives rather than popping in.
 
-short word that
+Each tone has **one meaning, app-wide**, and its mark comes with it:
+
+| Tone        | Means                                                                    | Drawn as                                                 |
+| ----------- | ------------------------------------------------------------------------ | -------------------------------------------------------- |
+| **Error**   | Something failed                                                         | Danger ground and words, warning mark                    |
+| **Warning** | It can go ahead, but the result may be limited or wrong unless you act   | Warning ground and words, warning mark                   |
+| **Setup**   | Something has to be set up before this works; the way to do it is at its end | Plain ground, warning-coloured mark — the look of a blocker row |
+| **Info**    | A fact worth knowing before acting                                       | Plain ground, quiet info mark                            |
+| **Success** | It worked                                                                | Success ground and words                                 |
+
+The lavender accent is not a status colour: a setup step drawn in it read as a
+decoration rather than as what stands in the way. A short word that
 says where something stands — Ready, Unread, Test failed, a word's form — is a
 **status pill**, which is never pressable and so never takes the action colour.
 Its dashed variant marks a value code chose rather than the learner; the dash,
@@ -1301,9 +1306,17 @@ is labelled with the verb, never with a bare "OK".
 
 ### Empty and error surfaces
 
+A state that replaces a whole page — a failure, something not found, a surface
+with nothing on it — has **one anatomy**, in the page column at the top of the
+page on the card surface: a mark that carries the tone (the danger colour for a
+failure, the quiet sunken one for what is not a fault), a short title, one
+sentence on what happened, one on what is safe or what to do, and the actions
+with the primary first. Nothing about it changes between screens but its words.
+
 An empty surface offers its primary action and explains what would fill it. An
 error surface states what failed, what is unaffected, and the one action worth
-taking — retry only where retrying could plausibly succeed unchanged.
+taking — retry only where retrying could plausibly succeed unchanged. Where its
+sentence names a place to fix it — Settings — that place is one of its actions.
 
 The same failure is classified identically wherever it appears, and the action
 is the one **this** surface can offer. A message that names a control the screen

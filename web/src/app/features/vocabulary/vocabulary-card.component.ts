@@ -25,7 +25,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
       <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
         <mn-icon name="vocabulary" [size]="18" />
       </span>
-      <span mn-list-row-title>Vocabulary</span>
+      <span mn-list-row-title>Your vocabulary</span>
       <span mn-list-row-meta data-testid="source-standing">
         <mn-stack [gap]="1">
           <span data-testid="words-standing">{{ wordsValue() }}</span>

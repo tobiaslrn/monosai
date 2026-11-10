@@ -118,7 +118,11 @@ interface VirtualVocabularyEntry {
         }
         @case ('empty') {
           <p class="mn-hint">
-            {{ store.snapshot() === null ? 'No vocabulary yet.' : 'No words yet.' }}
+            {{
+              store.snapshot() === null
+                ? 'No words yet.'
+                : 'Your word sources have no words in them.'
+            }}
             <a routerLink="/reading-level" fragment="words">Add words</a>
           </p>
         }

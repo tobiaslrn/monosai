@@ -20,7 +20,7 @@ export interface AnkiErrorCopy {
 }
 
 /** True for every variant: nothing is written until a refresh is confirmed. */
-export const NOTHING_SAVED = 'Vocabulary unchanged.';
+export const NOTHING_SAVED = 'Your vocabulary is unchanged.';
 
 const USE_PACKAGE = 'Export a package from Anki and import it here instead.';
 const TRY_AGAIN = 'Try again.';

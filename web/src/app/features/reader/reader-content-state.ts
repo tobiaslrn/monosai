@@ -178,7 +178,7 @@ function layerState(
       setup: true,
       status: messages[readiness],
       action: 'settings',
-      label: layer === 'audio' ? 'Voice settings' : 'Model settings',
+      label: 'Open Settings',
     };
   }
   const failed = layer === 'grammar' ? grammar.state === 'unavailable' : summary.failed > 0;

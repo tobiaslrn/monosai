@@ -25,7 +25,7 @@ function waitingOnKey(layer: ReaderContentState['layer']): ReaderContentState {
     name: layer,
     status: 'Add an OpenRouter key.',
     action: layer === 'audio' ? null : 'settings',
-    label: layer === 'audio' ? '' : 'Model settings',
+    label: layer === 'audio' ? '' : 'Open Settings',
     setup: true,
   };
 }
@@ -192,7 +192,7 @@ describe('Story options', () => {
     const { fixture, element } = render({
       ...ROW,
       action: 'settings',
-      label: 'Model settings',
+      label: 'Open Settings',
       error: 'Test your model.',
     });
     fixture.componentRef.setInput('error', 'Could not save the stop request.');

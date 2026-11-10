@@ -292,7 +292,24 @@ function formatList(items: readonly string[]): string {
                   Open storage settings
                 </a>
               }
-              <button mnButton type="button" data-testid="dismiss-failure" (click)="retry()">
+              @if (copy.primaryAction.includes('Settings') && !needsStorageRecovery()) {
+                <!-- The action the sentence names, as the control that does it. -->
+                <a
+                  mnButton="primary"
+                  routerLink="/settings"
+                  [queryParams]="{ from: 'generate' }"
+                  [state]="generateOriginState"
+                  data-testid="failure-settings"
+                >
+                  Open Settings
+                </a>
+              }
+              <button
+                type="button"
+                data-testid="dismiss-failure"
+                [mnButton]="hasFailurePrimary(copy.primaryAction) ? '' : 'primary'"
+                (click)="retry()"
+              >
                 Back to the form
               </button>
             </mn-cluster>
@@ -505,6 +522,11 @@ export class GeneratePageComponent implements OnChanges {
    * not, because their recovery is different and pretending otherwise would
    * tell a learner to change a model when their disk is full.
    */
+  /** Whether the failure already offers a filled action, so Back stays the outline. */
+  protected hasFailurePrimary(primaryAction: string): boolean {
+    return this.canRetrySave() || this.needsStorageRecovery() || primaryAction.includes('Settings');
+  }
+
   protected readonly failureCopy = computed(() => {
     const state = this.state();
     if (state.kind !== 'failed') {

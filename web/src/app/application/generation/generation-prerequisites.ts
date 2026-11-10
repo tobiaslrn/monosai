@@ -58,11 +58,11 @@ function textModelDetail(input: PrerequisiteInput): string {
 function vocabularyDetail(snapshot: VocabularySnapshot | null, hasSources: boolean): string {
   if (snapshot === null) {
     return hasSources
-      ? 'Your word list has not been read yet. Open your word sources and sync the list.'
-      : 'Add a word list — from Anki, an Anki package, or a pasted list.';
+      ? 'Your words have not been read yet. Sync them from your word sources.'
+      : 'Add words from Anki, an Anki package, or a pasted list.';
   }
   if (snapshot.uniqueEntryCount < GENERATION_SNAPSHOT_MINIMUM) {
-    return `Your word list has ${formatCountOf(snapshot.uniqueEntryCount, 'word')}. Stories need at least ${String(
+    return `You have ${formatCountOf(snapshot.uniqueEntryCount, 'word')}. Stories need at least ${String(
       GENERATION_SNAPSHOT_MINIMUM,
     )}.`;
   }
@@ -96,7 +96,7 @@ export function prerequisiteChecks(input: PrerequisiteInput): readonly Prerequis
       : []),
     {
       id: 'text-model',
-      label: 'Text AI',
+      label: 'Text model',
       satisfied: isTextModelReady(input),
       detail: textModelDetail(input),
       route: '/settings',
@@ -104,7 +104,7 @@ export function prerequisiteChecks(input: PrerequisiteInput): readonly Prerequis
     },
     {
       id: 'vocabulary',
-      label: 'Word list',
+      label: 'Your words',
       satisfied:
         input.snapshot !== null && input.snapshot.uniqueEntryCount >= GENERATION_SNAPSHOT_MINIMUM,
       detail: vocabularyDetail(input.snapshot, input.hasSources ?? false),
@@ -162,7 +162,7 @@ export function grammarPresetLine(
     snapshot !== null && count < expectation
       ? `${preset.nameEn} may need more words than the ${String(
           count,
-        )} in your current list. Add more words or choose an easier story setting. You can still generate, but the result may be limited with this list.`
+        )} you have. You can still write, but the story may be limited: add more words, or choose an easier reading level.`
       : null;
 
   return { presetName: preset.nameEn, route: '/grammar', warning };

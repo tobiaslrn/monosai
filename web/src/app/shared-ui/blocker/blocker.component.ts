@@ -9,7 +9,7 @@ let nextBlockerListId = 0;
  *
  *   <mn-blocker-list heading="Before you can write">
  *     <mn-blocker>
- *       <strong>Text AI: </strong>Choose a model.
+ *       <strong>Text model: </strong>Choose a model.
  *       <a mn-blocker-action mnButton routerLink="/settings">Open settings</a>
  *     </mn-blocker>
  *   </mn-blocker-list>

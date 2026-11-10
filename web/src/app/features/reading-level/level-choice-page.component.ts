@@ -1,3 +1,4 @@
+import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LanguageStore } from '../../application/language/language.store';
@@ -17,7 +18,7 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
 @Component({
   selector: 'mn-level-choice-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageHeaderComponent, PresetPickerComponent],
+  imports: [ErrorScreenComponent, PageHeaderComponent, PresetPickerComponent],
   template: `
     <div class="mn-page choice-page">
       <mn-page-header
@@ -27,11 +28,18 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
       />
 
       @if (language.status() === 'failed') {
-        <div class="mn-card assets-failed" role="alert">
-          <h2>Language assets are unavailable</h2>
-          <p class="mn-hint">Reading levels could not be loaded. Your saved level is unchanged.</p>
-          <button type="button" class="mn-button" (click)="retryLanguage()">Try again</button>
-        </div>
+        <mn-error-screen
+          class="assets-failed"
+          heading="Language assets are unavailable"
+          description="Reading levels could not be loaded."
+          dataStatus="Your saved level is unchanged."
+        >
+          <ng-container data-actions>
+            <button type="button" class="mn-button mn-button--primary" (click)="retryLanguage()">
+              Try again
+            </button>
+          </ng-container>
+        </mn-error-screen>
       } @else {
         <mn-preset-picker [selected]="draft()" (selectedChange)="choose($event)" />
 
@@ -74,22 +82,6 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
 
     .save-bar > .mn-button {
       width: 100%;
-    }
-
-    .assets-failed {
-      display: grid;
-      justify-items: start;
-      gap: var(--space-2);
-      padding: var(--space-4);
-    }
-
-    .assets-failed h2,
-    .assets-failed p {
-      margin: 0;
-    }
-
-    .assets-failed h2 {
-      font-size: var(--text-lg);
     }
   `,
 })

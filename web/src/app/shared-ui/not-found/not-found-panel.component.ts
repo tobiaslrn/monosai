@@ -1,31 +1,34 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { IconComponent } from '../icon/icon.component';
+import type { IconName } from '../icon/icon-set';
 
 /**
- * "What this link addressed is not here."
+ * Something the learner went to is not there: a story deleted elsewhere, a link
+ * that points nowhere, a generation that ended with its tab. It is the shared
+ * whole-page state (`_state.scss`) in its quiet tone — not a fault, so no
+ * danger colour — with the way back first.
  *
- * Three routes can reach that conclusion — a reading id that is not an id, a
- * well-formed id with no reading behind it, and a generation run that ended
- * with the tab that owned it — and they used to look like three applications:
- * different panels, different wording shapes, and a full-width outlined button
- * that appeared nowhere else in Monosai. They are one event told three times,
- * so they share one panel and the application's ordinary action pair.
+ *   <mn-not-found-panel
+ *     heading="This story is no longer here"
+ *     [explanation]="['It may have been deleted.', 'Nothing else in your library was affected.']"
+ *   />
  *
- * What differs between them is only what is true: the heading names the thing
- * that was not found, the lines below say why and what is unaffected, and the
- * primary action is the one that leads somewhere useful from there.
+ * The first line of `explanation` says what happened; a second says what is
+ * safe or what to do.
  */
 @Component({
   selector: 'mn-not-found-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [IconComponent, RouterLink],
   template: `
-    <section class="mn-card" role="alert">
-      <h2>{{ heading() }}</h2>
-      @for (line of explanation(); track line) {
-        <p class="mn-hint">{{ line }}</p>
+    <section class="mn-state" role="alert">
+      <span class="mn-state__mark" aria-hidden="true"><mn-icon [name]="icon()" [size]="20" /></span>
+      <h2 class="mn-state__title">{{ heading() }}</h2>
+      @for (line of explanation(); track line; let first = $first) {
+        <p [class.mn-state__what]="first" [class.mn-state__next]="!first">{{ line }}</p>
       }
-      <div class="mn-actions">
+      <div class="mn-state__actions">
         <a class="mn-button mn-button--primary" [routerLink]="primaryLink()">{{
           primaryLabel()
         }}</a>
@@ -35,21 +38,11 @@ import { RouterLink } from '@angular/router';
       </div>
     </section>
   `,
-  styles: `
-    h2 {
-      margin: 0;
-      font-size: var(--text-lg);
-    }
-
-    p {
-      margin: 0;
-    }
-  `,
 })
 export class NotFoundPanelComponent {
   readonly heading = input.required<string>();
-  /** One line per fact. Each says something the application actually knows. */
   readonly explanation = input.required<readonly string[]>();
+  readonly icon = input<IconName>('search');
   readonly primaryLink = input<string>('/library');
   readonly primaryLabel = input('Go to library');
   readonly secondaryLink = input<string | null>(null);

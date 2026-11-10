@@ -109,7 +109,11 @@ type AddMode = 'closed' | 'choices' | 'anki';
             <p class="mn-hint">{{ unchanged }}</p>
             <mn-disclosure heading="Advanced details" tone="quiet" [flush]="true">
               @if (copy.offersPort) {
-                <mn-field label="Port">
+                <mn-field
+                  label="Port"
+                  errorId="mn-anki-port-error"
+                  [error]="portValid() ? null : 'Enter a port from 1 to 65535.'"
+                >
                   <input
                     class="mn-control"
                     type="number"
@@ -120,6 +124,7 @@ type AddMode = 'closed' | 'choices' | 'anki';
                     required
                     [value]="portDraft()"
                     [attr.aria-invalid]="portValid() ? null : 'true'"
+                    [attr.aria-describedby]="portValid() ? null : 'mn-anki-port-error'"
                     (input)="setPortDraft($event)"
                     data-testid="anki-connect-port"
                   />

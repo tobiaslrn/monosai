@@ -29,7 +29,7 @@ describe('NotFoundPanelComponent', () => {
     const element = fixture.nativeElement as HTMLElement;
 
     expect(element.querySelector('[role="alert"] h2')?.textContent).toContain('no longer here');
-    const actions = [...element.querySelectorAll<HTMLAnchorElement>('.mn-actions a')];
+    const actions = [...element.querySelectorAll<HTMLAnchorElement>('.mn-state__actions a')];
     expect(actions.map((link) => link.textContent.trim())).toEqual([
       'Go to library',
       'Start a new story',
@@ -51,8 +51,8 @@ describe('NotFoundPanelComponent', () => {
     expect(element.querySelector('mn-page-header h1')?.textContent).toContain(
       'Link not recognised',
     );
-    expect(element.querySelector('mn-not-found-panel .mn-actions a')?.textContent.trim()).toBe(
-      'Go to library',
-    );
+    expect(
+      element.querySelector('mn-not-found-panel .mn-state__actions a')?.textContent.trim(),
+    ).toBe('Go to library');
   });
 });

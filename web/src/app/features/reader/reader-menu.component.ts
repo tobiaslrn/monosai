@@ -69,7 +69,7 @@ import {
           as the same sentence and the same button on every row.
         -->
         @if (sharedSetup(); as setup) {
-          <mn-notice tone="info" data-testid="shared-setup">
+          <mn-notice tone="setup" data-testid="shared-setup">
             <p>{{ setup.status }}</p>
             <a mn-notice-action mnButton routerLink="/settings" (click)="close()">{{
               setup.label

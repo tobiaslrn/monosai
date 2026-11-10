@@ -57,7 +57,7 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
       }
 
       @if (preset().warning; as warning) {
-        <mn-notice tone="info" icon="info" data-testid="preset-warning">
+        <mn-notice tone="warning" data-testid="preset-warning">
           <span class="mn-visually-hidden">Note: </span>{{ warning }}
         </mn-notice>
       }

@@ -3,6 +3,8 @@ import { ImportStore } from '../../application/reading/import.store';
 import { formatCount, formatCountOf } from '../../domain/shared/locale';
 import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
 import { MAXIMUM_TITLE_LENGTH } from '../../domain/reading/import-title';
+import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 
 /**
  * The pasted-text field of Add text, with its title and its character counter.
@@ -15,6 +17,7 @@ import { MAXIMUM_TITLE_LENGTH } from '../../domain/reading/import-title';
 @Component({
   selector: 'mn-text-input-step',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [IconComponent, NoticeComponent],
   template: `
     <div class="mn-field">
       <label for="mn-import-text">Japanese text</label>
@@ -28,29 +31,28 @@ import { MAXIMUM_TITLE_LENGTH } from '../../domain/reading/import-title';
         [value]="store.rawText()"
         (input)="onPaste($event)"
       ></textarea>
-      @if (counterVisible()) {
-        <p id="mn-import-count" class="count" [class.is-over]="isOverLimit()">
+      @if (isOverLimit()) {
+        <!-- Over the limit, the count and what to do about it are one message. -->
+        <p id="mn-import-count" class="mn-field-error" role="alert">
+          <mn-icon name="warning" [size]="16" />
+          <span>{{ overLimitMessage() }}</span>
+        </p>
+      } @else if (counterVisible()) {
+        <p id="mn-import-count" class="count">
           {{ formatCount(store.characterCount()) }} of {{ formatCount(limit) }} characters
         </p>
       }
-      @if (isOverLimit()) {
-        <p id="mn-import-limit-hint" class="mn-field-error" role="alert">
-          {{ overLimitMessage() }}
-        </p>
-      }
       @if (store.advisories().length > 0) {
-        <div id="mn-import-advisories" class="mn-notice mn-notice--warning" role="status">
-          <div>
-            @for (advisory of store.advisories(); track advisory.code) {
-              <p>{{ advisory.message }}</p>
-            }
-          </div>
-        </div>
+        <mn-notice id="mn-import-advisories" tone="warning" role="status">
+          @for (advisory of store.advisories(); track advisory.code) {
+            <p>{{ advisory.message }}</p>
+          }
+        </mn-notice>
       }
     </div>
 
     @if (store.rejection(); as rejection) {
-      <p class="mn-notice mn-notice--error" role="alert">{{ rejection.message }}</p>
+      <mn-notice tone="error" role="alert">{{ rejection.message }}</mn-notice>
     }
 
     <div class="mn-field">
@@ -86,11 +88,6 @@ import { MAXIMUM_TITLE_LENGTH } from '../../domain/reading/import-title';
       color: var(--text-secondary);
       font-size: var(--text-sm);
     }
-
-    .count.is-over {
-      color: var(--status-danger);
-      font-weight: var(--weight-semibold);
-    }
   `,
 })
 export class TextInputStepComponent {
@@ -100,6 +97,7 @@ export class TextInputStepComponent {
   protected readonly formatCount = formatCount;
   protected readonly overLimitMessage = computed(
     () =>
+      `${formatCount(this.store.characterCount())} of ${formatCount(this.limit)} characters. ` +
       `Remove ${formatCountOf(this.store.characterCount() - this.limit, 'character')} to continue.`,
   );
   /** Like every counter: out of the way until the field is roughly 80% full. */
@@ -108,11 +106,8 @@ export class TextInputStepComponent {
   );
   protected readonly descriptionIds = computed(() => {
     const ids: string[] = [];
-    if (this.counterVisible()) {
+    if (this.counterVisible() || this.isOverLimit()) {
       ids.push('mn-import-count');
-    }
-    if (this.isOverLimit()) {
-      ids.push('mn-import-limit-hint');
     }
     if (this.store.advisories().length > 0) {
       ids.push('mn-import-advisories');

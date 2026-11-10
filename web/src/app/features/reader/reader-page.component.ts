@@ -10,6 +10,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { ButtonDirective } from '../../shared-ui/button/button';
+import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { ReadingAudioMaintenanceStore } from '../../application/enrichment/reading-audio-maintenance.store';
 import { ReadingTextAidMaintenanceStore } from '../../application/enrichment/reading-text-aid-maintenance.store';
 import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
@@ -64,6 +66,8 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
+    ButtonDirective,
+    ErrorScreenComponent,
     IconComponent,
     ReaderParagraphComponent,
     ReaderMenuComponent,
@@ -216,12 +220,16 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
             />
           }
           @case ('failed') {
-            <section class="mn-card" role="alert">
-              <h2>This story could not be opened</h2>
-              <p class="mn-hint">{{ store.lastError()?.message }}</p>
-              <p class="mn-hint">Your saved text was not changed.</p>
-              <button type="button" class="mn-button" (click)="reload()">Try again</button>
-            </section>
+            <mn-error-screen
+              heading="This story could not be opened"
+              [description]="store.lastError()?.message ?? 'It could not be read from this device.'"
+              dataStatus="Your saved text was not changed."
+            >
+              <ng-container data-actions>
+                <button type="button" mnButton="primary" (click)="reload()">Try again</button>
+                <a mnButton routerLink="/library">Go to library</a>
+              </ng-container>
+            </mn-error-screen>
           }
           @case ('ready') {
             <a class="mn-skip-link" href="#mn-after-story" (click)="skipStory($event)"

@@ -22,7 +22,8 @@ describe('VocabularyBrowsePageComponent', () => {
   let media: FakeMediaMatcher;
 
   beforeEach(() => {
-    media = installFakeMatchMedia(1280);
+    // Still, so a confirmation answers at once rather than after it has left.
+    media = installFakeMatchMedia(1280, false, true);
     beds = configureVocabularyTestBed();
     TestBed.overrideProvider(CLOCK, { useValue: fixedClock(NOW) });
   });
@@ -84,7 +85,7 @@ describe('VocabularyBrowsePageComponent', () => {
   it('offers the Add words path when no vocabulary exists', async () => {
     const { element } = await render();
 
-    expect(element.textContent).toContain('No vocabulary yet.');
+    expect(element.textContent).toContain('No words yet.');
     expect(element.querySelector('a[href="/reading-level#words"]')?.textContent).toContain(
       'Add words',
     );
@@ -103,8 +104,8 @@ describe('VocabularyBrowsePageComponent', () => {
 
     const { element } = await render();
 
-    expect(element.textContent).toContain('No words yet.');
-    expect(element.textContent).not.toContain('No vocabulary yet.');
+    expect(element.textContent).toContain('Your word sources have no words in them.');
+    expect(element.textContent).not.toContain('No words yet.');
   });
 
   it('narrows by search and reports no-match state', async () => {
@@ -276,6 +277,6 @@ describe('VocabularyBrowsePageComponent', () => {
     shouldFail = false;
     element.querySelector<HTMLButtonElement>('mn-notice button')?.click();
     await settle(fixture);
-    expect(element.textContent).toContain('No vocabulary yet.');
+    expect(element.textContent).toContain('No words yet.');
   });
 });

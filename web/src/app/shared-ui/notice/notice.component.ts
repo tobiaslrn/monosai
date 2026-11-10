@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { IconComponent } from '../icon/icon.component';
 import type { IconName } from '../icon/icon-set';
 
-export type NoticeTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
+export type NoticeTone = 'neutral' | 'info' | 'setup' | 'success' | 'warning' | 'error';
 
 /**
  * Something reported beside the thing it is about: a failure, a warning, a
@@ -24,12 +24,13 @@ export type NoticeTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
   host: {
     class: 'mn-notice',
     '[class.mn-notice--info]': "tone() === 'info'",
+    '[class.mn-notice--setup]': "tone() === 'setup'",
     '[class.mn-notice--success]': "tone() === 'success'",
     '[class.mn-notice--warning]': "tone() === 'warning'",
     '[class.mn-notice--error]': "tone() === 'error'",
   },
   template: `
-    @if (icon(); as name) {
+    @if (glyph(); as name) {
       <mn-icon [name]="name" [size]="18" />
     }
     <div><ng-content /></div>
@@ -38,5 +39,27 @@ export type NoticeTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
 })
 export class NoticeComponent {
   readonly tone = input<NoticeTone>('neutral');
-  readonly icon = input<IconName | null>(null);
+  /**
+   * The leading glyph. Left out, the tone brings its own, so every notice that
+   * reports a status leads with the same mark for it; `none` leaves a fact bare.
+   */
+  readonly icon = input<IconName | 'none' | null>(null);
+
+  protected readonly glyph = computed<IconName | null>(() => {
+    const icon = this.icon();
+    if (icon === 'none') {
+      return null;
+    }
+    return icon ?? TONE_GLYPH[this.tone()];
+  });
 }
+
+/** One mark per tone, app-wide: a failure and a warning, a result, a fact to know. */
+const TONE_GLYPH: Readonly<Record<NoticeTone, IconName | null>> = {
+  neutral: null,
+  info: 'info',
+  setup: 'warning',
+  success: 'synced',
+  warning: 'warning',
+  error: 'warning',
+};

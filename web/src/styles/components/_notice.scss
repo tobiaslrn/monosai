@@ -1,3 +1,5 @@
+@use '../motion';
+
 /*
  * A notice reports something beside the thing it is about: a failure, a
  * warning, a result, or a fact the learner needs before acting. It is a soft
@@ -26,6 +28,8 @@
   color: var(--notice-ink);
   font-size: var(--text-sm);
   line-height: var(--leading-snug);
+  /* A notice arrives rather than popping in beside what it reports on. */
+  @include motion.enter;
 }
 
 .mn-notice--error {
@@ -43,9 +47,26 @@
   --notice-ink: var(--status-success);
 }
 
-.mn-notice--info {
-  --notice-soft: var(--accent-secondary-soft);
-  --notice-ink: var(--accent-secondary);
+/*
+ * One meaning per tone, app-wide. Error: something failed. Warning: it can go
+ * ahead, but the result may be limited or wrong unless the learner acts.
+ * Setup: something has to be set up before this works — the look of a blocker
+ * row, the plain ground with the warning mark, and its way forward at the end.
+ * Info: a fact worth knowing before acting, on the plain ground. Success: it
+ * worked. Neutral: words with no status at all.
+ */
+.mn-notice--info,
+.mn-notice--setup {
+  --notice-soft: var(--surface-sunken);
+  --notice-ink: var(--text-primary);
+}
+
+.mn-notice--info > mn-icon {
+  color: var(--text-secondary);
+}
+
+.mn-notice--setup > mn-icon {
+  color: var(--status-warning);
 }
 
 .mn-notice > mn-icon {

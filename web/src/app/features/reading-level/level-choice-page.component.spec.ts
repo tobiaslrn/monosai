@@ -93,8 +93,8 @@ describe('LevelChoicePageComponent', () => {
     beds.languageStatus.set('failed');
     await settle(fixture);
 
-    const failed = element.querySelector('.assets-failed');
-    expect(failed?.getAttribute('role')).toBe('alert');
+    const failed = element.querySelector('.assets-failed [role="alert"]');
+    expect(failed).not.toBeNull();
     expect(failed?.textContent).toContain('level is unchanged');
     expect(element.querySelector('mn-preset-picker')).toBeNull();
     expect(element.querySelector('[data-testid="save-level"]')).toBeNull();

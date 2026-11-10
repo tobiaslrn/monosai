@@ -1,0 +1,82 @@
+@use '../motion';
+
+/*
+ * A whole-page state: an error, an empty surface, something not found. One
+ * anatomy wherever it appears, in the page column at the top of the page, on
+ * the card surface:
+ *
+ *   <section class="mn-state mn-state--error" role="alert">
+ *     <span class="mn-state__mark"><mn-icon name="warning" /></span>
+ *     <h2 class="mn-state__title">Monosai could not start</h2>
+ *     <p class="mn-state__what">What happened, in one sentence.</p>
+ *     <p class="mn-state__next">What to do, or what is safe, in one sentence.</p>
+ *     <div class="mn-state__actions">primary first, then the rest</div>
+ *   </section>
+ *
+ * The mark carries the tone — the danger colour for a failure, the quiet
+ * sunken one for a state that is not a fault — so the title stays in the text
+ * colour and reads as the sentence it is.
+ */
+.mn-state {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--group-gap) var(--glyph-gap);
+  align-items: start;
+  width: 100%;
+  max-width: var(--page-measure);
+  margin-inline: auto;
+  padding: var(--surface-inset);
+  border: 1px solid var(--border-subtle-faint);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+  @include motion.enter;
+}
+
+.mn-state > :not(.mn-state__mark) {
+  grid-column: 2;
+  margin: 0;
+}
+
+.mn-state__mark {
+  display: inline-grid;
+  grid-row: 1;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
+
+.mn-state--error > .mn-state__mark {
+  background: var(--status-danger-soft);
+  color: var(--status-danger);
+}
+
+.mn-state__title {
+  align-self: center;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+}
+
+.mn-state__what,
+.mn-state__next {
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+
+.mn-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--inline-gap);
+  align-items: center;
+  padding-block-start: var(--group-gap);
+}
+
+.mn-state__actions:empty {
+  display: none;
+}
