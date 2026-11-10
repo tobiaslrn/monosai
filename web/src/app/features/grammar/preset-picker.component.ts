@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, input, output } from '@angu
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import type { GrammarPreset, GrammarPresetId } from '../../domain/grammar/presets';
 import { startSentence } from '../../domain/shared/locale';
+import { ExampleComponent } from '../../shared-ui/example/example.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { RadioCardComponent } from '../../shared-ui/radio-card/radio-card.component';
 import { RadioCardGroupComponent } from '../../shared-ui/radio-card/radio-card-group.component';
@@ -19,7 +20,7 @@ import { RadioCardGroupComponent } from '../../shared-ui/radio-card/radio-card-g
 @Component({
   selector: 'mn-preset-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, RadioCardComponent, RadioCardGroupComponent],
+  imports: [ExampleComponent, IconComponent, RadioCardComponent, RadioCardGroupComponent],
   template: `
     <mn-radio-card-group
       label="Reading level"
@@ -32,8 +33,7 @@ import { RadioCardGroupComponent } from '../../shared-ui/radio-card/radio-card-g
           <span class="caption">{{ captionOf(preset) }}</span>
           <span class="description">{{ preset.descriptionEn }}</span>
           @if (selected() === preset.id) {
-            <span class="example" lang="ja">{{ preset.exampleJa }}</span>
-            <span class="gloss" lang="en">{{ preset.exampleEn }}</span>
+            <mn-example [ja]="preset.exampleJa" [en]="preset.exampleEn" />
           }
           <mn-icon
             mn-radio-card-end
@@ -53,17 +53,9 @@ import { RadioCardGroupComponent } from '../../shared-ui/radio-card/radio-card-g
     }
 
     .caption,
-    .description,
-    .gloss {
+    .description {
       color: var(--text-secondary);
       font-size: var(--text-sm);
-    }
-
-    .example {
-      margin-top: var(--space-2);
-      font-family: var(--font-japanese);
-      font-weight: var(--weight-semibold);
-      line-height: var(--leading-relaxed);
     }
 
     .indicator {

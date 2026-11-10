@@ -4,8 +4,8 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: min(2.25rem, 40px);
-  height: min(2.25rem, 40px);
+  width: var(--badge-size);
+  height: var(--badge-size);
   border-radius: 50%;
   background: var(--action-primary-soft);
   color: var(--action-primary);

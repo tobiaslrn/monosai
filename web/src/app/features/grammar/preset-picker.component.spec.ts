@@ -76,7 +76,7 @@ describe('PresetPickerComponent', () => {
    */
   it('opens the example of the chosen preset, in Japanese', async () => {
     const { fixture, element } = await render();
-    const examples = (): Element[] => [...element.querySelectorAll('.example')];
+    const examples = (): Element[] => [...element.querySelectorAll('mn-example .ja')];
 
     expect(examples()).toHaveLength(1);
     expect(examples()[0]!.textContent.trim()).toBe(TEST_PRESETS[0]!.exampleJa);

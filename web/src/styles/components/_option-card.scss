@@ -29,8 +29,7 @@
   min-width: 0;
   min-height: var(--touch-target);
   /* Pixel caps: rem-based gutters would grow with large text and squeeze the words. */
-  padding: min(var(--space-3), 12px) min(var(--space-3), 12px) min(var(--space-3), 12px)
-    min(var(--space-4), 16px);
+  padding: var(--control-inset) var(--control-inset) var(--control-inset) min(var(--space-4), 16px);
   border: 1px solid var(--border-subtle-faint);
   border-radius: var(--radius-card);
   background: var(--surface-raised);
@@ -50,7 +49,7 @@
 
 .mn-option-card__choice {
   display: flex;
-  gap: min(var(--space-3), 12px);
+  gap: var(--glyph-gap);
   align-items: flex-start;
   min-width: 0;
   cursor: inherit;

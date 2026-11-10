@@ -147,6 +147,6 @@ test.describe('offline language assets', () => {
     await page.getByRole('button', { name: 'Try again' }).click();
     await expectPrepared(page);
     // The reading level's example only renders once the bundle has loaded.
-    await expect(page.locator('mn-reading-level-page .example-ja')).toBeVisible();
+    await expect(page.locator('mn-reading-level-page mn-example')).toBeVisible();
   });
 });

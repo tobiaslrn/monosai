@@ -208,7 +208,7 @@ export async function prepareGeneration(page: Page, options: StubOptions): Promi
   // runtime before generation captures its profile: the level's example only
   // appears once the bundle has loaded.
   await page.goto('./#/reading-level');
-  await expect(page.locator('mn-reading-level-page .example-ja')).toBeVisible({
+  await expect(page.locator('mn-reading-level-page mn-example')).toBeVisible({
     timeout: 120_000,
   });
 }

@@ -63,7 +63,9 @@ describe('LevelChoicePageComponent', () => {
     await settle(fixture);
 
     expect(store.selection().presetId).toBe('mn-preset-starter');
-    expect(element.querySelector('.example')?.textContent.trim()).toBe(TEST_PRESETS[1]!.exampleJa);
+    expect(element.querySelector('mn-example .ja')?.textContent.trim()).toBe(
+      TEST_PRESETS[1]!.exampleJa,
+    );
     expect(backOrNavigate).not.toHaveBeenCalled();
 
     save(element);

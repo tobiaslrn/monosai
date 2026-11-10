@@ -29,6 +29,7 @@ import {
   NavigationHistoryService,
   navigationOriginState,
 } from '../../core/routing/navigation-history.service';
+import { ExampleComponent } from '../../shared-ui/example/example.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
@@ -72,6 +73,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
   // than a part of the control that started it, so the page owns it.
   providers: [VocabularyRefreshStore, PackageImportStore, AnkiConnectionStore],
   imports: [
+    ExampleComponent,
     IconComponent,
     ListRowComponent,
     PageHeaderComponent,
@@ -169,10 +171,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
               </span>
             </mn-list-row>
             @if (profile.selectedPreset(); as preset) {
-              <div class="example">
-                <p class="example-ja" lang="ja">{{ preset.exampleJa }}</p>
-                <p class="gloss" lang="en">{{ preset.exampleEn }}</p>
-              </div>
+              <mn-example [ja]="preset.exampleJa" [en]="preset.exampleEn" />
             }
           </div>
 
@@ -233,24 +232,10 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
       overflow: clip;
     }
 
-    .example {
-      margin-inline: var(--surface-inset);
-      padding: var(--stack-gap);
-      border-radius: var(--radius-control);
-      background: var(--surface-sunken-example);
-    }
-
-    .example-ja {
-      margin: 0;
-      font-family: var(--font-japanese);
-      font-size: var(--text-lg);
-      line-height: var(--leading-relaxed);
-    }
-
-    .gloss {
-      margin: var(--space-1) 0 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
+    /* The sample sits under the row's words, on their edge. */
+    .level-card > mn-example {
+      margin-inline: calc(var(--surface-inset) + var(--badge-size) + var(--glyph-gap))
+        var(--surface-inset);
     }
 
     /*

@@ -130,7 +130,7 @@ describe('ReadingLevelPageComponent', () => {
 
     expect(text(element, 'h1')).toBe('What you can read');
     expect(
-      [...element.querySelectorAll('section.group h2')].map((heading) =>
+      [...element.querySelectorAll('section.group > header > h2')].map((heading) =>
         heading.textContent.trim(),
       ),
     ).toEqual(['Word sources', 'Grammar']);
@@ -147,7 +147,7 @@ describe('ReadingLevelPageComponent', () => {
     expect(element.querySelector('[data-testid="reading-level-link"]')?.getAttribute('href')).toBe(
       '/reading-level/level',
     );
-    expect(element.querySelector('.example-ja')?.getAttribute('lang')).toBe('ja');
+    expect(element.querySelector('mn-example .ja')?.getAttribute('lang')).toBe('ja');
   });
 
   it('labels every section for assistive technology', async () => {

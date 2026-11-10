@@ -30,7 +30,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   styles: `
     :host {
       display: block;
-      max-width: 37.5rem;
+      max-width: var(--page-measure);
       text-align: center;
       animation: working-in var(--motion-medium) var(--ease-standard);
     }

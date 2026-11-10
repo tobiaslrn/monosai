@@ -64,10 +64,10 @@ let nextOutcomeId = 0;
       justify-content: center;
       min-height: 26.25rem;
       padding: var(--space-6);
-      border: 1px solid var(--border-subtle);
+      /* The card surface, at the page measure like every other page's cards. */
+      border: 1px solid var(--border-subtle-faint);
       border-radius: var(--radius-card);
-      background: var(--surface-panel);
-      box-shadow: var(--shadow-raised);
+      background: var(--surface-raised);
       text-align: center;
     }
 
@@ -105,7 +105,7 @@ let nextOutcomeId = 0;
       flex-direction: column;
       gap: var(--space-3);
       align-items: center;
-      max-width: 37.5rem;
+      max-width: var(--page-measure);
     }
 
     mn-outcome .mn-outcome__body > :where(p) {

@@ -14,7 +14,7 @@ async function openLadder(page: Page): Promise<void> {
 /** The overview shows the level's example once the bundle has arrived. */
 async function openOverview(page: Page): Promise<void> {
   await page.goto('./#/reading-level');
-  await expect(page.locator('mn-reading-level-page .example-ja')).toBeVisible();
+  await expect(page.locator('mn-reading-level-page mn-example')).toBeVisible();
 }
 
 async function backToOverview(page: Page): Promise<void> {

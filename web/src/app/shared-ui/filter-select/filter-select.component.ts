@@ -37,7 +37,7 @@ export interface FilterOption {
       display: block;
       flex: 1 1 9rem;
       min-width: 0;
-      max-width: 16rem;
+      max-width: var(--control-width);
     }
 
     select {
