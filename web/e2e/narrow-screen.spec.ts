@@ -131,11 +131,11 @@ async function brokenText(page: Page, zoom: number): Promise<string[]> {
       }
     }
 
-    for (const select of document.querySelectorAll('select')) {
+    for (const select of document.querySelectorAll('[role="combobox"]')) {
       if (!select.checkVisibility() || canvas === null) continue;
       const style = getComputedStyle(select);
       canvas.font = style.font;
-      const shown = select.selectedOptions[0]?.textContent ?? '';
+      const shown = select.textContent.trim();
       const room =
         select.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       if (canvas.measureText(shown).width > room) {

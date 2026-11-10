@@ -235,7 +235,7 @@ test.describe('the model tree', () => {
     const reasoningLabel = page.getByText('Reasoning', { exact: true }).first();
     const reasoningControl = page.getByRole('combobox', { name: 'Reasoning' }).first();
     const translation = taskReadiness(page, 'translation');
-    const translationLabel = translation.getByText('Translation model', { exact: true });
+    const translationLabel = translation.getByText('Model', { exact: true });
     const translationControl = translation.getByRole('button', { name: 'Test text-model' });
     for (const [label, control] of [
       [reasoningLabel, reasoningControl],

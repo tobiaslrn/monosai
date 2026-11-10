@@ -1,3 +1,4 @@
+import { chooseValue, optionValues, selectedValue } from '../../../testing/select';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
@@ -126,16 +127,16 @@ describe('ModelsSectionComponent audio readiness', () => {
   }
 
   /** The speaking-style select, which only instruction-capable models render. */
-  function styleControl(element: HTMLElement): HTMLSelectElement {
-    const field = element.querySelector<HTMLSelectElement>('[data-testid="tts-style-select"]');
+  function styleControl(element: HTMLElement): HTMLElement {
+    const field = element.querySelector<HTMLElement>('[data-testid="tts-style-select"]');
     if (field === null) {
       throw new Error('the audio panel rendered no speaking-style field');
     }
     return field;
   }
 
-  function paceControl(element: HTMLElement): HTMLSelectElement {
-    const field = element.querySelector<HTMLSelectElement>('[data-testid="tts-pace-select"]');
+  function paceControl(element: HTMLElement): HTMLElement {
+    const field = element.querySelector<HTMLElement>('[data-testid="tts-pace-select"]');
     if (field === null) {
       throw new Error('the audio panel rendered no pace field');
     }
@@ -151,6 +152,32 @@ describe('ModelsSectionComponent audio readiness', () => {
 
     expect(readiness(element)).toBe('No model');
     expect(note(element)).toBe('');
+  });
+
+  it('gives Text, Translation, and Grammar each their own header and status', async () => {
+    await connect();
+    const { element, fixture } = await render();
+    const headings = (): string[] =>
+      [...element.querySelectorAll('mn-text-models .mn-group-title')].map((title) =>
+        title.textContent.trim(),
+      );
+
+    expect(headings()).toEqual(['Text', 'Translation', 'Grammar']);
+    expect(textOf(element, 'translation-readiness')).toBe('Uses text model');
+    expect(textOf(element, 'grammar-readiness')).toBe('Uses text model');
+
+    await TestBed.inject(TextModelStore).setTaskModel('translation', {
+      modelId: 'test/text',
+      name: 'Text',
+      reasoningEffort: null,
+    });
+    fixture.detectChanges();
+
+    expect(textOf(element, 'translation-readiness')).not.toBe('Uses text model');
+    // Its own reasoning and limit sit under its own header, not the text model's.
+    const cluster = element.querySelector('[data-capability="translation"]');
+    expect(cluster?.querySelector('.mn-group-title')?.textContent.trim()).toBe('Translation');
+    expect(cluster?.textContent).toContain('Reasoning');
   });
 
   it('restores saved reasoning for the main model and override after the catalogue arrives', async () => {
@@ -191,11 +218,11 @@ describe('ModelsSectionComponent audio readiness', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     await fixture.whenStable();
-    const selects = [...element.querySelectorAll<HTMLSelectElement>('select')].filter((select) =>
-      [...select.options].some((option) => option.value === 'medium'),
+    const selects = [...element.querySelectorAll<HTMLElement>('[role="combobox"]')].filter(
+      (select) => optionValues(select).includes('medium'),
     );
     expect(selects).toHaveLength(2);
-    expect(selects.map((select) => select.value)).toEqual(['medium', 'medium']);
+    expect(selects.map((select) => selectedValue(select))).toEqual(['medium', 'medium']);
   });
 
   describe('fetching the catalogue', () => {
@@ -365,8 +392,8 @@ describe('ModelsSectionComponent audio readiness', () => {
     detect();
 
     expect(readiness(element)).toBe('Ready');
-    expect(styleControl(element).value).toBe('clear');
-    expect(paceControl(element).value).toBe('natural');
+    expect(selectedValue(styleControl(element))).toBe('clear');
+    expect(selectedValue(paceControl(element))).toBe('natural');
   });
 
   it('says a preview failed', async () => {
@@ -409,10 +436,9 @@ describe('ModelsSectionComponent audio readiness', () => {
     await tts.test();
     detect();
     const style = styleControl(element);
-    expect(style.value).toBe('clear');
+    expect(selectedValue(style)).toBe('clear');
 
-    style.value = 'very-clear';
-    style.dispatchEvent(new Event('change'));
+    chooseValue(style, 'very-clear');
     await Promise.resolve();
     await Promise.resolve();
     detect();
@@ -428,10 +454,9 @@ describe('ModelsSectionComponent audio readiness', () => {
     await tts.test();
     detect();
     const pace = paceControl(element);
-    expect(pace.value).toBe('natural');
+    expect(selectedValue(pace)).toBe('natural');
 
-    pace.value = 'very-slow';
-    pace.dispatchEvent(new Event('change'));
+    chooseValue(pace, 'very-slow');
     await Promise.resolve();
     await Promise.resolve();
     detect();
@@ -462,7 +487,7 @@ describe('ModelsSectionComponent audio readiness', () => {
     detect();
 
     expect(element.querySelector('[data-testid="tts-style-select"]')).toBeNull();
-    expect(paceControl(element).value).toBe('natural');
+    expect(selectedValue(paceControl(element))).toBe('natural');
     expect(element.querySelector('[data-testid="audio-pace-note"]')).toBeNull();
   });
   /**
@@ -492,9 +517,9 @@ describe('ModelsSectionComponent audio readiness', () => {
       });
     }
 
-    function voiceControl(element: HTMLElement): HTMLSelectElement {
-      const control = element.querySelector<HTMLSelectElement>(
-        'select[aria-labelledby="mn-voice-label"]',
+    function voiceControl(element: HTMLElement): HTMLElement {
+      const control = element.querySelector<HTMLElement>(
+        '[role="combobox"][aria-labelledby="mn-voice-label"]',
       );
       if (control === null) {
         throw new Error('the audio panel rendered no voice control');
@@ -526,8 +551,7 @@ describe('ModelsSectionComponent audio readiness', () => {
       detect();
 
       const voice = voiceControl(element);
-      voice.value = 'kaede';
-      voice.dispatchEvent(new Event('change'));
+      chooseValue(voice, 'kaede');
       await Promise.resolve();
       await Promise.resolve();
       detect();
@@ -569,7 +593,9 @@ describe('ModelsSectionComponent audio readiness', () => {
       await tts.save();
       detect();
 
-      expect(element.querySelector('select[aria-labelledby="mn-voice-label"]')).toBeNull();
+      expect(
+        element.querySelector('[role="combobox"][aria-labelledby="mn-voice-label"]'),
+      ).toBeNull();
       const typed = element.querySelector<HTMLInputElement>(
         'input[aria-labelledby="mn-voice-label"]',
       );

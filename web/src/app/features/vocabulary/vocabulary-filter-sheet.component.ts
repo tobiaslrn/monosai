@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { DialogComponent } from '../../shared-ui/dialog/dialog';
+import { FieldComponent } from '../../shared-ui/field/field.component';
+import { SelectComponent, type SelectOption } from '../../shared-ui/select/select.component';
 import {
   applyBrowseQuery,
   DEFAULT_BROWSE_QUERY,
@@ -26,23 +28,17 @@ export interface VocabularyFilterSheetData {
 @Component({
   selector: 'mn-vocabulary-filter-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ButtonDirective, DialogComponent],
+  imports: [FormsModule, ButtonDirective, DialogComponent, FieldComponent, SelectComponent],
   template: `
     <mn-dialog heading="Filters" headingId="vocabulary-filter-heading" closeLabel="Close filters">
-      <label class="mn-field">
-        <span>Source</span>
-        <select
-          class="mn-control"
-          aria-label="Source"
+      <mn-field label="Source">
+        <mn-select
+          label="Source"
+          [options]="sourceOptions"
           [ngModel]="draft().sourceId ?? ''"
           (ngModelChange)="setSource($event)"
-        >
-          <option value="">All sources</option>
-          @for (source of data.sources; track source.sourceId) {
-            <option [value]="source.sourceId">{{ source.label }}</option>
-          }
-        </select>
-      </label>
+        />
+      </mn-field>
 
       <fieldset>
         <legend>Difficulty</legend>
@@ -72,36 +68,23 @@ export interface VocabularyFilterSheetData {
         </label>
       </fieldset>
 
-      <label class="mn-field">
-        <span>First studied</span>
-        <select
-          class="mn-control"
-          aria-label="First studied"
+      <mn-field label="First studied">
+        <mn-select
+          label="First studied"
+          [options]="firstStudiedOptions"
           [ngModel]="draft().firstStudied"
           (ngModelChange)="setFirstStudied($event)"
-        >
-          <option value="any">Any time</option>
-          <option value="last-7-days">Last 7 days</option>
-          <option value="last-30-days">Last 30 days</option>
-          <option value="last-90-days">Last 90 days</option>
-        </select>
-      </label>
+        />
+      </mn-field>
 
-      <label class="mn-field">
-        <span>Sort by</span>
-        <select
-          class="mn-control"
-          aria-label="Sort by"
+      <mn-field label="Sort by">
+        <mn-select
+          label="Sort by"
+          [options]="sortOptions"
           [ngModel]="draft().sort"
           (ngModelChange)="setSort($event)"
-        >
-          <option value="first-studied-desc">First studied, newest</option>
-          <option value="first-studied-asc">First studied, oldest</option>
-          <option value="difficulty-desc">Difficulty, high to low</option>
-          <option value="difficulty-asc">Difficulty, low to high</option>
-          <option value="expression">Expression</option>
-        </select>
-      </label>
+        />
+      </mn-field>
 
       <button mn-dialog-action="start" mnButton="ghost" type="button" (click)="reset()">
         Reset
@@ -118,6 +101,23 @@ export class VocabularyFilterSheetComponent {
   private readonly frame = viewChild.required(DialogComponent);
   protected readonly draft = signal<BrowseQuery>(this.data.query);
 
+  protected readonly sourceOptions: readonly SelectOption<string>[] = [
+    { value: '', label: 'All sources' },
+    ...this.data.sources.map((source) => ({ value: source.sourceId, label: source.label })),
+  ];
+  protected readonly firstStudiedOptions: readonly SelectOption<string>[] = [
+    { value: 'any', label: 'Any time' },
+    { value: 'last-7-days', label: 'Last 7 days' },
+    { value: 'last-30-days', label: 'Last 30 days' },
+    { value: 'last-90-days', label: 'Last 90 days' },
+  ];
+  protected readonly sortOptions: readonly SelectOption<string>[] = [
+    { value: 'first-studied-desc', label: 'First studied, newest' },
+    { value: 'first-studied-asc', label: 'First studied, oldest' },
+    { value: 'difficulty-desc', label: 'Difficulty, high to low' },
+    { value: 'difficulty-asc', label: 'Difficulty, low to high' },
+    { value: 'expression', label: 'Expression' },
+  ];
   protected readonly formatCountOf = formatCountOf;
   protected readonly matchCount = () =>
     applyBrowseQuery(this.data.entries, this.draft(), this.clock.now()).length;

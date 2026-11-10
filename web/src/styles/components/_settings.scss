@@ -173,8 +173,8 @@
  * Every field at a row's end — a select, an input, a picker, a segmented
  * choice — is one width, so a card's controls share one column and one edge.
  */
-.mn-settings-row :where(select.mn-control, input.mn-control),
-.mn-settings-row :where(mn-token-budget-field, mn-model-picker, mn-segmented-control) {
+.mn-settings-row :where(input.mn-control),
+.mn-settings-row :where(mn-token-budget-field, mn-model-picker, mn-select, mn-segmented-control) {
   width: min(var(--control-width), 50cqi);
   max-width: 100%;
 }
@@ -219,8 +219,8 @@
     padding-inline: min(var(--space-2), 8px);
   }
 
-  .mn-settings-row :where(select.mn-control, input.mn-control),
-  .mn-settings-row :where(mn-token-budget-field, mn-model-picker, mn-segmented-control) {
+  .mn-settings-row :where(input.mn-control),
+  .mn-settings-row :where(mn-token-budget-field, mn-model-picker, mn-select, mn-segmented-control) {
     width: 100%;
   }
 

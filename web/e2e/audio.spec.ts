@@ -11,6 +11,7 @@ import {
 import { TTS_READY_STATE } from './state';
 import { expectMotionSettled } from './sheets';
 import { readSettingsRecord } from './storage';
+import { chooseOption, expectChosen } from './select';
 
 /** Four sentences: short enough to prepare in full, long enough to fail partway. */
 const SENTENCE_COUNT = 4;
@@ -1236,7 +1237,7 @@ test.describe('audio settings and readiness', () => {
 
     await page.goto('./#/settings');
     await expect(audioStatus(page)).toHaveText('Ready');
-    await page.getByRole('combobox', { name: 'Voice' }).selectOption('Kore');
+    await chooseOption(page.getByRole('combobox', { name: 'Voice' }), 'Kore');
 
     // Settings says what happened, in the words the audit found missing.
     await expectReadiness(ttsReadiness(page), 'stale');
@@ -1257,7 +1258,7 @@ test.describe('audio settings and readiness', () => {
 
     // Setting the voice back is the offer, and it costs nothing.
     await page.goto('./#/settings');
-    await page.getByRole('combobox', { name: 'Voice' }).selectOption('sakura');
+    await chooseOption(page.getByRole('combobox', { name: 'Voice' }), 'sakura');
     await expectReadiness(ttsReadiness(page), 'ready');
     await page.goto(reader);
     await openAudioPlayer(page);
@@ -1275,7 +1276,7 @@ test.describe('audio settings and readiness', () => {
 
     // A configuration an earlier preview proved stays proven when a later one
     // is stopped, so the wait that can be abandoned is a changed one.
-    await page.getByRole('combobox', { name: 'Voice' }).selectOption('Kore');
+    await chooseOption(page.getByRole('combobox', { name: 'Voice' }), 'Kore');
     await expect(audioStatus(page)).toHaveText('Settings changed');
 
     await page.getByTestId('test-tts').click();
@@ -1293,12 +1294,12 @@ test.describe('audio settings and readiness', () => {
   test('persists a selected speaking style and marks the preview stale', async ({ page }) => {
     await stubOpenRouter(page);
     await page.goto('./#/settings');
-    await ttsStyle(page).selectOption('very-clear');
+    await chooseOption(ttsStyle(page), 'very-clear');
     await expect.poll(() => storedStyle(page)).toBe('very-clear');
     await expect(ttsReadiness(page)).toHaveAttribute('data-readiness', 'stale');
 
     await page.reload();
-    await expect(ttsStyle(page)).toHaveValue('very-clear');
+    await expectChosen(ttsStyle(page), 'Very clear');
     expect(await storedStyle(page)).toBe('very-clear');
   });
 
@@ -1306,12 +1307,12 @@ test.describe('audio settings and readiness', () => {
     await stubOpenRouter(page);
     await page.goto('./#/settings');
     await expect(ttsPace(page)).toBeVisible();
-    await ttsPace(page).selectOption('very-slow');
+    await chooseOption(ttsPace(page), 'very-slow');
     await expect.poll(() => storedPace(page)).toBe('very-slow');
     await expect(ttsReadiness(page)).toHaveAttribute('data-readiness', 'stale');
 
     await page.reload();
-    await expect(ttsPace(page)).toHaveValue('very-slow');
+    await expectChosen(ttsPace(page), 'Very slow');
     expect(await storedPace(page)).toBe('very-slow');
   });
 });

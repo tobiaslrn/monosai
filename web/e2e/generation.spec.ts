@@ -13,6 +13,7 @@ import { STUB_PLOTS, stubOpenRouter } from './openrouter';
 import { countOwnedRows } from './reading';
 import { GENERATION_READY_STATE } from './state';
 import { expectSettingPersisted } from './storage';
+import { chooseOption, expectChosen } from './select';
 
 /** The plot the stub drafts first, which is the one picked by default. */
 const FIRST_PLOT = STUB_PLOTS[0];
@@ -105,25 +106,25 @@ test.describe('generate prerequisites', () => {
 
     const select = page.getByTestId('word-priority-select');
     await expect(select).toBeEnabled();
-    await expect(select).toHaveValue('uniform');
-    await select.selectOption('difficult');
+    await expectChosen(select, 'Evenly');
+    await chooseOption(select, 'difficult');
     await expectSettingPersisted(page, 'app', 'ankiWordPriorityMode', 'difficult');
 
     await page.reload();
 
-    await expect(page.getByTestId('word-priority-select')).toHaveValue('difficult');
+    await expectChosen(page.getByTestId('word-priority-select'), 'Difficult');
     // The focus size belongs to Recently learned alone.
     await expect(page.getByTestId('focus-size-select')).toHaveCount(0);
 
-    await page.getByTestId('word-priority-select').selectOption('recent');
+    await chooseOption(page.getByTestId('word-priority-select'), 'recent');
     const focus = page.getByTestId('focus-size-select');
-    await expect(focus).toHaveValue('50');
-    await focus.selectOption('100');
+    await expectChosen(focus, 'Newest 50 words');
+    await chooseOption(focus, '100');
     await expectSettingPersisted(page, 'app', 'recentFocusSize', 100);
 
     await page.reload();
 
-    await expect(page.getByTestId('focus-size-select')).toHaveValue('100');
+    await expectChosen(page.getByTestId('focus-size-select'), 'Newest 100 words');
   });
 });
 

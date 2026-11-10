@@ -45,6 +45,11 @@ import { FieldComponent } from '../../shared-ui/field/field.component';
 import { StackComponent } from '../../shared-ui/layout/layout';
 import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 import { RangeFieldComponent } from '../../shared-ui/range-field/range-field.component';
+import {
+  SelectComponent,
+  type SelectOption,
+  type SelectValue,
+} from '../../shared-ui/select/select.component';
 import { WizardStepsComponent } from '../../shared-ui/wizard-steps/wizard-steps.component';
 import { WizardStepComponent } from '../../shared-ui/wizard-steps/wizard-step.component';
 
@@ -106,6 +111,7 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
     RadioCardComponent,
     RadioCardGroupComponent,
     RangeFieldComponent,
+    SelectComponent,
     StackComponent,
     StoryDirectionComponent,
     StoryPlotsComponent,
@@ -135,32 +141,23 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
             <mn-card heading="Words" [level]="2" [focusable]="true">
               <mn-stack [gap]="2">
                 <mn-field label="Anki word selection">
-                  <select
-                    id="mn-word-selection"
-                    data-testid="word-priority-select"
+                  <mn-select
+                    testId="word-priority-select"
+                    [options]="wordPriorityOptions"
                     [value]="ankiWordPriorityMode()"
                     [disabled]="disabled()"
-                    (change)="onWordPriorityMode($event)"
-                  >
-                    <option value="uniform">Uniform</option>
-                    <option value="recent">Recently learned</option>
-                    <option value="difficult">Difficult</option>
-                  </select>
+                    (valueChange)="onWordPriorityMode($event)"
+                  />
                 </mn-field>
                 @if (ankiWordPriorityMode() === 'recent') {
                   <mn-field label="Focus">
-                    <select
-                      id="mn-focus-size"
-                      data-testid="focus-size-select"
+                    <mn-select
+                      testId="focus-size-select"
+                      [options]="focusSizeOptions"
+                      [value]="recentFocusSize()"
                       [disabled]="disabled()"
-                      (change)="onRecentFocusSize($event)"
-                    >
-                      @for (size of focusSizes; track size) {
-                        <option [value]="size" [selected]="size === recentFocusSize()">
-                          Newest {{ size }} words
-                        </option>
-                      }
-                    </select>
+                      (valueChange)="onRecentFocusSize($event)"
+                    />
                   </mn-field>
                 }
               </mn-stack>
@@ -331,7 +328,25 @@ export class StoryFormComponent {
   protected readonly stepNames = STEP_NAMES;
   protected readonly strictnessLabels = STRICTNESS_LABELS;
   protected readonly strictnessOptions = STRICTNESS_OPTIONS;
-  protected readonly focusSizes = RECENT_FOCUS_SIZES;
+  protected readonly wordPriorityOptions: readonly SelectOption<AnkiWordPriorityMode>[] = [
+    {
+      value: 'uniform',
+      label: 'Evenly',
+      description: 'Every word has the same chance of being picked.',
+    },
+    {
+      value: 'recent',
+      label: 'Recently learned',
+      description: 'Puts your newest words first, then a sample of the rest.',
+    },
+    {
+      value: 'difficult',
+      label: 'Difficult',
+      description: 'Leans towards words you have struggled with.',
+    },
+  ];
+  protected readonly focusSizeOptions: readonly SelectOption<RecentFocusSize>[] =
+    RECENT_FOCUS_SIZES.map((size) => ({ value: size, label: `Newest ${String(size)} words` }));
   protected readonly lengthOptions = STORY_SENTENCE_COUNTS;
 
   protected readonly selectedLengthIndex = computed(() => {
@@ -394,16 +409,14 @@ export class StoryFormComponent {
     }
   }
 
-  protected onWordPriorityMode(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
+  protected onWordPriorityMode(value: SelectValue): void {
     if (value === 'uniform' || value === 'recent' || value === 'difficult') {
       this.ankiWordPriorityModeChanged.emit(value);
     }
   }
 
-  protected onRecentFocusSize(event: Event): void {
-    const value = Number((event.target as HTMLSelectElement).value);
-    if (isRecentFocusSize(value)) {
+  protected onRecentFocusSize(value: SelectValue): void {
+    if (typeof value === 'number' && isRecentFocusSize(value)) {
       this.recentFocusSizeChanged.emit(value);
     }
   }

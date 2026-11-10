@@ -1,3 +1,4 @@
+import { chooseValue } from '../../../testing/select';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
@@ -197,12 +198,13 @@ describe('ReadingLevelPageComponent', () => {
     await settle(fixture);
     await vi.waitFor(async () => {
       await settle(fixture);
-      expect(element.querySelectorAll('mn-anki-mapping-draft select')).toHaveLength(4);
+      expect(element.querySelectorAll('mn-anki-mapping-draft [role="combobox"]')).toHaveLength(4);
     });
-    const selects = element.querySelectorAll<HTMLSelectElement>('mn-anki-mapping-draft select');
+    const selects = element.querySelectorAll<HTMLElement>(
+      'mn-anki-mapping-draft [role="combobox"]',
+    );
     for (const [index, value] of ['Core Japanese', 'Basic', 'Expression', 'Meaning'].entries()) {
-      selects[index]!.value = value;
-      selects[index]!.dispatchEvent(new Event('change'));
+      chooseValue(selects[index]!, value);
       await settle(fixture);
     }
     [...element.querySelectorAll<HTMLButtonElement>('mn-anki-mapping-draft button')]

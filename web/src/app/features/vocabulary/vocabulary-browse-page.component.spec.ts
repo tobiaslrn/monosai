@@ -1,3 +1,4 @@
+import { chooseValue } from '../../../testing/select';
 import { Dialog } from '@angular/cdk/dialog';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -134,10 +135,11 @@ describe('VocabularyBrowsePageComponent', () => {
     await settle(fixture);
     const sheet = document.querySelector<HTMLElement>('mn-vocabulary-filter-sheet');
     if (sheet === null) throw new Error('missing filter sheet');
-    const studied = sheet.querySelector<HTMLSelectElement>('[aria-label="First studied"]');
+    const studied = sheet.querySelector<HTMLElement>(
+      '[role="combobox"][aria-label="First studied"]',
+    );
     if (studied === null) throw new Error('missing date filter');
-    studied.value = 'last-7-days';
-    studied.dispatchEvent(new Event('change'));
+    chooseValue(studied, 'last-7-days');
     sheet.querySelector<HTMLButtonElement>('.mn-button--primary')?.click();
     await settle(fixture);
 
@@ -166,10 +168,11 @@ describe('VocabularyBrowsePageComponent', () => {
       await settle(fixture);
       const sheet = document.querySelector<HTMLElement>('mn-vocabulary-filter-sheet');
       if (sheet === null) throw new Error('missing filter sheet');
-      const studied = sheet.querySelector<HTMLSelectElement>('[aria-label="First studied"]');
+      const studied = sheet.querySelector<HTMLElement>(
+        '[role="combobox"][aria-label="First studied"]',
+      );
       if (studied === null) throw new Error('missing date filter');
-      studied.value = 'last-7-days';
-      studied.dispatchEvent(new Event('change'));
+      chooseValue(studied, 'last-7-days');
 
       dismiss();
       await settle(fixture);

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/c
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { chooseValue, optionValues, selectedValue } from '../../../testing/select';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import { StoryPlotStore } from '../../application/generation/story-plot.store';
 import { RANDOM_SOURCE } from '../../application/shared/repository-tokens';
@@ -174,7 +175,7 @@ describe('StoryFormComponent', () => {
   it('keeps the word controls, the length, and the sources on the Words step only', () => {
     const { element, fixture } = render();
 
-    expect(element.querySelector('#mn-word-selection')).not.toBeNull();
+    expect(element.querySelector('[data-testid="word-priority-select"]')).not.toBeNull();
     expect(element.querySelector('[data-testid="story-length"]')).not.toBeNull();
     expect(element.querySelector('[data-testid="form-sources"]')?.textContent).toContain(
       '200 reviewed words',
@@ -187,7 +188,7 @@ describe('StoryFormComponent', () => {
     expect(element.textContent.toLowerCase()).not.toContain('cost');
 
     atStep(fixture, 2);
-    expect(element.querySelector('#mn-word-selection')).toBeNull();
+    expect(element.querySelector('[data-testid="word-priority-select"]')).toBeNull();
     expect(element.querySelector('[data-testid="form-sources"]')).toBeNull();
   });
 
@@ -231,14 +232,13 @@ describe('StoryFormComponent', () => {
 
   it('emits a changed mode and locks the select during generation', () => {
     const { element, fixture, host } = render();
-    const select = element.querySelector<HTMLSelectElement>('#mn-word-selection');
+    const select = element.querySelector<HTMLButtonElement>('[data-testid="word-priority-select"]');
     if (select === null) {
       throw new Error('word-priority select was not rendered');
     }
-    expect(select.value).toBe('uniform');
+    expect(selectedValue(select)).toBe('uniform');
 
-    select.value = 'recent';
-    select.dispatchEvent(new Event('change'));
+    chooseValue(select, 'recent');
     fixture.detectChanges();
     expect(host.priorityMode()).toBe('recent');
 
@@ -249,25 +249,20 @@ describe('StoryFormComponent', () => {
 
   it('offers the focus size only while Recently learned is selected', () => {
     const { element, fixture, host } = render();
-    expect(element.querySelector('#mn-focus-size')).toBeNull();
+    expect(element.querySelector('[data-testid="focus-size-select"]')).toBeNull();
 
     host.priorityMode.set('recent');
     fixture.detectChanges();
-    const select = element.querySelector<HTMLSelectElement>('#mn-focus-size');
-    expect(select?.value).toBe('50');
-    expect([...(select?.options ?? [])].map((option) => option.textContent.trim())).toEqual([
-      'Newest 25 words',
-      'Newest 50 words',
-      'Newest 100 words',
-    ]);
+    const select = element.querySelector<HTMLButtonElement>('[data-testid="focus-size-select"]')!;
+    expect(selectedValue(select)).toBe('50');
+    expect(optionValues(select)).toEqual(['25', '50', '100']);
 
-    select!.value = '25';
-    select!.dispatchEvent(new Event('change'));
+    chooseValue(select, '25');
     expect(host.focusSize()).toBe(25);
 
     host.priorityMode.set('difficult');
     fixture.detectChanges();
-    expect(element.querySelector('#mn-focus-size')).toBeNull();
+    expect(element.querySelector('[data-testid="focus-size-select"]')).toBeNull();
   });
 
   it('states the strictness in its closed disclosure and emits changes', () => {

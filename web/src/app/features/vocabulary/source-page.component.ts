@@ -11,7 +11,6 @@ import {
   resource,
   signal,
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   LOGGER,
@@ -39,6 +38,13 @@ import {
   startSentence,
 } from '../../domain/shared/locale';
 import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
+import { FieldComponent } from '../../shared-ui/field/field.component';
+import {
+  SelectComponent,
+  optionsFromNames,
+  type SelectOption,
+  type SelectValue,
+} from '../../shared-ui/select/select.component';
 import { describeSourceRemoval } from '../../domain/vocabulary/source-removal';
 import type {
   AnkiVocabularySource,
@@ -82,19 +88,20 @@ const STALE_REASONS: Record<StaleReason, string> = {
   // Page-scoped, so leaving discards any connection this page opened.
   providers: [VocabularyRefreshStore, PackageImportStore],
   imports: [
-    FormsModule,
     ButtonDirective,
     CardComponent,
     CheckboxComponent,
     ClusterComponent,
     DisclosureComponent,
     DividerComponent,
+    FieldComponent,
     GridComponent,
     IconComponent,
     NoticeComponent,
     PageComponent,
     PageHeaderComponent,
     PackageImportComponent,
+    SelectComponent,
     SwitchRowComponent,
     TextListSourceComponent,
   ],
@@ -224,59 +231,42 @@ const STALE_REASONS: Record<StaleReason, string> = {
             >
               @if (configurable(source)) {
                 <mn-grid min="9rem">
-                  <label class="mn-field">
-                    <span>Deck</span>
-                    <select
-                      aria-label="Deck"
+                  <mn-field label="Deck">
+                    <mn-select
+                      label="Deck"
+                      [options]="deckOptions()"
                       [disabled]="refresh.isBusy()"
-                      [ngModel]="source.deckName"
-                      (change)="setDeck(source, $event)"
-                    >
-                      @for (deck of deckNames(); track deck) {
-                        <option [value]="deck">{{ deck }}</option>
-                      }
-                    </select>
-                  </label>
-                  <label class="mn-field">
-                    <span>Note type</span>
-                    <select
-                      aria-label="Note type"
+                      [value]="source.deckName"
+                      (valueChange)="setDeck(source, $event)"
+                    />
+                  </mn-field>
+                  <mn-field label="Note type">
+                    <mn-select
+                      label="Note type"
+                      [options]="noteTypeOptions()"
                       [disabled]="refresh.isBusy()"
-                      [ngModel]="source.noteTypeName"
-                      (change)="setNoteType(source, $event)"
-                    >
-                      @for (noteType of noteTypeNames(); track noteType) {
-                        <option [value]="noteType">{{ noteType }}</option>
-                      }
-                    </select>
-                  </label>
-                  <label class="mn-field">
-                    <span>Field</span>
-                    <select
-                      aria-label="Expression field"
+                      [value]="source.noteTypeName"
+                      (valueChange)="setNoteType(source, $event)"
+                    />
+                  </mn-field>
+                  <mn-field label="Field">
+                    <mn-select
+                      label="Expression field"
+                      [options]="fieldOptions(source.noteTypeName)"
                       [disabled]="refresh.isBusy()"
-                      [ngModel]="source.expressionFieldName"
-                      (change)="setField(source, $event)"
-                    >
-                      @for (field of fieldsFor(source.noteTypeName); track field) {
-                        <option [value]="field">{{ field }}</option>
-                      }
-                    </select>
-                  </label>
-                  <label class="mn-field">
-                    <span>Meaning</span>
-                    <select
-                      aria-label="Meaning field"
+                      [value]="source.expressionFieldName"
+                      (valueChange)="setField(source, $event)"
+                    />
+                  </mn-field>
+                  <mn-field label="Meaning">
+                    <mn-select
+                      label="Meaning field"
+                      [options]="meaningOptions(source.noteTypeName)"
                       [disabled]="refresh.isBusy()"
-                      [ngModel]="source.meaningFieldName ?? ''"
-                      (change)="setMeaningField(source, $event)"
-                    >
-                      <option value="">Not mapped</option>
-                      @for (field of fieldsFor(source.noteTypeName); track field) {
-                        <option [value]="field">{{ field }}</option>
-                      }
-                    </select>
-                  </label>
+                      [value]="source.meaningFieldName ?? ''"
+                      (valueChange)="setMeaningField(source, $event)"
+                    />
+                  </mn-field>
                 </mn-grid>
                 @if (hasChildren(source.deckName)) {
                   <mn-checkbox
@@ -372,11 +362,11 @@ export class SourcePageComponent {
 
   protected readonly busy = computed(() => this.refresh.isBusy() || this.manual.isSyncing());
 
-  protected readonly deckNames = computed(
-    () => this.refresh.catalog()?.decks.map((deck) => deck.name) ?? [],
+  protected readonly deckOptions = computed(() =>
+    optionsFromNames(this.refresh.catalog()?.decks.map((deck) => deck.name) ?? []),
   );
-  protected readonly noteTypeNames = computed(
-    () => this.refresh.catalog()?.noteTypes.map((noteType) => noteType.name) ?? [],
+  protected readonly noteTypeOptions = computed(() =>
+    optionsFromNames(this.refresh.catalog()?.noteTypes.map((noteType) => noteType.name) ?? []),
   );
   private readonly staleById = computed(
     () =>
@@ -481,6 +471,14 @@ export class SourcePageComponent {
     );
   }
 
+  protected fieldOptions(noteTypeName: string): readonly SelectOption<string>[] {
+    return optionsFromNames(this.fieldsFor(noteTypeName));
+  }
+
+  protected meaningOptions(noteTypeName: string): readonly SelectOption<string>[] {
+    return optionsFromNames(this.fieldsFor(noteTypeName), { value: '', label: 'Not mapped' });
+  }
+
   protected hasChildren(deckName: string): boolean {
     return (
       this.refresh.catalog()?.decks.find((deck) => deck.name === deckName)?.hasChildren === true
@@ -505,13 +503,13 @@ export class SourcePageComponent {
     );
   }
 
-  protected async setDeck(source: SourceMapping, event: Event): Promise<void> {
-    await this.store.update(source.id, { deckName: readValue(event) });
+  protected async setDeck(source: SourceMapping, value: SelectValue): Promise<void> {
+    await this.store.update(source.id, { deckName: String(value) });
     await this.applyConnectedSourceChange();
   }
 
-  protected async setNoteType(source: SourceMapping, event: Event): Promise<void> {
-    const noteTypeName = readValue(event);
+  protected async setNoteType(source: SourceMapping, value: SelectValue): Promise<void> {
+    const noteTypeName = String(value);
     const fields = this.fieldsFor(noteTypeName);
     await this.store.update(source.id, {
       noteTypeName,
@@ -526,13 +524,13 @@ export class SourcePageComponent {
     await this.applyConnectedSourceChange();
   }
 
-  protected async setField(source: SourceMapping, event: Event): Promise<void> {
-    await this.store.update(source.id, { expressionFieldName: readValue(event) });
+  protected async setField(source: SourceMapping, value: SelectValue): Promise<void> {
+    await this.store.update(source.id, { expressionFieldName: String(value) });
     await this.applyConnectedSourceChange();
   }
 
-  protected async setMeaningField(source: SourceMapping, event: Event): Promise<void> {
-    const meaningFieldName = readValue(event);
+  protected async setMeaningField(source: SourceMapping, value: SelectValue): Promise<void> {
+    const meaningFieldName = String(value);
     await this.store.update(source.id, {
       meaningFieldName: meaningFieldName === '' ? undefined : meaningFieldName,
     });
@@ -664,8 +662,4 @@ export class SourcePageComponent {
   private async loadStandings(): Promise<void> {
     await this.standings.load(this.store.sources().map((source) => source.id));
   }
-}
-
-function readValue(event: Event): string {
-  return (event.target as HTMLSelectElement).value;
 }

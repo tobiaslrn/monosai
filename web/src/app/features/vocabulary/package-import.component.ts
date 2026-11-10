@@ -7,11 +7,17 @@ import {
   viewChild,
 } from '@angular/core';
 import type { ElementRef } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { vocabularySourceId } from '../../domain/shared/ids';
 import { formatCountOf } from '../../domain/shared/locale';
 import { ANKI_LINKS } from './anki-links';
+import { FieldComponent } from '../../shared-ui/field/field.component';
+import {
+  SelectComponent,
+  optionsFromNames,
+  type SelectOption,
+  type SelectValue,
+} from '../../shared-ui/select/select.component';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { CardComponent } from '../../shared-ui/card/card.component';
 import { CheckboxComponent } from '../../shared-ui/checkbox/checkbox.component';
@@ -25,13 +31,14 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 @Component({
   selector: 'mn-package-import',
   imports: [
-    FormsModule,
     ButtonDirective,
     CardComponent,
     CheckboxComponent,
     ClusterComponent,
+    FieldComponent,
     GridComponent,
     NoticeComponent,
+    SelectComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -98,62 +105,46 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 
             <mn-grid [gap]="2">
               @if (current.plan.deckOptions.length > 1) {
-                <label class="mn-field">
-                  <span>Deck</span>
-                  <select
-                    aria-label="Deck to import"
-                    [ngModel]="current.plan.selection.deckName"
-                    (change)="store.chooseDeck(value($event))"
-                    data-testid="package-import-deck"
-                  >
-                    @for (deck of current.plan.deckOptions; track deck.name) {
-                      <option [value]="deck.name">{{ deck.name }}</option>
-                    }
-                  </select>
-                </label>
+                <mn-field label="Deck">
+                  <mn-select
+                    label="Deck to import"
+                    testId="package-import-deck"
+                    [options]="deckChoices()"
+                    [value]="current.plan.selection.deckName"
+                    (valueChange)="store.chooseDeck(text($event))"
+                  />
+                </mn-field>
               }
               @if (current.plan.noteTypeOptions.length > 1) {
-                <label class="mn-field">
-                  <span>Note type</span>
-                  <select
-                    aria-label="Note type to import"
-                    [ngModel]="current.plan.selection.noteTypeName"
-                    (change)="store.chooseNoteType(value($event))"
-                    data-testid="package-import-note-type"
-                  >
-                    @for (noteType of current.plan.noteTypeOptions; track noteType.name) {
-                      <option [value]="noteType.name">{{ noteType.name }}</option>
-                    }
-                  </select>
-                </label>
+                <mn-field label="Note type">
+                  <mn-select
+                    label="Note type to import"
+                    testId="package-import-note-type"
+                    [options]="noteTypeChoices()"
+                    [value]="current.plan.selection.noteTypeName"
+                    (valueChange)="store.chooseNoteType(text($event))"
+                  />
+                </mn-field>
               }
-              <label class="mn-field">
-                <span>Expression field</span>
-                <select
-                  aria-label="Expression field"
-                  [ngModel]="current.plan.selection.expressionFieldName"
-                  (change)="store.chooseExpressionField(value($event))"
-                  data-testid="package-import-field"
-                >
-                  @for (field of fieldNames(); track field) {
-                    <option [value]="field">{{ field }}</option>
-                  }
-                </select>
-              </label>
+              <mn-field label="Expression field">
+                <mn-select
+                  label="Expression field"
+                  testId="package-import-field"
+                  [options]="fieldChoices()"
+                  [value]="current.plan.selection.expressionFieldName"
+                  (valueChange)="store.chooseExpressionField(text($event))"
+                />
+              </mn-field>
               @if (current.plan.replaceOptions.length > 1) {
-                <label class="mn-field">
-                  <span>Replaces</span>
-                  <select
-                    aria-label="Source to replace"
-                    [ngModel]="current.plan.replaces?.id"
-                    (change)="chooseReplacement($event)"
-                    data-testid="package-import-replaces"
-                  >
-                    @for (option of current.plan.replaceOptions; track option.id) {
-                      <option [value]="option.id">{{ option.label }}</option>
-                    }
-                  </select>
-                </label>
+                <mn-field label="Replaces">
+                  <mn-select
+                    label="Source to replace"
+                    testId="package-import-replaces"
+                    [options]="replaceChoices()"
+                    [value]="current.plan.replaces?.id ?? ''"
+                    (valueChange)="chooseReplacement($event)"
+                  />
+                </mn-field>
               }
             </mn-grid>
 
@@ -229,6 +220,20 @@ export class PackageImportComponent {
     );
   });
 
+  protected readonly deckChoices = computed(() =>
+    optionsFromNames(this.store.plan()?.deckOptions.map((deck) => deck.name) ?? []),
+  );
+  protected readonly noteTypeChoices = computed(() =>
+    optionsFromNames(this.store.plan()?.noteTypeOptions.map((noteType) => noteType.name) ?? []),
+  );
+  protected readonly fieldChoices = computed(() => optionsFromNames(this.fieldNames()));
+  protected readonly replaceChoices = computed<readonly SelectOption<string>[]>(() =>
+    (this.store.plan()?.replaceOptions ?? []).map((option) => ({
+      value: option.id,
+      label: option.label,
+    })),
+  );
+
   protected readonly deckHasChildren = computed(() => {
     const plan = this.store.plan();
     return (
@@ -245,12 +250,12 @@ export class PackageImportComponent {
     });
   }
 
-  protected value(event: Event): string {
-    return (event.target as HTMLSelectElement).value;
+  protected text(value: SelectValue): string {
+    return String(value);
   }
 
-  protected chooseReplacement(event: Event): void {
-    this.store.chooseReplacement(vocabularySourceId(this.value(event)));
+  protected chooseReplacement(value: SelectValue): void {
+    this.store.chooseReplacement(vocabularySourceId(String(value)));
   }
 
   protected setScope(includeSubdecks: boolean): void {

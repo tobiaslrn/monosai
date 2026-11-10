@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page, type Route } from '@playwright/test';
+import { chooseOption } from './select';
 
 /**
  * Routes every OpenRouter call to a controllable stand-in.
@@ -901,5 +902,5 @@ export async function addTtsModel(page: Page, modelId: string, voiceId = 'sakura
   // known, so the list has to be waited for rather than typed over.
   const voice = page.getByRole('combobox', { name: 'Voice' });
   await expect(voice).toBeVisible();
-  await voice.selectOption(voiceId);
+  await chooseOption(voice, voiceId);
 }

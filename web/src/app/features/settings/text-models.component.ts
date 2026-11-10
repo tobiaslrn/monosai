@@ -1,4 +1,3 @@
-import { FormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { CredentialStore } from '../../application/settings/credential.store';
 import { TextModelStore, type TextModelTask } from '../../application/settings/text-model.store';
@@ -11,6 +10,12 @@ import { GroupHeaderComponent } from '../../shared-ui/group/group-header.compone
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { ModelCatalogView } from './model-catalog-view';
 import { ModelPickerComponent } from '../../shared-ui/model-picker/model-picker.component';
+import {
+  SelectComponent,
+  type SelectOption,
+  type SelectValue,
+} from '../../shared-ui/select/select.component';
+import { reasoningOptions } from './reasoning-options';
 import { TokenBudgetFieldComponent } from './token-budget-field.component';
 
 /**
@@ -31,10 +36,10 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    FormsModule,
     ButtonDirective,
     GroupHeaderComponent,
     ModelPickerComponent,
+    SelectComponent,
     SettingsRowComponent,
     TokenBudgetFieldComponent,
   ],
@@ -42,10 +47,10 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
     <mn-group-header heading="Text" headingId="mn-text-model-label">
       <span
         class="mn-status-pill"
-        [class.mn-status-pill--success]="groupReadiness() === 'ready'"
-        [class.mn-status-pill--danger]="groupReadiness() === 'failed'"
+        [class.mn-status-pill--success]="text.readiness() === 'ready'"
+        [class.mn-status-pill--danger]="text.readiness() === 'failed'"
         data-testid="text-readiness"
-        >{{ readinessLabel(groupReadiness(), text.action() === 'testing') }}</span
+        >{{ readinessLabel(text.readiness(), text.action() === 'testing') }}</span
       >
       @if (retestable(text.readiness())) {
         <button
@@ -78,21 +83,14 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
     </mn-settings-row>
 
     <mn-settings-row label="Reasoning" labelId="mn-text-reasoning-label">
-      <span mn-settings-row-note class="mn-settings-row__note"
-        >Automatic lets the model decide how much to think.</span
-      >
-      <select
-        class="mn-control"
-        aria-labelledby="mn-text-reasoning-label"
+      <mn-select
+        label="Reasoning"
+        labelledBy="mn-text-reasoning-label"
+        [options]="storyReasoningOptions()"
         [disabled]="!credential.isConfigured()"
-        [ngModel]="text.settings().reasoningEffort ?? ''"
-        (change)="setStoryReasoning($event)"
-      >
-        <option value="">Automatic</option>
-        @for (effort of reasoningEfforts(selectedStoryModel()); track effort) {
-          <option [value]="effort">{{ titleCase(effort) }}</option>
-        }
-      </select>
+        [value]="text.settings().reasoningEffort ?? ''"
+        (valueChange)="setStoryReasoning($event)"
+      />
     </mn-settings-row>
 
     <mn-settings-row label="Token limit" labelId="mn-text-limit-label">
@@ -118,7 +116,23 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
           text.routePreset(task.id) === null ? 'inherited' : text.routeReadiness(task.id)
         "
       >
-        <mn-settings-row [label]="task.label" [labelId]="'mn-' + task.id + '-label'">
+        <mn-group-header [heading]="task.label" [headingId]="'mn-' + task.id + '-label'">
+          @if (text.routePreset(task.id) === null) {
+            <span class="mn-status-pill" [attr.data-testid]="task.id + '-readiness'"
+              >Uses text model</span
+            >
+          } @else {
+            <span
+              class="mn-status-pill"
+              [class.mn-status-pill--success]="text.routeReadiness(task.id) === 'ready'"
+              [class.mn-status-pill--danger]="text.routeReadiness(task.id) === 'failed'"
+              [attr.data-testid]="task.id + '-readiness'"
+              >{{ readinessLabel(text.routeReadiness(task.id), text.action() === 'testing') }}</span
+            >
+          }
+        </mn-group-header>
+
+        <mn-settings-row label="Model" [labelId]="'mn-' + task.id + '-model-label'">
           @if (text.routePreset(task.id) === null && inheritedName() !== null) {
             <span mn-settings-row-note class="mn-settings-row__note">Same as the text model</span>
           }
@@ -132,10 +146,6 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
             >
               {{ statusLabel(text.routeReadiness(task.id), text.action() === 'testing') }}
             </button>
-          } @else if (
-            text.routePreset(task.id) !== null && text.routeReadiness(task.id) === 'ready'
-          ) {
-            <span class="mn-status-pill mn-status-pill--success">Ready</span>
           }
           <mn-model-picker
             [attr.data-testid]="task.id + '-model-picker'"
@@ -158,17 +168,13 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
 
         @if (text.routePreset(task.id) !== null) {
           <mn-settings-row label="Reasoning" [labelId]="'mn-' + task.id + '-reasoning-label'">
-            <select
-              class="mn-control"
-              [attr.aria-labelledby]="'mn-' + task.id + '-reasoning-label'"
-              [ngModel]="text.routePreset(task.id)?.reasoningEffort ?? ''"
-              (change)="setTaskReasoning(task.id, $event)"
-            >
-              <option value="">Automatic</option>
-              @for (effort of reasoningEfforts(routeModel(task.id)); track effort) {
-                <option [value]="effort">{{ titleCase(effort) }}</option>
-              }
-            </select>
+            <mn-select
+              label="Reasoning"
+              [labelledBy]="'mn-' + task.id + '-reasoning-label'"
+              [options]="reasoningOptions(routeModel(task.id))"
+              [value]="text.routePreset(task.id)?.reasoningEffort ?? ''"
+              (valueChange)="setTaskReasoning(task.id, $event)"
+            />
           </mn-settings-row>
           <mn-settings-row label="Token limit" [labelId]="'mn-' + task.id + '-limit'">
             <span mn-settings-row-note class="mn-settings-row__note">{{
@@ -194,12 +200,15 @@ export class TextModelsComponent {
   protected readonly catalogLoading = this.catalog.loading;
   protected readonly catalogFailure = this.catalog.failure;
   protected readonly textTasks = [
-    { id: 'translation' as const, label: 'Translation model' },
-    { id: 'grammar' as const, label: 'Grammar model' },
+    { id: 'translation' as const, label: 'Translation' },
+    { id: 'grammar' as const, label: 'Grammar' },
   ];
 
   protected readonly selectedStoryModel = computed(() =>
     this.modelById(this.text.settings().modelId),
+  );
+  protected readonly storyReasoningOptions = computed(() =>
+    this.reasoningOptions(this.selectedStoryModel()),
   );
   protected readonly storyTokenBudgetMax = computed(() =>
     this.tokenBudgetMax(this.selectedStoryModel()),
@@ -262,14 +271,12 @@ export class TextModelsComponent {
   protected routeModel(task: TextModelTask): ModelCapabilities | null {
     return this.modelById(this.routeModelId(task));
   }
-  protected async setStoryReasoning(event: Event): Promise<void> {
-    const value = (event.target as HTMLSelectElement).value;
-    await this.text.setReasoningEffort(value || null);
+  protected async setStoryReasoning(value: SelectValue): Promise<void> {
+    await this.text.setReasoningEffort(String(value) || null);
     await this.text.test();
   }
-  protected async setTaskReasoning(task: TextModelTask, event: Event): Promise<void> {
-    const value = (event.target as HTMLSelectElement).value;
-    await this.text.setTaskReasoning(task, value || null);
+  protected async setTaskReasoning(task: TextModelTask, value: SelectValue): Promise<void> {
+    await this.text.setTaskReasoning(task, String(value) || null);
     await this.text.testTask(task);
   }
   protected saveStoryBudget(tokenBudget: number): void {
@@ -279,8 +286,8 @@ export class TextModelsComponent {
   protected setTaskBudget(task: TextModelTask, tokenBudget: number): void {
     void this.text.setTaskTokenBudget(task, tokenBudget);
   }
-  protected reasoningEfforts(model: ModelCapabilities | null): readonly string[] {
-    return model?.reasoning?.supportedEfforts ?? ['low', 'medium', 'high'];
+  protected reasoningOptions(model: ModelCapabilities | null): readonly SelectOption<string>[] {
+    return reasoningOptions(model?.reasoning?.supportedEfforts ?? ['low', 'medium', 'high']);
   }
   /** Uses the provider-reported limit when available, otherwise stays manual. */
   protected tokenBudgetMax(model: ModelCapabilities | null): number {
@@ -291,9 +298,6 @@ export class TextModelsComponent {
   }
   protected budgetHint(max: number): string {
     return `Up to ${formatCount(max)} tokens`;
-  }
-  protected titleCase(value: string): string {
-    return value.charAt(0).toLocaleUpperCase() + value.slice(1);
   }
   /** Only a configured model that no test vouches for can be retried. */
   protected retestable(readiness: ConfigurationReadiness): boolean {

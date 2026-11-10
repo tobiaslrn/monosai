@@ -1,5 +1,4 @@
 import { DOCUMENT } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import type { ElementRef } from '@angular/core';
 import {
   ChangeDetectionStrategy,
@@ -20,6 +19,11 @@ import { GroupHeaderComponent } from '../../shared-ui/group/group-header.compone
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { ModelCatalogView } from './model-catalog-view';
 import { ModelPickerComponent } from '../../shared-ui/model-picker/model-picker.component';
+import {
+  SelectComponent,
+  type SelectOption,
+  type SelectValue,
+} from '../../shared-ui/select/select.component';
 
 /**
  * Every state the audio configuration can be in, as one surface has to say it.
@@ -41,10 +45,10 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    FormsModule,
     ButtonDirective,
     GroupHeaderComponent,
     ModelPickerComponent,
+    SelectComponent,
     SettingsRowComponent,
   ],
   template: `
@@ -79,18 +83,15 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
 
     <mn-settings-row label="Voice ID" labelId="mn-voice-label">
       @if (selectedSpeechModel()?.supportedVoices?.length) {
-        <select
-          class="mn-control"
-          aria-label="Voice"
-          aria-labelledby="mn-voice-label"
+        <mn-select
+          label="Voice"
+          labelledBy="mn-voice-label"
+          testId="tts-voice-select"
+          [options]="voiceOptions()"
           [disabled]="!credential.isConfigured()"
-          [ngModel]="tts.draft().voiceId"
-          (change)="setVoice($event)"
-        >
-          @for (voice of selectedSpeechModel()?.supportedVoices ?? []; track voice) {
-            <option [value]="voice">{{ voice }}</option>
-          }
-        </select>
+          [value]="tts.draft().voiceId"
+          (valueChange)="chooseVoice($event)"
+        />
       } @else {
         <input
           class="mn-control"
@@ -107,34 +108,28 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
 
     @if (acceptsDirection()) {
       <mn-settings-row label="Speaking style" labelId="mn-style-label">
-        <select
-          class="mn-control"
-          data-testid="tts-style-select"
-          aria-labelledby="mn-style-label"
+        <mn-select
+          testId="tts-style-select"
+          label="Speaking style"
+          labelledBy="mn-style-label"
+          [options]="styleOptions"
           [disabled]="!credential.isConfigured()"
-          [ngModel]="tts.draft().speechStyle"
-          (change)="setSpeechStyle($event)"
-        >
-          <option value="natural">Natural</option>
-          <option value="clear">Clear</option>
-          <option value="very-clear">Very clear</option>
-        </select>
+          [value]="tts.draft().speechStyle"
+          (valueChange)="setSpeechStyle($event)"
+        />
       </mn-settings-row>
     }
 
     <mn-settings-row label="Pace" labelId="mn-pace-label">
-      <select
-        class="mn-control"
-        data-testid="tts-pace-select"
-        aria-labelledby="mn-pace-label"
+      <mn-select
+        testId="tts-pace-select"
+        label="Pace"
+        labelledBy="mn-pace-label"
+        [options]="paceOptions"
         [disabled]="!credential.isConfigured()"
-        [ngModel]="tts.draft().speechPace"
-        (change)="setSpeechPace($event)"
-      >
-        <option value="natural">Natural</option>
-        <option value="slow">Slow</option>
-        <option value="very-slow">Very slow</option>
-      </select>
+        [value]="tts.draft().speechPace"
+        (valueChange)="setSpeechPace($event)"
+      />
     </mn-settings-row>
 
     <mn-settings-row label="Sample" [actions]="true">
@@ -198,6 +193,22 @@ export class VoiceModelComponent {
       this.tts.presets().find((preset) => preset.id === this.tts.settings().activePresetId)?.name ??
       null,
   );
+  protected readonly voiceOptions = computed<readonly SelectOption[]>(() =>
+    (this.selectedSpeechModel()?.supportedVoices ?? []).map((voice) => ({
+      value: voice,
+      label: voice,
+    })),
+  );
+  protected readonly styleOptions: readonly SelectOption[] = [
+    { value: 'natural', label: 'Natural', description: 'Everyday articulation' },
+    { value: 'clear', label: 'Clear', description: 'Precise sounds, still connected' },
+    { value: 'very-clear', label: 'Very clear', description: 'Extra-precise sounds' },
+  ];
+  protected readonly paceOptions: readonly SelectOption[] = [
+    { value: 'natural', label: 'Natural', description: 'A native speaker’s ordinary rate' },
+    { value: 'slow', label: 'Slow', description: 'Slower, for an intermediate learner' },
+    { value: 'very-slow', label: 'Very slow', description: 'Much slower, for a beginner' },
+  ];
   /** What the catalog says the configured model accepts, empty when unknown. */
   private readonly speechParameters = computed(
     () => this.selectedSpeechModel()?.supportedParameters ?? [],
@@ -312,16 +323,18 @@ export class VoiceModelComponent {
     this.tts.setDraft({ voiceId: (event.target as HTMLInputElement).value });
     void this.tts.save();
   }
-  protected setSpeechStyle(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
+  protected chooseVoice(voiceId: SelectValue): void {
+    this.tts.setDraft({ voiceId: String(voiceId) });
+    void this.tts.save();
+  }
+  protected setSpeechStyle(value: SelectValue): void {
     if (value !== 'natural' && value !== 'clear' && value !== 'very-clear') {
       return;
     }
     this.tts.setDraft({ speechStyle: value });
     void this.tts.save();
   }
-  protected setSpeechPace(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
+  protected setSpeechPace(value: SelectValue): void {
     if (value !== 'natural' && value !== 'slow' && value !== 'very-slow') {
       return;
     }

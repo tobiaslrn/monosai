@@ -11,6 +11,7 @@ import {
 } from './anki';
 import { importReading } from './reading';
 import { expectSheetAtRest } from './sheets';
+import { chooseOption, expectChosen } from './select';
 
 const CONTRACT_PACKAGE = 'contract-schema18-zstd.apkg';
 
@@ -177,7 +178,7 @@ test.describe('vocabulary', () => {
     await expect(filters).toBeVisible();
 
     // A dragged-away sheet discards its draft, so the list keeps every word.
-    await filters.getByLabel('First studied').selectOption('last-7-days');
+    await chooseOption(filters.getByRole('combobox', { name: 'First studied' }), 'last-7-days');
     await expectSheetAtRest(page.locator('mn-vocabulary-filter-sheet mn-dialog'));
     const handle = filters.getByRole('button', { name: 'Close filters' });
     const box = await handle.boundingBox();
@@ -266,11 +267,12 @@ test.describe('vocabulary', () => {
     await openVocabulary(page);
     await addLiveAnki(page, false);
     const draft = page.getByRole('region', { name: 'Review Anki source' });
-    await draft.getByLabel('Note type').selectOption('Basic');
-    await draft.getByLabel('Meaning field').selectOption('Meaning');
-    await draft.getByLabel('Note type').selectOption('Vocab');
-    await expect(draft.getByLabel('Meaning field')).toHaveValue('');
-    await expect(draft.getByLabel('Meaning field')).toHaveJSProperty('selectedIndex', 0);
+    const noteType = draft.getByRole('combobox', { name: 'Note type' });
+    const meaning = draft.getByRole('combobox', { name: 'Meaning field' });
+    await chooseOption(noteType, 'Basic');
+    await chooseOption(meaning, 'Meaning');
+    await chooseOption(noteType, 'Vocab');
+    await expectChosen(meaning, 'Not mapped');
   });
 
   test('browses, filters, expands, and follows a meaning-mapped Anki entry @smoke @mobile', async ({
@@ -289,7 +291,7 @@ test.describe('vocabulary', () => {
 
     await addLiveAnki(page, false);
     const draft = page.getByRole('region', { name: 'Review Anki source' });
-    await draft.getByLabel('Meaning field').selectOption('Meaning');
+    await chooseOption(draft.getByRole('combobox', { name: 'Meaning field' }), 'Meaning');
     await draft.getByRole('button', { name: 'Preview vocabulary', exact: true }).click();
     await draft.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
     await expect(page.getByTestId('words-standing')).toHaveText('3 words', {
@@ -320,7 +322,7 @@ test.describe('vocabulary', () => {
     const filters = page.getByRole('dialog', { name: 'Filters' });
     await expect(filters).toBeVisible();
     await expectNoSeriousAccessibilityViolations(page);
-    await filters.getByLabel('First studied').selectOption('last-7-days');
+    await chooseOption(filters.getByRole('combobox', { name: 'First studied' }), 'last-7-days');
     await filters.getByRole('button', { name: /Show/ }).click();
     await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(0);
     await page.getByRole('button', { name: 'Reset filters' }).click();

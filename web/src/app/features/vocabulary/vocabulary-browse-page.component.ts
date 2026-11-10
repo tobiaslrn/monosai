@@ -10,9 +10,10 @@ import { ButtonDirective } from '../../shared-ui/button/button';
 import { openDialog } from '../../shared-ui/dialog/dialog';
 import { EntryListComponent } from '../../shared-ui/entry-list/entry-list.component';
 import {
-  FilterSelectComponent,
-  type FilterOption,
-} from '../../shared-ui/filter-select/filter-select.component';
+  SelectComponent,
+  type SelectOption,
+  type SelectValue,
+} from '../../shared-ui/select/select.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ClusterComponent, PageComponent, StackComponent } from '../../shared-ui/layout/layout';
 import { NoticeComponent } from '../../shared-ui/notice/notice.component';
@@ -43,12 +44,12 @@ interface VirtualVocabularyEntry {
     ButtonDirective,
     ClusterComponent,
     EntryListComponent,
-    FilterSelectComponent,
     IconComponent,
     NoticeComponent,
     PageComponent,
     PageHeaderComponent,
     SearchFieldComponent,
+    SelectComponent,
     StackComponent,
     VirtualListDirective,
     VirtualItemDirective,
@@ -71,7 +72,8 @@ interface VirtualVocabularyEntry {
       />
 
       <mn-cluster justify="between">
-        <mn-filter-select
+        <mn-select
+          [inline]="true"
           label="Filter by source"
           testId="vocabulary-source-filter"
           [options]="sourceOptions()"
@@ -188,7 +190,7 @@ export class VocabularyBrowsePageComponent {
     this.store.visible().map((entry) => ({ key: entry.itemId, entry })),
   );
   protected readonly estimateHeight = (): number => 82;
-  protected readonly sourceOptions = computed<readonly FilterOption[]>(() => [
+  protected readonly sourceOptions = computed<readonly SelectOption<string>[]>(() => [
     { value: '', label: 'All sources' },
     ...this.store.sources().map((source) => ({ value: source.sourceId, label: source.label })),
   ]);
@@ -216,8 +218,8 @@ export class VocabularyBrowsePageComponent {
     void this.store.load();
   }
 
-  protected setSource(sourceId: string): void {
-    this.store.setSource(sourceId === '' ? null : vocabularySourceId(sourceId));
+  protected setSource(sourceId: SelectValue): void {
+    this.store.setSource(sourceId === '' ? null : vocabularySourceId(String(sourceId)));
   }
 
   protected setExpanded(id: VocabularyEntry['itemId'], expanded: boolean): void {

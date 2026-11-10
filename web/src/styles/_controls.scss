@@ -16,7 +16,7 @@
   font-weight: var(--weight-medium);
 }
 
-:where(.mn-control, .mn-field input, .mn-field textarea, .mn-field select) {
+:where(.mn-control, .mn-field input, .mn-field textarea) {
   width: 100%;
   min-height: var(--touch-target);
   padding: var(--space-2) var(--control-inset);
@@ -29,27 +29,27 @@
 }
 
 :where(html[data-pointer='mouse'])
-  :where(.mn-control, .mn-field input, .mn-field textarea, .mn-field select):hover:not(:disabled) {
+  :where(.mn-control, .mn-field input, .mn-field textarea):hover:not(:disabled) {
   border-color: var(--action-primary);
 }
 
-:where(.mn-control, .mn-field input, .mn-field textarea, .mn-field select):disabled {
+:where(.mn-control, .mn-field input, .mn-field textarea):disabled {
   background: var(--surface-sunken);
   color: var(--text-secondary);
   cursor: not-allowed;
   opacity: 0.72;
 }
 
-:where(.mn-control, .mn-field input, .mn-field textarea, .mn-field select)[aria-invalid='true'] {
+:where(.mn-control, .mn-field input, .mn-field textarea)[aria-invalid='true'] {
   border-color: var(--status-danger);
 }
 
 /*
- * A field that opens a choice — a native select, or a button that opens a
- * picker (`.mn-control--select`) — carries one chevron, so a card of fields
- * reads as one control language.
+ * A field that opens a choice — the select, or the picker's trigger
+ * (`.mn-control--select`) — carries one chevron, so a card of fields reads as
+ * one control language.
  */
-:where(select.mn-control, .mn-field select, .mn-control--select) {
+:where(.mn-control--select) {
   appearance: none;
   /* The arrow is placed in pixels, so large text must not widen the room kept for it. */
   padding-inline-end: min(calc(var(--space-6) + var(--space-1)), 36px);

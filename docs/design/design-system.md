@@ -224,7 +224,7 @@ nobody had chosen. The connection control is an ordinary outline action, not the
 page's filled primary, because it is pressed once. A card with one self-evident
 choice, such as the theme, carries its card title and no second group title.
 
-The voice card uses a native select labelled **Speaking style** with the three
+The voice card uses a select labelled **Speaking style** with the three
 stable choices Natural, Clear, and Very clear when the selected model accepts
 instructions. It also carries a **Pace** select with Natural, Slow, and Very
 slow for every model: it is a model request preference, so both choices sit
@@ -250,11 +250,14 @@ sentence case, small, semibold, secondary — or no title at all when its conten
 are self-evident.
 
 A **card of rows** — settings, most of all — never sinks a group of its rows into
-an inset. A group there (Text, Voice) is headed by a row carrying its group title
-— the one plain sub-heading, never small caps — and its status, and its rows stay on the card's own inset with a hairline
-between each, so the card keeps one content edge. Nothing in a group is
-indented: what belongs to a setting, such as the reasoning and limit of a
-task's own model, follows it as rows on the same edge. An action belongs in the
+an inset. A group there (Text, Translation, Grammar, Voice) is headed by a row
+carrying its group title — the one plain sub-heading, never small caps — and its
+own status, and its rows stay on the card's own inset with a hairline between
+each, so the card keeps one content edge. Every group a task can override gets
+its own header, so the rows that belong to it never read as a continuation of the
+group above. Nothing in a group is indented: what belongs to a setting, such as
+the reasoning and limit of a task's own model, follows it as rows on the same
+edge. An action belongs in the
 row of what it acts on, not in the group's header. A setting that inherits shows
 the value that will actually apply, muted, never a label for the inheritance
 alone. A number a learner reads at rest is grouped; a hint says what the control
@@ -295,8 +298,8 @@ the way to build:
 | Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                                                                                                                                                 |
 | Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                                                                                                            |
 | Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                                                                                              |
-| Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                                                                                                                                                  |
-| Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                               |
+| Choices          | `mn-select` (one value from a list), `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips                                                                                                                                                                                  |
+| Fields           | `mn-field` (label, hint, and error around a control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                               |
 | Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                                                                                        |
 | Status           | `mn-checklist` with `mn-checklist-step` for first steps, `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
 | Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen` and `mn-not-found-panel` on the one whole-page state                                                                                                                                                                                                       |
@@ -632,6 +635,23 @@ Custom. Filling every axis at random is a ghost action in the card's heading.
 
 ### Options to pick from
 
+**Every choice of one value from a list uses the app's select (`mn-select`);
+native selects are not used**, because their popup is the platform's and matches
+no other menu. The closed select is the field every picker's trigger is: the
+same border, height, radius, and chevron. Open, it is the picker overlay: hung
+under its field, at least as wide as it, on a wide viewport, and a bottom sheet
+with a handle and a title on a phone. Its rows are the surface's rows: a label,
+an optional muted line saying what choosing it does, and a check on the chosen
+one. An option that needs explaining gets that line rather than a hint under the
+whole control; an unexplained choice (a voice name) stays a bare label. A first
+"Automatic" or "Not mapped" option is an ordinary option. It is a select-only
+combobox: the field is the combobox and the list its listbox. Enter, Space, or
+an arrow opens it, the arrow keys, Home, End, and typing move through the
+options, Enter or Space chooses, and Escape closes it and returns focus to the
+field without choosing. A list that is searched, or that carries favourites, is a
+model picker instead. Two or three options a learner should compare at a glance
+stay a segmented control or radio cards in place.
+
 Drafted options the learner picks one of — the plots — are **insets inside the
 card** that offers them, never cards of their own, so the page keeps its two
 levels of grouping. Each is a radio card (`mn-radio-card`, sunken when it sits in
@@ -681,7 +701,7 @@ decided by what the learner is doing in it, never by the screen it is on:
 | Kind             | What it is for                                                                                      | Wide viewport                                                        | Small viewport                                      |
 | ---------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------- |
 | **Menu**         | A short list of commands or destinations: a new story, a story's actions                            | Hangs from its trigger                                               | Hangs from its trigger                              |
-| **Picker**       | Choosing one value from a list too long for a select: a model                                       | Hangs from its trigger, at least as wide as it, search pinned on top | A bottom sheet: handle, title, search pinned on top |
+| **Picker**       | Choosing one value from a list: any select, or a model from a searchable catalogue                  | Hangs from its trigger, at least as wide as it, search pinned on top | A bottom sheet: handle, title, search pinned on top |
 | **Task dialog**  | A form or a task in steps: adding words and every step of it, the OpenRouter key, Filters, renaming | A centred card over a scrim: header, body, footer                    | A bottom sheet with a handle                        |
 | **Confirmation** | A question with a safe answer before something is lost, or a notice that needs an answer            | A centred card over a scrim                                          | Docked to the bottom edge, no handle                |
 
@@ -707,8 +727,9 @@ Its commit goes through its own primary action.
 A **menu** is never a form: as soon as a panel holds a field, it is a task
 dialog. A **picker's** trigger is a field like any other — the select's border,
 height, radius, and chevron, the value in the field's own weight — so a card of
-settings has one control language. A choice of a few named options in a card is
-not an overlay at all but a disclosure row or radio cards in place, and stays so.
+settings has one control language. A choice of a few named options in a card
+that must be compared at a glance is not an overlay at all but a segmented
+control or radio cards in place, and stays so.
 
 Modal surfaces use the CDK Dialog pattern or a native popover that behaves like
 it: focus moves into the surface, is held there while it is open, `Escape`
