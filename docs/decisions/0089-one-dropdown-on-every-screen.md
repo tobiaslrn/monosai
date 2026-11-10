@@ -23,17 +23,20 @@ built on it. It has one look on every screen size:
 
 - **Placement**: directly below its field, above it only when the content does
   not fit below and there is more room above, measured in the visual viewport
-  so an on-screen keyboard counts. It hangs from the field's edge that lies on
-  the page column's edge and never leaves the column or the screen. One script
+  so an on-screen keyboard counts. It never leaves the column or the screen. One script
   (`AnchoredPlacement`) does this, never a bottom sheet and never a centred
   dialog.
-- **Width**: one token (`--dropdown-width`), narrower only where the column is;
-  on a phone that is the column's width. Never sized by its content or its
-  field.
-- **Anatomy**: the overlay surface tokens, one symmetric block padding
-  (`--dropdown-inset-block`), and one row: a label, an optional muted line, and
-  a check at the end for the chosen option. No title, no handle. The model
-  picker adds a search as its first row and a favourite star after the check.
+- **Width**: at least as wide as its field and growing with its content up to
+  `--dropdown-max-width`, never wider than the column. It starts at the field's
+  start edge, or ends at its end edge where it would leave the column from
+  there. A field-wide list under a full-width field; on a phone never wider
+  than the column.
+- **Anatomy**: the floating overlay surface, one padding the same on every side
+  (`--dropdown-inset`), and one row inset in the panel with its own radius and
+  no lines between rows: a label in normal weight, an optional muted line, and a
+  check in the accent colour at the end for the chosen option. No title, no
+  handle. The model picker adds a borderless search row as its first row, with
+  one hairline under it, and a quiet favourite star before the check.
 - **Motion**: the shared `drop` motion, a fade with a few pixels of travel from
   the field's side.
 
@@ -48,7 +51,7 @@ Story options; it no longer holds any choice from a list.
 
 - The picker's sheet presentation, its title, and the select's `inline` input
   are gone; there is no input that changes the dropdown for one place.
-- The menu's rows lose their inset rounded corners and take the dropdown's
-  full-width rows with hairlines between them.
+- The menu's rows are the dropdown's inset rounded rows, with no hairlines; a
+  menu has a separator only before a destructive command.
 - On a phone the dropdown is anchored like a native select's list, so a long
   list scrolls inside it rather than rising as a sheet.

@@ -4,6 +4,8 @@
   --surface-canvas: #f8f6f1;
   --surface-panel: #fffdf9;
   --surface-raised: #ffffff;
+  /* What floats above a card: a menu, a dropdown, a dialog. */
+  --surface-floating: #ffffff;
   --surface-sunken: #efece5;
   --surface-inverse: #252824;
 
@@ -64,6 +66,7 @@
   --surface-canvas: #1b1d1a;
   --surface-panel: #232622;
   --surface-raised: #2b2f2a;
+  --surface-floating: #353a34;
   --surface-sunken: #161815;
   --surface-inverse: #f0eee8;
 
@@ -111,6 +114,7 @@
   --space-7: 3rem;
 
   --radius-control: 0.75rem;
+  --radius-row: 0.5rem;
   --radius-card: 1rem;
   --radius-mark: 1.375rem;
   --radius-sheet: 1.5rem;
@@ -210,10 +214,12 @@
    * confirmation, and the reader's panels — is drawn from these and nothing
    * else, whatever mechanism holds it up.
    *
-   * overlay-surface     its fill
+   * overlay-surface     its fill: the floating surface, a step above a card in both
+   *                     themes
    * overlay-edge        its border colour
-   * overlay-radius      its corners where it floats; docked to a phone's
-   *                     bottom edge it takes the sheet radius on top instead
+   * overlay-radius      its corners where it floats, smaller than a card's; docked
+   *                     to a phone's bottom edge it takes the sheet radius on top
+   *                     instead
    * overlay-shadow      its elevation
    * overlay-inset       its padding: the same inset as a card
    * overlay-scrim       the dimmed page behind a modal overlay
@@ -224,18 +230,18 @@
    *                     viewport
    * panel-width         an anchored panel's width: Story options
    * player-width        the reader's floating audio player on a wide viewport
-   * dropdown-width      the one width of every dropdown (a select's list, the
-   *                     model picker), at every size; narrower only where the
-   *                     page's column is
+   * dropdown-max-width  the widest a dropdown grows with its content; it is never
+   *                     narrower than its field, and never wider than the column
    * dropdown-max-height how tall a dropdown or a menu grows before its list scrolls
-   * dropdown-inset-block the space above a dropdown's or a menu's first row and
-   *                     below its last, the same at both ends
+   * dropdown-inset      the space around a dropdown's or a menu's rows, the same on
+   *                     every side
+   * dropdown-row-inset  a row's padding from its highlight's edge to its content
    * menu-min-width      the narrowest a menu of commands is drawn
    * menu-max-width      the widest a menu of commands is drawn
    */
-  --overlay-surface: var(--surface-panel);
+  --overlay-surface: var(--surface-floating);
   --overlay-edge: var(--border-subtle);
-  --overlay-radius: var(--radius-card);
+  --overlay-radius: var(--radius-control);
   --overlay-shadow: var(--shadow-overlay);
   --overlay-inset: var(--surface-inset);
   --overlay-scrim: rgb(0 0 0 / 38%);
@@ -244,9 +250,10 @@
   --dialog-width: 30rem;
   --panel-width: 25rem;
   --player-width: 34rem;
-  --dropdown-width: 25rem;
+  --dropdown-max-width: 25rem;
   --dropdown-max-height: 28rem;
-  --dropdown-inset-block: var(--space-2);
+  --dropdown-inset: var(--space-1);
+  --dropdown-row-inset: var(--space-3);
   --menu-min-width: 12rem;
   --menu-max-width: 20rem;
 

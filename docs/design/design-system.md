@@ -647,23 +647,37 @@ same border, height, radius, and chevron. Open, both are **the dropdown**
 (`mn-dropdown`, [ADR 0089](../decisions/0089-one-dropdown-on-every-screen.md)),
 and the dropdown has one look on every screen size:
 
-- **Placement.** Directly below its field, and above it only when its content
-  does not fit below and there is more room above, measured in the visual
-  viewport so an on-screen keyboard counts as a lack of room. It hangs from the
-  field's edge that lies on the page column's edge — the start edge for a field
-  at the column's start, the end edge for one at its end — and it never leaves
-  the column or the screen. Never a bottom sheet, never a centred dialog.
-- **Width.** One width for every dropdown, narrower only where the column is:
-  on a phone it is the column's width. Never sized by its content or its field.
-- **Anatomy.** The overlay surface, the same space above its first row as below
-  its last, and one row: a label, an optional muted line, and a check at the
-  end of the chosen option, at one height and one inset. No title, no handle.
+- **Placement.** Directly below its field, a small token's gap away, and above
+  it only when its content does not fit below and there is more room above,
+  measured in the visual viewport so an on-screen keyboard counts as a lack of
+  room. Its start edge is its field's start edge; where it would leave the page
+  column from there, its end edge is the field's end edge instead. It never
+  leaves the column or the screen. Never a bottom sheet, never a centred dialog.
+- **Width.** At least as wide as its field, growing with its content up to one
+  maximum, and never wider than the column: a field-wide list under a
+  full-width field, and on a phone never wider than the column.
+- **Anatomy.** The floating surface (white in light, a step above a card in
+  dark) with its edge, the overlay radius and shadow, and one small padding the
+  same on every side. Rows are inset in the panel, each with its own small
+  radius, at one height and one inset, and no line between them. A row is a
+  label in normal weight and an optional muted line; the chosen option is
+  marked only by a check in the accent colour at the row's end, never by
+  weight or a tinted background. Hover, keyboard-active and pressed rows take
+  the neutral tint. A real split in a list (the fallback option from the
+  models, favourites from the rest) is one separator line or a muted group
+  label, inset with the rows. No title, no handle.
+- **Scrolling.** Past its maximum height the rows scroll and the panel's
+  padding and any pinned search stay put.
+- **Field.** Its chevron is the app's chevron-down stroke icon in the muted
+  colour, never turned, and while the list is open the field wears its active
+  border.
 - **Motion.** It fades in from its field with a few pixels of travel from the
   field's side and fades back out the same way.
 
-The model picker is the same dropdown with a search as its first row — the
-shared field look, kept in view while the list scrolls under it — and a
-favourite star after each option's check. Nothing about the dropdown is chosen
+The model picker is the same dropdown with a search as its first row — a
+borderless row with the search glyph leading, no ring of its own because the
+panel is the focus context, one hairline under it, kept in view while the list
+scrolls under it — and a quiet favourite star before each option's check. Nothing about the dropdown is chosen
 by the place that uses it: there is no input that changes it for one screen.
 
 An option that needs explaining gets the muted line rather than a hint under the
@@ -733,8 +747,9 @@ All four are drawn from **one overlay surface**: one fill, one edge, one radius,
 one elevation, the card's inset as padding, and one scrim behind a modal one —
 the overlay roles in the tokens, applied by the shared surface whatever holds it
 up. A menu and a dropdown wear the surface without its frame, and share one
-padding, one row, one placement, and one motion between them; only a menu's
-width differs. A task dialog and a confirmation share the frame as well: a
+padding, one inset row, one placement, and one motion between them; only a
+menu's width differs. A menu has a separator only at a real split, such as
+before a destructive command. A task dialog and a confirmation share the frame as well: a
 **header** with the title, a back arrow when the step is below the first, and a
 close on a wide viewport; a **body** that is the one scroller, with anything that
 must stay put while it scrolls pinned above it; and a **footer** of actions. Docked to a
@@ -749,11 +764,11 @@ not. A task dialog has **no Cancel button**: its ways out are the close, Escape,
 the scrim, and on a phone the handle, all of which discard what it was drafting.
 Its commit goes through its own primary action.
 
-An overlay anchored to a trigger never leaves the page's column. It hangs from
-the trigger's end edge when the trigger sits at the column's end (a settings
-row) and from its start edge when the trigger sits at the column's start (an
-inline filter). The choice is made once, by the shared placement, for every
-dropdown and every menu alike.
+An overlay anchored to a trigger never leaves the page's column. It starts at
+the trigger's start edge, and where it would leave the column from there it ends
+at the trigger's end edge instead (a field or an icon at the column's end). The
+choice is made once, by the shared placement, for every dropdown and every menu
+alike.
 
 A **menu** is never a form: as soon as a panel holds a field, it is a task
 dialog. A **dropdown's** field is a field like any other — the select's border,

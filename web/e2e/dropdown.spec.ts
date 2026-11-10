@@ -4,10 +4,10 @@ import { expectMotionSettled } from './sheets';
 import { GENERATION_READY_STATE, TTS_READY_STATE } from './state';
 
 /**
- * Every dropdown is one dropdown: it hangs from its field, from the edge the
- * field shares with the page's column, and never leaves the column or the
- * screen. On a phone that makes it exactly the column's width, whichever edge
- * the field sits on.
+ * Every dropdown is one dropdown: it hangs from its field, starting at the
+ * field's start edge (or ending at its end edge where it would leave the
+ * column), at least as wide as the field, and never leaves the column or the
+ * screen.
  */
 interface Box {
   readonly left: number;
@@ -53,8 +53,9 @@ function expectInside(
   const gap = list.top >= field.bottom ? list.top - field.bottom : field.top - list.bottom;
   expect(gap).toBeGreaterThanOrEqual(0);
   expect(gap).toBeLessThanOrEqual(8);
-  // On a phone the one dropdown width is wider than the column, so it is the column.
-  expect(list.right - list.left).toBeCloseTo(column.right - column.left, 0);
+  // At least as wide as the field, and never wider than the column.
+  expect(list.right - list.left).toBeGreaterThanOrEqual(field.right - field.left - 0.5);
+  expect(list.right - list.left).toBeLessThanOrEqual(column.right - column.left + 0.5);
 }
 
 for (const width of [320, 393]) {
@@ -70,7 +71,8 @@ for (const width of [320, 393]) {
         const placed = await openDropdown(page, page.getByTestId('tts-pace-select'));
 
         expectInside(placed, page);
-        expect(placed.list.right).toBeCloseTo(placed.column.right, 0);
+        // Growing from the field's start edge would leave the column, so it ends at the field's end.
+        expect(placed.list.right).toBeCloseTo(placed.field.right, 0);
       });
     });
 

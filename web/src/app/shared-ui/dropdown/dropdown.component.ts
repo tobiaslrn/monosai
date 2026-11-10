@@ -28,8 +28,9 @@ let nextDropdownId = 0;
  *     …the rows (`.mn-dropdown-row`)…
  *   </mn-dropdown>
  *
- * It hangs below its field, or above it when the content fits only there, at
- * one width (`--dropdown-width`) held inside the page's column
+ * It hangs below its field, or above it when the content fits only there, from
+ * the field's start edge, at least as wide as the field and growing with its
+ * content to `--dropdown-max-width`, held inside the page's column
  * (`AnchoredPlacement`). Its surface, padding, rows and motion are
  * `_dropdown.scss`, which menus share; nothing about it is chosen by the place
  * that uses it.

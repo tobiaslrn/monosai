@@ -7,16 +7,19 @@
  *   and there is more room above. The room is measured in the visual viewport,
  *   so an on-screen keyboard that covers the lower half moves it up rather than
  *   hiding it.
- * - Aligned to the trigger's start edge when the trigger sits in the first half
- *   of the page's column, and to its end edge otherwise, then held inside the
- *   column: a dropdown wider than the room beside the trigger slides inward
- *   rather than leaving the column. The column is the page's (`mn-page`), or
- *   an overlay's body when the trigger sits in a dialog, never closer than the
- *   overlay margin to the window's edge.
+ * - Starting at the trigger's start edge, so a list begins where its field
+ *   does. Where it would leave the column from there, it ends at the trigger's
+ *   end edge instead, and then it is held inside the column. The column is the
+ *   page's (`mn-page`), or an overlay's body when the trigger sits in a
+ *   dialog, never closer than the overlay margin to the window's edge.
+ * - At least as wide as the trigger when it is a dropdown, which is the panel's
+ *   own width rule reading `--anchored-field-width`; it grows with its content
+ *   up to its own maximum and never past the column.
  *
  * It writes the room it found to the panel as `--anchored-room-inline` and
  * `--anchored-room-block`, which the panel's own width and height rules clamp
- * to, and the panel's place as `left` and `top`. It measures the panel once it
+ * to, the trigger's width as `--anchored-field-width`, and the panel's place as
+ * `left` and `top`. It measures the panel once it
  * is laid out, from a `ResizeObserver` on its content: that runs after layout
  * and before paint, so the first frame is already in place. While the panel is
  * open it follows the trigger through scrolling, a resize, and the visual
@@ -38,8 +41,8 @@ export interface AnchoredPlacementOptions {
 
 /** What a trigger is laid out in: an overlay's body, else the page's column. */
 const COLUMN = '.mn-overlay__body, mn-page, .mn-page, main';
-/** Within this many pixels of the column's middle, a trigger counts as at its start. */
-const MIDDLE_TOLERANCE = 1;
+/** A panel this close to the column's end still counts as inside it. */
+const EDGE_TOLERANCE = 1;
 
 interface Box {
   readonly left: number;
@@ -114,9 +117,8 @@ export class AnchoredPlacement {
 
     // Across: from the edge the trigger shares with the column, held inside it.
     const width = Math.min(own.width, column.right - column.left);
-    const middle = (column.left + column.right) / 2;
-    const atStart = field.left + field.width / 2 <= middle + MIDDLE_TOLERANCE;
-    const wanted = atStart ? field.left : field.right - width;
+    const fits = field.left + width <= column.right + EDGE_TOLERANCE;
+    const wanted = fits ? field.left : field.right - width;
     const left = Math.min(Math.max(wanted, column.left), column.right - width);
 
     // Down, or up when it does not fit below and there is more room above.
@@ -147,6 +149,10 @@ export class AnchoredPlacement {
    */
   private writeRoom(trigger = this.options.trigger()): Box {
     const column = trigger === null ? this.viewportBox() : this.columnOf(trigger);
+    this.options.panel.style.setProperty(
+      '--anchored-field-width',
+      `${String(trigger?.getBoundingClientRect().width ?? 0)}px`,
+    );
     this.options.panel.style.setProperty(
       '--anchored-room-inline',
       `${String(Math.max(0, column.right - column.left))}px`,

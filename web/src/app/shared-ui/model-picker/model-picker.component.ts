@@ -42,13 +42,14 @@ import { NoticeComponent } from '../notice/notice.component';
         <span class="mn-visually-hidden">, {{ model.modelId }}</span>
       }
     </button>
+    <mn-icon class="mn-select-caret" name="chevron-down" [size]="18" />
 
     <mn-dropdown #panel="mnDropdown" [label]="title()" (opened)="opened.emit()" (closed)="reset()">
       @if (panel.isOpen()) {
-        <label class="search" mn-dropdown-pinned>
+        <label class="mn-dropdown__search" mn-dropdown-pinned>
+          <mn-icon name="search" [size]="18" />
           <span class="mn-visually-hidden">Search {{ label() }}</span>
           <input
-            class="mn-control"
             type="search"
             autocomplete="off"
             data-testid="model-picker-search"
@@ -63,7 +64,7 @@ import { NoticeComponent } from '../notice/notice.component';
       @if (panel.isOpen()) {
         @if (favorites().length > 0) {
           <div class="favorites" aria-label="Favourite models">
-            <p class="mn-group-title">Favourites</p>
+            <p class="mn-dropdown__group-title">Favourites</p>
             @for (model of favorites(); track model.modelId) {
               <ng-container
                 [ngTemplateOutlet]="modelRow"
@@ -73,6 +74,9 @@ import { NoticeComponent } from '../notice/notice.component';
           </div>
         }
 
+        @if (favorites().length > 0 && (others().length > 0 || fallbackLabel())) {
+          <hr class="mn-dropdown__separator" />
+        }
         <div class="results" role="listbox" [attr.aria-label]="label()">
           @if (fallbackLabel(); as fallback) {
             <button
@@ -90,6 +94,9 @@ import { NoticeComponent } from '../notice/notice.component';
                 <mn-icon class="mn-dropdown-row__check" name="check" [size]="18" tone="accent" />
               }
             </button>
+            @if (others().length > 0) {
+              <hr class="mn-dropdown__separator" />
+            }
           }
           @if (loading()) {
             <p class="mn-dropdown__state state" role="status">Loading OpenRouter models…</p>
@@ -128,9 +135,6 @@ import { NoticeComponent } from '../notice/notice.component';
             <!-- The identifier is what the row exists to show, so it leads the line. -->
             <small class="mn-dropdown-row__description">{{ description(model) }}</small>
           </span>
-          @if (model.modelId === selectedId()) {
-            <mn-icon class="mn-dropdown-row__check" name="check" [size]="18" tone="accent" />
-          }
         </button>
         <button
           type="button"
@@ -141,8 +145,13 @@ import { NoticeComponent } from '../notice/notice.component';
           [attr.aria-pressed]="isFavorite(model.modelId)"
           (click)="favoriteToggled.emit(model.modelId)"
         >
-          {{ isFavorite(model.modelId) ? '★' : '☆' }}
+          <mn-icon name="star" [size]="18" />
         </button>
+        <span class="mn-dropdown-row__mark">
+          @if (model.modelId === selectedId()) {
+            <mn-icon class="mn-dropdown-row__check" name="check" [size]="18" tone="accent" />
+          }
+        </span>
       </div>
     </ng-template>
   `,
@@ -150,6 +159,7 @@ import { NoticeComponent } from '../notice/notice.component';
   styles: `
     :host {
       display: block;
+      position: relative;
       min-width: 0;
     }
 
@@ -179,40 +189,23 @@ import { NoticeComponent } from '../notice/notice.component';
       }
     }
 
-    .search {
-      display: block;
-    }
-
-    .search input {
-      width: 100%;
-    }
-
     .favorites,
     .results {
       display: flex;
       flex-direction: column;
     }
 
-    /* The favourites are a group of rows above the catalogue, a hairline between the two. */
-    .favorites {
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .favorites p {
-      margin: 0;
-      padding: var(--row-inset-block) var(--overlay-inset) 0;
+    .results {
+      display: flex;
+      flex-direction: column;
     }
 
     .results {
       min-height: var(--touch-target);
     }
 
-    .star {
-      font-size: var(--text-xl);
-    }
-
     .results > mn-notice {
-      margin: var(--row-inset-block) var(--overlay-inset);
+      margin: var(--row-inset-block) var(--dropdown-row-inset);
     }
   `,
 })

@@ -84,6 +84,7 @@ const TYPE_AHEAD_RESET_MS = 600;
     >
       {{ shown() }}
     </button>
+    <mn-icon class="mn-select-caret" name="chevron-down" [size]="18" />
 
     <mn-dropdown
       #panel="mnDropdown"
@@ -136,6 +137,7 @@ const TYPE_AHEAD_RESET_MS = 600;
   styles: `
     :host {
       display: block;
+      position: relative;
       min-width: 0;
     }
 

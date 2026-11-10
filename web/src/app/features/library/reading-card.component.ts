@@ -103,6 +103,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
             <mn-icon name="rename" />
             <span>Rename</span>
           </button>
+          <hr class="mn-dropdown__separator" />
           <button mnMenuItem="danger" type="button" (click)="requestDelete()">
             <mn-icon name="delete" />
             <span>Delete</span>

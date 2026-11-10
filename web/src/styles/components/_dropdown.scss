@@ -15,11 +15,14 @@
  *
  * Both are native popovers in the top layer, placed in script by
  * `AnchoredPlacement` (below the trigger, above it only when it fits only
- * there, aligned to the trigger's edge on the column's edge, never outside the
- * column), which hands them the room it found as `--anchored-room-inline` and
- * `--anchored-room-block`. A dropdown is one width everywhere
- * (`--dropdown-width`), narrower only where the column is; a menu fits its
- * commands between `--menu-min-width` and `--menu-max-width`.
+ * there, from the trigger's start edge or, where it would leave the column
+ * from there, its end edge), which hands them the room it found as
+ * `--anchored-room-inline` and `--anchored-room-block` and the trigger's width
+ * as `--anchored-field-width`. A dropdown is at least as wide as its field and
+ * grows with its content up to `--dropdown-max-width`; a menu fits its
+ * commands between `--menu-min-width` and `--menu-max-width`. Neither is ever
+ * wider than the column. Rows are inset in the panel, and the panel's padding
+ * is the same on every side.
  */
 .mn-dropdown,
 .mn-popup {
@@ -31,7 +34,7 @@
     var(--anchored-room-block, calc(100dvh - 2 * var(--overlay-margin)))
   );
   margin: 0;
-  padding: var(--dropdown-inset-block) 0;
+  padding: var(--dropdown-inset);
   border: 1px solid var(--overlay-edge);
   border-radius: var(--overlay-radius);
   color: var(--text-primary);
@@ -52,8 +55,13 @@
 }
 
 .mn-dropdown {
-  width: min(
-    var(--dropdown-width),
+  width: max-content;
+  min-width: min(
+    var(--anchored-field-width, 0px),
+    var(--anchored-room-inline, calc(100vw - 2 * var(--overlay-margin)))
+  );
+  max-width: min(
+    var(--dropdown-max-width),
     var(--anchored-room-inline, calc(100vw - 2 * var(--overlay-margin)))
   );
   overflow: hidden;
@@ -82,14 +90,66 @@
   min-height: 0;
 }
 
-/* What stays put above the list while it scrolls: a search, as its first row. */
+/*
+ * What stays put above the list while it scrolls: a search, as its first row,
+ * with one hairline under it that runs between the panel's insets.
+ */
 .mn-dropdown__pinned {
   flex: none;
-  padding: 0 var(--overlay-inset) var(--dropdown-inset-block);
+  margin-block-end: var(--dropdown-inset);
+  border-block-end: 1px solid var(--border-subtle);
 }
 
 .mn-dropdown__pinned:empty {
   display: none;
+}
+
+/*
+ * The search in that row: borderless, with the search glyph leading, and no
+ * ring of its own, because the panel is the focus context.
+ */
+.mn-dropdown__search {
+  display: flex;
+  gap: var(--glyph-gap);
+  align-items: center;
+  min-height: var(--touch-target);
+  padding-inline: var(--dropdown-row-inset);
+  color: var(--text-secondary);
+}
+
+.mn-dropdown__search > input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(--touch-target);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+}
+
+.mn-dropdown__search > input::placeholder {
+  color: var(--text-secondary);
+}
+
+/* A real split in a list: one line, inset with the rows. */
+.mn-dropdown__separator {
+  flex: none;
+  height: 0;
+  margin: var(--dropdown-inset) 0;
+  border: 0;
+  border-block-start: 1px solid var(--border-subtle);
+}
+
+/* A muted name over a group of rows. */
+.mn-dropdown__group-title {
+  margin: 0;
+  padding: var(--row-inset-block) var(--dropdown-row-inset) var(--line-gap);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
 }
 
 .mn-dropdown__content {
@@ -98,10 +158,11 @@
 }
 
 /*
- * One row in every dropdown and every menu: one height, one inset, a hairline
- * between rows, and a hover that spans the surface. Its words are a label and,
- * optionally, one muted line under it; a chosen option's label is semibold and
- * a check ends the row. A row with a control of its own (the model picker's
+ * One row in every dropdown and every menu: one height, one inset, inside the
+ * panel with its own small radius, and no line between rows. Its words are a
+ * label and, optionally, one muted line under it; a chosen option is marked by
+ * a check in the accent colour at the row's end, and its label stays as it
+ * was. A row with a control of its own (the model picker's
  * favourite star) holds a `__choice` that takes the press and the control after
  * it, so the row still reads as one.
  */
@@ -114,9 +175,9 @@
   width: 100%;
   min-height: var(--touch-target);
   margin: 0;
-  padding: var(--row-inset-block) var(--overlay-inset);
+  padding: var(--row-inset-block) var(--dropdown-row-inset);
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-row);
   color: var(--text-primary);
   background: transparent;
   font: inherit;
@@ -124,10 +185,6 @@
   text-decoration: none;
   cursor: pointer;
   @include motion.state(background-color);
-}
-
-.mn-dropdown-row + .mn-dropdown-row {
-  border-top: 1px solid var(--border-subtle);
 }
 
 .mn-dropdown-row:has(> .mn-dropdown-row__choice) {
@@ -152,16 +209,33 @@
 .mn-dropdown-row__choice {
   flex: 1 1 auto;
   min-width: 0;
-  padding: var(--row-inset-block) 0 var(--row-inset-block) var(--overlay-inset);
+  padding: var(--row-inset-block) 0 var(--row-inset-block) var(--dropdown-row-inset);
 }
 
-/* The row's own control keeps the row's end inset, so its glyph ends where a check does. */
+/*
+ * The row's own control is a quiet glyph (a favourite star, filled while on),
+ * and the check that marks the chosen row follows it in a slot of its own, so
+ * every row's check ends at the row's inset.
+ */
 .mn-dropdown-row__control {
   flex: none;
   justify-content: center;
   min-width: var(--touch-target);
-  padding: 0 var(--overlay-inset) 0 var(--inline-gap);
-  color: var(--action-primary);
+  padding: 0 var(--inline-gap);
+  color: var(--text-secondary);
+}
+
+.mn-dropdown-row__control[aria-pressed='true'] svg {
+  fill: currentcolor;
+}
+
+.mn-dropdown-row__mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-check-size);
+  margin-inline-end: var(--dropdown-row-inset);
 }
 
 .mn-dropdown-row__words {
@@ -173,11 +247,6 @@
 
 .mn-dropdown-row__label {
   overflow-wrap: anywhere;
-}
-
-.mn-dropdown-row[aria-selected='true'] .mn-dropdown-row__label,
-.mn-dropdown-row__choice[aria-selected='true'] .mn-dropdown-row__label {
-  font-weight: var(--weight-semibold);
 }
 
 .mn-dropdown-row__description {
@@ -192,8 +261,9 @@
 }
 
 :where(html[data-pointer='mouse']) .mn-dropdown-row:where(:hover):not([aria-disabled='true']),
-.mn-dropdown-row:where(:active):not([aria-disabled='true']) {
-  background: var(--surface-sunken);
+.mn-dropdown-row:where(:active):not([aria-disabled='true']),
+.mn-dropdown-row.is-active:not([aria-disabled='true']) {
+  background: var(--surface-sunken-hover);
 }
 
 /* The row the keys are on — focused itself, or named by a focused listbox — wears the ring inside it. */
@@ -228,6 +298,6 @@
 /* A line in place of rows: loading, or nothing matching. */
 .mn-dropdown__state {
   margin: 0;
-  padding: var(--row-inset-block) var(--overlay-inset);
+  padding: var(--row-inset-block) var(--dropdown-row-inset);
   color: var(--text-secondary);
 }
