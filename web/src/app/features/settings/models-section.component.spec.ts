@@ -299,7 +299,8 @@ describe('ModelsSectionComponent audio readiness', () => {
     const budget = element.querySelector<HTMLInputElement>(
       '[data-testid="story-token-budget-input"]',
     );
-    expect(budget?.max).toBe('65536');
+    expect(element.textContent).toContain('Up to 65,536 tokens');
+    expect(budget?.value).toBe('16,384');
 
     budget!.value = '65537';
     budget!.dispatchEvent(new Event('input'));
@@ -322,7 +323,7 @@ describe('ModelsSectionComponent audio readiness', () => {
     detect();
 
     expect(readiness(element)).toBe('Not tested');
-    expect(note(element)).toContain('Preview plays one test sentence');
+    expect(note(element)).toContain('The sample plays one test sentence');
   });
 
   it('says it is playing while the preview runs, and offers a way to stop it', async () => {

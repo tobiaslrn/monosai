@@ -228,7 +228,7 @@ The voice card uses a native select labelled **Speaking style** with the three
 stable choices Natural, Clear, and Very clear when the selected model accepts
 instructions. It also carries a **Pace** select with Natural, Slow, and Very
 slow for every model: it is a model request preference, so both choices sit
-beside the voice and Preview controls. The player's local reading speed remains
+beside the voice and the sample's Play control. The player's local reading speed remains
 its own fine-tuning control.
 
 ### Surfaces and groups
@@ -252,8 +252,13 @@ are self-evident.
 A **card of rows** — settings, most of all — never sinks a group of its rows into
 an inset. A group there (Text, Voice) is headed by a row carrying its group title
 — the one plain sub-heading, never small caps — and its status, and its rows stay on the card's own inset with a hairline
-between each, so the card keeps one content edge. What a disclosure or a route
-opens beneath a row sits in from it by **one** indent and no more. Every field
+between each, so the card keeps one content edge. Nothing in a group is
+indented: what belongs to a setting, such as the reasoning and limit of a
+task's own model, follows it as rows on the same edge. An action belongs in the
+row of what it acts on, not in the group's header. A setting that inherits shows
+the value that will actually apply, muted, never a label for the inheritance
+alone. A number a learner reads at rest is grouped; a hint says what the control
+cannot, in one muted line. Every field
 at a row's end — a select, an input, a picker's trigger, a segmented choice — is
 one width, so the card's controls form one column with one right edge.
 
@@ -283,21 +288,21 @@ is the reader, whose surfaces are its own, and the screens not yet moved.
 Each primitive documents its own inputs and slots beside its code. What each is
 the way to build:
 
-| Role             | Primitives                                                                                                                                                                                                                                                         |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Page frame       | `mn-page`, and `mn-page-header` for the one bar                                                                                                                                                                                                                    |
-| Layout           | `mn-stack` (one vertical rhythm), `mn-cluster` (one wrapping row), `mn-split` (a label and its end), `mn-grid`; `mn-divider` between blocks                                                                                                                        |
-| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                                                                   |
-| Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                              |
-| Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                |
-| Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                                                                    |
-| Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                 |
-| Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                          |
+| Role             | Primitives                                                                                                                                                                                                                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Page frame       | `mn-page`, and `mn-page-header` for the one bar                                                                                                                                                                                                                                                                                                  |
+| Layout           | `mn-stack` (one vertical rhythm), `mn-cluster` (one wrapping row), `mn-split` (a label and its end), `mn-grid`; `mn-divider` between blocks                                                                                                                                                                                                      |
+| Surfaces         | `mn-section` (a heading on the canvas and one card), `mn-card` (one raised surface with an optional heading action), `mn-group-header`; `mn-settings-section` and `mn-settings-row` for settings                                                                                                                                                 |
+| Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                                                                                                            |
+| Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                                                                                              |
+| Choices          | `mn-segmented-control`, `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips, `mn-filter-select`                                                                                                                                                                                  |
+| Fields           | `mn-field` (label, hint, and error around a native control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                               |
+| Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                                                                                        |
 | Status           | `mn-checklist` with `mn-checklist-step` for first steps, `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
-| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen` and `mn-not-found-panel` on the one whole-page state                                                                                                                                                        |
-| Overlays         | `mn-menu` (a menu), `mn-sheet-popover` with `mnOverlayTrigger` (a picker, a popover-held task dialog), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                      |
-| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                       |
-| Glyphs           | `mn-icon`                                                                                                                                                                                                                                                          |
+| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen` and `mn-not-found-panel` on the one whole-page state                                                                                                                                                                                                       |
+| Overlays         | `mn-menu` (a menu), `mn-sheet-popover` with `mnOverlayTrigger` (a picker, a popover-held task dialog), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                                                                                                    |
+| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                                                                                                     |
+| Glyphs           | `mn-icon`                                                                                                                                                                                                                                                                                                                                        |
 
 A menu is a native popover (`mn-menu`), so the browser dismisses it on a press
 outside or Escape and returns focus, the top layer keeps it above any card that
@@ -1227,13 +1232,13 @@ kept together as one block. It arrives rather than popping in.
 
 Each tone has **one meaning, app-wide**, and its mark comes with it:
 
-| Tone        | Means                                                                    | Drawn as                                                 |
-| ----------- | ------------------------------------------------------------------------ | -------------------------------------------------------- |
-| **Error**   | Something failed                                                         | Danger ground and words, warning mark                    |
-| **Warning** | It can go ahead, but the result may be limited or wrong unless you act   | Warning ground and words, warning mark                   |
+| Tone        | Means                                                                        | Drawn as                                                        |
+| ----------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| **Error**   | Something failed                                                             | Danger ground and words, warning mark                           |
+| **Warning** | It can go ahead, but the result may be limited or wrong unless you act       | Warning ground and words, warning mark                          |
 | **Setup**   | Something has to be set up before this works; the way to do it is at its end | Plain ground, warning-coloured mark — the look of a blocker row |
-| **Info**    | A fact worth knowing before acting                                       | Plain ground, quiet info mark                            |
-| **Success** | It worked                                                                | Success ground and words                                 |
+| **Info**    | A fact worth knowing before acting                                           | Plain ground, quiet info mark                                   |
+| **Success** | It worked                                                                    | Success ground and words                                        |
 
 The lavender accent is not a status colour: a setup step drawn in it read as a
 decoration rather than as what stands in the way. A short word that

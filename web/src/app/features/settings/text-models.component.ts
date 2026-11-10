@@ -1,12 +1,12 @@
 import { FormsModule } from '@angular/forms';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { CredentialStore } from '../../application/settings/credential.store';
 import { TextModelStore, type TextModelTask } from '../../application/settings/text-model.store';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
+import { formatCount } from '../../domain/shared/locale';
 import { MAX_STORY_TOKEN_BUDGET } from '../../domain/settings/settings';
 import { ButtonDirective } from '../../shared-ui/button/button';
-import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
 import { GroupHeaderComponent } from '../../shared-ui/group/group-header.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { ModelCatalogView } from './model-catalog-view';
@@ -14,10 +14,11 @@ import { ModelPickerComponent } from '../../shared-ui/model-picker/model-picker.
 import { TokenBudgetFieldComponent } from './token-budget-field.component';
 
 /**
- * The text model and its two branches.
+ * The text model and the two tasks that may have a model of their own.
  *
- * One model answers for everything by default; translation and grammar review
- * exist only when a learner deliberately opens them.
+ * One model answers for everything by default. Translation and grammar each
+ * show the model that will actually run, and carry their own reasoning and
+ * limit only once the learner has chosen one for them.
  */
 @Component({
   selector: 'mn-text-models',
@@ -26,13 +27,12 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
     role: 'region',
     'aria-labelledby': 'mn-text-model-label',
     'data-capability': 'text',
-    '[attr.data-readiness]': 'text.readiness()',
+    '[attr.data-readiness]': 'groupReadiness()',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule,
     ButtonDirective,
-    DisclosureComponent,
     GroupHeaderComponent,
     ModelPickerComponent,
     SettingsRowComponent,
@@ -42,10 +42,10 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
     <mn-group-header heading="Text" headingId="mn-text-model-label">
       <span
         class="mn-status-pill"
-        [class.mn-status-pill--success]="text.readiness() === 'ready'"
-        [class.mn-status-pill--danger]="text.readiness() === 'failed'"
+        [class.mn-status-pill--success]="groupReadiness() === 'ready'"
+        [class.mn-status-pill--danger]="groupReadiness() === 'failed'"
         data-testid="text-readiness"
-        >{{ readinessLabel(text.readiness(), text.action() === 'testing') }}</span
+        >{{ readinessLabel(groupReadiness(), text.action() === 'testing') }}</span
       >
       @if (retestable(text.readiness())) {
         <button
@@ -78,6 +78,9 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
     </mn-settings-row>
 
     <mn-settings-row label="Reasoning" labelId="mn-text-reasoning-label">
+      <span mn-settings-row-note class="mn-settings-row__note"
+        >Automatic lets the model decide how much to think.</span
+      >
       <select
         class="mn-control"
         aria-labelledby="mn-text-reasoning-label"
@@ -93,6 +96,9 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
     </mn-settings-row>
 
     <mn-settings-row label="Token limit" labelId="mn-text-limit-label">
+      <span mn-settings-row-note class="mn-settings-row__note">{{
+        budgetHint(storyTokenBudgetMax())
+      }}</span>
       <mn-token-budget-field
         testId="story-token-budget-input"
         labelledBy="mn-text-limit-label"
@@ -103,98 +109,93 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
       />
     </mn-settings-row>
 
-    <mn-disclosure
-      heading="Translation and grammar"
-      tone="quiet"
-      testId="task-models-toggle"
-      [rows]="true"
-      [value]="taskModelsSummary()"
-      [open]="hasOverrides() || branchesOpen()"
-      (openChange)="branchesOpen.set($event)"
-    >
-      @for (task of textTasks; track task.id) {
-        <div
-          [attr.aria-labelledby]="'mn-' + task.id + '-label'"
-          [attr.data-capability]="task.id"
-          [attr.data-readiness]="
-            text.routePreset(task.id) === null ? 'inherited' : text.routeReadiness(task.id)
-          "
-        >
-          <mn-settings-row [label]="task.label" [labelId]="'mn-' + task.id + '-label'">
-            @if (text.routePreset(task.id) !== null && retestable(text.routeReadiness(task.id))) {
-              <button
-                type="button"
-                [mnButton]="text.routeReadiness(task.id) === 'failed' ? 'danger' : 'ghost'"
-                data-testid="test-text-model"
-                [disabled]="text.action() !== 'idle'"
-                (click)="text.testTask(task.id)"
-              >
-                {{ statusLabel(text.routeReadiness(task.id), text.action() === 'testing') }}
-              </button>
-            } @else if (
-              text.routePreset(task.id) !== null && text.routeReadiness(task.id) === 'ready'
-            ) {
-              <span class="mn-status-pill mn-status-pill--success">Ready</span>
-            }
-            <mn-model-picker
-              [attr.data-testid]="task.id + '-model-picker'"
-              [label]="task.label + ' models'"
-              fallbackLabel="Same as text"
-              [models]="textModels()"
-              [favoriteIds]="text.favoriteModelIds()"
-              [selectedId]="routeModelId(task.id)"
-              [selectedLabel]="text.routePreset(task.id)?.name ?? null"
-              [loading]="catalogLoading()"
-              [failure]="catalogFailure()"
-              [disabled]="!credential.isConfigured()"
-              (opened)="retryCatalog()"
-              (fallbackSelected)="clearTaskModel(task.id)"
-              (modelSelected)="selectTaskModel(task.id, $event)"
-              (favoriteToggled)="text.toggleFavorite($event)"
+    @for (task of textTasks; track task.id) {
+      <div
+        class="mn-settings-cluster"
+        [attr.aria-labelledby]="'mn-' + task.id + '-label'"
+        [attr.data-capability]="task.id"
+        [attr.data-readiness]="
+          text.routePreset(task.id) === null ? 'inherited' : text.routeReadiness(task.id)
+        "
+      >
+        <mn-settings-row [label]="task.label" [labelId]="'mn-' + task.id + '-label'">
+          @if (text.routePreset(task.id) === null && inheritedName() !== null) {
+            <span mn-settings-row-note class="mn-settings-row__note">Same as the text model</span>
+          }
+          @if (text.routePreset(task.id) !== null && retestable(text.routeReadiness(task.id))) {
+            <button
+              type="button"
+              [mnButton]="text.routeReadiness(task.id) === 'failed' ? 'danger' : 'ghost'"
+              data-testid="test-text-model"
+              [disabled]="text.action() !== 'idle'"
+              (click)="text.testTask(task.id)"
+            >
+              {{ statusLabel(text.routeReadiness(task.id), text.action() === 'testing') }}
+            </button>
+          } @else if (
+            text.routePreset(task.id) !== null && text.routeReadiness(task.id) === 'ready'
+          ) {
+            <span class="mn-status-pill mn-status-pill--success">Ready</span>
+          }
+          <mn-model-picker
+            [attr.data-testid]="task.id + '-model-picker'"
+            [label]="task.id + ' models'"
+            fallbackLabel="Use the text model"
+            [inheritedLabel]="inheritedLabel()"
+            [models]="textModels()"
+            [favoriteIds]="text.favoriteModelIds()"
+            [selectedId]="routeModelId(task.id)"
+            [selectedLabel]="text.routePreset(task.id)?.name ?? null"
+            [loading]="catalogLoading()"
+            [failure]="catalogFailure()"
+            [disabled]="!credential.isConfigured()"
+            (opened)="retryCatalog()"
+            (fallbackSelected)="clearTaskModel(task.id)"
+            (modelSelected)="selectTaskModel(task.id, $event)"
+            (favoriteToggled)="text.toggleFavorite($event)"
+          />
+        </mn-settings-row>
+
+        @if (text.routePreset(task.id) !== null) {
+          <mn-settings-row label="Reasoning" [labelId]="'mn-' + task.id + '-reasoning-label'">
+            <select
+              class="mn-control"
+              [attr.aria-labelledby]="'mn-' + task.id + '-reasoning-label'"
+              [ngModel]="text.routePreset(task.id)?.reasoningEffort ?? ''"
+              (change)="setTaskReasoning(task.id, $event)"
+            >
+              <option value="">Automatic</option>
+              @for (effort of reasoningEfforts(routeModel(task.id)); track effort) {
+                <option [value]="effort">{{ titleCase(effort) }}</option>
+              }
+            </select>
+          </mn-settings-row>
+          <mn-settings-row label="Token limit" [labelId]="'mn-' + task.id + '-limit'">
+            <span mn-settings-row-note class="mn-settings-row__note">{{
+              budgetHint(tokenBudgetMax(routeModel(task.id)))
+            }}</span>
+            <mn-token-budget-field
+              [labelledBy]="'mn-' + task.id + '-limit'"
+              [value]="text.routeTokenBudget(task.id)"
+              [maxValue]="tokenBudgetMax(routeModel(task.id))"
+              (committed)="setTaskBudget(task.id, $event)"
             />
           </mn-settings-row>
-
-          @if (text.routePreset(task.id) !== null) {
-            <div class="mn-settings-subrows">
-              <mn-settings-row label="Reasoning" [labelId]="'mn-' + task.id + '-reasoning-label'">
-                <select
-                  class="mn-control"
-                  [attr.aria-labelledby]="'mn-' + task.id + '-reasoning-label'"
-                  [ngModel]="text.routePreset(task.id)?.reasoningEffort ?? ''"
-                  (change)="setTaskReasoning(task.id, $event)"
-                >
-                  <option value="">Automatic</option>
-                  @for (effort of reasoningEfforts(routeModel(task.id)); track effort) {
-                    <option [value]="effort">{{ titleCase(effort) }}</option>
-                  }
-                </select>
-              </mn-settings-row>
-              <mn-settings-row label="Token limit" [labelId]="'mn-' + task.id + '-limit'">
-                <mn-token-budget-field
-                  [labelledBy]="'mn-' + task.id + '-limit'"
-                  [value]="text.routeTokenBudget(task.id)"
-                  [maxValue]="tokenBudgetMax(routeModel(task.id))"
-                  (committed)="setTaskBudget(task.id, $event)"
-                />
-              </mn-settings-row>
-            </div>
-          }
-        </div>
-      }
-    </mn-disclosure>
+        }
+      </div>
+    }
   `,
 })
 export class TextModelsComponent {
   private readonly catalog = inject(ModelCatalogView);
   protected readonly credential = inject(CredentialStore);
   protected readonly text = inject(TextModelStore);
-  protected readonly branchesOpen = signal(false);
   protected readonly textModels = this.catalog.textModels;
   protected readonly catalogLoading = this.catalog.loading;
   protected readonly catalogFailure = this.catalog.failure;
   protected readonly textTasks = [
-    { id: 'translation' as const, label: 'Translation' },
-    { id: 'grammar' as const, label: 'Grammar' },
+    { id: 'translation' as const, label: 'Translation model' },
+    { id: 'grammar' as const, label: 'Grammar model' },
   ];
 
   protected readonly selectedStoryModel = computed(() =>
@@ -207,15 +208,28 @@ export class TextModelsComponent {
     () =>
       this.text.presets().find((preset) => preset.id === this.text.activePresetId())?.name ?? null,
   );
-  protected readonly taskModelsSummary = computed(() =>
-    this.textTasks.some((task) => this.text.routePreset(task.id) !== null)
-      ? 'Custom models'
-      : 'Same model',
-  );
-  /** The branches open on their own once a learner has set one. */
-  protected readonly hasOverrides = computed(
-    () => this.text.grammarPresetId() != null || this.text.translationPresetId() != null,
-  );
+  /** The model a translation or grammar task that has none of its own will actually run. */
+  protected readonly inheritedName = computed(() => {
+    const name = this.storyModelLabel() ?? this.selectedStoryModel()?.name ?? '';
+    return name === '' ? null : name;
+  });
+  /** Said in the picker's trigger, muted: the value in force, not a label for inheriting. */
+  protected readonly inheritedLabel = computed(() => this.inheritedName() ?? 'Same as text model');
+  /**
+   * Where the group stands across all three routes: the worst of the text model
+   * and any translation or grammar model of its own, so a route that failed its
+   * test is not hidden behind a text model that passed.
+   */
+  protected readonly groupReadiness = computed<ConfigurationReadiness>(() => {
+    const own = this.textTasks
+      .filter((task) => this.text.routePreset(task.id) !== null)
+      .map((task) => this.text.routeReadiness(task.id));
+    const all = [this.text.readiness(), ...own];
+    return (
+      (['failed', 'stale', 'untested'] as const).find((worst) => all.includes(worst)) ??
+      this.text.readiness()
+    );
+  });
 
   protected retryCatalog(): void {
     this.catalog.retry();
@@ -274,6 +288,9 @@ export class TextModelsComponent {
     return reported !== null && reported !== undefined && reported > 0
       ? Math.min(reported, MAX_STORY_TOKEN_BUDGET)
       : MAX_STORY_TOKEN_BUDGET;
+  }
+  protected budgetHint(max: number): string {
+    return `Up to ${formatCount(max)} tokens`;
   }
   protected titleCase(value: string): string {
     return value.charAt(0).toLocaleUpperCase() + value.slice(1);

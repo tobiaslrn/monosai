@@ -5,7 +5,6 @@ import {
   addTextModel,
   addTtsModel,
   expectReadiness,
-  openTaskModels,
   saveApiKey,
   stubOpenRouter,
   taskReadiness,
@@ -160,9 +159,8 @@ test.describe('the model tree', () => {
       });
 
     await page.reload();
-    await expect(page.getByTestId('story-token-budget-input')).toHaveValue('20000');
-    await openTaskModels(page);
-    await expect(taskReadiness(page, 'translation').getByLabel('Token limit')).toHaveValue('8000');
+    await expect(page.getByTestId('story-token-budget-input')).toHaveValue('20,000');
+    await expect(taskReadiness(page, 'translation').getByLabel('Token limit')).toHaveValue('8,000');
     // The budget says nothing about compatibility, so the test still vouches.
     await expectReadiness(taskReadiness(page, 'translation'), 'ready');
   });
@@ -230,7 +228,6 @@ test.describe('the model tree', () => {
     await page.goto('./#/settings');
     await saveApiKey(page);
     await addTextModel(page, MODEL);
-    await openTaskModels(page);
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '20px';
     });
@@ -238,8 +235,8 @@ test.describe('the model tree', () => {
     const reasoningLabel = page.getByText('Reasoning', { exact: true }).first();
     const reasoningControl = page.getByRole('combobox', { name: 'Reasoning' }).first();
     const translation = taskReadiness(page, 'translation');
-    const translationLabel = translation.getByText('Translation', { exact: true });
-    const translationControl = translation.getByRole('button', { name: 'Same as text' });
+    const translationLabel = translation.getByText('Translation model', { exact: true });
+    const translationControl = translation.getByRole('button', { name: 'Test text-model' });
     for (const [label, control] of [
       [reasoningLabel, reasoningControl],
       [translationLabel, translationControl],

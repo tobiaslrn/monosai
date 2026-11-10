@@ -166,7 +166,7 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
       cursor: pointer;
     }
 
-    /* Nothing chosen yet is a prompt, not a value; it should not read as one. */
+    /* Nothing chosen, or a value inherited, is not a choice; it should not read as one. */
     .trigger--unset {
       color: var(--text-secondary);
     }
@@ -301,7 +301,14 @@ import { OverlayTriggerDirective, SheetPopoverComponent } from '../popover/sheet
 export class ModelPickerComponent {
   readonly label = input.required<string>();
   readonly placeholder = input('Choose a model');
+  /** The list's fallback option: choosing it clears the picker's own choice. */
   readonly fallbackLabel = input<string | null>(null);
+  /**
+   * What the trigger says while the fallback is in force: the value that will
+   * actually apply, muted because it is inherited rather than chosen. Without
+   * it the trigger names the fallback option itself.
+   */
+  readonly inheritedLabel = input<string | null>(null);
   readonly models = input<readonly ModelCapabilities[]>([]);
   readonly favoriteIds = input<readonly string[]>([]);
   readonly selectedId = input('');
@@ -335,9 +342,12 @@ export class ModelPickerComponent {
   /** The shown name in pieces split after each slash, the one place a vendor path may wrap. */
   protected readonly shownParts = computed(() => {
     const chosen = this.selected()?.name ?? this.selectedLabel() ?? this.selectedId();
-    const shown = [chosen, this.fallbackLabel(), this.placeholder()].find(
-      (label) => label !== null && label !== '',
-    );
+    const shown = [
+      chosen,
+      this.selectedId() === '' ? this.inheritedLabel() : null,
+      this.fallbackLabel(),
+      this.placeholder(),
+    ].find((label) => label !== null && label !== '');
     return (shown ?? '').split(/(?<=\/)/);
   });
   protected readonly matches = computed(() => {

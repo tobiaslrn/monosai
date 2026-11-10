@@ -29,7 +29,7 @@ import { ModelPickerComponent } from '../../shared-ui/model-picker/model-picker.
  */
 export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
 
-/** The speech model, its voice and delivery, and the preview that vouches for them. */
+/** The speech model, its voice and delivery, and the sample that vouches for them. */
 @Component({
   selector: 'mn-voice-model',
   host: {
@@ -57,26 +57,6 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
         [title]="audioStatusTitle()"
         >{{ audioStatusLabel() }}</span
       >
-      @if (tts.action() === 'testing') {
-        <button
-          type="button"
-          mnButton="ghost"
-          data-testid="cancel-tts-test"
-          (click)="tts.cancelTest()"
-        >
-          Stop
-        </button>
-      } @else {
-        <button
-          type="button"
-          mnButton="ghost"
-          data-testid="test-tts"
-          [disabled]="tts.draft().modelId === '' || tts.draft().voiceId === ''"
-          (click)="testAudio()"
-        >
-          Preview
-        </button>
-      }
     </mn-group-header>
 
     <mn-settings-row label="Model">
@@ -157,11 +137,34 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       </select>
     </mn-settings-row>
 
+    <mn-settings-row label="Sample" [actions]="true">
+      @if (tts.action() === 'testing') {
+        <button
+          type="button"
+          mnButton="ghost"
+          data-testid="cancel-tts-test"
+          (click)="tts.cancelTest()"
+        >
+          Stop
+        </button>
+      } @else {
+        <button
+          type="button"
+          mnButton="ghost"
+          data-testid="test-tts"
+          [disabled]="tts.draft().modelId === '' || tts.draft().voiceId === ''"
+          (click)="testAudio()"
+        >
+          Play sample
+        </button>
+      }
+    </mn-settings-row>
+
     @if (audioReadinessNote(); as note) {
       <p class="mn-settings-feedback" data-testid="audio-readiness-note">{{ note }}</p>
     }
 
-    <!-- The preview is heard, not operated: it starts itself and leaves no player behind. -->
+    <!-- The sample is heard, not operated: it starts itself and leaves no player behind. -->
     @if (tts.sample() !== null) {
       <audio
         #sampleAudio
@@ -239,11 +242,11 @@ export class VoiceModelComponent {
     () =>
       ({
         testing: 'Playing a test clip from this model.',
-        cancelled: 'You stopped the preview, so this configuration is still untested.',
-        ready: 'This model, voice, style and pace passed their preview.',
-        untested: 'Preview this model before generating audio.',
-        stale: 'The model, voice, style or pace changed since the last preview.',
-        failed: 'The last preview failed.',
+        cancelled: 'You stopped the sample, so this configuration is still untested.',
+        ready: 'This model, voice, style and pace passed their sample.',
+        untested: 'Play the sample to test this model before generating audio.',
+        stale: 'The model, voice, style or pace changed since the last sample.',
+        failed: 'The last sample failed.',
         'no-credential': 'Add an OpenRouter key.',
         incomplete: 'Choose a speech model and a voice.',
       })[this.audioStatus()],
@@ -261,9 +264,9 @@ export class VoiceModelComponent {
     }
     switch (this.audioStatus()) {
       case 'untested':
-        return 'Preview plays one test sentence. Audio can only be generated once it has passed.';
+        return 'The sample plays one test sentence. Audio can only be generated once it has passed.';
       case 'cancelled':
-        return 'The preview was stopped, so this configuration is still untested.';
+        return 'The sample was stopped, so this configuration is still untested.';
       case 'stale':
         return 'Existing audio uses different settings. Generate it again or restore the previous settings.';
       case 'testing':
@@ -276,7 +279,7 @@ export class VoiceModelComponent {
   });
 
   constructor() {
-    // The preview clip is an object URL, a browser resource tied to the clip it
+    // The sample clip is an object URL, a browser resource tied to the clip it
     // was made from: made when the clip and its element exist, released when
     // either is replaced and when the panel is destroyed.
     effect((onCleanup) => {

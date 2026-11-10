@@ -189,7 +189,6 @@
    *                  with the column edge
    * block-inset      the padding of a tinted block inside a card: a notice,
    *                  an inset, a quiet sample
-   * nest-indent      how far what a disclosure opens sits in from its summary
    */
   --inline-gap: var(--space-2);
   --glyph-gap: min(var(--space-3), 12px);
@@ -198,7 +197,6 @@
   --control-width: 12rem;
   --button-inset: var(--space-4);
   --block-inset: var(--space-3);
-  --nest-indent: var(--space-5);
 
   /*
    * Overlays. Every floating surface — a menu, a picker, a task dialog, a

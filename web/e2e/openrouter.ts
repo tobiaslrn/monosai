@@ -883,22 +883,12 @@ export async function addTextModel(page: Page, modelId: string): Promise<void> {
   await expect(textModelReadiness(page)).not.toHaveAttribute('data-readiness', 'incomplete');
 }
 
-/** Opens the translation and grammar branches of the text node. */
-export async function openTaskModels(page: Page): Promise<void> {
-  const toggle = page.getByTestId('task-models-toggle');
-  if (!(await page.getByTestId('translation-model-picker').isVisible())) {
-    await toggle.click();
-  }
-  await expect(page.getByTestId('translation-model-picker')).toBeVisible();
-}
-
 /** Routes one task to its own model, which also tests it. */
 export async function addTaskModel(
   page: Page,
   task: 'translation' | 'grammar',
   modelId: string,
 ): Promise<void> {
-  await openTaskModels(page);
   await chooseModel(page, `${task}-model-picker`, modelId);
   // The branch keeps showing the inherited model until the route is stored.
   await expect(taskReadiness(page, task)).not.toHaveAttribute('data-readiness', 'inherited');

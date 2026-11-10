@@ -6,7 +6,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
  *
  * The host is the `mn-settings-row`, so the card's divider rules, which address
  * rows as children of the card, group, and sub-row containers, keep working.
- * The projected control sits in the row's end slot. A detail line is a span
+ * A note — one muted line that says what the control cannot, across the whole
+ * row beneath both halves — is a span carrying `mn-settings-row-note` and
+ * `mn-settings-row__note`. The projected control sits in the row's end slot. A detail line is a span
  * carrying `mn-settings-row-detail` and the shared `mn-settings-row__hint` or
  * `mn-settings-row__result` class:
  *
@@ -27,6 +29,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     <div class="mn-settings-row__end mn-trailing" [class.mn-actions]="actions()">
       <ng-content />
     </div>
+    <ng-content select="[mn-settings-row-note]" />
   `,
 })
 export class SettingsRowComponent {

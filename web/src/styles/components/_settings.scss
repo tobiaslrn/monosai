@@ -49,7 +49,8 @@
 }
 
 .mn-settings-group > .mn-settings-row + .mn-settings-row,
-.mn-settings-subrows > .mn-settings-row + .mn-settings-row {
+.mn-settings-cluster > .mn-settings-row + .mn-settings-row,
+.mn-settings-group > .mn-settings-cluster {
   border-top: 1px solid var(--border-subtle);
 }
 
@@ -71,6 +72,15 @@
 
 .mn-settings-row__hint {
   margin-top: var(--line-gap);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.mn-settings-row__note {
+  display: block;
+  grid-column: 1 / -1;
+  margin: calc(-1 * var(--space-1)) 0 0;
   color: var(--text-secondary);
   font-size: var(--text-sm);
   line-height: var(--leading-snug);
@@ -141,14 +151,13 @@
   flex: 1;
 }
 
-/* What a disclosure or a route opens sits in from its row by one indent. */
-.mn-settings-subrows {
-  padding-block-end: var(--row-inset-block);
-  padding-inline-start: var(--nest-indent);
-}
-
-.mn-settings-group > mn-disclosure {
-  border-top: 1px solid var(--border-subtle);
+/*
+ * A cluster is the rows of one setting that belong together — a task's model
+ * and what it overrides. It is a block on the card's own inset, never indented.
+ */
+.mn-settings-cluster {
+  display: block;
+  min-width: 0;
 }
 
 .mn-settings-feedback {
@@ -205,10 +214,6 @@
   .mn-settings-row,
   .mn-settings-group__header {
     padding-inline: min(var(--space-2), 8px);
-  }
-
-  .mn-settings-subrows {
-    padding-inline-start: min(var(--space-2), 8px);
   }
 
   .mn-settings-row :where(select.mn-control, input.mn-control),

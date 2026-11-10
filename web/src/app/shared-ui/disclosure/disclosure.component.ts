@@ -13,8 +13,7 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
  * The summary is a full row with its title, an optional current value, and a
  * chevron that turns when it is open. The body is padded and stacks what it
  * holds across its width (a button goes in an `mn-cluster` to keep its own);
- * `[rows]` gives the padding up to rows that bring their own, indented under
- * the title by one indent, and `[flush]` is for a disclosure inside a padded card: the body
+ * `[flush]` is for a disclosure inside a padded card: the body
  * drops its side padding for content that needs the whole width, such as a
  * set of cards or chips, and the summary's words keep the card's content edge.
  *
@@ -54,11 +53,7 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
           <mn-icon class="mn-disclosure__chevron" name="chevron-right" [size]="18" />
         </span>
       </summary>
-      <div
-        class="mn-disclosure__body"
-        [class.mn-disclosure__body--rows]="rows()"
-        [class.mn-disclosure__body--flush]="flush()"
-      >
+      <div class="mn-disclosure__body" [class.mn-disclosure__body--flush]="flush()">
         <ng-content />
       </div>
     </details>
@@ -150,20 +145,6 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
     mn-disclosure.mn-disclosure--flush > .mn-disclosure__details > .mn-disclosure__summary {
       margin-inline: calc(-1 * var(--surface-inset));
     }
-
-    /* Rows bring their own inset; the fold adds one indent and nothing else. */
-    mn-disclosure > .mn-disclosure__details > .mn-disclosure__body--rows {
-      gap: 0;
-      overflow-wrap: normal;
-      padding: 0 0 var(--row-inset-block) var(--nest-indent);
-      border-top: 0;
-    }
-
-    @container (max-width: 16em) {
-      mn-disclosure > .mn-disclosure__details > .mn-disclosure__body--rows {
-        padding-inline-start: min(var(--space-2), 8px);
-      }
-    }
   `,
 })
 export class DisclosureComponent {
@@ -171,8 +152,6 @@ export class DisclosureComponent {
   /** What is set inside, stated on the closed row. */
   readonly value = input<string | null>(null);
   readonly tone = input<DisclosureTone>('default');
-  /** The body is rows with their own padding, indented under the title. */
-  readonly rows = input(false);
   /** The body runs the full width under the row, for choices that need it all. */
   readonly flush = input(false);
   /** Names the summary, the control that opens it. */

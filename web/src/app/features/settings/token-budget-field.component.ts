@@ -5,21 +5,30 @@ import {
   input,
   linkedSignal,
   output,
+  signal,
 } from '@angular/core';
 import {
   MAX_STORY_TOKEN_BUDGET,
   MIN_STORY_TOKEN_BUDGET,
   isValidStoryTokenBudget,
 } from '../../domain/settings/settings';
+import { formatCount } from '../../domain/shared/locale';
 import { FieldComponent } from '../../shared-ui/field/field.component';
 
 let nextId = 0;
+
+/** A whole number written plainly or grouped (`16,384`); NaN for anything else. */
+function parseBudget(text: string): number {
+  const digits = text.replace(/[,\s]/g, '');
+  return /^\d+$/.test(digits) ? Number(digits) : Number.NaN;
+}
 
 /**
  * One model's completion budget.
  *
  * The field keeps whatever is being typed so a half-written number is never
- * snapped back mid-edit, and commits only a value inside the allowed range;
+ * snapped back mid-edit, and shows the number grouped (`16,384`) whenever it is
+ * not being edited. Grouped input is accepted. It commits only a value inside the allowed range;
  * anything outside it stays on screen as an error rather than being stored.
  */
 @Component({
@@ -30,18 +39,18 @@ let nextId = 0;
     <mn-field [error]="invalid() ? errorMessage() : null" [errorId]="errorId">
       <input
         class="mn-control"
-        type="number"
+        type="text"
         inputmode="numeric"
+        autocomplete="off"
         [id]="id"
-        [min]="min"
-        [max]="maxValue()"
-        step="1"
         [disabled]="disabled()"
         [attr.data-testid]="testId()"
         [attr.aria-labelledby]="labelledBy()"
         [attr.aria-invalid]="invalid()"
         [attr.aria-describedby]="invalid() ? errorId : null"
-        [value]="draft()"
+        [value]="shown()"
+        (focus)="onFocus($event)"
+        (blur)="editing.set(false)"
         (input)="onInput($event)"
         (change)="commit()"
       />
@@ -63,19 +72,37 @@ export class TokenBudgetFieldComponent {
   protected readonly errorId = `${this.id}-error`;
 
   protected readonly draft = linkedSignal(() => String(this.value()));
+  protected readonly editing = signal(false);
+  /** Grouped at rest, as typed while editing. */
+  protected readonly shown = computed(() => {
+    const draft = this.draft();
+    const digits = parseBudget(draft);
+    return this.editing() || Number.isNaN(digits) ? draft : formatCount(digits);
+  });
   protected readonly errorMessage = computed(
     () => `Use a whole number between ${String(this.min)} and ${String(this.maxValue())}.`,
   );
   protected readonly invalid = computed(
-    () => !isValidStoryTokenBudget(Number(this.draft()), this.maxValue()),
+    () => !isValidStoryTokenBudget(parseBudget(this.draft()), this.maxValue()),
   );
+
+  /**
+   * Editing starts from the plain number, selected. The box is changed here, at
+   * once, not left to the next render, which would replace what is typed.
+   */
+  protected onFocus(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    input.value = this.draft();
+    input.select();
+    this.editing.set(true);
+  }
 
   protected onInput(event: Event): void {
     this.draft.set((event.target as HTMLInputElement).value);
   }
 
   protected commit(): void {
-    const parsed = Number(this.draft());
+    const parsed = parseBudget(this.draft());
     if (isValidStoryTokenBudget(parsed, this.maxValue()) && parsed !== this.value()) {
       this.committed.emit(parsed);
     }
