@@ -19,7 +19,7 @@
  * from there, its end edge), which hands them the room it found as
  * `--anchored-room-inline` and `--anchored-room-block` and the trigger's width
  * as `--anchored-field-width`. A dropdown is at least as wide as its field and
- * grows with its content up to `--dropdown-max-width`; a menu fits its
+ * `--dropdown-min-width`, and grows with its content up to `--dropdown-max-width`; a menu fits its
  * commands between `--menu-min-width` and `--menu-max-width`. Neither is ever
  * wider than the column. Rows are inset in the panel, and the panel's padding
  * is the same on every side.
@@ -57,7 +57,7 @@
 .mn-dropdown {
   width: max-content;
   min-width: min(
-    var(--anchored-field-width, 0px),
+    max(var(--anchored-field-width, 0px), var(--dropdown-min-width)),
     var(--anchored-room-inline, calc(100vw - 2 * var(--overlay-margin)))
   );
   max-width: min(
@@ -184,7 +184,7 @@
   text-align: start;
   text-decoration: none;
   cursor: pointer;
-  @include motion.state(background-color);
+  @include motion.state(box-shadow);
 }
 
 .mn-dropdown-row:has(> .mn-dropdown-row__choice) {
@@ -263,7 +263,7 @@
 :where(html[data-pointer='mouse']) .mn-dropdown-row:where(:hover):not([aria-disabled='true']),
 .mn-dropdown-row:where(:active):not([aria-disabled='true']),
 .mn-dropdown-row.is-active:not([aria-disabled='true']) {
-  background: var(--surface-sunken-hover);
+  box-shadow: var(--state-layer-fill);
 }
 
 /* The row the keys are on — focused itself, or named by a focused listbox — wears the ring inside it. */

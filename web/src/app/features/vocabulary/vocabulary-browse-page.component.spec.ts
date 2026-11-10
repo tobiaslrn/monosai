@@ -136,7 +136,7 @@ describe('VocabularyBrowsePageComponent', () => {
     const sheet = document.querySelector<HTMLElement>('mn-vocabulary-filter-sheet');
     if (sheet === null) throw new Error('missing filter sheet');
     const studied = sheet.querySelector<HTMLElement>(
-      '[role="combobox"][aria-label="First studied"]',
+      '[role="combobox"][aria-labelledby="mn-filter-2-label"]',
     );
     if (studied === null) throw new Error('missing date filter');
     chooseValue(studied, 'last-7-days');
@@ -169,7 +169,7 @@ describe('VocabularyBrowsePageComponent', () => {
       const sheet = document.querySelector<HTMLElement>('mn-vocabulary-filter-sheet');
       if (sheet === null) throw new Error('missing filter sheet');
       const studied = sheet.querySelector<HTMLElement>(
-        '[role="combobox"][aria-label="First studied"]',
+        '[role="combobox"][aria-labelledby="mn-filter-2-label"]',
       );
       if (studied === null) throw new Error('missing date filter');
       chooseValue(studied, 'last-7-days');

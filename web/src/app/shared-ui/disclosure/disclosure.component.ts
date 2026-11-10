@@ -81,7 +81,7 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
       > .mn-disclosure__details
       > .mn-disclosure__summary:where(:hover),
     mn-disclosure > .mn-disclosure__details > .mn-disclosure__summary:where(:active) {
-      background: var(--surface-sunken-hover);
+      box-shadow: var(--state-layer-fill);
     }
 
     mn-disclosure > .mn-disclosure__details > .mn-disclosure__summary:focus-visible {

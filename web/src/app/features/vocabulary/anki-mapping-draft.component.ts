@@ -3,9 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { AnkiConnectionStore } from '../../application/vocabulary/anki-connection.store';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { CardComponent } from '../../shared-ui/card/card.component';
-import { ClusterComponent, GridComponent, StackComponent } from '../../shared-ui/layout/layout';
-import { FieldComponent } from '../../shared-ui/field/field.component';
+import { ClusterComponent, StackComponent } from '../../shared-ui/layout/layout';
 import { SelectComponent, optionsFromNames } from '../../shared-ui/select/select.component';
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 
 @Component({
   selector: 'mn-anki-mapping-draft',
@@ -15,10 +15,9 @@ import { SelectComponent, optionsFromNames } from '../../shared-ui/select/select
     ButtonDirective,
     CardComponent,
     ClusterComponent,
-    FieldComponent,
-    GridComponent,
     SelectComponent,
     StackComponent,
+    SettingsRowComponent,
   ],
   template: `
     @if (store.sampling()) {
@@ -35,44 +34,48 @@ import { SelectComponent, optionsFromNames } from '../../shared-ui/select/select
             expression field.
           </p>
         }
-        <mn-grid [gap]="2">
-          <mn-field label="Deck">
+        <div class="mn-settings-group mn-settings-bleed">
+          <mn-settings-row label="Deck" labelId="mn-anki-map-1-label">
             <mn-select
+              labelledBy="mn-anki-map-1-label"
               label="Deck"
               [options]="deckOptions()"
               [ngModel]="store.selection().deckName"
               (ngModelChange)="store.change({ deckName: $event })"
               [disabled]="store.refresh.isBusy() && !store.preview()"
             />
-          </mn-field>
-          <mn-field label="Note type">
+          </mn-settings-row>
+          <mn-settings-row label="Note type" labelId="mn-anki-map-2-label">
             <mn-select
+              labelledBy="mn-anki-map-2-label"
               label="Note type"
               [options]="noteTypeOptions()"
               [ngModel]="store.selection().noteTypeName"
               (ngModelChange)="store.changeNoteType($event)"
               [disabled]="store.refresh.isBusy() && !store.preview()"
             />
-          </mn-field>
-          <mn-field label="Expression field">
+          </mn-settings-row>
+          <mn-settings-row label="Expression field" labelId="mn-anki-map-3-label">
             <mn-select
+              labelledBy="mn-anki-map-3-label"
               label="Expression field"
               [options]="expressionFieldOptions()"
               [ngModel]="store.selection().expressionFieldName"
               (ngModelChange)="store.change({ expressionFieldName: $event })"
               [disabled]="store.refresh.isBusy() && !store.preview()"
             />
-          </mn-field>
-          <mn-field label="Meaning field">
+          </mn-settings-row>
+          <mn-settings-row label="Meaning field" labelId="mn-anki-map-4-label">
             <mn-select
+              labelledBy="mn-anki-map-4-label"
               label="Meaning field"
               [options]="meaningFieldOptions()"
               [ngModel]="store.selection().meaningFieldName ?? ''"
               (ngModelChange)="store.change({ meaningFieldName: $event || undefined })"
               [disabled]="store.refresh.isBusy() && !store.preview()"
             />
-          </mn-field>
-        </mn-grid>
+          </mn-settings-row>
+        </div>
         @if (store.preview()) {
           @for (warning of store.preview()?.stats?.sourceWarnings; track $index) {
             <p class="mn-hint" role="status">{{ warning }}</p>

@@ -1,5 +1,6 @@
-import { Directive, ElementRef, inject, input, output, signal } from '@angular/core';
+import { DestroyRef, Directive, ElementRef, inject, input, output, signal } from '@angular/core';
 import { AnchoredPlacement } from '../dropdown/anchored-placement';
+import { OpenOverlayGuard } from '../dropdown/open-overlay-guard';
 
 let nextPopupId = 0;
 
@@ -44,12 +45,25 @@ export class PopupDirective {
     trigger: () => document.querySelector(`[popovertarget="${this.id}"]`),
     scroller: () => this.element,
   });
+  private readonly guard = new OpenOverlayGuard({
+    panel: this.element,
+    trigger: () => document.querySelector(`[popovertarget="${this.id}"]`),
+    close: () => {
+      this.hide();
+    },
+  });
   /** A list of actions: items are `role="menuitem"` and take the arrow keys. */
   readonly menu = input(false);
 
   readonly isOpen = signal(false);
   readonly opened = output<void>();
   readonly closed = output<void>();
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      this.guard.stop();
+    });
+  }
 
   /** Closes the panel; the browser hands focus back to the trigger. */
   hide(): void {
@@ -67,6 +81,7 @@ export class PopupDirective {
     this.isOpen.set(open);
     if (open) {
       this.placement.open();
+      this.guard.start();
     }
   }
 
@@ -86,6 +101,7 @@ export class PopupDirective {
       this.opened.emit();
     } else {
       this.placement.close();
+      this.guard.stop();
       this.closed.emit();
     }
   }

@@ -38,7 +38,6 @@ import {
   startSentence,
 } from '../../domain/shared/locale';
 import type { SourceMapping } from '../../domain/vocabulary/source-mapping';
-import { FieldComponent } from '../../shared-ui/field/field.component';
 import {
   SelectComponent,
   optionsFromNames,
@@ -63,7 +62,7 @@ import { CardComponent } from '../../shared-ui/card/card.component';
 import { CheckboxComponent } from '../../shared-ui/checkbox/checkbox.component';
 import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
 import { DividerComponent } from '../../shared-ui/divider/divider.component';
-import { ClusterComponent, GridComponent, PageComponent } from '../../shared-ui/layout/layout';
+import { ClusterComponent, PageComponent } from '../../shared-ui/layout/layout';
 import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 
 const STALE_REASONS: Record<StaleReason, string> = {
@@ -82,6 +81,8 @@ const STALE_REASONS: Record<StaleReason, string> = {
  * source reads is a disclosure that states its own answer, because it is right
  * nine times in ten. Removing it is last, after a rule, and names what is lost.
  */
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
+
 @Component({
   selector: 'mn-source-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -94,8 +95,6 @@ const STALE_REASONS: Record<StaleReason, string> = {
     ClusterComponent,
     DisclosureComponent,
     DividerComponent,
-    FieldComponent,
-    GridComponent,
     IconComponent,
     NoticeComponent,
     PageComponent,
@@ -104,6 +103,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
     SelectComponent,
     SwitchRowComponent,
     TextListSourceComponent,
+    SettingsRowComponent,
   ],
   template: `
     <mn-page>
@@ -230,44 +230,48 @@ const STALE_REASONS: Record<StaleReason, string> = {
               (openChange)="onMappingOpen($event, source)"
             >
               @if (configurable(source)) {
-                <mn-grid min="9rem">
-                  <mn-field label="Deck">
+                <div class="mn-settings-group mn-settings-bleed">
+                  <mn-settings-row label="Deck" labelId="mn-source-map-1-label">
                     <mn-select
+                      labelledBy="mn-source-map-1-label"
                       label="Deck"
                       [options]="deckOptions()"
                       [disabled]="refresh.isBusy()"
                       [value]="source.deckName"
                       (valueChange)="setDeck(source, $event)"
                     />
-                  </mn-field>
-                  <mn-field label="Note type">
+                  </mn-settings-row>
+                  <mn-settings-row label="Note type" labelId="mn-source-map-2-label">
                     <mn-select
+                      labelledBy="mn-source-map-2-label"
                       label="Note type"
                       [options]="noteTypeOptions()"
                       [disabled]="refresh.isBusy()"
                       [value]="source.noteTypeName"
                       (valueChange)="setNoteType(source, $event)"
                     />
-                  </mn-field>
-                  <mn-field label="Field">
+                  </mn-settings-row>
+                  <mn-settings-row label="Field" labelId="mn-source-map-3-label">
                     <mn-select
+                      labelledBy="mn-source-map-3-label"
                       label="Expression field"
                       [options]="fieldOptions(source.noteTypeName)"
                       [disabled]="refresh.isBusy()"
                       [value]="source.expressionFieldName"
                       (valueChange)="setField(source, $event)"
                     />
-                  </mn-field>
-                  <mn-field label="Meaning">
+                  </mn-settings-row>
+                  <mn-settings-row label="Meaning" labelId="mn-source-map-4-label">
                     <mn-select
+                      labelledBy="mn-source-map-4-label"
                       label="Meaning field"
                       [options]="meaningOptions(source.noteTypeName)"
                       [disabled]="refresh.isBusy()"
                       [value]="source.meaningFieldName ?? ''"
                       (valueChange)="setMeaningField(source, $event)"
                     />
-                  </mn-field>
-                </mn-grid>
+                  </mn-settings-row>
+                </div>
                 @if (hasChildren(source.deckName)) {
                   <mn-checkbox
                     [disabled]="refresh.isBusy()"

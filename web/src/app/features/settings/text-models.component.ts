@@ -65,10 +65,11 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
       }
     </mn-group-header>
 
-    <mn-settings-row label="Model">
+    <mn-settings-row label="Model" labelId="mn-text-model-row-label">
       <mn-model-picker
         data-testid="text-model-picker"
         label="text models"
+        labelledBy="mn-text-model-row-label"
         [models]="textModels()"
         [favoriteIds]="text.favoriteModelIds()"
         [selectedId]="text.settings().modelId"
@@ -129,6 +130,17 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
               [attr.data-testid]="task.id + '-readiness'"
               >{{ readinessLabel(text.routeReadiness(task.id), text.action() === 'testing') }}</span
             >
+            @if (retestable(text.routeReadiness(task.id))) {
+              <button
+                type="button"
+                [mnButton]="text.routeReadiness(task.id) === 'failed' ? 'danger' : 'ghost'"
+                data-testid="test-text-model"
+                [disabled]="text.action() !== 'idle'"
+                (click)="text.testTask(task.id)"
+              >
+                {{ statusLabel(text.routeReadiness(task.id), text.action() === 'testing') }}
+              </button>
+            }
           }
         </mn-group-header>
 
@@ -136,20 +148,10 @@ import { TokenBudgetFieldComponent } from './token-budget-field.component';
           @if (text.routePreset(task.id) === null && inheritedName() !== null) {
             <span mn-settings-row-note class="mn-settings-row__note">Same as the text model</span>
           }
-          @if (text.routePreset(task.id) !== null && retestable(text.routeReadiness(task.id))) {
-            <button
-              type="button"
-              [mnButton]="text.routeReadiness(task.id) === 'failed' ? 'danger' : 'ghost'"
-              data-testid="test-text-model"
-              [disabled]="text.action() !== 'idle'"
-              (click)="text.testTask(task.id)"
-            >
-              {{ statusLabel(text.routeReadiness(task.id), text.action() === 'testing') }}
-            </button>
-          }
           <mn-model-picker
             [attr.data-testid]="task.id + '-model-picker'"
             [label]="task.id + ' models'"
+            [labelledBy]="'mn-' + task.id + '-model-label'"
             fallbackLabel="Use the text model"
             [inheritedLabel]="inheritedLabel()"
             [models]="textModels()"

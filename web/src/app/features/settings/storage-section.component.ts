@@ -57,43 +57,46 @@ function formatBytes(bytes: number | null): string {
         <span class="mn-settings-value">{{ usageLabel() }}</span>
       </mn-settings-row>
 
-      <mn-settings-row label="Keep data">
-        <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
-          {{ persistenceLabel() }}
-        </span>
-        @if (storage.status().canRequest) {
-          <button
-            type="button"
-            mnButton
-            [disabled]="
-              storage.action() !== 'idle' && storage.action() !== 'requesting-persistence'
-            "
-            [attr.aria-busy]="storage.action() === 'requesting-persistence' ? 'true' : null"
-            (click)="requestPersistence()"
-          >
-            {{ storage.action() === 'requesting-persistence' ? 'Protecting…' : 'Protect' }}
-          </button>
-        }
-      </mn-settings-row>
+      @if (storage.status().canRequest) {
+        <mn-settings-row
+          label="Protect storage"
+          action="accent"
+          testId="protect-storage"
+          [disabled]="storage.action() !== 'idle' && storage.action() !== 'requesting-persistence'"
+          [busy]="storage.action() === 'requesting-persistence'"
+          (pressed)="requestPersistence()"
+        >
+          <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
+            {{ storage.action() === 'requesting-persistence' ? 'Protecting…' : persistenceLabel() }}
+          </span>
+        </mn-settings-row>
+      } @else {
+        <mn-settings-row label="Keep data">
+          <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
+            {{ persistenceLabel() }}
+          </span>
+        </mn-settings-row>
+      }
 
-      <mn-settings-row label="Saved audio" [actions]="true">
+      <mn-settings-row
+        label="Delete saved audio"
+        action="danger"
+        testId="delete-saved-audio"
+        [disabled]="storage.action() !== 'idle'"
+        (pressed)="clearAudio()"
+      >
         <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
           {{ savedAudioLabel() }}
         </span>
-        <button
-          type="button"
-          mnButton="danger"
-          data-testid="delete-saved-audio"
-          aria-label="Delete saved audio"
-          [disabled]="storage.action() !== 'idle'"
-          (click)="clearAudio()"
-        >
-          Delete
-        </button>
-        @if (compression.running()) {
-          <button type="button" mnButton (click)="stopCompressing()">Stop</button>
-        }
       </mn-settings-row>
+      @if (compression.running()) {
+        <mn-settings-row
+          label="Stop compressing"
+          action="accent"
+          testId="stop-compression"
+          (pressed)="stopCompressing()"
+        />
+      }
 
       <mn-disclosure heading="Delete all local data" tone="danger" data-testid="danger-zone">
         <p class="mn-hint">

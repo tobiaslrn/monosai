@@ -43,9 +43,10 @@ let nextSelectId = 0;
 const TYPE_AHEAD_RESET_MS = 600;
 
 /**
- * Every choice of one value from a short list. It is the app's own select: the
- * field is the one the model picker's trigger is, and the list is the app's one
- * dropdown (`mn-dropdown`), hung under the field on every screen size. Native
+ * Every choice of one value from a short list. It is the app's own select: a
+ * button that reads as its current value and the up-down chevron (`.mn-choice`),
+ * and the list is the app's one dropdown (`mn-dropdown`), hung under that value
+ * on every screen size. In a settings row the whole row is the button. Native
  * selects are not used, because their popup is the platform's and matches
  * nothing else in the app.
  *
@@ -54,7 +55,7 @@ const TYPE_AHEAD_RESET_MS = 600;
  * It is also a form control, so `[(ngModel)]` and reactive forms work, and it
  * emits the option's own value, so a number stays a number.
  *
- * It follows the select-only combobox pattern: the field is the combobox and
+ * It follows the select-only combobox pattern: the button is the combobox and
  * the list a listbox of options. Enter, Space, or an arrow opens it; the arrow
  * keys, Home, End, and typing move through the options; Enter or Space chooses;
  * Escape closes it and focus returns to the field.
@@ -69,10 +70,9 @@ const TYPE_AHEAD_RESET_MS = 600;
   template: `
     <button
       type="button"
-      class="mn-control mn-control--select trigger"
+      class="mn-choice"
       role="combobox"
       aria-haspopup="listbox"
-      [class.trigger--unset]="selected() === null"
       [attr.aria-label]="labelledBy() === null ? label() : null"
       [attr.aria-labelledby]="labelledBy()"
       [attr.aria-expanded]="panel.isOpen()"
@@ -82,9 +82,9 @@ const TYPE_AHEAD_RESET_MS = 600;
       [disabled]="isDisabled()"
       (keydown)="onTriggerKeydown($event)"
     >
-      {{ shown() }}
+      <span class="mn-choice__value">{{ shown() }}</span>
+      <mn-icon name="chevron-up-down" [size]="18" />
     </button>
-    <mn-icon class="mn-select-caret" name="chevron-down" [size]="18" />
 
     <mn-dropdown
       #panel="mnDropdown"
@@ -135,38 +135,6 @@ const TYPE_AHEAD_RESET_MS = 600;
     </mn-dropdown>
   `,
   styles: `
-    :host {
-      display: block;
-      position: relative;
-      min-width: 0;
-    }
-
-    /*
-     * The field is the model picker's trigger: the same border, height, radius,
-     * and chevron, with the value cut at the field's edge.
-     */
-    .trigger {
-      display: block;
-      overflow: hidden;
-      text-align: start;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      cursor: pointer;
-    }
-
-    /* Nothing chosen is not a choice; it should not read as one. */
-    .trigger--unset {
-      color: var(--text-secondary);
-    }
-
-    /* On a line of its own, a long value wraps rather than being cut. */
-    @container (max-width: 16em) {
-      .trigger {
-        overflow-wrap: anywhere;
-        white-space: normal;
-      }
-    }
-
     /* The listbox holds the keys; the row they are on wears the ring. */
     .list {
       display: flex;

@@ -87,7 +87,8 @@ describe('AboutSectionComponent', () => {
     const element = render();
 
     expect(element.textContent).toContain('Not installed');
-    expect(element.querySelector('button')?.textContent).toContain('Check for updates');
+    expect(element.querySelector('[data-testid="check-updates"]')).not.toBeNull();
+    expect(element.textContent).toContain('Check for updates');
     expect(element.textContent).not.toContain('Install Monosai');
   });
 
@@ -128,7 +129,7 @@ describe('AboutSectionComponent', () => {
     fixture.detectChanges();
 
     (fixture.nativeElement as HTMLElement)
-      .querySelector<HTMLButtonElement>('button[aria-label="Copy diagnostics"]')
+      .querySelector<HTMLButtonElement>('[data-testid="copy-diagnostics"]')
       ?.click();
     await Promise.resolve();
     fixture.detectChanges();
@@ -146,7 +147,7 @@ describe('AboutSectionComponent', () => {
   it('offers one diagnostics action', () => {
     const element = render();
 
-    expect(element.querySelector('button[aria-label="Copy diagnostics"]')).not.toBeNull();
+    expect(element.querySelector('[data-testid="copy-diagnostics"]')).not.toBeNull();
     expect(element.querySelector('button[aria-label="Clear diagnostics"]')).toBeNull();
   });
 
@@ -161,7 +162,7 @@ describe('AboutSectionComponent', () => {
     fixture.detectChanges();
 
     (fixture.nativeElement as HTMLElement)
-      .querySelector<HTMLButtonElement>('button[aria-label="Copy diagnostics"]')
+      .querySelector<HTMLButtonElement>('[data-testid="copy-diagnostics"]')
       ?.click();
     await fixture.whenStable();
     fixture.detectChanges();

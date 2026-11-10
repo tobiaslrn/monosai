@@ -2,6 +2,7 @@ import { CdkTrapFocus } from '@angular/cdk/a11y';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   inject,
   input,
@@ -9,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { AnchoredPlacement } from './anchored-placement';
+import { OpenOverlayGuard } from './open-overlay-guard';
 
 interface NativePopoverElement extends Omit<HTMLElement, 'hidePopover' | 'showPopover'> {
   readonly hidePopover?: () => void;
@@ -36,7 +38,8 @@ let nextDropdownId = 0;
  * that uses it.
  *
  * It is a native popover, so a press outside or Escape closes it and focus
- * returns to the field. Opening moves focus to its `[data-overlay-focus]`
+ * returns to the field. Back closes it too, rather than leaving the page, and a
+ * press outside never also activates what it landed on (`OpenOverlayGuard`). Opening moves focus to its `[data-overlay-focus]`
  * control and holds it inside while it is open.
  */
 @Component({
@@ -78,11 +81,22 @@ export class DropdownComponent {
     maxHeightToken: '--dropdown-max-height',
   });
 
+  private readonly guard = new OpenOverlayGuard({
+    panel: this.host,
+    trigger: () => document.querySelector(`[popovertarget="${this.id}"]`),
+    close: () => {
+      this.hide();
+    },
+  });
+
   /** Whether it is showing, set before the first frame of showing. */
   readonly isOpen = this.openState.asReadonly();
 
   constructor() {
     this.trap.enabled = false;
+    inject(DestroyRef).onDestroy(() => {
+      this.guard.stop();
+    });
   }
 
   show(): void {
@@ -98,6 +112,7 @@ export class DropdownComponent {
     this.openState.set(open);
     if (open) {
       this.placement.open();
+      this.guard.start();
     }
   }
 
@@ -115,6 +130,7 @@ export class DropdownComponent {
       this.opened.emit();
     } else {
       this.placement.close();
+      this.guard.stop();
       this.closed.emit();
     }
   }

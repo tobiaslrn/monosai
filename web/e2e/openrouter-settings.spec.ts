@@ -59,7 +59,7 @@ test.describe('the model tree', () => {
 
     await saveApiKey(page);
 
-    const trigger = page.getByTestId('text-model-picker').getByRole('button');
+    const trigger = page.getByTestId('text-model-picker').getByRole('combobox');
     const picker = page.getByRole('dialog', { name: 'text models' });
     await trigger.click();
     await expect(picker).toBeVisible();
@@ -236,7 +236,7 @@ test.describe('the model tree', () => {
     const reasoningControl = page.getByRole('combobox', { name: 'Reasoning' }).first();
     const translation = taskReadiness(page, 'translation');
     const translationLabel = translation.getByText('Model', { exact: true });
-    const translationControl = translation.getByRole('button', { name: 'Test text-model' });
+    const translationControl = translation.getByRole('combobox', { name: 'Model' });
     for (const [label, control] of [
       [reasoningLabel, reasoningControl],
       [translationLabel, translationControl],

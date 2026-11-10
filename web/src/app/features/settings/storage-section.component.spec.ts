@@ -238,8 +238,8 @@ describe('StorageSectionComponent', () => {
       storage.persistenceSignal.set('refused');
       fixture.detectChanges();
 
-      const button = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(
-        (candidate) => candidate.textContent.includes('Protect'),
+      const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+        '[data-testid="protect-storage"]',
       );
       expect(button?.disabled).toBe(false);
       button?.click();
@@ -254,9 +254,10 @@ describe('StorageSectionComponent', () => {
       storage.actionSignal.set('requesting-persistence');
       fixture.detectChanges();
 
-      const button = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(
-        (candidate) => candidate.textContent.includes('Protecting'),
+      const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+        '[data-testid="protect-storage"]',
       );
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Protecting');
       expect(button?.disabled).toBe(false);
       expect(button?.getAttribute('aria-busy')).toBe('true');
       button?.click();
@@ -272,8 +273,9 @@ describe('StorageSectionComponent', () => {
   }
 
   function stopButton(fixture: { nativeElement: unknown }): HTMLButtonElement | undefined {
-    return [...host(fixture).querySelectorAll('button')].find(
-      (button) => button.textContent.trim() === 'Stop',
+    return (
+      host(fixture).querySelector<HTMLButtonElement>('[data-testid="stop-compression"]') ??
+      undefined
     );
   }
 

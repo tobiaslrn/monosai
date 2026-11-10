@@ -8,7 +8,7 @@
   border: 1px solid var(--border-subtle-faint);
   border-radius: var(--radius-card);
   background: var(--surface-raised);
-  @include motion.state(background-color);
+  @include motion.state(background-color, box-shadow);
 }
 
 .mn-list-row--flush,
@@ -43,12 +43,7 @@
  */
 :where(html[data-pointer='mouse']) .mn-list-row:where(:hover),
 .mn-list-row:where(:active) {
-  background: var(--surface-sunken);
-}
-
-:where(html[data-pointer='mouse']) .mn-list-row--muted:where(:hover),
-.mn-list-row--muted:where(:active) {
-  background: var(--surface-sunken-muted);
+  box-shadow: var(--state-layer-fill);
 }
 
 /*

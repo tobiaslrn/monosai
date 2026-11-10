@@ -15,8 +15,9 @@ import { IconComponent } from '../icon/icon.component';
 import { NoticeComponent } from '../notice/notice.component';
 
 /**
- * Choosing a model from OpenRouter's catalogue. It is the app's one dropdown
- * (`mn-dropdown`), the select's, with a search as its first row and a
+ * Choosing a model from OpenRouter's catalogue. Its trigger is the select's
+ * (`.mn-choice`: the value and the up-down chevron, the whole row in a settings
+ * row) and its list is the app's one dropdown (`mn-dropdown`), with a search as its first row and a
  * favourite star beside each option's check; the list scrolls under the search.
  */
 @Component({
@@ -25,24 +26,28 @@ import { NoticeComponent } from '../notice/notice.component';
   template: `
     <button
       type="button"
-      class="mn-control mn-control--select trigger"
-      [class.trigger--unset]="selectedId() === ''"
+      class="mn-choice"
+      role="combobox"
       aria-haspopup="listbox"
+      [attr.aria-label]="labelledBy() === null ? title() : null"
+      [attr.aria-labelledby]="labelledBy()"
       [attr.popovertarget]="panel.id"
       [attr.aria-controls]="panel.id"
       [attr.aria-expanded]="panel.isOpen()"
       [disabled]="disabled()"
       [attr.title]="selected()?.modelId ?? null"
     >
-      @for (part of shownParts(); track $index) {
-        <ng-container>{{ part }}<wbr /></ng-container>
-      }
+      <span class="mn-choice__value">
+        @for (part of shownParts(); track $index) {
+          <ng-container>{{ part }}<wbr /></ng-container>
+        }
+      </span>
       @if (selected(); as model) {
         <!-- Two vendors can share a display name; the id tells them apart. -->
         <span class="mn-visually-hidden">, {{ model.modelId }}</span>
       }
+      <mn-icon name="chevron-up-down" [size]="18" />
     </button>
-    <mn-icon class="mn-select-caret" name="chevron-down" [size]="18" />
 
     <mn-dropdown #panel="mnDropdown" [label]="title()" (opened)="opened.emit()" (closed)="reset()">
       @if (panel.isOpen()) {
@@ -157,38 +162,6 @@ import { NoticeComponent } from '../notice/notice.component';
   `,
   imports: [DropdownComponent, IconComponent, NgTemplateOutlet, NoticeComponent],
   styles: `
-    :host {
-      display: block;
-      position: relative;
-      min-width: 0;
-    }
-
-    /*
-     * The trigger is a field like the select beside it: the same border,
-     * height, radius, and chevron, and the value in the field's own weight.
-     */
-    .trigger {
-      display: block;
-      overflow: hidden;
-      text-align: start;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      cursor: pointer;
-    }
-
-    /* Nothing chosen, or a value inherited, is not a choice; it should not read as one. */
-    .trigger--unset {
-      color: var(--text-secondary);
-    }
-
-    /* On a line of its own, the full model name wraps rather than being cut. */
-    @container (max-width: 16em) {
-      .trigger {
-        overflow-wrap: anywhere;
-        white-space: normal;
-      }
-    }
-
     .favorites,
     .results {
       display: flex;
@@ -211,6 +184,8 @@ import { NoticeComponent } from '../notice/notice.component';
 })
 export class ModelPickerComponent {
   readonly label = input.required<string>();
+  /** The id of the visible label that names the picker, as a settings row gives it. */
+  readonly labelledBy = input<string | null>(null);
   readonly placeholder = input('Choose a model');
   /** The list's fallback option: choosing it clears the picker's own choice. */
   readonly fallbackLabel = input<string | null>(null);

@@ -66,7 +66,7 @@
   --surface-canvas: #1b1d1a;
   --surface-panel: #232622;
   --surface-raised: #2b2f2a;
-  --surface-floating: #353a34;
+  --surface-floating: #3d433c;
   --surface-sunken: #161815;
   --surface-inverse: #f0eee8;
 
@@ -99,7 +99,9 @@
 
   --focus-ring: var(--action-primary-text);
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 40%);
-  --shadow-overlay: 0 8px 32px rgb(0 0 0 / 55%);
+  --shadow-overlay: 0 8px 32px rgb(0 0 0 / 75%), 0 2px 8px rgb(0 0 0 / 50%);
+  /* On dark a hairline of the strong border is what separates a floating surface from the page. */
+  --overlay-edge: color-mix(in srgb, var(--border-strong) 70%, transparent);
 }
 
 :root {
@@ -230,6 +232,8 @@
    *                     viewport
    * panel-width         an anchored panel's width: Story options
    * player-width        the reader's floating audio player on a wide viewport
+   * dropdown-min-width  the narrowest a dropdown is, so it is never cramped to a short
+   *                     value's width, on every screen size
    * dropdown-max-width  the widest a dropdown grows with its content; it is never
    *                     narrower than its field, and never wider than the column
    * dropdown-max-height how tall a dropdown or a menu grows before its list scrolls
@@ -250,6 +254,7 @@
   --dialog-width: 30rem;
   --panel-width: 25rem;
   --player-width: 34rem;
+  --dropdown-min-width: 15rem;
   --dropdown-max-width: 25rem;
   --dropdown-max-height: 28rem;
   --dropdown-inset: var(--space-1);
@@ -260,8 +265,14 @@
   /* Shared composite surfaces keep component styles token-only. */
   --border-subtle-faint: color-mix(in srgb, var(--border-subtle) 35%, transparent);
   --surface-sunken-faint: color-mix(in srgb, var(--surface-sunken) 70%, transparent);
-  --surface-sunken-hover: color-mix(in srgb, var(--surface-sunken) 60%, transparent);
-  --surface-sunken-muted: color-mix(in srgb, var(--surface-sunken) 78%, var(--surface-raised));
+  /*
+   * The one state of a row under a pointer or a finger: a translucent layer of
+   * the text colour over whatever surface the row is on, so it darkens a light
+   * ground and lightens a dark one. `--state-layer-fill` paints it above the
+   * row's own background and below its content.
+   */
+  --state-layer: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  --state-layer-fill: inset 0 0 0 100vmax var(--state-layer);
   --surface-sunken-example: color-mix(in srgb, var(--surface-sunken) 75%, var(--surface-raised));
   /* A selected control under the pointer: the selection tint, one step deeper. */
   --action-primary-soft-hover: color-mix(

@@ -7,14 +7,22 @@ import { SettingsRowComponent } from './settings-row.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SettingsRowComponent],
   template: `
-    <mn-settings-row label="Keep data" labelId="keep-label" [actions]="true">
+    <mn-settings-row
+      label="Keep data"
+      labelId="keep-label"
+      action="accent"
+      testId="keep"
+      (pressed)="presses = presses + 1"
+    >
       <span mn-settings-row-detail class="mn-settings-row__hint">Protected</span>
-      <button type="button" aria-labelledby="keep-label">Protect</button>
     </mn-settings-row>
     <mn-settings-row label="Space used"><span>3 MB</span></mn-settings-row>
+    <mn-settings-row label="Delete" action="danger" [disabled]="true" />
   `,
 })
-class HostComponent {}
+class HostComponent {
+  presses = 0;
+}
 
 describe('SettingsRowComponent', () => {
   function render(): HTMLElement {
@@ -27,7 +35,7 @@ describe('SettingsRowComponent', () => {
   it('is itself the settings row', () => {
     const rows = render().querySelectorAll('mn-settings-row');
 
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3);
     for (const row of rows) {
       expect(row.classList.contains('mn-settings-row')).toBe(true);
     }
@@ -46,20 +54,33 @@ describe('SettingsRowComponent', () => {
     expect(titles[1]!.hasAttribute('id')).toBe(false);
   });
 
-  it('places the detail line under the title and the control at the end', () => {
+  it('places the detail line under the title', () => {
     const row = render().querySelector('mn-settings-row')!;
 
     expect(row.querySelector('.mn-settings-row__label .mn-settings-row__hint')?.textContent).toBe(
       'Protected',
     );
-    expect(row.querySelector('.mn-settings-row__end button')).not.toBeNull();
     expect(row.querySelector('.mn-settings-row__end .mn-settings-row__hint')).toBeNull();
   });
 
-  it('lays the end slot out as the actions row only when asked', () => {
-    const ends = render().querySelectorAll('.mn-settings-row__end');
+  it('is one button across the whole row when it is an action', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.detectChanges();
+    const row = (fixture.nativeElement as HTMLElement).querySelector('mn-settings-row')!;
+    const button = row.querySelector<HTMLButtonElement>('button.mn-settings-press')!;
 
-    expect(ends[0]!.classList.contains('mn-actions')).toBe(true);
-    expect(ends[1]!.classList.contains('mn-actions')).toBe(false);
+    expect(button.getAttribute('aria-labelledby')).toBe('keep-label');
+    expect(button.getAttribute('data-testid')).toBe('keep');
+    expect(row.classList.contains('mn-settings-row--accent')).toBe(true);
+    button.click();
+    expect(fixture.componentInstance.presses).toBe(1);
+  });
+
+  it('has no button unless it is an action, and a disabled action cannot be pressed', () => {
+    const rows = render().querySelectorAll('mn-settings-row');
+
+    expect(rows[1]!.querySelector('button')).toBeNull();
+    expect(rows[2]!.classList.contains('mn-settings-row--danger')).toBe(true);
+    expect(rows[2]!.querySelector('button')!.disabled).toBe(true);
   });
 });

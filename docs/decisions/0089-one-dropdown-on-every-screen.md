@@ -26,7 +26,8 @@ built on it. It has one look on every screen size:
   so an on-screen keyboard counts. It never leaves the column or the screen. One script
   (`AnchoredPlacement`) does this, never a bottom sheet and never a centred
   dialog.
-- **Width**: at least as wide as its field and growing with its content up to
+- **Width**: at least as wide as its field and `--dropdown-min-width` (so a
+  short value never makes a cramped list), growing with its content up to
   `--dropdown-max-width`, never wider than the column. It starts at the field's
   start edge, or ends at its end edge where it would leave the column from
   there. A field-wide list under a full-width field; on a phone never wider
@@ -37,6 +38,10 @@ built on it. It has one look on every screen size:
   check in the accent colour at the end for the chosen option. No title, no
   handle. The model picker adds a borderless search row as its first row, with
   one hairline under it, and a quiet favourite star before the check.
+- **Trigger**: the current value as plain text and the up-down chevron, with
+  no field box; in a settings row the whole row is the button and the list
+  hangs from the value. Back closes an open list instead of leaving the page,
+  and a press outside never activates what was under it.
 - **Motion**: the shared `drop` motion, a fade with a few pixels of travel from
   the field's side.
 

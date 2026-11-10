@@ -89,3 +89,49 @@ for (const width of [320, 393]) {
     });
   });
 }
+
+test.describe('a dropdown and the page around it', () => {
+  test.use({ viewport: { width: 393, height: 720 }, storageState: TTS_READY_STATE });
+
+  test('closes on history back without leaving the page @mobile', async ({ page }) => {
+    await stubOpenRouter(page);
+    await page.goto('./#/library');
+    await page.goto('./#/settings');
+    const field = page.getByTestId('tts-pace-select');
+    await field.click();
+    await expect(page.locator('.mn-dropdown:popover-open')).toBeVisible();
+
+    await page.goBack();
+
+    await expect(page.locator('.mn-dropdown:popover-open')).toHaveCount(0);
+    await expect(field).toHaveAttribute('aria-expanded', 'false');
+    await expect(page).toHaveURL(/#\/settings$/);
+
+    // Back is the page's again once the list is gone, and choosing took no entry with it.
+    await field.click();
+    await page.locator('.mn-dropdown:popover-open [role="option"]').last().click();
+    await expect(page.locator('.mn-dropdown:popover-open')).toHaveCount(0);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (history.state as Record<string, unknown> | null)?.['monosaiOverlayEntry'],
+        ),
+      )
+      .toBeUndefined();
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/library$/);
+  });
+
+  test('closes on a press outside without activating what was under it @mobile', async ({
+    page,
+  }) => {
+    await stubOpenRouter(page);
+    await page.goto('./#/settings');
+    await page.getByTestId('tts-pace-select').click();
+    await expect(page.locator('.mn-dropdown:popover-open')).toBeVisible();
+
+    await page.getByTestId('audio-model-picker').click({ force: true });
+
+    await expect(page.locator('.mn-dropdown:popover-open')).toHaveCount(0);
+  });
+});

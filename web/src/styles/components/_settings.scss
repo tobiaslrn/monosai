@@ -37,7 +37,13 @@
   display: none;
 }
 
+/*
+ * A setting is a row: it shows its label and its current value, and the whole
+ * row is the control. The row is positioned so the one button inside it — a
+ * choice's, or an action's `.mn-settings-press` — can stretch across it.
+ */
 .mn-settings-row {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(min-content, 1fr) auto;
   min-width: 0;
@@ -46,6 +52,16 @@
   align-items: center;
   padding: var(--row-inset-block) var(--surface-inset);
   color: inherit;
+}
+
+/*
+ * Rows placed in a padded surface — a card, a dialog's body — run to that
+ * surface's edges, so a row's state layer and hairline reach them as they do
+ * in a card made of rows.
+ */
+.mn-settings-bleed {
+  margin-inline: calc(-1 * var(--surface-inset));
+  container-type: inline-size;
 }
 
 .mn-settings-group > .mn-settings-row + .mn-settings-row,
@@ -59,15 +75,79 @@
 }
 
 .mn-settings-row__title,
-.mn-settings-row__hint {
+.mn-settings-row__hint,
+.mn-settings-row__details {
   display: block;
   margin: 0;
 }
 
+.mn-settings-row__details:empty {
+  display: none;
+}
+
+/* The label never wraps under the value beside it: the value yields first. */
 .mn-settings-row__title {
   font-size: var(--text-md);
   font-weight: var(--weight-medium);
   line-height: var(--leading-snug);
+  white-space: nowrap;
+}
+
+/* An action names itself in the accent colour, or the danger colour when it destroys. */
+.mn-settings-row--accent .mn-settings-row__title {
+  color: var(--action-primary-text);
+}
+
+.mn-settings-row--danger .mn-settings-row__title {
+  color: var(--status-danger);
+}
+
+.mn-settings-row--disabled {
+  cursor: not-allowed;
+}
+
+.mn-settings-row--disabled .mn-settings-row__label,
+.mn-settings-row--disabled .mn-settings-row__end {
+  opacity: 0.72;
+}
+
+/*
+ * An action row's one button covers the whole row, empty: the row's own words
+ * name it and describe it, and the state layer is drawn on it.
+ */
+.mn-settings-press {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  @include motion.state(box-shadow);
+}
+
+:where(html[data-pointer='mouse']) .mn-settings-press:where(:hover:not(:disabled)),
+.mn-settings-press:where(:active:not(:disabled)) {
+  box-shadow: var(--state-layer-fill);
+}
+
+.mn-settings-press:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+.mn-settings-press:disabled {
+  cursor: not-allowed;
+}
+
+.mn-settings-press[aria-busy='true'] {
+  cursor: progress;
+}
+
+/* The glyph of work going round turns while its row holds the work. */
+.mn-settings-row[aria-busy='true'] mn-icon[data-turns] {
+  @include motion.spin;
 }
 
 .mn-settings-row__hint {
@@ -170,17 +250,39 @@
 }
 
 /*
- * Every field at a row's end — a select, an input, a picker, a segmented
- * choice — is one width, so a card's controls share one column and one edge.
+ * Every field at a row's end — an input, a segmented choice — is one width, so
+ * a card's controls share one column and one edge. A choice is not a field: it
+ * is its value's own width, and yields to the label.
  */
 .mn-settings-row :where(input.mn-control),
-.mn-settings-row :where(mn-token-budget-field, mn-model-picker, mn-select, mn-segmented-control) {
+.mn-settings-row :where(mn-token-budget-field, mn-segmented-control) {
   width: min(var(--control-width), 50cqi);
   max-width: 100%;
 }
 
-.mn-settings-row .mn-actions {
-  justify-content: flex-end;
+/*
+ * Typing is the one setting that is not a press: its field sits in the row as
+ * its value does — plain text at the end, the value's own size and colour —
+ * and shows a field's edge only while it is being edited or is wrong.
+ */
+.mn-settings-row input.mn-control {
+  padding-inline: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  text-align: end;
+}
+
+.mn-settings-row input.mn-control:focus-visible {
+  border-color: var(--action-primary);
+  padding-inline: var(--space-2);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.mn-settings-row input.mn-control[aria-invalid='true'] {
+  border-color: var(--status-danger);
 }
 
 /* A row whose whole surface is a destination or a disclosure trigger. */
@@ -196,7 +298,7 @@
 /* Hover is a mouse state and adds no specificity (ADR 0082). */
 :where(html[data-pointer='mouse']) .mn-settings-row--interactive:where(:hover),
 .mn-settings-row--interactive:where(:active) {
-  background: var(--surface-sunken-hover);
+  box-shadow: var(--state-layer-fill);
 }
 
 .mn-settings-row--interactive:focus-visible {
@@ -220,24 +322,29 @@
   }
 
   .mn-settings-row :where(input.mn-control),
-  .mn-settings-row :where(mn-token-budget-field, mn-model-picker, mn-select, mn-segmented-control) {
+  .mn-settings-row :where(mn-token-budget-field, mn-segmented-control) {
     width: 100%;
   }
 
-  .mn-settings-row__end > .mn-settings-value {
+  .mn-settings-row__title {
+    white-space: normal;
+  }
+
+  .mn-settings-row__end > .mn-settings-value,
+  .mn-settings-row .mn-choice__value {
     overflow: visible;
     overflow-wrap: anywhere;
     text-align: start;
     white-space: normal;
   }
 
+  .mn-settings-row .mn-choice {
+    justify-content: flex-start;
+  }
+
   .mn-settings-row .mn-segmented--joined {
     grid-auto-flow: row;
     width: 100%;
     border-radius: var(--radius-card);
-  }
-
-  .mn-settings-row .mn-actions {
-    justify-content: flex-start;
   }
 }

@@ -45,29 +45,95 @@
 }
 
 /*
- * A field that opens a choice — the select, or the picker's trigger
- * (`.mn-control--select`) — carries one chevron, the app's own stroke icon
- * (`.mn-select-caret`, a sibling placed over the field's end), so a card of
- * fields reads as one control language. While its list is open the field wears
- * the border it has under the pointer.
+ * A choice — the select, the model picker, and the filter above a list — is one
+ * button that reads as its current value: the value as plain text in the
+ * secondary colour, then the app's up-down chevron. It has no box, no border,
+ * and no field background; it is not a form field.
+ *
+ * Its press target is the whole of what it sits in. The button's `::before`
+ * stretches to the nearest positioned ancestor, so in a settings row (which is
+ * positioned) the whole row is the control and wears the state layer, and on
+ * its own (`mn-select` and `mn-model-picker` are positioned) the button is the
+ * target. The list hangs from the button, which is the value and its chevron.
  */
-:where(.mn-control--select) {
-  appearance: none;
-  /* The chevron is placed in pixels, so large text must not widen the room kept for it. */
-  padding-inline-end: min(calc(var(--space-6) + var(--space-1)), 36px);
-}
-
-:where(.mn-control--select)[aria-expanded='true'] {
-  border-color: var(--action-primary);
-}
-
-.mn-select-caret {
-  position: absolute;
-  inset-block-start: 50%;
-  inset-inline-end: var(--control-inset);
+.mn-choice {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 100%;
+  min-width: 0;
+  min-height: var(--touch-target);
+  margin: 0;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
   color: var(--text-secondary);
-  transform: translateY(-50%);
-  pointer-events: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  text-align: end;
+  cursor: pointer;
+}
+
+.mn-choice::before {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-row);
+  content: '';
+  @include motion.state(background-color);
+}
+
+:where(html[data-pointer='mouse']) .mn-choice:where(:hover:not(:disabled))::before,
+.mn-choice:where(:active:not(:disabled))::before,
+.mn-choice[aria-expanded='true']::before {
+  background: var(--state-layer);
+}
+
+.mn-choice:focus-visible {
+  outline: none;
+}
+
+.mn-choice:focus-visible::before {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+.mn-choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.mn-choice__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mn-choice > mn-icon {
+  flex: none;
+}
+
+/* Where a choice is on its own, its box is the select's and the press target is that box. */
+:where(mn-select, mn-model-picker) {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* In a settings row it is the row that is positioned, so the row is the target. */
+.mn-settings-row :where(mn-select, mn-model-picker) {
+  position: static;
+}
+
+.mn-settings-row .mn-choice {
+  padding-inline: 0;
+}
+
+.mn-settings-row .mn-choice::before {
+  border-radius: 0;
 }
 
 textarea.mn-control,

@@ -12,7 +12,6 @@ import {
 import { EXCEPTION_PROMPT_VERSION } from '../../domain/ai/exception-policy-hash';
 import { InstallPromptService } from '../../core/platform/install-prompt.service';
 import { readBuildInfo } from '../../core/diagnostics/build-info';
-import { ButtonDirective } from '../../shared-ui/button/button';
 import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
 import { FactsComponent } from '../../shared-ui/facts/facts.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
@@ -24,7 +23,6 @@ import { SectionComponent } from '../../shared-ui/section/section.component';
   selector: 'mn-about-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    ButtonDirective,
     DisclosureComponent,
     FactsComponent,
     IconComponent,
@@ -34,10 +32,24 @@ import { SectionComponent } from '../../shared-ui/section/section.component';
   template: `
     <mn-section heading="About" [rows]="true">
       @let update = updates.status();
-      <mn-settings-row label="Version" [actions]="true">
+      <mn-settings-row label="Version">
         <span mn-settings-row-detail class="mn-settings-row__hint">
           {{ build.appVersion }} · {{ install.isStandalone() ? 'Installed' : 'Not installed' }}
         </span>
+      </mn-settings-row>
+
+      @if (!install.isStandalone() && install.canInstall()) {
+        <mn-settings-row label="Install Monosai" action="accent" (pressed)="installApp()" />
+      }
+
+      <mn-settings-row
+        label="Check for updates"
+        testId="check-updates"
+        action="accent"
+        [disabled]="update.kind === 'activating'"
+        [busy]="checking()"
+        (pressed)="checkForUpdates()"
+      >
         <!--
           The result's line is made when the check starts and filled when it ends, so the
           answer arrives into room already kept for it, and a live region that exists
@@ -49,22 +61,15 @@ import { SectionComponent } from '../../shared-ui/section/section.component';
             statusLabel
           }}</span>
         }
-        @if (!install.isStandalone() && install.canInstall()) {
-          <button type="button" mnButton (click)="installApp()">Install Monosai</button>
-        }
-        <button
-          type="button"
-          mnButton="ghost"
-          [disabled]="update.kind === 'activating'"
-          [attr.aria-busy]="checking() ? 'true' : null"
-          (click)="checkForUpdates()"
-        >
-          <mn-icon name="sync" [size]="17" />
-          Check for updates
-        </button>
+        <mn-icon name="sync" [size]="18" />
       </mn-settings-row>
 
-      <mn-settings-row label="Diagnostics" [actions]="true">
+      <mn-settings-row
+        label="Copy diagnostics"
+        action="accent"
+        testId="copy-diagnostics"
+        (pressed)="copyDiagnostics()"
+      >
         <span mn-settings-row-detail class="mn-settings-row__hint">
           Stays in this tab. Never includes your key or text.
         </span>
@@ -77,10 +82,6 @@ import { SectionComponent } from '../../shared-ui/section/section.component';
             Diagnostics could not be copied on this browser.
           </span>
         }
-        <button type="button" mnButton aria-label="Copy diagnostics" (click)="copyDiagnostics()">
-          <mn-icon name="copy" [size]="17" />
-          Copy
-        </button>
       </mn-settings-row>
 
       <mn-disclosure heading="Technical details" [value]="'Build ' + buildSummary()">

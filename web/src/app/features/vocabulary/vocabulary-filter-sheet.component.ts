@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { DialogComponent } from '../../shared-ui/dialog/dialog';
-import { FieldComponent } from '../../shared-ui/field/field.component';
 import { SelectComponent, type SelectOption } from '../../shared-ui/select/select.component';
 import {
   applyBrowseQuery,
@@ -25,20 +24,25 @@ export interface VocabularyFilterSheetData {
 }
 
 /** The Filters task dialog: a centred card on a wide screen, a docked sheet on a phone. */
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
+
 @Component({
   selector: 'mn-vocabulary-filter-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ButtonDirective, DialogComponent, FieldComponent, SelectComponent],
+  imports: [FormsModule, ButtonDirective, DialogComponent, SelectComponent, SettingsRowComponent],
   template: `
     <mn-dialog heading="Filters" headingId="vocabulary-filter-heading" closeLabel="Close filters">
-      <mn-field label="Source">
-        <mn-select
-          label="Source"
-          [options]="sourceOptions"
-          [ngModel]="draft().sourceId ?? ''"
-          (ngModelChange)="setSource($event)"
-        />
-      </mn-field>
+      <div class="mn-settings-group mn-settings-bleed">
+        <mn-settings-row label="Source" labelId="mn-filter-1-label">
+          <mn-select
+            labelledBy="mn-filter-1-label"
+            label="Source"
+            [options]="sourceOptions"
+            [ngModel]="draft().sourceId ?? ''"
+            (ngModelChange)="setSource($event)"
+          />
+        </mn-settings-row>
+      </div>
 
       <fieldset>
         <legend>Difficulty</legend>
@@ -68,23 +72,29 @@ export interface VocabularyFilterSheetData {
         </label>
       </fieldset>
 
-      <mn-field label="First studied">
-        <mn-select
-          label="First studied"
-          [options]="firstStudiedOptions"
-          [ngModel]="draft().firstStudied"
-          (ngModelChange)="setFirstStudied($event)"
-        />
-      </mn-field>
+      <div class="mn-settings-group mn-settings-bleed">
+        <mn-settings-row label="First studied" labelId="mn-filter-2-label">
+          <mn-select
+            labelledBy="mn-filter-2-label"
+            label="First studied"
+            [options]="firstStudiedOptions"
+            [ngModel]="draft().firstStudied"
+            (ngModelChange)="setFirstStudied($event)"
+          />
+        </mn-settings-row>
+      </div>
 
-      <mn-field label="Sort by">
-        <mn-select
-          label="Sort by"
-          [options]="sortOptions"
-          [ngModel]="draft().sort"
-          (ngModelChange)="setSort($event)"
-        />
-      </mn-field>
+      <div class="mn-settings-group mn-settings-bleed">
+        <mn-settings-row label="Sort by" labelId="mn-filter-3-label">
+          <mn-select
+            labelledBy="mn-filter-3-label"
+            label="Sort by"
+            [options]="sortOptions"
+            [ngModel]="draft().sort"
+            (ngModelChange)="setSort($event)"
+          />
+        </mn-settings-row>
+      </div>
 
       <button mn-dialog-action="start" mnButton="ghost" type="button" (click)="reset()">
         Reset

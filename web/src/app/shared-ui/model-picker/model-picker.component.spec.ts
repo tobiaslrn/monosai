@@ -41,7 +41,7 @@ describe('ModelPickerComponent', () => {
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
 
-    element.querySelector<HTMLButtonElement>('.trigger')!.click();
+    element.querySelector<HTMLButtonElement>('.mn-choice')!.click();
     fixture.detectChanges();
 
     const panel = element.querySelector<HTMLElement>('mn-dropdown')!;
@@ -64,7 +64,7 @@ describe('ModelPickerComponent', () => {
     fixture.componentRef.setInput('favoriteIds', ['vendor/favourite']);
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
-    element.querySelector<HTMLButtonElement>('.trigger')!.click();
+    element.querySelector<HTMLButtonElement>('.mn-choice')!.click();
     fixture.detectChanges();
 
     const panel = element.querySelector<HTMLElement>('mn-dropdown')!;
@@ -80,7 +80,7 @@ describe('ModelPickerComponent', () => {
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
-    expect(element.querySelector('.trigger')?.textContent).toContain('vendor/saved-model');
+    expect(element.querySelector('.mn-choice')?.textContent).toContain('vendor/saved-model');
   });
 
   it('offers a fallback choice inside the same searchable dropdown', async () => {
@@ -91,8 +91,8 @@ describe('ModelPickerComponent', () => {
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
 
-    expect(element.querySelector('.trigger')?.textContent).toContain('Same as Story');
-    element.querySelector<HTMLButtonElement>('.trigger')!.click();
+    expect(element.querySelector('.mn-choice')?.textContent).toContain('Same as Story');
+    element.querySelector<HTMLButtonElement>('.mn-choice')!.click();
     fixture.detectChanges();
     expect(element.querySelector('.fallback')?.textContent).toContain('Same as Story');
   });
@@ -105,7 +105,7 @@ describe('ModelPickerComponent', () => {
       fixture.componentRef.setInput('models', [model('vendor/one', 'One')]);
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
-      const trigger = element.querySelector<HTMLButtonElement>('.trigger')!;
+      const trigger = element.querySelector<HTMLButtonElement>('.mn-choice')!;
       const panel = element.querySelector<HTMLElement>('mn-dropdown')!;
       return { fixture, trigger, panel, element };
     }

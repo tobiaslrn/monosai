@@ -14,7 +14,6 @@ import { CredentialStore } from '../../application/settings/credential.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
-import { ButtonDirective } from '../../shared-ui/button/button';
 import { GroupHeaderComponent } from '../../shared-ui/group/group-header.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { ModelCatalogView } from './model-catalog-view';
@@ -44,13 +43,7 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
     '[attr.data-readiness]': 'tts.readiness()',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    ButtonDirective,
-    GroupHeaderComponent,
-    ModelPickerComponent,
-    SelectComponent,
-    SettingsRowComponent,
-  ],
+  imports: [GroupHeaderComponent, ModelPickerComponent, SelectComponent, SettingsRowComponent],
   template: `
     <mn-group-header heading="Voice" headingId="mn-audio-model-label">
       <span
@@ -63,10 +56,11 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       >
     </mn-group-header>
 
-    <mn-settings-row label="Model">
+    <mn-settings-row label="Model" labelId="mn-audio-model-row-label">
       <mn-model-picker
         data-testid="audio-model-picker"
         label="speech models"
+        labelledBy="mn-audio-model-row-label"
         [speech]="true"
         [models]="speechModels()"
         [favoriteIds]="tts.favoriteModelIds()"
@@ -132,28 +126,15 @@ export type AudioStatus = ConfigurationReadiness | 'testing' | 'cancelled';
       />
     </mn-settings-row>
 
-    <mn-settings-row label="Sample" [actions]="true">
-      @if (tts.action() === 'testing') {
-        <button
-          type="button"
-          mnButton="ghost"
-          data-testid="cancel-tts-test"
-          (click)="tts.cancelTest()"
-        >
-          Stop
-        </button>
-      } @else {
-        <button
-          type="button"
-          mnButton="ghost"
-          data-testid="test-tts"
-          [disabled]="tts.draft().modelId === '' || tts.draft().voiceId === ''"
-          (click)="testAudio()"
-        >
-          Play sample
-        </button>
-      }
-    </mn-settings-row>
+    <mn-settings-row
+      [label]="tts.action() === 'testing' ? 'Stop sample' : 'Play sample'"
+      action="accent"
+      [testId]="tts.action() === 'testing' ? 'cancel-tts-test' : 'test-tts'"
+      [disabled]="
+        tts.action() !== 'testing' && (tts.draft().modelId === '' || tts.draft().voiceId === '')
+      "
+      (pressed)="tts.action() === 'testing' ? tts.cancelTest() : testAudio()"
+    />
 
     @if (audioReadinessNote(); as note) {
       <p class="mn-settings-feedback" data-testid="audio-readiness-note">{{ note }}</p>

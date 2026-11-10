@@ -262,12 +262,27 @@ its own header, so the rows that belong to it never read as a continuation of th
 group above. Nothing in a group is indented: what belongs to a setting, such as
 the reasoning and limit of a task's own model, follows it as rows on the same
 edge. An action belongs in the
-row of what it acts on, not in the group's header. A setting that inherits shows
+row of what it acts on, not in the group's header, and it is a row (below). A setting that inherits shows
 the value that will actually apply, muted, never a label for the inheritance
 alone. A number a learner reads at rest is grouped; a hint says what the control
-cannot, in one muted line. Every field
-at a row's end — a select, an input, a picker's trigger, a segmented choice — is
-one width, so the card's controls form one column with one right edge.
+cannot, in one muted line. A text input or a
+segmented choice at a row's end is one width, so the card's controls form one
+column with one right edge; a typed value sits in the row as plain text and shows
+a field's edge only while it is edited or wrong.
+
+**A setting is a row: the row shows the label and the current value and the
+whole row is the control. Choices open the shared dropdown at the value; actions
+are rows, not buttons inside rows.** A *choice row* ends in the current value as
+plain secondary text and the up-down chevron, with no box, border, or field
+background; the whole row is its one button (a combobox named by the row's
+label), pressed anywhere, and the label never wraps under the value — the value
+is cut with an ellipsis first. An *action row* is one button across the whole
+row: its label is in the accent colour, or the danger colour when it destroys
+something and asks to confirm, with a status or one glyph at the end and never a
+button. One state layer — a translucent layer of the text colour — is what every
+row (settings, choice, action, shelf, dropdown and menu rows) shows under a
+pointer or a finger, so it lightens a dark surface and darkens a light one. A
+filter above a list is the same value-and-chevron button on its own.
 
 A sample sentence — what a level reads like — is a quiet block set in from the
 words around it by a rule (`mn-example`), not a sunken box: the card it sits in
@@ -642,8 +657,9 @@ Custom. Filling every axis at random is a ghost action in the card's heading.
 
 **Every choice of one value from a list uses the app's select (`mn-select`);
 native selects are not used**, because their popup is the platform's and matches
-no other menu. The closed select is the field the model picker's trigger is: the
-same border, height, radius, and chevron. Open, both are **the dropdown**
+no other menu. The closed select is the model picker's trigger: the current
+value as plain text and the up-down chevron, not a form field (see "A setting is
+a row" above). Open, both are **the dropdown**
 (`mn-dropdown`, [ADR 0089](../decisions/0089-one-dropdown-on-every-screen.md)),
 and the dropdown has one look on every screen size:
 
@@ -653,11 +669,13 @@ and the dropdown has one look on every screen size:
   room. Its start edge is its field's start edge; where it would leave the page
   column from there, its end edge is the field's end edge instead. It never
   leaves the column or the screen. Never a bottom sheet, never a centred dialog.
-- **Width.** At least as wide as its field, growing with its content up to one
-  maximum, and never wider than the column: a field-wide list under a
-  full-width field, and on a phone never wider than the column.
-- **Anatomy.** The floating surface (white in light, a step above a card in
-  dark) with its edge, the overlay radius and shadow, and one small padding the
+- **Width.** At least as wide as its field and at least one minimum width
+  (`--dropdown-min-width`), so it is never cramped to a short value's width like
+  a native pop-up menu, growing with its content up to one maximum, and never
+  wider than the column. One rule on every screen size, with no phone variant. A
+  list that hangs from a value at a row's end ends at that value's end edge.
+- **Anatomy.** The floating surface (white in light, a clearly lighter step above a card in
+  dark) with its edge (a visible hairline in dark), the overlay radius and a shadow that reads on both, and one small padding the
   same on every side. Rows are inset in the panel, each with its own small
   radius, at one height and one inset, and no line between them. A row is a
   label in normal weight and an optional muted line; the chosen option is
@@ -668,9 +686,12 @@ and the dropdown has one look on every screen size:
   label, inset with the rows. No title, no handle.
 - **Scrolling.** Past its maximum height the rows scroll and the panel's
   padding and any pinned search stay put.
-- **Field.** Its chevron is the app's chevron-down stroke icon in the muted
-  colour, never turned, and while the list is open the field wears its active
-  border.
+- **Trigger.** Its chevron is the app's up-down stroke icon in the muted
+  colour, never turned, and while the list is open its row keeps the state
+  layer. The list hangs from the value, not from the row.
+- **Back and outside presses.** Back closes an open dropdown or menu instead of
+  leaving the page, and a press outside only closes it: it never also activates
+  what was under the press.
 - **Motion.** It fades in from its field with a few pixels of travel from the
   field's side and fades back out the same way.
 
@@ -771,9 +792,8 @@ choice is made once, by the shared placement, for every dropdown and every menu
 alike.
 
 A **menu** is never a form: as soon as a panel holds a field, it is a task
-dialog. A **dropdown's** field is a field like any other — the select's border,
-height, radius, and chevron, the value in the field's own weight — so a card of
-settings has one control language. A choice of a few named options in a card
+dialog. A **dropdown's** trigger is the value-and-chevron button of a choice row, so a
+card of settings has one control language. A choice of a few named options in a card
 that must be compared at a glance is not an overlay at all but a segmented
 control or radio cards in place, and stays so.
 

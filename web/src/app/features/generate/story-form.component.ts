@@ -41,7 +41,6 @@ import { CardComponent } from '../../shared-ui/card/card.component';
 import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
 import { DividerComponent } from '../../shared-ui/divider/divider.component';
 import { FactsComponent, type Fact } from '../../shared-ui/facts/facts.component';
-import { FieldComponent } from '../../shared-ui/field/field.component';
 import { StackComponent } from '../../shared-ui/layout/layout';
 import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 import { RangeFieldComponent } from '../../shared-ui/range-field/range-field.component';
@@ -94,6 +93,8 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
  * Generate says a network request is about to happen and does not estimate a
  * price, because a number that is wrong is worse than no number.
  */
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
+
 @Component({
   selector: 'mn-story-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -104,7 +105,6 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
     DisclosureComponent,
     DividerComponent,
     FactsComponent,
-    FieldComponent,
     IconComponent,
     NoticeComponent,
     PreparationTargetsComponent,
@@ -117,6 +117,7 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
     StoryPlotsComponent,
     WizardStepComponent,
     WizardStepsComponent,
+    SettingsRowComponent,
   ],
   template: `
     <!-- The form's blocks are the page's blocks, so they keep the page's rhythm. -->
@@ -139,28 +140,30 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
         @switch (draft.step()) {
           @case (1) {
             <mn-card heading="Words" [level]="2" [focusable]="true">
-              <mn-stack [gap]="2">
-                <mn-field label="Anki word selection">
+              <div class="mn-settings-group mn-settings-bleed">
+                <mn-settings-row label="Anki word selection" labelId="mn-story-1-label">
                   <mn-select
+                    labelledBy="mn-story-1-label"
                     testId="word-priority-select"
                     [options]="wordPriorityOptions"
                     [value]="ankiWordPriorityMode()"
                     [disabled]="disabled()"
                     (valueChange)="onWordPriorityMode($event)"
                   />
-                </mn-field>
+                </mn-settings-row>
                 @if (ankiWordPriorityMode() === 'recent') {
-                  <mn-field label="Focus">
+                  <mn-settings-row label="Focus" labelId="mn-story-2-label">
                     <mn-select
+                      labelledBy="mn-story-2-label"
                       testId="focus-size-select"
                       [options]="focusSizeOptions"
                       [value]="recentFocusSize()"
                       [disabled]="disabled()"
                       (valueChange)="onRecentFocusSize($event)"
                     />
-                  </mn-field>
+                  </mn-settings-row>
                 }
-              </mn-stack>
+              </div>
 
               <mn-range-field
                 label="Length"

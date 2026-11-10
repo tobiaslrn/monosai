@@ -11,7 +11,6 @@ import { PackageImportStore } from '../../application/vocabulary/package-import.
 import { vocabularySourceId } from '../../domain/shared/ids';
 import { formatCountOf } from '../../domain/shared/locale';
 import { ANKI_LINKS } from './anki-links';
-import { FieldComponent } from '../../shared-ui/field/field.component';
 import {
   SelectComponent,
   optionsFromNames,
@@ -21,13 +20,15 @@ import {
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { CardComponent } from '../../shared-ui/card/card.component';
 import { CheckboxComponent } from '../../shared-ui/checkbox/checkbox.component';
-import { ClusterComponent, GridComponent } from '../../shared-ui/layout/layout';
+import { ClusterComponent } from '../../shared-ui/layout/layout';
 import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 
 /**
  * The incoming Anki package: quiet while it works, a chooser only when the
  * package leaves something genuinely open, and one clear line when it is done.
  */
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
+
 @Component({
   selector: 'mn-package-import',
   imports: [
@@ -35,10 +36,9 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
     CardComponent,
     CheckboxComponent,
     ClusterComponent,
-    FieldComponent,
-    GridComponent,
     NoticeComponent,
     SelectComponent,
+    SettingsRowComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -103,50 +103,54 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
               yet.
             </p>
 
-            <mn-grid [gap]="2">
+            <div class="mn-settings-group mn-settings-bleed">
               @if (current.plan.deckOptions.length > 1) {
-                <mn-field label="Deck">
+                <mn-settings-row label="Deck" labelId="mn-import-1-label">
                   <mn-select
+                    labelledBy="mn-import-1-label"
                     label="Deck to import"
                     testId="package-import-deck"
                     [options]="deckChoices()"
                     [value]="current.plan.selection.deckName"
                     (valueChange)="store.chooseDeck(text($event))"
                   />
-                </mn-field>
+                </mn-settings-row>
               }
               @if (current.plan.noteTypeOptions.length > 1) {
-                <mn-field label="Note type">
+                <mn-settings-row label="Note type" labelId="mn-import-2-label">
                   <mn-select
+                    labelledBy="mn-import-2-label"
                     label="Note type to import"
                     testId="package-import-note-type"
                     [options]="noteTypeChoices()"
                     [value]="current.plan.selection.noteTypeName"
                     (valueChange)="store.chooseNoteType(text($event))"
                   />
-                </mn-field>
+                </mn-settings-row>
               }
-              <mn-field label="Expression field">
+              <mn-settings-row label="Expression field" labelId="mn-import-3-label">
                 <mn-select
+                  labelledBy="mn-import-3-label"
                   label="Expression field"
                   testId="package-import-field"
                   [options]="fieldChoices()"
                   [value]="current.plan.selection.expressionFieldName"
                   (valueChange)="store.chooseExpressionField(text($event))"
                 />
-              </mn-field>
+              </mn-settings-row>
               @if (current.plan.replaceOptions.length > 1) {
-                <mn-field label="Replaces">
+                <mn-settings-row label="Replaces" labelId="mn-import-4-label">
                   <mn-select
+                    labelledBy="mn-import-4-label"
                     label="Source to replace"
                     testId="package-import-replaces"
                     [options]="replaceChoices()"
                     [value]="current.plan.replaces?.id ?? ''"
                     (valueChange)="chooseReplacement($event)"
                   />
-                </mn-field>
+                </mn-settings-row>
               }
-            </mn-grid>
+            </div>
 
             @if (deckHasChildren()) {
               <mn-checkbox
