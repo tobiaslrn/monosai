@@ -184,7 +184,8 @@ const TYPE_AHEAD_RESET_MS = 600;
      * while their words keep the surface's inset.
      */
     .list {
-      margin-inline: calc(-1 * var(--overlay-inset));
+      /* The body's own thin band is given back, so the rows sit one inset from both edges. */
+      margin: calc(-1 * var(--space-1)) calc(-1 * var(--overlay-inset));
       min-height: var(--touch-target);
       outline: none;
     }

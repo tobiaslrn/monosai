@@ -125,6 +125,15 @@ let nextOverlayId = 0;
       @include motion.grow(top right);
     }
 
+    /*
+     * An anchored overlay never leaves the page's column: it is end-aligned to
+     * its trigger, and start-aligned when the trigger sits in the column's
+     * first half.
+     */
+    :host(.is-anchored.is-start) {
+      position-area: bottom span-right;
+    }
+
     /* A picker: at least as wide as the field that opened it, and a list that scrolls. */
     :host(.is-anchored.fits-anchor) {
       min-width: anchor-size(width);
@@ -247,7 +256,30 @@ export class SheetPopoverComponent {
   }
 
   protected onBeforeToggle(event: Event): void {
-    this.openState.set((event as ToggleEvent).newState === 'open');
+    const open = (event as ToggleEvent).newState === 'open';
+    this.openState.set(open);
+    if (open) {
+      this.alignToColumn();
+    }
+  }
+
+  /**
+   * Chooses which edge of the trigger an anchored overlay hangs from, so it
+   * stays inside the page's column: the start edge when the trigger is in the
+   * column's first half, the end edge otherwise. Written straight to the host,
+   * ahead of the first frame of showing.
+   */
+  private alignToColumn(): void {
+    const root = this.host.nativeElement;
+    const trigger = document.querySelector(`[popovertarget="${this.id()}"]`);
+    if (trigger === null) {
+      return;
+    }
+    const column = trigger.closest('mn-page, main') ?? document.documentElement;
+    const columnBox = column.getBoundingClientRect();
+    const box = trigger.getBoundingClientRect();
+    const centre = box.left + box.width / 2;
+    root.classList.toggle('is-start', centre < columnBox.left + columnBox.width / 2);
   }
 
   /**

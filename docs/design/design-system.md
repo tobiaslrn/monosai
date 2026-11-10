@@ -724,6 +724,14 @@ not. A task dialog has **no Cancel button**: its ways out are the close, Escape,
 the scrim, and on a phone the handle, all of which discard what it was drafting.
 Its commit goes through its own primary action.
 
+On a wide viewport an overlay anchored to a trigger never leaves the page's
+column. It hangs from the trigger's end edge when the trigger sits at the
+column's end (a settings row) and from its start edge when the trigger sits at
+the column's start (an inline filter), and it is never narrower than its
+trigger. The choice is made once, by the shared overlay, for the select and the
+model picker alike. A list in a picker has the same space above its first row
+as below its last.
+
 A **menu** is never a form: as soon as a panel holds a field, it is a task
 dialog. A **picker's** trigger is a field like any other — the select's border,
 height, radius, and chevron, the value in the field's own weight — so a card of
