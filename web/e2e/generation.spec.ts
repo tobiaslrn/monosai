@@ -11,7 +11,6 @@ import {
 } from './generation';
 import { STUB_PLOTS, stubOpenRouter } from './openrouter';
 import { countOwnedRows } from './reading';
-import { expectMotionSettled } from './sheets';
 import { GENERATION_READY_STATE } from './state';
 import { expectSettingPersisted } from './storage';
 
@@ -616,9 +615,6 @@ test.describe('taps on a phone', () => {
     await openGenerate(page);
     await page.getByTestId('story-length').fill('0');
     await expect(page.getByTestId('wizard-next')).toBeEnabled();
-    // The page cross-fades in as a picture of itself that takes no touches; a
-    // finger lands once it has settled.
-    await expectMotionSettled(page);
     return recorded;
   }
 

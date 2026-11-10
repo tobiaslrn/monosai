@@ -22,11 +22,10 @@
  *   draw      a success check drawing itself once
  *   spin      a glyph turning while the work it stands for runs
  *   breathe   a busy control, or a wait with no stages, breathing
- *   route     a page replacing another (the router's view transition)
  *
  * A component uses this module as `@use '…/styles/motion' as motion;` and
  * includes a named motion; using it emits nothing. `global` is included once,
- * by `styles.scss`, and holds every keyframe, the view transition, and the one
+ * by `styles.scss`, and holds every keyframe and the one
  * reduction for `prefers-reduced-motion`. No other file writes a keyframe, a
  * duration, or a curve: the style scan rejects one.
  */
@@ -460,42 +459,6 @@
     }
   }
 
-  @keyframes mn-route-out {
-    to {
-      opacity: 0;
-    }
-  }
-
-  @keyframes mn-route-in {
-    from {
-      opacity: 0;
-      transform: translateY(var(--motion-nudge));
-    }
-  }
-
-  /*
-   * A route change cross-fades the page under a bar that stays where it is.
-   * The bar is captured on its own (`view-transition-name` on the page
-   * header), so its group does not move; only its words cross over.
-   */
-  ::view-transition-old(root) {
-    animation: mn-route-out var(--motion-fast) var(--ease-exit) both;
-  }
-
-  ::view-transition-new(root) {
-    animation: mn-route-in var(--motion-medium) var(--ease-enter) both;
-  }
-
-  ::view-transition-group(mn-top-bar) {
-    animation: none;
-  }
-
-  ::view-transition-old(mn-top-bar),
-  ::view-transition-new(mn-top-bar) {
-    animation-duration: var(--motion-fast);
-    animation-timing-function: var(--ease-standard);
-  }
-
   /*
    * Reduced motion: timed animation and transitions are cut to a single frame,
    * everywhere, from here. A scroll-driven animation (the top bar's edge) is
@@ -516,12 +479,6 @@
       transition-duration: 0.01ms !important;
       transition-delay: 0s !important;
       scroll-behavior: auto !important;
-    }
-
-    ::view-transition-group(*),
-    ::view-transition-old(*),
-    ::view-transition-new(*) {
-      animation: none !important;
     }
   }
 }

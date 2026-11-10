@@ -117,8 +117,6 @@ import { PageNoticeSlot } from './page-notice-slot';
       min-height: var(--touch-target);
       padding-block: var(--space-2);
       background: var(--surface-canvas);
-      /* Captured on its own in a route change, so the bar stays where it is. */
-      view-transition-name: mn-top-bar;
     }
 
     /*

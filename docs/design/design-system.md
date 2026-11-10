@@ -1050,7 +1050,9 @@ screen:
 | **draw**            | A success check draws itself once, after its mark has popped                                                  |
 | **spin**            | A glyph that draws work going round turns while that work runs                                                |
 | **breathe, pulse**  | A busy control, or a wait with no stages to name, breathes                                                    |
-| **route**           | One page replaces another: the page cross-fades while the top bar stays where it is; never into or out of the reader |
+
+Pages replace each other instantly; motion never sits between a tap and the
+next page.
 
 Emphasis answers the learner's own press: a box that was already ticked when
 the page arrived does not pop. A busy control's turning glyph is the one shared
@@ -1095,8 +1097,7 @@ animate there. A page of Japanese that shifts while being read is unreadable.
 
 Every non-essential transition is removed under `prefers-reduced-motion`,
 including the expressive ones, and it is removed **in one place**: the motion
-module cuts every timed animation and transition to a single frame and turns
-the route cross-fade off, so no component carries a reduced-motion rule of its
+module cuts every timed animation and transition to a single frame, so no component carries a reduced-motion rule of its
 own for movement. What a still screen still needs is decided there too — the
 working line shows its dots, a toast simply stays. Character is the first
 thing cut, not the last. The setting is read live: a component that decides in

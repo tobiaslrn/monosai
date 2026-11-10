@@ -1457,9 +1457,6 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
 
     await page.getByRole('link', { name: '第一章' }).click();
-    // Back is pressed from the reader, so the reader has to have been entered:
-    // a route change commits its address a frame after the press.
-    await expect(page).toHaveURL(/#\/reader\//);
     await page.goBack();
     await expect(page).toHaveURL(/#\/library$/);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
