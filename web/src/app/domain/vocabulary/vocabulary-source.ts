@@ -103,3 +103,19 @@ export function isAutomaticAnkiSource(source: VocabularySource): source is AnkiV
 } {
   return source.kind === 'anki-connect' && isIncludedInVocabulary(source) && source.automaticSync;
 }
+
+/**
+ * The name a learner knows a source by. An Anki source is stored with a label
+ * of the form "Anki · Deck · Field", which states the kind and the field as
+ * well as the name; what is shown is the deck's name alone, since the kind and
+ * the field are stated on the source's own page. A list the learner named is
+ * shown as typed.
+ */
+export function sourceName(source: Pick<VocabularySource, 'kind' | 'label'>): string {
+  if (source.kind === 'text-list') {
+    return source.label;
+  }
+  const match = /^Anki · (.+) · [^·]+$/.exec(source.label);
+  const deck = match?.[1]?.trim();
+  return deck === undefined || deck === '' ? source.label : deck;
+}

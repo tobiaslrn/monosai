@@ -6,6 +6,7 @@ import {
   inject,
   viewChild,
 } from '@angular/core';
+import { sourceName } from '../../domain/vocabulary/vocabulary-source';
 import type { ElementRef } from '@angular/core';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { vocabularySourceId } from '../../domain/shared/ids';
@@ -162,7 +163,7 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
 
             @if (current.plan.replaces; as replaced) {
               @if (current.plan.replaceOptions.length === 1) {
-                <p class="mn-hint">Replaces {{ replaced.label }}.</p>
+                <p class="mn-hint">Replaces {{ name(replaced) }}.</p>
               }
             }
 
@@ -194,6 +195,7 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
   `,
 })
 export class PackageImportComponent {
+  protected readonly name = sourceName;
   protected readonly store = inject(PackageImportStore);
   protected readonly state = this.store.state;
   protected readonly links = ANKI_LINKS;

@@ -15,6 +15,7 @@ import {
 } from '../../domain/vocabulary/vocabulary-browse';
 import { vocabularySourceId } from '../../domain/shared/ids';
 import { formatCountOf } from '../../domain/shared/locale';
+import { sourceName } from '../../domain/vocabulary/vocabulary-source';
 import type {
   CapturedSourceObservation,
   VocabularyEntry,
@@ -92,7 +93,7 @@ export class VocabularyFilterSheetComponent {
 
   protected readonly sourceOptions: readonly SelectOption<string>[] = [
     { value: '', label: 'All sources' },
-    ...this.data.sources.map((source) => ({ value: source.sourceId, label: source.label })),
+    ...this.data.sources.map((source) => ({ value: source.sourceId, label: sourceName(source) })),
   ];
   protected readonly firstStudiedOptions: readonly SelectOption<string>[] = [
     { value: 'any', label: 'Any time' },

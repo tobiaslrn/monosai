@@ -440,7 +440,9 @@ leading its one line of facts so the title keeps the full width.
 
 The vocabulary sources are one card of such rows, where the count joins the
 line saying what is inside rather than sitting opposite the name, because a
-source's name is long and the card is narrow. The card's last line reports how
+source's name is long and the card is narrow. A source is shown by its name, the
+deck or list the learner knows it by, wherever it appears (`sourceName`); the kind
+and the mapped field are stated on its own page. The card's last line reports how
 current the sources are as a whole — when they were last read, or what is
 stopping them — and holds the one control that can change that.
 

@@ -10,7 +10,7 @@ import type {
   VocabularySource,
   VocabularySourceCache,
 } from '../../domain/vocabulary/vocabulary-source';
-import { isIncludedInVocabulary } from '../../domain/vocabulary/vocabulary-source';
+import { isIncludedInVocabulary, sourceName } from '../../domain/vocabulary/vocabulary-source';
 import type { SnapshotCommit } from '../../domain/vocabulary/vocabulary-repository';
 import { LanguageStore } from '../language/language.store';
 import { VocabularyClassificationService } from '../reading/vocabulary-classification.service';
@@ -105,7 +105,7 @@ export class VocabularySyncService {
     const entries = included.flatMap((source) => {
       const cache = cachesById.get(source.id);
       if (cache === undefined) {
-        warnings.add(`${source.label} has not been read yet.`);
+        warnings.add(`${sourceName(source)} has not been read yet.`);
         return [];
       }
       for (const warning of cache.warnings) {

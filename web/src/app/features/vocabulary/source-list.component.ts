@@ -12,10 +12,11 @@ import {
 } from '../../application/shared/diagnostics';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { formatCountOf, formatDate, formatRelativeDay } from '../../domain/shared/locale';
-import type { VocabularySource } from '../../domain/vocabulary/vocabulary-source';
 import {
   isAutomaticAnkiSource,
   isIncludedInVocabulary,
+  sourceName,
+  type VocabularySource,
 } from '../../domain/vocabulary/vocabulary-source';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { RowComponent } from '../../shared-ui/row/row.component';
@@ -56,9 +57,9 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
             [testId]="'source-row'"
           >
             <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-              <mn-icon [name]="iconFor(source)" [size]="18" />
+              <mn-icon [name]="iconFor(source)" />
             </span>
-            <span mn-list-row-title>{{ source.label }}</span>
+            <span mn-list-row-title>{{ name(source) }}</span>
             <span mn-list-row-meta>
               <mn-cluster [gap]="1">
                 @if (needsAttention(source)) {
@@ -127,6 +128,7 @@ export class SourceListComponent {
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   protected readonly sources = this.store.sources;
+  protected readonly name = sourceName;
 
   constructor() {
     // Each row's number is its source's last complete read. The active
@@ -179,7 +181,7 @@ export class SourceListComponent {
   protected readonly attention = computed(() => {
     const failed = this.sources().find((source) => this.manual.failureFor(source.id) !== null);
     if (failed !== undefined) {
-      return `${failed.label} could not be read. Its words are still here, from its last read.`;
+      return `${sourceName(failed)} could not be read. Its words are still here, from its last read.`;
     }
     const status = this.automatic?.status();
     if (status?.kind === 'waiting' || status?.kind === 'attention') {

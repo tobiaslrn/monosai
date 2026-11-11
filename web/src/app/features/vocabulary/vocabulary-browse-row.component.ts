@@ -7,6 +7,7 @@ import type {
   CapturedSourceObservation,
   VocabularyEntry,
 } from '../../domain/vocabulary/vocabulary-repository';
+import { sourceName } from '../../domain/vocabulary/vocabulary-source';
 import { EntryComponent, FigureComponent } from '../../shared-ui/entry-list/entry-list.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 
@@ -49,7 +50,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
           <li>
             <mn-icon name="anki-source" />
             @if (sourceFor(sourceId); as source) {
-              <a [routerLink]="['/reading-level/source', sourceId]">{{ source.label }}</a>
+              <a [routerLink]="['/reading-level/source', sourceId]">{{ name(source) }}</a>
             } @else {
               <span>Source no longer available</span>
             }
@@ -63,6 +64,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 })
 export class VocabularyBrowseRowComponent {
   private readonly clock = inject(CLOCK);
+  protected readonly name = sourceName;
 
   readonly entry = input.required<VocabularyEntry>();
   readonly sources = input.required<readonly CapturedSourceObservation[]>();

@@ -2,6 +2,7 @@ import { DOCUMENT, Injectable, inject, signal } from '@angular/core';
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
 import {
   isAutomaticAnkiSource,
+  sourceName,
   type AnkiConnectionKind,
   type AnkiVocabularySource,
   type VocabularySourceCache,
@@ -204,7 +205,7 @@ export class AutomaticAnkiSyncCoordinator {
       const source = sources.find((candidate) => candidate.id === emptied.sourceId);
       this.statusSignal.set({
         kind: 'attention',
-        message: `${source?.label ?? 'An Anki source'} unexpectedly returned no vocabulary. Review it in Vocabulary settings; the current vocabulary was kept.`,
+        message: `${source === undefined ? 'An Anki source' : sourceName(source)} unexpectedly returned no vocabulary. Review it in Vocabulary settings; the current vocabulary was kept.`,
       });
       return;
     }

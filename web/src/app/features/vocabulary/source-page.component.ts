@@ -52,7 +52,7 @@ import type {
   TextListVocabularySource,
   VocabularySource,
 } from '../../domain/vocabulary/vocabulary-source';
-import { isIncludedInVocabulary } from '../../domain/vocabulary/vocabulary-source';
+import { isIncludedInVocabulary, sourceName } from '../../domain/vocabulary/vocabulary-source';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { SectionComponent } from '../../shared-ui/section/section.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
@@ -104,7 +104,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
       <p class="mn-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
 
       @if (source(); as source) {
-        <mn-section [label]="source.label" [rows]="true">
+        <mn-section [label]="heading()" [rows]="true">
           <mn-settings-row label="Source" [value]="origin(source)" />
           <mn-settings-row label="Words" [value]="words(source)" testId="source-summary" />
 
@@ -330,7 +330,10 @@ export class SourcePageComponent {
     return this.store.sources().find((candidate) => candidate.id === id) ?? null;
   });
 
-  protected readonly heading = computed(() => this.source()?.label ?? 'Source');
+  protected readonly heading = computed(() => {
+    const source = this.source();
+    return source === null ? 'Source' : sourceName(source);
+  });
 
   protected readonly announcement = computed(() =>
     this.manual.state().kind === 'idle' ? this.localAnnouncement() : this.manual.announcement(),

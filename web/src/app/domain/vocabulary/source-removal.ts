@@ -1,4 +1,4 @@
-import type { VocabularySource } from './vocabulary-source';
+import { sourceName, type VocabularySource } from './vocabulary-source';
 import { isIncludedInVocabulary } from './vocabulary-source';
 
 /** What the page knows about the rest of the vocabulary when a removal is asked for. */
@@ -37,7 +37,7 @@ export function describeSourceRemoval(
   const emptiesVocabulary = isIncludedInVocabulary(source) && others.length === 0;
 
   const removes = [
-    `${source.label}, and the words it contributes to your vocabulary`,
+    `${sourceName(source)}, and the words it contributes to your vocabulary`,
     ...(emptiesVocabulary
       ? ['Every word in your vocabulary: no other source is included, so it drops to none']
       : [
@@ -51,7 +51,7 @@ export function describeSourceRemoval(
   ];
 
   return {
-    title: `Remove ${source.label}?`,
+    title: `Remove ${sourceName(source)}?`,
     removes,
     // Lowercase: these are joined into one sentence when rendered.
     preserves: [

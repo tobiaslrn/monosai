@@ -3,7 +3,7 @@ import { ankiError, type AnkiError } from '../../domain/anki/anki-error';
 import type { VocabularySourceId } from '../../domain/shared/ids';
 import { formatCountOf } from '../../domain/shared/locale';
 import type { AnkiVocabularySource } from '../../domain/vocabulary/vocabulary-source';
-import { supportsManualSync } from '../../domain/vocabulary/vocabulary-source';
+import { sourceName, supportsManualSync } from '../../domain/vocabulary/vocabulary-source';
 import { VOCABULARY_SOURCE_REPOSITORY } from '../shared/repository-tokens';
 import { AnkiSourceReader } from './anki-source-reader';
 import { VocabularySyncService, type VocabularySyncFailure } from './vocabulary-sync.service';
@@ -102,7 +102,7 @@ export class ManualSourceSyncStore {
     const controller = new AbortController();
     this.controller = controller;
     this.stateSignal.set({ kind: 'syncing', sourceId: source.id });
-    this.announcement.set(`Syncing ${source.label}…`);
+    this.announcement.set(`Syncing ${sourceName(source)}…`);
 
     const read = await this.reader.read(source.providerKind, [source], controller.signal);
     if (!read.ok) {
@@ -116,7 +116,10 @@ export class ManualSourceSyncStore {
 
     const cache = read.value.find((candidate) => candidate.sourceId === source.id);
     if (cache === undefined) {
-      this.finish(source, ankiError('query-failed', `${source.label} returned nothing to read.`));
+      this.finish(
+        source,
+        ankiError('query-failed', `${sourceName(source)} returned nothing to read.`),
+      );
       return;
     }
 
@@ -131,7 +134,7 @@ export class ManualSourceSyncStore {
         source,
         ankiError(
           'query-failed',
-          `${source.label} unexpectedly returned no vocabulary, so it was not applied.`,
+          `${sourceName(source)} unexpectedly returned no vocabulary, so it was not applied.`,
         ),
       );
       return;
@@ -165,7 +168,7 @@ export class ManualSourceSyncStore {
       uniqueEntryCount: committed.value.uniqueEntryCount,
     });
     this.announcement.set(
-      `Synced ${source.label}. Your vocabulary has ${formatCountOf(committed.value.uniqueEntryCount, 'unique expression')}.`,
+      `Synced ${sourceName(source)}. Your vocabulary has ${formatCountOf(committed.value.uniqueEntryCount, 'unique expression')}.`,
     );
   }
 

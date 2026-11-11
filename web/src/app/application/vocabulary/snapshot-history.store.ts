@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import type { SnapshotId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { meetsGenerationMinimum, type VocabularySnapshot } from '../../domain/vocabulary/snapshot';
-import type { VocabularySourceKind } from '../../domain/vocabulary/vocabulary-source';
+import { sourceName, type VocabularySourceKind } from '../../domain/vocabulary/vocabulary-source';
 import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
 
 /** The current vocabulary row, with the details the page has to show. */
@@ -72,7 +72,7 @@ export class SnapshotHistoryStore {
     }
     const seen = new Set<string>();
     for (const record of provenance.value) {
-      seen.add(record.sourceLabel);
+      seen.add(sourceName({ kind: record.sourceKind, label: record.sourceLabel }));
     }
     return [...seen].sort();
   }
