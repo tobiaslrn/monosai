@@ -7,8 +7,10 @@ import { IconComponent } from '../icon/icon.component';
  *
  *   <mn-search-field label="Search Japanese or English" [(value)]="query" />
  *
- * The label is the field's accessible name and its placeholder, since a
- * search box has no room for a visible label above it.
+ * The label is the field's accessible name and, unless a shorter `placeholder`
+ * is given, its placeholder, since a search box has no room for a visible label
+ * above it. A long label is for assistive technology; the placeholder must fit
+ * the field on a phone.
  */
 @Component({
   selector: 'mn-search-field',
@@ -20,7 +22,7 @@ import { IconComponent } from '../icon/icon.component';
       <input
         class="mn-control"
         type="search"
-        [placeholder]="label()"
+        [placeholder]="placeholder() ?? label()"
         [attr.aria-label]="label()"
         [attr.data-testid]="testId()"
         [value]="value()"
@@ -74,6 +76,8 @@ import { IconComponent } from '../icon/icon.component';
 })
 export class SearchFieldComponent {
   readonly label = input.required<string>();
+  /** What the empty field says, when the accessible name is too long to fit it. */
+  readonly placeholder = input<string | null>(null);
   readonly value = model('');
   /** For durable tests: on the input. */
   readonly testId = input<string | null>(null);

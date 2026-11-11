@@ -66,6 +66,7 @@ interface VirtualVocabularyEntry {
       <mn-cluster fill="first">
         <mn-search-field
           label="Search Japanese or English"
+          placeholder="Search words"
           testId="vocabulary-search"
           [value]="store.query().search"
           (valueChange)="store.setSearch($event)"
