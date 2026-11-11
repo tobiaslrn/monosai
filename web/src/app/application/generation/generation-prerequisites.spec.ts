@@ -117,7 +117,10 @@ describe('prerequisiteChecks', () => {
   });
 
   it('sends each failing check to the screen that fixes it', () => {
-    expect(checkFor('text-model', { textModelReadiness: 'untested' }).route).toBe('/settings');
+    expect(checkFor('text-model', { textModelReadiness: 'untested' }).route).toBe(
+      '/settings/text-models',
+    );
+    expect(checkFor('text-model', { textModelReadiness: 'no-credential' }).route).toBe('/settings');
     expect(checkFor('vocabulary', { snapshot: null }).route).toBe('/reading-level');
   });
 

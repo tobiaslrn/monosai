@@ -4,10 +4,9 @@ import { expectMotionSettled } from './sheets';
 import { GENERATION_READY_STATE, TTS_READY_STATE } from './state';
 
 /**
- * Every dropdown is one dropdown: it hangs from its field, starting at the
- * field's start edge (or ending at its end edge where it would leave the
- * column), at least as wide as the field, and never leaves the column or the
- * screen.
+ * Every dropdown is one dropdown: it hangs from its row, with its edge on the
+ * card's edge and the card's width (up to its cap), and never leaves the column
+ * or the screen.
  */
 interface Box {
   readonly left: number;
@@ -23,7 +22,11 @@ async function box(locator: Locator): Promise<Box> {
   return { left: x, right: x + width, top: y, bottom: y + height };
 }
 
-/** Opens the field's dropdown and returns it, the field and the column once it has come to rest. */
+/**
+ * Opens the field's dropdown and returns it, what it hangs from and the column once it has come
+ * to rest. A choice in a settings row hangs from its row, with its edge on the card's; a bare
+ * choice hangs from its field.
+ */
 async function openDropdown(
   page: Page,
   field: Locator,
@@ -33,9 +36,10 @@ async function openDropdown(
   const list = page.locator('.mn-dropdown:popover-open');
   await expect(list).toBeVisible();
   await expectMotionSettled(page);
+  const row = field.locator('xpath=ancestor::mn-settings-row[1]');
   return {
     list: await box(list),
-    field: await box(field),
+    field: await box((await row.count()) > 0 ? row : field),
     column: await box(page.locator('mn-page').first()),
   };
 }
@@ -62,17 +66,19 @@ for (const width of [320, 393]) {
   test.describe(`a dropdown at ${String(width)}px`, () => {
     test.use({ viewport: { width, height: 720 } });
 
-    test.describe('from a field at the column end', () => {
+    test.describe('from a row at the column end', () => {
       test.use({ storageState: TTS_READY_STATE });
 
       test('stays inside the column and the screen @mobile', async ({ page }) => {
         await stubOpenRouter(page);
-        await page.goto('./#/settings');
-        const placed = await openDropdown(page, page.getByTestId('tts-pace-select'));
+        await page.goto('./#/settings/voice');
+        const placed = await openDropdown(page, page.getByTestId('tts-voice-select'));
 
         expectInside(placed, page);
-        // Growing from the field's start edge would leave the column, so it ends at the field's end.
-        expect(placed.list.right).toBeCloseTo(placed.field.right, 0);
+        // Its edge is on the card's edge, and it is as wide as the card on a phone.
+        // The row sits inside the card's one-pixel border; the list's edge is the card's.
+        expect(Math.abs(placed.list.left - placed.field.left)).toBeLessThanOrEqual(1.5);
+        expect(Math.abs(placed.list.right - placed.field.right)).toBeLessThanOrEqual(1.5);
       });
     });
 
@@ -96,8 +102,8 @@ test.describe('a dropdown and the page around it', () => {
   test('closes on history back without leaving the page @mobile', async ({ page }) => {
     await stubOpenRouter(page);
     await page.goto('./#/library');
-    await page.goto('./#/settings');
-    const field = page.getByTestId('tts-pace-select');
+    await page.goto('./#/settings/voice');
+    const field = page.getByTestId('tts-voice-select');
     await field.click();
     await expect(page.locator('.mn-dropdown:popover-open')).toBeVisible();
 
@@ -105,7 +111,7 @@ test.describe('a dropdown and the page around it', () => {
 
     await expect(page.locator('.mn-dropdown:popover-open')).toHaveCount(0);
     await expect(field).toHaveAttribute('aria-expanded', 'false');
-    await expect(page).toHaveURL(/#\/settings$/);
+    await expect(page).toHaveURL(/#\/settings\/voice$/);
 
     // Back is the page's again once the list is gone, and choosing took no entry with it.
     await field.click();
@@ -126,8 +132,8 @@ test.describe('a dropdown and the page around it', () => {
     page,
   }) => {
     await stubOpenRouter(page);
-    await page.goto('./#/settings');
-    await page.getByTestId('tts-pace-select').click();
+    await page.goto('./#/settings/voice');
+    await page.getByTestId('tts-voice-select').click();
     await expect(page.locator('.mn-dropdown:popover-open')).toBeVisible();
 
     await page.getByTestId('audio-model-picker').click({ force: true });

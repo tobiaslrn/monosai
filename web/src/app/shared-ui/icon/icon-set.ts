@@ -48,6 +48,7 @@ import {
   LucideSparkles,
   LucideSpellCheck,
   LucideTrash,
+  LucideTriangleAlert,
   LucideUpload,
   LucideX,
 } from '@lucide/angular';
@@ -71,6 +72,7 @@ export const ICON_SET = {
   close: LucideX,
   back: LucideArrowLeft,
   warning: LucideCircleAlert,
+  alert: LucideTriangleAlert,
   check: LucideCheck,
   copy: LucideCopy,
   delete: LucideTrash,

@@ -17,7 +17,6 @@ const OPTIONS: readonly SegmentedOption<Theme>[] = [
   template: `
     <mn-segmented-control
       label="Theme"
-      [joined]="joined()"
       [disabled]="disabled()"
       [options]="options"
       [(value)]="theme"
@@ -27,7 +26,6 @@ const OPTIONS: readonly SegmentedOption<Theme>[] = [
 class HostComponent {
   readonly options = OPTIONS;
   readonly theme = signal<Theme | undefined>('light');
-  readonly joined = signal(false);
   readonly disabled = signal(false);
 }
 
@@ -92,13 +90,13 @@ describe('SegmentedControlComponent', () => {
     expect(radios().map((radio) => radio.checked)).toEqual([true, false, false]);
   });
 
-  it('takes the joined variant and can be disabled', () => {
+  it('can be disabled, and draws no thumb while nothing is chosen', () => {
     const { fixture, host, group, radios } = render();
-    host.joined.set(true);
     host.disabled.set(true);
+    host.theme.set(undefined);
     fixture.detectChanges();
 
-    expect(group.classList.contains('mn-segmented--joined')).toBe(true);
+    expect(group.classList.contains('mn-segmented--unchosen')).toBe(true);
     expect(radios().every((radio) => radio.disabled)).toBe(true);
   });
 });

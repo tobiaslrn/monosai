@@ -83,7 +83,7 @@ const TYPE_AHEAD_RESET_MS = 600;
       (keydown)="onTriggerKeydown($event)"
     >
       <span class="mn-choice__value">{{ shown() }}</span>
-      <mn-icon name="chevron-up-down" [size]="18" />
+      <mn-icon name="chevron-up-down" />
     </button>
 
     <mn-dropdown
@@ -127,7 +127,7 @@ const TYPE_AHEAD_RESET_MS = 600;
               }
             </span>
             @if (index === selectedIndex()) {
-              <mn-icon class="mn-dropdown-row__check" name="check" [size]="18" tone="accent" />
+              <mn-icon class="mn-dropdown-row__check" name="check" tone="accent" />
             }
           </div>
         }

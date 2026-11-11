@@ -9,9 +9,6 @@
   "src/app/features/library/reading-card.component.ts": ["R35"],
   "src/app/features/reader/sentence-popover.component.ts": ["R35"],
   "src/app/features/reading-level/reading-level-page.component.ts": ["R35"],
-  "src/app/features/settings/about-section.component.ts": ["R35"],
-  "src/app/features/settings/openrouter-connection.component.ts": ["R35"],
-  "src/app/features/settings/reading-level-row.component.ts": ["R35"],
   "src/app/features/vocabulary/add-words.component.ts": ["R35"],
   "src/app/features/vocabulary/source-list.component.ts": ["R35"],
   "src/app/features/vocabulary/vocabulary-browse-page.component.ts": ["R35"],
@@ -21,10 +18,8 @@
   "src/app/shared-ui/blocker/blocker.component.ts": ["R35"],
   "src/app/shared-ui/checklist/checklist.component.ts": ["R35"],
   "src/app/shared-ui/disclosure/disclosure.component.ts": ["R35"],
-  "src/app/shared-ui/model-picker/model-picker.component.ts": ["R35"],
   "src/app/shared-ui/notice/notice.component.ts": ["R35"],
   "src/app/shared-ui/outcome/outcome.component.ts": ["R35"],
   "src/app/shared-ui/row/row.component.ts": ["R35"],
-  "src/app/shared-ui/select/select.component.ts": ["R35"],
   "src/app/shared-ui/wizard-steps/wizard-steps.component.ts": ["R35"]
 }

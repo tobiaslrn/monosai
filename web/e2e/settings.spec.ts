@@ -54,11 +54,12 @@ test.describe('settings persistence', () => {
   test('creates the local database and reports its schema version', async ({ page }) => {
     await page.goto('./#/settings');
 
-    const diagnostics = page.getByRole('region', { name: 'About' });
-    await expect(diagnostics.getByText('Database schema version')).toBeHidden();
-    await diagnostics.getByText('Technical details').click();
-    await expect(diagnostics.getByText('Database schema version')).toBeVisible();
-    await expect(diagnostics).toContainText('1');
+    await expect(page.getByText('Database schema version')).toBeHidden();
+    await page.getByTestId('technical-details').click();
+    await expect(page).toHaveURL(/#\/settings\/technical$/);
+    const facts = page.getByRole('region', { name: 'Versions' });
+    await expect(facts.getByText('Database schema version')).toBeVisible();
+    await expect(facts).toContainText('1');
 
     expect(await monosaiDatabaseExists(page)).toBe(true);
   });
@@ -68,12 +69,12 @@ test.describe('settings persistence', () => {
     await page.getByRole('radio', { name: 'Dark' }).check();
     await expectSettingPersisted(page, 'app', 'theme', 'dark');
 
-    await page.getByTestId('danger-zone').locator('summary').click();
-    await page.getByRole('button', { name: 'Delete all Monosai data' }).click();
-    await expect(page.getByRole('alert')).toContainText('Continue?');
+    await page.getByTestId('delete-all-data').click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.getByRole('alertdialog')).toContainText('Continue?');
 
     await page.getByRole('button', { name: 'Cancel' }).click();
-    await expect(page.getByRole('button', { name: 'Delete all Monosai data' })).toBeVisible();
+    await expect(page.getByTestId('delete-all-data')).toBeVisible();
     expect(await monosaiDatabaseExists(page)).toBe(true);
   });
 
@@ -85,6 +86,7 @@ test.describe('settings persistence', () => {
 
     await page.goto('./#/settings');
     const deleteAudio = page.getByRole('button', { name: 'Delete saved audio', exact: true });
+    await deleteAudio.scrollIntoViewIfNeeded();
     await expect(deleteAudio).toBeVisible();
 
     const restingBackground = await deleteAudio.evaluate(
@@ -109,8 +111,8 @@ test.describe('settings persistence', () => {
     await page.getByRole('radio', { name: 'Dark' }).check();
     await expectSettingPersisted(page, 'app', 'theme', 'dark');
 
-    await page.getByTestId('danger-zone').locator('summary').click();
-    await page.getByRole('button', { name: 'Delete all Monosai data' }).click();
+    await page.getByTestId('delete-all-data').click();
+    await page.getByRole('button', { name: 'Continue' }).click();
     await page.getByRole('button', { name: 'Yes, delete everything' }).click();
 
     const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha.' });

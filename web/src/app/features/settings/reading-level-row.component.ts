@@ -2,8 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { RowComponent } from '../../shared-ui/row/row.component';
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
 /**
@@ -21,20 +20,18 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
  */
 @Component({
   selector: 'mn-reading-level-row',
+  host: { class: 'mn-settings-block' },
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, RowComponent],
+  imports: [SettingsRowComponent],
   template: `
-    <mn-row
+    <mn-settings-row
+      label="What you can read"
+      end="nav"
       link="/reading-level"
-      heading="What you can read"
       testId="settings-reading-level"
       [state]="settingsOriginState"
-    >
-      @if (state(); as line) {
-        <span mn-row-meta>{{ line }}</span>
-      }
-      <mn-icon name="chevron-right" [size]="18" />
-    </mn-row>
+      [summary]="state()"
+    />
   `,
 })
 export class ReadingLevelRowComponent {

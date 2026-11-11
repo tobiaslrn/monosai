@@ -35,24 +35,27 @@ import { NoticeComponent } from '../notice/notice.component';
       [attr.aria-controls]="panel.id"
       [attr.aria-expanded]="panel.isOpen()"
       [disabled]="disabled()"
-      [attr.title]="selected()?.modelId ?? null"
     >
       <span class="mn-choice__value">
         @for (part of shownParts(); track $index) {
           <ng-container>{{ part }}<wbr /></ng-container>
         }
+        @if (codeParts().length > 0) {
+          <span aria-hidden="true"> · </span>
+          <span class="mn-choice__code">
+            @for (part of codeParts(); track $index) {
+              <ng-container>{{ part }}<wbr /></ng-container>
+            }
+          </span>
+        }
       </span>
-      @if (selected(); as model) {
-        <!-- Two vendors can share a display name; the id tells them apart. -->
-        <span class="mn-visually-hidden">, {{ model.modelId }}</span>
-      }
-      <mn-icon name="chevron-up-down" [size]="18" />
+      <mn-icon name="chevron-right" />
     </button>
 
     <mn-dropdown #panel="mnDropdown" [label]="title()" (opened)="opened.emit()" (closed)="reset()">
       @if (panel.isOpen()) {
         <label class="mn-dropdown__search" mn-dropdown-pinned>
-          <mn-icon name="search" [size]="18" />
+          <mn-icon name="search" />
           <span class="mn-visually-hidden">Search {{ label() }}</span>
           <input
             type="search"
@@ -96,7 +99,7 @@ import { NoticeComponent } from '../notice/notice.component';
                 <span class="mn-dropdown-row__label">{{ fallback }}</span>
               </span>
               @if (selectedId() === '') {
-                <mn-icon class="mn-dropdown-row__check" name="check" [size]="18" tone="accent" />
+                <mn-icon class="mn-dropdown-row__check" name="check" tone="accent" />
               }
             </button>
             @if (others().length > 0) {
@@ -150,11 +153,11 @@ import { NoticeComponent } from '../notice/notice.component';
           [attr.aria-pressed]="isFavorite(model.modelId)"
           (click)="favoriteToggled.emit(model.modelId)"
         >
-          <mn-icon name="star" [size]="18" />
+          <mn-icon name="star" />
         </button>
         <span class="mn-dropdown-row__mark">
           @if (model.modelId === selectedId()) {
-            <mn-icon class="mn-dropdown-row__check" name="check" [size]="18" tone="accent" />
+            <mn-icon class="mn-dropdown-row__check" name="check" tone="accent" />
           }
         </span>
       </div>
@@ -234,6 +237,12 @@ export class ModelPickerComponent {
       this.placeholder(),
     ].find((label) => label !== null && label !== '');
     return (shown ?? '').split(/(?<=\/)/);
+  });
+  /** The chosen model's identifier, in pieces, when the name shown is not already it. */
+  protected readonly codeParts = computed(() => {
+    const id = this.selectedId();
+    const shownName = this.selected()?.name ?? this.selectedLabel() ?? id;
+    return id === '' || shownName === id ? [] : id.split(/(?<=\/)/);
   });
   protected readonly matches = computed(() => {
     const query = this.query().trim().toLocaleLowerCase();

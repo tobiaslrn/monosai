@@ -283,6 +283,8 @@
   --surface-reader-progress: color-mix(in srgb, var(--border-strong) 50%, var(--surface-sunken));
   --surface-canvas-fade: linear-gradient(to top, var(--surface-canvas) 72%, transparent);
   --shadow-thumb-ring: 0 0 0 1px var(--action-primary);
+  /* The chosen segment's raised thumb: neutral, so the action colour keeps its one meaning. */
+  --shadow-segment-thumb: 0 1px 2px rgb(0 0 0 / 12%), 0 0 0 1px var(--border-subtle-faint);
   --shadow-model-indicator: inset 3px 0 var(--action-primary);
   --radius-token: 0.25rem;
 
@@ -318,6 +320,13 @@
   --touch-target: max(44px, 2.75rem);
   /* A shelf row, a vocabulary row and a fold's summary share one minimum. */
   --row-min-height: 3.75rem;
+  /*
+   * The one settings row (`mn-settings-row`): its least height, and the padding
+   * above and below its words, so a one-line fact and a row with a summary are
+   * the same family at every width.
+   */
+  --row-min: 3.5rem;
+  --row-pad-block: var(--space-3);
 
   /*
    * One size for a checkbox and a radio. A glyph that leads text which may

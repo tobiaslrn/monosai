@@ -248,6 +248,20 @@ export class TextModelStore {
     });
   }
 
+  /**
+   * Why the model a task has of its own failed its last test, or null when it
+   * has none or has not failed. The text model's own failure is `testFailure`.
+   */
+  routeFailure(task: TextModelTask): AiError | null {
+    const preset = this.routePreset(task);
+    if (preset === null) return null;
+    return configurationTestFailure(
+      this.settingsSignal().failedTests,
+      this.fingerprintForConfig(preset.modelId, preset.reasoningEffort),
+      'text-model-test',
+    );
+  }
+
   async setTaskModel(
     task: TextModelTask,
     model: {

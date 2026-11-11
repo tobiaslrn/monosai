@@ -21,10 +21,9 @@ const THEME_OPTIONS: readonly SegmentedOption<ThemeSetting>[] = [
   imports: [SegmentedControlComponent, SettingsRowComponent, SectionComponent],
   template: `
     <mn-section heading="Appearance" [rows]="true">
-      <mn-settings-row label="Theme">
+      <mn-settings-row label="Theme" end="control">
         <mn-segmented-control
           label="Theme"
-          [joined]="true"
           [options]="themeOptions"
           [value]="settings.theme()"
           (valueChange)="selectTheme($event)"

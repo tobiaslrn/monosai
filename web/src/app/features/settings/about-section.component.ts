@@ -3,18 +3,9 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { LOGGER, serializeDiagnostics } from '../../application/shared/diagnostics';
 import { atLeast } from '../../application/shared/minimum-duration';
-import { DATABASE_SCHEMA_VERSION } from '../../application/shared/repository-tokens';
-import {
-  AI_ENDPOINT_VERSION,
-  TEXT_MODEL_TEST_VERSION,
-  TTS_TEST_VERSION,
-} from '../../domain/ai/configuration-fingerprint';
-import { EXCEPTION_PROMPT_VERSION } from '../../domain/ai/exception-policy-hash';
 import { InstallPromptService } from '../../core/platform/install-prompt.service';
 import { readBuildInfo } from '../../core/diagnostics/build-info';
-import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
-import { FactsComponent } from '../../shared-ui/facts/facts.component';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { SectionComponent } from '../../shared-ui/section/section.component';
 
@@ -22,21 +13,16 @@ import { SectionComponent } from '../../shared-ui/section/section.component';
 @Component({
   selector: 'mn-about-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    DisclosureComponent,
-    FactsComponent,
-    IconComponent,
-    SectionComponent,
-    SettingsRowComponent,
-  ],
+  imports: [SectionComponent, SettingsRowComponent],
   template: `
     <mn-section heading="About" [rows]="true">
       @let update = updates.status();
-      <mn-settings-row label="Version">
-        <span mn-settings-row-detail class="mn-settings-row__hint">
-          {{ build.appVersion }} · {{ install.isStandalone() ? 'Installed' : 'Not installed' }}
-        </span>
-      </mn-settings-row>
+      <mn-settings-row
+        label="Version"
+        [value]="
+          build.appVersion + ' · ' + (install.isStandalone() ? 'Installed' : 'Not installed')
+        "
+      />
 
       @if (!install.isStandalone() && install.canInstall()) {
         <mn-settings-row label="Install Monosai" action="accent" (pressed)="installApp()" />
@@ -46,6 +32,7 @@ import { SectionComponent } from '../../shared-ui/section/section.component';
         label="Check for updates"
         testId="check-updates"
         action="accent"
+        glyph="sync"
         [disabled]="update.kind === 'activating'"
         [busy]="checking()"
         (pressed)="checkForUpdates()"
@@ -61,32 +48,25 @@ import { SectionComponent } from '../../shared-ui/section/section.component';
             statusLabel
           }}</span>
         }
-        <mn-icon name="sync" [size]="18" />
       </mn-settings-row>
 
       <mn-settings-row
         label="Copy diagnostics"
         action="accent"
+        glyph="copy"
         testId="copy-diagnostics"
+        [summary]="copySummary()"
         (pressed)="copyDiagnostics()"
-      >
-        <span mn-settings-row-detail class="mn-settings-row__hint">
-          Stays in this tab. Never includes your key or text.
-        </span>
-        @if (copyStatus() === 'copied') {
-          <span mn-settings-row-detail class="mn-settings-row__result" role="status">
-            Diagnostics copied.
-          </span>
-        } @else if (copyStatus() === 'failed') {
-          <span mn-settings-row-detail class="mn-settings-row__result" role="status">
-            Diagnostics could not be copied on this browser.
-          </span>
-        }
-      </mn-settings-row>
+      />
 
-      <mn-disclosure heading="Technical details" [value]="'Build ' + buildSummary()">
-        <mn-facts [facts]="technicalFacts()" />
-      </mn-disclosure>
+      <mn-settings-row
+        label="Technical details"
+        end="nav"
+        link="/settings/technical"
+        testId="technical-details"
+        [state]="origin"
+        [summary]="'Build ' + buildSummary()"
+      />
     </mn-section>
   `,
 })
@@ -98,20 +78,19 @@ export class AboutSectionComponent {
   protected readonly copyStatus = signal<'idle' | 'copied' | 'failed'>('idle');
   protected readonly build = readBuildInfo();
   protected readonly buildSummary = computed(() => this.build.buildCommit.slice(0, 7));
-  protected readonly schemaVersion = inject(DATABASE_SCHEMA_VERSION);
-  protected readonly endpointVersion = AI_ENDPOINT_VERSION;
-  protected readonly textModelTestVersion = TEXT_MODEL_TEST_VERSION;
-  protected readonly ttsTestVersion = TTS_TEST_VERSION;
-  protected readonly exceptionPromptVersion = EXCEPTION_PROMPT_VERSION;
-  protected readonly technicalFacts = computed(() => [
-    { label: 'App version', value: this.build.appVersion },
-    { label: 'Build commit', value: this.buildSummary() },
-    { label: 'Database schema version', value: String(this.schemaVersion) },
-    { label: 'Provider protocol', value: this.endpointVersion },
-    { label: 'Text model test', value: String(this.textModelTestVersion) },
-    { label: 'Voice model test', value: String(this.ttsTestVersion) },
-    { label: 'Exception review', value: String(this.exceptionPromptVersion) },
-  ]);
+  protected readonly origin = navigationOriginState('/settings');
+
+  /** What Copy diagnostics says under it: what it never includes, then its result. */
+  protected readonly copySummary = computed(() => {
+    switch (this.copyStatus()) {
+      case 'copied':
+        return 'Copied.';
+      case 'failed':
+        return 'Could not copy on this browser.';
+      case 'idle':
+        return 'Never includes your key or text';
+    }
+  });
 
   protected async installApp(): Promise<void> {
     await this.install.install();

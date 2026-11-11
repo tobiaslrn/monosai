@@ -44,7 +44,7 @@ test.describe('offline language assets', () => {
     expect(record.value?.tokenizerVersion).toBeTruthy();
     expect(record.value?.dictionaryVersion).toBeTruthy();
 
-    await page.getByText('Technical details').click();
+    await page.getByTestId('technical-details').click();
     await expect(page.getByText('Language support')).toHaveCount(0);
   });
 

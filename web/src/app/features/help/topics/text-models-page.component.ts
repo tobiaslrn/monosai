@@ -96,8 +96,9 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="models-pick">
         <h2 id="models-pick">What to use today</h2>
         <p>
-          Start from one of these two. In <a routerLink="/settings">Settings</a>, open the model
-          picker under Text and search for the name. Choosing a model runs the test by itself.
+          Start from one of these two. In <a routerLink="/settings/text-models">Settings</a>, open
+          the Model row under Text model and search for the name. Choosing a model runs the test by
+          itself.
         </p>
         <mn-stack [gap]="4">
           <mn-card heading="GLM 5.3 Flash">

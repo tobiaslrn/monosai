@@ -99,8 +99,10 @@ export function prerequisiteChecks(input: PrerequisiteInput): readonly Prerequis
       label: 'Text model',
       satisfied: isTextModelReady(input),
       detail: textModelDetail(input),
-      route: '/settings',
-      actionLabel: 'Open Settings',
+      // Without a key the key is the first thing missing, and it is on the overview.
+      route: input.textModelReadiness === 'no-credential' ? '/settings' : '/settings/text-models',
+      actionLabel:
+        input.textModelReadiness === 'no-credential' ? 'Open Settings' : 'Open text models',
     },
     {
       id: 'vocabulary',

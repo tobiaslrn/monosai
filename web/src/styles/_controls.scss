@@ -123,17 +123,64 @@
   min-width: 0;
 }
 
-/* In a settings row it is the row that is positioned, so the row is the target. */
+/*
+ * In a settings row the choice is the row's own words. The row is positioned, so
+ * the button's `::before` is the whole row; the choice and its button are laid
+ * out on the row's grid, the value under the row's label and the chevron at the
+ * end.
+ */
+.mn-settings-row__end:has(> mn-select, > mn-model-picker) {
+  display: contents;
+}
+
 .mn-settings-row :where(mn-select, mn-model-picker) {
   position: static;
+  display: grid;
+  grid-column: 2 / -1;
+  grid-row: 1 / span 2;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
+  max-width: none;
 }
 
 .mn-settings-row .mn-choice {
-  padding-inline: 0;
+  display: grid;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
+  align-items: center;
+  max-width: none;
+  min-height: 0;
+  padding: 0;
+  text-align: start;
 }
 
 .mn-settings-row .mn-choice::before {
   border-radius: 0;
+}
+
+.mn-settings-row .mn-choice__value {
+  display: block;
+  grid-column: 1;
+  grid-row: 2;
+  margin-block-start: var(--line-gap);
+  overflow: visible;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.mn-settings-row .mn-choice > mn-icon {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  margin-inline-start: var(--space-3);
+}
+
+/* An identifier — a model's — is set in the monospace face. */
+.mn-choice__code {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
 }
 
 textarea.mn-control,

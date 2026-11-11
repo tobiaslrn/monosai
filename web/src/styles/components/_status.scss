@@ -54,3 +54,46 @@
   outline: 1px dashed var(--border-strong);
   outline-offset: -1px;
 }
+
+/*
+ * The one action of a status line is a link at the end of its sentence: the
+ * action colour, underlined, never a button.
+ */
+.mn-status-line [mn-status-line-action] {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--action-primary-text);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.mn-status-line [mn-status-line-action]:disabled {
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.mn-status-line [mn-status-line-action]:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* A status line: a tone mark and words under a card, inset to the rows' text edge. */
+mn-status-line.mn-status-line {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  min-width: 0;
+  padding-inline: var(--surface-inset);
+  color: var(--status-tone, var(--text-secondary));
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.mn-status-line__words {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

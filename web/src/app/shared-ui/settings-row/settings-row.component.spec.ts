@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 import { SettingsRowComponent } from './settings-row.component';
 
@@ -82,5 +83,59 @@ describe('SettingsRowComponent', () => {
     expect(rows[1]!.querySelector('button')).toBeNull();
     expect(rows[2]!.classList.contains('mn-settings-row--danger')).toBe(true);
     expect(rows[2]!.querySelector('button')!.disabled).toBe(true);
+  });
+});
+
+describe('SettingsRowComponent kinds', () => {
+  @Component({
+    imports: [SettingsRowComponent],
+    template: `
+      <mn-settings-row
+        label="Text models"
+        end="nav"
+        link="/settings/text-models"
+        status="success"
+        statusText="Ready"
+        summary="Model"
+      />
+      <mn-settings-row label="Space used" value="16 MB" />
+      <mn-settings-row label="Voice" end="nav" [disabled]="true" summary="Needs a key" />
+    `,
+  })
+  class KindsHost {}
+
+  function render(): HTMLElement {
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const fixture = TestBed.createComponent(KindsHost);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('makes the whole navigation row one link, with the status leading its summary', () => {
+    const [row] = render().querySelectorAll('mn-settings-row');
+
+    expect(row?.querySelector('a.mn-settings-press')?.getAttribute('href')).toBe(
+      '/settings/text-models',
+    );
+    expect(
+      row?.querySelector('.mn-settings-row__details')?.textContent.replace(/\s+/g, ' ').trim(),
+    ).toBe('Ready · Model');
+    expect(row?.querySelector('.mn-settings-chevron')).not.toBeNull();
+  });
+
+  it('puts a fact’s value at the end and makes it nothing to press', () => {
+    const fact = render().querySelectorAll('mn-settings-row')[1];
+
+    expect(fact?.querySelector('.mn-settings-row__end .mn-settings-value')?.textContent).toBe(
+      '16 MB',
+    );
+    expect(fact?.querySelector('button, a')).toBeNull();
+  });
+
+  it('draws a row that needs setup disabled and not pressable', () => {
+    const row = render().querySelectorAll('mn-settings-row')[2];
+
+    expect(row?.classList.contains('mn-settings-row--disabled')).toBe(true);
+    expect(row?.querySelector<HTMLButtonElement>('button.mn-settings-press')?.disabled).toBe(true);
   });
 });

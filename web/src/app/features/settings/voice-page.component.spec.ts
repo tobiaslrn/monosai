@@ -1,4 +1,4 @@
-import { chooseValue, optionValues, selectedValue } from '../../../testing/select';
+import { chooseValue } from '../../../testing/select';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
@@ -32,9 +32,9 @@ import type { SpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import type { ModelCapabilities, ModelCatalog } from '../../domain/ai/model-catalog';
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
-import { err, ok, type Result } from '../../domain/shared/result';
+import { ok, type Result } from '../../domain/shared/result';
 import { ModelPickerComponent } from '../../shared-ui/model-picker/model-picker.component';
-import { ModelsSectionComponent } from './models-section.component';
+import { VoicePageComponent } from './voice-page.component';
 
 const HASH: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
 const CONFIGURED = { modelId: FAKE_OPENROUTER.ttsModel, voiceId: FAKE_OPENROUTER.voice };
@@ -66,7 +66,7 @@ class StubCatalog implements ModelCatalog {
  * model and never pressed Preview had audio that could not be generated and no
  * screen anywhere that said so.
  */
-describe('ModelsSectionComponent audio readiness', () => {
+describe('VoicePageComponent', () => {
   let settings: StubAiSettingsRepository;
   let provider: StubTtsProvider;
 
@@ -95,14 +95,14 @@ describe('ModelsSectionComponent audio readiness', () => {
     element: HTMLElement;
     tts: TtsStore;
     detect: () => void;
-    fixture: ComponentFixture<ModelsSectionComponent>;
+    fixture: ComponentFixture<VoicePageComponent>;
   }> {
     const credential = TestBed.inject(CredentialStore);
     await credential.load();
     const tts = TestBed.inject(TtsStore);
     await tts.load();
     await TestBed.inject(TextModelStore).load();
-    const fixture = TestBed.createComponent(ModelsSectionComponent);
+    const fixture = TestBed.createComponent(VoicePageComponent);
     fixture.detectChanges();
     return {
       element: fixture.nativeElement as HTMLElement,
@@ -123,7 +123,7 @@ describe('ModelsSectionComponent audio readiness', () => {
   }
 
   function note(element: HTMLElement): string {
-    return textOf(element, 'audio-readiness-note');
+    return textOf(element, 'audio-readiness');
   }
 
   /** The speaking-style select, which only instruction-capable models render. */
@@ -143,204 +143,18 @@ describe('ModelsSectionComponent audio readiness', () => {
     return field;
   }
 
+  /** The value of the radio that is checked in a radio list. */
+  function checkedRadio(group: HTMLElement): string | null {
+    return group.querySelector<HTMLInputElement>('input:checked')?.dataset['value'] ?? null;
+  }
+
+  function chooseRadio(group: HTMLElement, value: string): void {
+    group.querySelector<HTMLInputElement>(`input[data-value="${value}"]`)?.click();
+  }
+
   async function connect(): Promise<void> {
     await TestBed.inject(CredentialStore).save('sk-or-test');
   }
-
-  it('says there is no model before one is chosen', async () => {
-    const { element } = await render();
-
-    expect(readiness(element)).toBe('No model');
-    expect(note(element)).toBe('');
-  });
-
-  it('gives Text, Translation, and Grammar each their own header and status', async () => {
-    await connect();
-    const { element, fixture } = await render();
-    const headings = (): string[] =>
-      [...element.querySelectorAll('mn-text-models .mn-group-title')].map((title) =>
-        title.textContent.trim(),
-      );
-
-    expect(headings()).toEqual(['Text', 'Translation', 'Grammar']);
-    expect(textOf(element, 'translation-readiness')).toBe('Uses text model');
-    expect(textOf(element, 'grammar-readiness')).toBe('Uses text model');
-
-    await TestBed.inject(TextModelStore).setTaskModel('translation', {
-      modelId: 'test/text',
-      name: 'Text',
-      reasoningEffort: null,
-    });
-    fixture.detectChanges();
-
-    expect(textOf(element, 'translation-readiness')).not.toBe('Uses text model');
-    // Its own reasoning and limit sit under its own header, not the text model's.
-    const cluster = element.querySelector('[data-capability="translation"]');
-    expect(cluster?.querySelector('.mn-group-title')?.textContent.trim()).toBe('Translation');
-    expect(cluster?.textContent).toContain('Reasoning');
-  });
-
-  it('restores saved reasoning for the main model and override after the catalogue arrives', async () => {
-    let resolveModels!: (value: Result<readonly ModelCapabilities[], never>) => void;
-    const pending = new Promise<Result<readonly ModelCapabilities[], never>>((resolve) => {
-      resolveModels = resolve;
-    });
-    TestBed.overrideProvider(MODEL_CATALOG, {
-      useValue: {
-        list: (output: string) => (output === 'text' ? pending : Promise.resolve(ok([]))),
-      },
-    });
-    settings.textModel = { ...settings.textModel, modelId: 'test/text', reasoningEffort: 'medium' };
-    await connect();
-    const { element, fixture } = await render();
-    await TestBed.inject(TextModelStore).setTaskModel('translation', {
-      modelId: 'test/text',
-      name: 'Text',
-      reasoningEffort: 'medium',
-    });
-    fixture.detectChanges();
-    resolveModels(
-      ok([
-        {
-          ...SPEECH_MODEL,
-          modelId: 'test/text',
-          outputModalities: ['text'],
-          reasoning: {
-            supportedEfforts: ['low', 'medium', 'high'],
-            defaultEffort: null,
-            defaultEnabled: null,
-            mandatory: false,
-            supportsMaxTokens: false,
-          },
-        },
-      ]),
-    );
-    await fixture.whenStable();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    const selects = [...element.querySelectorAll<HTMLElement>('[role="combobox"]')].filter(
-      (select) => optionValues(select).includes('medium'),
-    );
-    expect(selects).toHaveLength(2);
-    expect(selects.map((select) => selectedValue(select))).toEqual(['medium', 'medium']);
-  });
-
-  describe('fetching the catalogue', () => {
-    /** A catalogue that counts how often it is asked, and can fail the first time. */
-    function countingCatalog(failFirst = false): { asked: () => number } {
-      let asked = 0;
-      TestBed.overrideProvider(MODEL_CATALOG, {
-        useValue: {
-          list: (output: 'text' | 'speech') => {
-            if (output === 'text') {
-              asked += 1;
-            }
-            return Promise.resolve(
-              failFirst && asked === 1
-                ? err(aiError('rate-limited', 'translation', 'Too many requests.'))
-                : ok(output === 'speech' ? [SPEECH_MODEL] : []),
-            );
-          },
-        } satisfies ModelCatalog,
-      });
-      return { asked: () => asked };
-    }
-
-    it('fetches it as soon as a key is configured, without a picker being opened', async () => {
-      const catalog = countingCatalog();
-      await connect();
-      const { fixture } = await render();
-      await fixture.whenStable();
-
-      expect(catalog.asked()).toBe(1);
-    });
-
-    it('fetches it when the key arrives after the panel is already open', async () => {
-      const catalog = countingCatalog();
-      TestBed.overrideProvider(CREDENTIAL_REPOSITORY, {
-        useValue: new FakeCredentialRepository(null),
-      });
-      const { fixture } = await render();
-      await fixture.whenStable();
-      expect(catalog.asked()).toBe(0);
-
-      await connect();
-      fixture.detectChanges();
-      await fixture.whenStable();
-
-      expect(catalog.asked()).toBe(1);
-    });
-
-    it('asks again only when a picker opens after a failure', async () => {
-      const catalog = countingCatalog(true);
-      await connect();
-      const { fixture } = await render();
-      await fixture.whenStable();
-      fixture.detectChanges();
-      const picker = fixture.debugElement.queryAll(By.directive(ModelPickerComponent))[0]!
-        .componentInstance as ModelPickerComponent;
-      expect(catalog.asked()).toBe(1);
-      expect(picker.failure()).toBe('Too many requests.');
-
-      picker.opened.emit();
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      expect(catalog.asked()).toBe(2);
-      expect(picker.failure()).toBeNull();
-
-      picker.opened.emit();
-      await fixture.whenStable();
-
-      expect(catalog.asked()).toBe(2);
-    });
-  });
-
-  it('uses the selected model maximum for the story token field', async () => {
-    TestBed.overrideProvider(MODEL_CATALOG, {
-      useValue: {
-        list: (output: string) =>
-          Promise.resolve(
-            ok(
-              output === 'text'
-                ? [
-                    {
-                      ...SPEECH_MODEL,
-                      modelId: 'test/text',
-                      name: 'Text',
-                      outputModalities: ['text'],
-                      maxCompletionTokens: 65_536,
-                    },
-                  ]
-                : [],
-            ),
-          ),
-      },
-    });
-    settings.textModel = { ...settings.textModel, modelId: 'test/text' };
-    await connect();
-    const { element, fixture } = await render();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const budget = element.querySelector<HTMLInputElement>(
-      '[data-testid="story-token-budget-input"]',
-    );
-    expect(element.textContent).toContain('Up to 65,536 tokens');
-    expect(budget?.value).toBe('16,384');
-
-    budget!.value = '65537';
-    budget!.dispatchEvent(new Event('input'));
-    budget!.dispatchEvent(new Event('change'));
-    expect(settings.textModel.storyTokenBudget).toBe(16_384);
-
-    budget!.value = '65536';
-    budget!.dispatchEvent(new Event('input'));
-    budget!.dispatchEvent(new Event('change'));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(settings.textModel.storyTokenBudget).toBe(65_536);
-  });
-
   it('says a chosen model has not been tested, and why the preview is a press', async () => {
     await connect();
     const { element, tts, detect } = await render();
@@ -349,8 +163,8 @@ describe('ModelsSectionComponent audio readiness', () => {
     await tts.save();
     detect();
 
-    expect(readiness(element)).toBe('Not tested');
-    expect(note(element)).toContain('The sample plays one test sentence');
+    expect(readiness(element)).toContain('Not tested.');
+    expect(note(element)).toContain('once the sample has played through');
   });
 
   it('says it is playing while the preview runs, and offers a way to stop it', async () => {
@@ -369,7 +183,7 @@ describe('ModelsSectionComponent audio readiness', () => {
     await Promise.resolve();
     detect();
 
-    expect(readiness(element)).toBe('Playing…');
+    expect(readiness(element)).toContain('Playing the sample');
     const stop = element.querySelector<HTMLButtonElement>('[data-testid="cancel-tts-test"]');
     expect(stop).not.toBeNull();
     expect(element.querySelector('[data-testid="test-tts"]')).toBeNull();
@@ -378,7 +192,7 @@ describe('ModelsSectionComponent audio readiness', () => {
     await pending;
     detect();
 
-    expect(readiness(element)).toBe('Stopped');
+    expect(readiness(element)).toContain('Sample stopped');
     expect(note(element)).toContain('still untested');
     expect(element.querySelector('[data-testid="test-tts"]')).not.toBeNull();
   });
@@ -391,9 +205,9 @@ describe('ModelsSectionComponent audio readiness', () => {
     await tts.test();
     detect();
 
-    expect(readiness(element)).toBe('Ready');
-    expect(selectedValue(styleControl(element))).toBe('clear');
-    expect(selectedValue(paceControl(element))).toBe('natural');
+    expect(readiness(element)).toContain('Ready.');
+    expect(checkedRadio(styleControl(element))).toBe('clear');
+    expect(checkedRadio(paceControl(element))).toBe('natural');
   });
 
   it('says a preview failed', async () => {
@@ -408,7 +222,7 @@ describe('ModelsSectionComponent audio readiness', () => {
     await tts.test();
     detect();
 
-    expect(readiness(element)).toBe('Failed');
+    expect(readiness(element)).toContain('Test failed.');
   });
 
   /**
@@ -425,44 +239,44 @@ describe('ModelsSectionComponent audio readiness', () => {
     await tts.save();
     detect();
 
-    expect(readiness(element)).toBe('Settings changed');
+    expect(readiness(element)).toContain('Settings changed.');
     expect(note(element)).toContain('Existing audio uses different settings');
   });
 
-  it('commits a speaking style through the native select', async () => {
+  it('commits a speaking style through its radio list', async () => {
     await connect();
     const { element, tts, detect } = await render();
     tts.setDraft({ ...CONFIGURED, speechStyle: 'clear' });
     await tts.test();
     detect();
     const style = styleControl(element);
-    expect(selectedValue(style)).toBe('clear');
+    expect(checkedRadio(style)).toBe('clear');
 
-    chooseValue(style, 'very-clear');
+    chooseRadio(style, 'very-clear');
     await Promise.resolve();
     await Promise.resolve();
     detect();
 
     expect(settings.tts.speechStyle).toBe('very-clear');
-    expect(readiness(element)).toBe('Settings changed');
+    expect(readiness(element)).toContain('Settings changed.');
   });
 
-  it('commits a speech pace through the native select', async () => {
+  it('commits a speech pace through its radio list', async () => {
     await connect();
     const { element, tts, detect } = await render();
     tts.setDraft(CONFIGURED);
     await tts.test();
     detect();
     const pace = paceControl(element);
-    expect(selectedValue(pace)).toBe('natural');
+    expect(checkedRadio(pace)).toBe('natural');
 
-    chooseValue(pace, 'very-slow');
+    chooseRadio(pace, 'very-slow');
     await Promise.resolve();
     await Promise.resolve();
     detect();
 
     expect(settings.tts.speechPace).toBe('very-slow');
-    expect(readiness(element)).toBe('Settings changed');
+    expect(readiness(element)).toContain('Settings changed.');
   });
 
   it('hides speaking style for a model whose catalogue has no instruction channel', async () => {
@@ -487,7 +301,7 @@ describe('ModelsSectionComponent audio readiness', () => {
     detect();
 
     expect(element.querySelector('[data-testid="tts-style-select"]')).toBeNull();
-    expect(selectedValue(paceControl(element))).toBe('natural');
+    expect(checkedRadio(paceControl(element))).toBe('natural');
     expect(element.querySelector('[data-testid="audio-pace-note"]')).toBeNull();
   });
   /**
@@ -497,7 +311,7 @@ describe('ModelsSectionComponent audio readiness', () => {
    */
   describe('driven through its own controls', () => {
     /** The audio node's picker, which reports a choice rather than making it. */
-    function audioPicker(fixture: ComponentFixture<ModelsSectionComponent>): ModelPickerComponent {
+    function audioPicker(fixture: ComponentFixture<VoicePageComponent>): ModelPickerComponent {
       const pickers = fixture.debugElement.queryAll(By.directive(ModelPickerComponent));
       const audio = pickers.find(
         (picker) =>
@@ -540,7 +354,7 @@ describe('ModelsSectionComponent audio readiness', () => {
       // The first supported voice, so the model is usable without a second choice.
       expect(tts.settings().voiceId).toBe(FAKE_OPENROUTER.voice);
       expect(settings.tts.modelId).toBe(FAKE_OPENROUTER.ttsModel);
-      expect(readiness(element)).toBe('Not tested');
+      expect(readiness(element)).toContain('Not tested.');
     });
 
     it('saves a voice chosen from the model list', async () => {
@@ -558,29 +372,8 @@ describe('ModelsSectionComponent audio readiness', () => {
 
       expect(settings.tts.voiceId).toBe('kaede');
       // A changed voice does not delete the clips it can no longer reach.
-      expect(readiness(element)).toBe('Settings changed');
+      expect(readiness(element)).toContain('Settings changed.');
       expect(note(element)).toContain('Existing audio uses different settings');
-    });
-
-    it('offers the same readiness word to the text panel, and retests from it', async () => {
-      await connect();
-      // A stored text model nothing has tested: the state the panel exists to
-      // name, and the one a learner lands in after choosing a model offline.
-      settings.textModel = { ...settings.textModel, modelId: 'private/text' };
-      const { element, detect } = await render();
-
-      const retest = element.querySelector<HTMLButtonElement>('[data-testid="test-text-model"]');
-      expect(retest).not.toBeNull();
-      expect(retest?.textContent.trim()).toBe('Test now');
-
-      retest?.click();
-      await settled();
-      detect();
-
-      // Whatever the provider answers, the label never stays on the invitation.
-      expect(element.querySelector('[data-testid="test-text-model"]')?.textContent.trim()).not.toBe(
-        'Test now',
-      );
     });
 
     it('takes a typed voice when the catalogue does not know the model', async () => {
@@ -633,7 +426,7 @@ describe('ModelsSectionComponent audio readiness', () => {
 
       // The catalogue declares instructions for this model, so the preview attempts them.
       expect(attempted?.instructions).toBe(true);
-      expect(readiness(element)).toBe('Ready');
+      expect(readiness(element)).toContain('Ready.');
     });
 
     it('plays the sample clip once the element can play it', async () => {
@@ -769,7 +562,7 @@ describe('ModelsSectionComponent audio readiness', () => {
       await Promise.resolve();
 
       // A browser that refuses autoplay leaves the panel exactly as it was.
-      expect(readiness(element)).toBe('Ready');
+      expect(readiness(element)).toContain('Ready.');
     });
   });
 });

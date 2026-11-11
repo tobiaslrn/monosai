@@ -10,6 +10,7 @@ import {
 } from '../../application/settings/audio-compression.store';
 import { StorageStore, type PersistenceState } from '../../application/settings/storage.store';
 import { UNKNOWN_PERSISTENCE } from '../../domain/storage/persistence-status';
+import { provideRouter } from '@angular/router';
 import { StorageSectionComponent } from './storage-section.component';
 
 /** Only the surface the section reads and the calls it makes. */
@@ -33,6 +34,11 @@ class FakeStorageStore {
   requestPersistence(): Promise<void> {
     this.calls.push('requestPersistence');
     return Promise.resolve();
+  }
+
+  resetAllData(): Promise<boolean> {
+    this.calls.push('resetAllData');
+    return Promise.resolve(false);
   }
 
   clearAudioCache(): Promise<void> {
@@ -88,6 +94,7 @@ describe('StorageSectionComponent', () => {
     compression = new FakeCompressionStore();
     TestBed.configureTestingModule({
       providers: [
+        provideRouter([]),
         { provide: StorageStore, useValue: storage },
         { provide: AudioPlaybackStore, useValue: playback },
         {
@@ -148,22 +155,43 @@ describe('StorageSectionComponent', () => {
     expect(playback.calls).toEqual([]);
   });
 
-  it('moves focus into the reset confirmation and back to the button on Cancel', async () => {
+  it('asks twice before deleting everything, and deletes nothing on a decline', async () => {
     const fixture = TestBed.createComponent(StorageSectionComponent);
     document.body.appendChild(fixture.nativeElement as HTMLElement);
     await settle(fixture);
     const element = fixture.nativeElement as HTMLElement;
-    const button = (id: string) =>
-      element.querySelector<HTMLButtonElement>(`[data-testid="${id}"]`);
+    const press = (): void => {
+      element.querySelector<HTMLButtonElement>('[data-testid="delete-all-data"]')?.click();
+    };
 
-    button('begin-reset')?.click();
+    press();
     await settle(fixture);
-    expect(document.activeElement).toBe(button('cancel-reset'));
+    expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain(
+      'Delete all Monosai data?',
+    );
+    dialogButton('Keep my data')?.click();
+    await settle(fixture);
+    expect(storage.calls).not.toContain('resetAllData');
 
-    button('cancel-reset')?.click();
+    press();
     await settle(fixture);
-    expect(document.activeElement).toBe(button('begin-reset'));
-    (fixture.nativeElement as HTMLElement).remove();
+    dialogButton('Continue')?.click();
+    await settle(fixture);
+    expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain(
+      'Really delete everything?',
+    );
+    dialogButton('Cancel')?.click();
+    await settle(fixture);
+    expect(storage.calls).not.toContain('resetAllData');
+
+    press();
+    await settle(fixture);
+    dialogButton('Continue')?.click();
+    await settle(fixture);
+    dialogButton('Yes, delete everything')?.click();
+    await settle(fixture);
+    expect(storage.calls).toContain('resetAllData');
+    element.remove();
   });
 
   /**
@@ -190,20 +218,25 @@ describe('StorageSectionComponent', () => {
    * the only available reading was that nothing had happened.
    */
   describe('storage protection states', () => {
+    /** What the storage-protection row says: its summary, or its value at the end. */
     function labelFor(state: PersistenceState, persisted = false): string {
       storage.statusSignal.set({
         ...UNKNOWN_PERSISTENCE,
         supported: true,
-        canRequest: !persisted,
+        canRequest: !persisted && state !== 'unsupported' && state !== 'unknown',
         persisted,
       });
       storage.persistenceSignal.set(state);
       const fixture = TestBed.createComponent(StorageSectionComponent);
       fixture.detectChanges();
+      const row = [
+        ...(fixture.nativeElement as HTMLElement).querySelectorAll('mn-settings-row'),
+      ].find((candidate) => /Protect storage|Storage protection/.test(candidate.textContent));
       return (
-        (fixture.nativeElement as HTMLElement)
-          .querySelector('.mn-settings-row__hint[aria-live="polite"]')
-          ?.textContent.trim() ?? ''
+        (
+          row?.querySelector('.mn-settings-value') ??
+          row?.querySelector('.mn-settings-row__details')
+        )?.textContent.trim() ?? ''
       );
     }
 
@@ -214,7 +247,7 @@ describe('StorageSectionComponent', () => {
     it('shows an unprotected status after the browser declines', () => {
       const label = labelFor('refused');
 
-      expect(label).toBe('Not protected');
+      expect(label).toBe('Not protected. The browser may clear data when space runs low.');
     });
 
     it('says protection is unavailable', () => {
@@ -222,11 +255,15 @@ describe('StorageSectionComponent', () => {
     });
 
     it('shows an unprotected status when the request fails', () => {
-      expect(labelFor('request-failed')).toBe('Not protected');
+      expect(labelFor('request-failed')).toBe(
+        'Not protected. The browser may clear data when space runs low.',
+      );
     });
 
     it('shows an unprotected status before protection is requested', () => {
-      expect(labelFor('not-asked')).toBe('Not protected');
+      expect(labelFor('not-asked')).toBe(
+        'Not protected. The browser may clear data when space runs low.',
+      );
     });
 
     it('keeps an unknown status explicit', () => {

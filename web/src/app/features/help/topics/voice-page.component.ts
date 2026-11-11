@@ -83,10 +83,10 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="voice-settings">
         <h2 id="voice-settings">Voice, pace, and style</h2>
         <p>
-          Voice settings live under AI in <a routerLink="/settings">Settings</a>. Where OpenRouter
-          advertises a model's voices, Monosai offers them as a list instead of asking you to type
-          an ID. Pace is Natural, Slow, or Very slow. Speaking style is Natural, Clear, or Very
-          clear, and is sent only to models that act on instructions.
+          Voice settings live under AI in <a routerLink="/settings/voice">Settings</a>. Where
+          OpenRouter advertises a model's voices, Monosai offers them as a list instead of asking
+          you to type an ID. Pace is Natural, Slow, or Very slow. Speaking style is Natural, Clear,
+          or Very clear, and is sent only to models that act on instructions.
         </p>
         <p>
           Audio cannot be generated until you have pressed Preview and it has succeeded. Preview

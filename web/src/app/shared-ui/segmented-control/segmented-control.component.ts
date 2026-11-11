@@ -25,8 +25,7 @@ let nextSegmentedId = 0;
   host: {
     class: 'mn-segmented',
     role: 'radiogroup',
-    '[class.mn-segmented--joined]': 'joined()',
-    '[class.mn-segmented--sliding]': 'chosenIndex() >= 0 && !disabled()',
+    '[class.mn-segmented--unchosen]': 'chosenIndex() < 0',
     '[style.--segment-count]': 'options().length',
     '[style.--segment-index]': 'chosenIndex()',
     '[attr.aria-label]': 'label()',
@@ -53,8 +52,6 @@ export class SegmentedControlComponent<T extends string> {
   readonly options = input.required<readonly SegmentedOption<T>[]>();
   readonly value = model<T | undefined>(undefined);
   readonly name = input(`mn-segmented-${String(nextSegmentedId++)}`);
-  /** The compact variant for one short, stable choice set beside a label. */
-  readonly joined = input(false);
   readonly disabled = input(false);
 
   /**

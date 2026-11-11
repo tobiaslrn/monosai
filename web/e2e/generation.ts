@@ -176,7 +176,7 @@ export async function configureTextModel(page: Page): Promise<void> {
  * here rather than by writing a settings row.
  */
 export async function configureTts(page: Page): Promise<void> {
-  await page.goto('./#/settings');
+  await page.goto('./#/settings/voice');
   await addTtsModel(page, TTS_MODEL, TTS_VOICE);
   await page.getByTestId('test-tts').click();
   await expectReadiness(ttsReadiness(page), 'ready');

@@ -41,6 +41,9 @@ them in later changes.
 
 - 0089's "the list hangs from the value" no longer holds; every other part of the
   dropdown stands.
-- The pill, the group header, `--control-width` and the settings note leave Settings
-  as the redesign lands.
+- The pill, the group header and the settings note have left Settings, and the
+  danger zone is two rows with confirmations; `--control-width` remains only for
+  the token limit field until the field dialogs land. Text models and Voice are
+  child routes (`/settings/text-models`, `/settings/voice`); Technical details is
+  `/settings/technical`.
 - New tokens name the row's divider inset and the picker's fixed height.

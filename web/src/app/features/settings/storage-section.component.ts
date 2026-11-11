@@ -2,8 +2,6 @@ import {
   DOCUMENT,
   ChangeDetectionStrategy,
   Component,
-  Injector,
-  afterNextRender,
   computed,
   inject,
   signal,
@@ -13,12 +11,9 @@ import { AudioPlaybackStore } from '../../application/audio/audio-playback.store
 import { AudioCompressionStore } from '../../application/settings/audio-compression.store';
 import { StorageStore } from '../../application/settings/storage.store';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
-import { ButtonDirective } from '../../shared-ui/button/button';
-import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
-import { ClusterComponent } from '../../shared-ui/layout/layout';
-import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { SectionComponent } from '../../shared-ui/section/section.component';
+import { StatusLineComponent } from '../../shared-ui/status-line/status-line.component';
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null) {
@@ -35,27 +30,19 @@ function formatBytes(bytes: number | null): string {
 }
 
 /**
- * Browser storage protection, cache clearing, and the danger zone.
+ * Browser storage protection, cache clearing, and deleting everything.
  *
- * A full reset requires two explicit confirmations and only then deletes local
- * data before reloading into the first-use state.
+ * Each deletion is a row that opens a confirmation naming what goes. A full
+ * reset requires two explicit confirmations and only then deletes local data
+ * before reloading into the first-use state.
  */
 @Component({
   selector: 'mn-storage-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    ButtonDirective,
-    ClusterComponent,
-    DisclosureComponent,
-    NoticeComponent,
-    SectionComponent,
-    SettingsRowComponent,
-  ],
+  imports: [SectionComponent, SettingsRowComponent, StatusLineComponent],
   template: `
     <mn-section heading="Storage" [rows]="true">
-      <mn-settings-row label="Space used">
-        <span class="mn-settings-value">{{ usageLabel() }}</span>
-      </mn-settings-row>
+      <mn-settings-row label="Space used" [value]="usageLabel()" />
 
       @if (storage.status().canRequest) {
         <mn-settings-row
@@ -64,18 +51,11 @@ function formatBytes(bytes: number | null): string {
           testId="protect-storage"
           [disabled]="storage.action() !== 'idle' && storage.action() !== 'requesting-persistence'"
           [busy]="storage.action() === 'requesting-persistence'"
+          [summary]="protectionSummary()"
           (pressed)="requestPersistence()"
-        >
-          <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
-            {{ storage.action() === 'requesting-persistence' ? 'Protecting…' : persistenceLabel() }}
-          </span>
-        </mn-settings-row>
+        />
       } @else {
-        <mn-settings-row label="Keep data">
-          <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
-            {{ persistenceLabel() }}
-          </span>
-        </mn-settings-row>
+        <mn-settings-row label="Storage protection" [value]="persistenceLabel()" />
       }
 
       <mn-settings-row
@@ -83,12 +63,9 @@ function formatBytes(bytes: number | null): string {
         action="danger"
         testId="delete-saved-audio"
         [disabled]="storage.action() !== 'idle'"
+        [summary]="savedAudioLabel()"
         (pressed)="clearAudio()"
-      >
-        <span mn-settings-row-detail class="mn-settings-row__hint" aria-live="polite">
-          {{ savedAudioLabel() }}
-        </span>
-      </mn-settings-row>
+      />
       @if (compression.running()) {
         <mn-settings-row
           label="Stop compressing"
@@ -98,51 +75,17 @@ function formatBytes(bytes: number | null): string {
         />
       }
 
-      <mn-disclosure heading="Delete all local data" tone="danger" data-testid="danger-zone">
-        <p class="mn-hint">
-          A full reset permanently deletes every reading, snapshot, saved setting, and cached aid on
-          this device. It cannot be undone.
-        </p>
+      <mn-settings-row
+        label="Delete all data"
+        action="danger"
+        testId="delete-all-data"
+        summary="Every story, word list, setting and clip on this device"
+        [disabled]="storage.action() !== 'idle'"
+        (pressed)="deleteAllData()"
+      />
 
-        @if (resetStage() === 'idle') {
-          <mn-cluster>
-            <button
-              type="button"
-              mnButton="danger"
-              data-testid="begin-reset"
-              (click)="beginReset()"
-            >
-              Delete all Monosai data
-            </button>
-          </mn-cluster>
-        } @else {
-          <mn-notice tone="error" role="alert">
-            This deletes everything Monosai has stored in this browser. Continue?
-          </mn-notice>
-          <mn-cluster>
-            <button
-              type="button"
-              mnButton="danger"
-              [disabled]="storage.action() === 'resetting'"
-              data-testid="confirm-reset"
-              (click)="confirmReset()"
-            >
-              Yes, delete everything
-            </button>
-            <button type="button" mnButton data-testid="cancel-reset" (click)="cancelReset()">
-              Cancel
-            </button>
-          </mn-cluster>
-        }
-      </mn-disclosure>
-
-      @if (storage.audioCleared()) {
-        <p mn-section-footer class="mn-settings-feedback" aria-live="polite">
-          Saved audio deleted{{ stoppedPlayback() ? ', and playback stopped' : '' }}.
-        </p>
-      }
       @if (storage.failure(); as failure) {
-        <mn-notice mn-section-footer tone="error" role="alert">{{ failure.message }}</mn-notice>
+        <mn-status-line mn-section-footer tone="danger">{{ failure.message }}</mn-status-line>
       }
     </mn-section>
   `,
@@ -150,11 +93,9 @@ function formatBytes(bytes: number | null): string {
 export class StorageSectionComponent {
   private readonly document = inject(DOCUMENT);
   private readonly dialog = inject(Dialog);
-  private readonly injector = inject(Injector);
   private readonly playback = inject(AudioPlaybackStore);
   protected readonly storage = inject(StorageStore);
   protected readonly compression = inject(AudioCompressionStore);
-  protected readonly resetStage = signal<'idle' | 'confirming'>('idle');
   /** Whether the clear that just ran also had to stop something playing. */
   protected readonly stoppedPlayback = signal(false);
 
@@ -175,6 +116,13 @@ export class StorageSectionComponent {
         return 'Protection status unknown';
     }
   });
+
+  /** The result of asking replaces the line, so it never needs a note of its own. */
+  protected readonly protectionSummary = computed(() =>
+    this.storage.action() === 'requesting-persistence'
+      ? 'Protecting…'
+      : 'Not protected. The browser may clear data when space runs low.',
+  );
 
   protected readonly usageLabel = computed(() => formatBytes(this.storage.status().usageBytes));
 
@@ -215,7 +163,9 @@ export class StorageSectionComponent {
   protected readonly savedAudioLabel = computed(
     () =>
       this.compressionLabel() ??
-      (this.storage.audioCleared() ? 'No saved audio' : 'Audio clips stored with your stories'),
+      (this.storage.audioCleared()
+        ? `Saved audio deleted${this.stoppedPlayback() ? ', and playback stopped' : ''}.`
+        : 'Audio clips stored with your stories'),
   );
 
   protected stopCompressing(): void {
@@ -267,32 +217,39 @@ export class StorageSectionComponent {
     await this.storage.clearAudioCache();
   }
 
-  protected beginReset(): void {
-    this.resetStage.set('confirming');
-    this.focusAfterRender('cancel-reset');
-  }
-
-  protected cancelReset(): void {
-    this.resetStage.set('idle');
-    this.focusAfterRender('begin-reset');
-  }
-
-  /** The control that pressed is replaced, so focus follows to what takes its place. */
-  private focusAfterRender(testId: string): void {
-    afterNextRender(
-      () => {
-        this.document.querySelector<HTMLElement>(`[data-testid="${testId}"]`)?.focus();
-      },
-      { injector: this.injector },
-    );
-  }
-
-  protected confirmReset(): void {
-    void this.storage.resetAllData().then((succeeded) => {
-      this.resetStage.set('idle');
-      if (succeeded) {
-        this.document.defaultView?.location.reload();
-      }
+  /**
+   * Deletes everything, having asked twice: once for what goes, once more
+   * because nothing brings it back. Only the second yes resets.
+   */
+  protected async deleteAllData(): Promise<void> {
+    const first = await openConfirmDialog(this.dialog, {
+      title: 'Delete all Monosai data?',
+      message: 'A full reset permanently deletes everything Monosai has stored in this browser:',
+      details: [
+        'Every story, word list and snapshot',
+        'Every saved setting',
+        'Every cached aid and audio clip',
+      ],
+      footnote: 'It cannot be undone.',
+      confirmLabel: 'Continue',
+      cancelLabel: 'Keep my data',
+      tone: 'danger',
     });
+    if (!first) {
+      return;
+    }
+    const second = await openConfirmDialog(this.dialog, {
+      title: 'Really delete everything?',
+      message: 'This deletes everything Monosai has stored in this browser. Continue?',
+      confirmLabel: 'Yes, delete everything',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!second) {
+      return;
+    }
+    if (await this.storage.resetAllData()) {
+      this.document.defaultView?.location.reload();
+    }
   }
 }

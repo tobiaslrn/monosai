@@ -23,17 +23,16 @@ A choice of one value from a list is always the **dropdown** (`mn-dropdown`),
 and both the select (`mn-select`) and the model picker (`mn-model-picker`) are
 built on it. It has one look on every screen size:
 
-- **Placement**: directly below its field, above it only when the content does
+- **Placement**: directly below its row (below the field when it is not in a row), above it only when the content does
   not fit below and there is more room above, measured in the visual viewport
   so an on-screen keyboard counts. It never leaves the column or the screen. One script
   (`AnchoredPlacement`) does this, never a bottom sheet and never a centred
   dialog.
-- **Width**: at least as wide as its field and `--dropdown-min-width` (so a
-  short value never makes a cramped list), growing with its content up to
-  `--dropdown-max-width`, never wider than the column. It starts at the field's
-  start edge, or ends at its end edge where it would leave the column from
-  there. A field-wide list under a full-width field; on a phone never wider
-  than the column.
+- **Width**: in a settings row, its edge sits on the card's edge and its width is
+  the card's, up to `--dropdown-max-width` (rule R24 of the design rules
+  supersedes the earlier value-anchored placement). Outside a row it is at least
+  as wide as its field and `--dropdown-min-width`, starting at the field's start
+  edge. Never wider than the column.
 - **Anatomy**: the floating overlay surface, one padding the same on every side
   (`--dropdown-inset`), and one row inset in the panel with its own radius and
   no lines between rows: a label in normal weight, an optional muted line, and a

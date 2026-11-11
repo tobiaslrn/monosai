@@ -54,10 +54,9 @@ test.describe('application shell', () => {
     await expect(page.getByText('Your setup')).toHaveCount(0);
     await expect(page.getByRole('link', { name: /Vocabulary/ })).toHaveCount(0);
 
-    const row = page.getByTestId('settings-reading-level');
-    await expect(row).toContainText('What you can read');
+    const row = page.locator('mn-settings-row', { hasText: 'What you can read' });
     await expect(row).toContainText('No words yet');
-    await row.click();
+    await page.getByTestId('settings-reading-level').click();
 
     await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
     await page.getByRole('button', { name: 'Back to settings' }).click();
@@ -89,10 +88,10 @@ test.describe('application shell', () => {
   test('shows build diagnostics without user content', async ({ page }) => {
     await page.goto('./#/settings');
 
-    const diagnostics = page.getByRole('region', { name: 'About' });
-    await diagnostics.getByText('Technical details').click();
-    await expect(diagnostics.getByText('App version')).toBeVisible();
-    await expect(diagnostics.getByText('Build commit')).toBeVisible();
+    await page.getByTestId('technical-details').click();
+    const facts = page.getByRole('region', { name: 'Versions' });
+    await expect(facts.getByText('App version')).toBeVisible();
+    await expect(facts.getByText('Build commit')).toBeVisible();
   });
 
   test('has no serious accessibility violations @mobile @smoke', async ({ page }) => {

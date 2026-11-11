@@ -865,6 +865,13 @@ export async function saveApiKey(page: Page, key = 'e2e-placeholder-key'): Promi
   await expect(page.getByTestId('api-key-input')).toBeHidden();
 }
 
+/** Opens one of Settings' pages, unless it is already the one showing. */
+export async function openSettingsPage(page: Page, name: 'text-models' | 'voice'): Promise<void> {
+  if (!page.url().endsWith(`#/settings/${name}`)) {
+    await page.goto(`./#/settings/${name}`);
+  }
+}
+
 /** Opens one picker and chooses a model from the catalogue it lists. */
 async function chooseModel(page: Page, picker: string, modelId: string): Promise<void> {
   await page.getByTestId(picker).click();
@@ -880,6 +887,7 @@ async function chooseModel(page: Page, picker: string, modelId: string): Promise
  * it has no model; without that a following edit races the write.
  */
 export async function addTextModel(page: Page, modelId: string): Promise<void> {
+  await openSettingsPage(page, 'text-models');
   await chooseModel(page, 'text-model-picker', modelId);
   await expect(textModelReadiness(page)).not.toHaveAttribute('data-readiness', 'incomplete');
 }
@@ -890,6 +898,7 @@ export async function addTaskModel(
   task: 'translation' | 'grammar',
   modelId: string,
 ): Promise<void> {
+  await openSettingsPage(page, 'text-models');
   await chooseModel(page, `${task}-model-picker`, modelId);
   // The branch keeps showing the inherited model until the route is stored.
   await expect(taskReadiness(page, task)).not.toHaveAttribute('data-readiness', 'inherited');
@@ -897,6 +906,7 @@ export async function addTaskModel(
 
 /** Chooses the speech model and voice. The preview is what tests them. */
 export async function addTtsModel(page: Page, modelId: string, voiceId = 'sakura'): Promise<void> {
+  await openSettingsPage(page, 'voice');
   await chooseModel(page, 'audio-model-picker', modelId);
   // The voice field is a free-text box until the chosen model's own voices are
   // known, so the list has to be waited for rather than typed over.

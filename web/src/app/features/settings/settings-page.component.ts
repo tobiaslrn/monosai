@@ -3,8 +3,8 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
 import { SectionComponent } from '../../shared-ui/section/section.component';
 import { PageComponent } from '../../shared-ui/layout/layout';
 import { AboutSectionComponent } from './about-section.component';
+import { AiSectionComponent } from './ai-section.component';
 import { AppearanceSectionComponent } from './appearance-section.component';
-import { ModelsSectionComponent } from './models-section.component';
 import { ReadingLevelRowComponent } from './reading-level-row.component';
 import { StorageSectionComponent } from './storage-section.component';
 
@@ -16,7 +16,7 @@ import { StorageSectionComponent } from './storage-section.component';
     PageHeaderComponent,
     SectionComponent,
     ReadingLevelRowComponent,
-    ModelsSectionComponent,
+    AiSectionComponent,
     AppearanceSectionComponent,
     StorageSectionComponent,
     AboutSectionComponent,
@@ -30,7 +30,7 @@ import { StorageSectionComponent } from './storage-section.component';
         <mn-reading-level-row />
       </mn-section>
 
-      <mn-models-section />
+      <mn-ai-section />
 
       <mn-appearance-section />
 

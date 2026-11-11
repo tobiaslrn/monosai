@@ -58,6 +58,7 @@
   width: max-content;
   min-width: min(
     max(var(--anchored-field-width, 0px), var(--dropdown-min-width)),
+    var(--dropdown-max-width),
     var(--anchored-room-inline, calc(100vw - 2 * var(--overlay-margin)))
   );
   max-width: min(

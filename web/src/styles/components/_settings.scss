@@ -38,19 +38,26 @@
 }
 
 /*
- * A setting is a row: it shows its label and its current value, and the whole
- * row is the control. The row is positioned so the one button inside it — a
- * choice's, or an action's `.mn-settings-press` — can stretch across it.
+ * The row. One role for every setting, fact and action in a card of rows
+ * (`mn-settings-row`): a label, an optional summary under it, and one trailing
+ * end — `›`, `⌃⌄`, a control, or nothing. The whole row is the hit target and
+ * wears one state layer. The row is positioned so the one button inside it — an
+ * action's or a destination's `.mn-settings-press`, or a choice's `.mn-choice` —
+ * can stretch across it.
+ *
+ * Its grid has three columns, a lead (a radio), the words, and the end, and
+ * the words have two rows, the label and the summary. A column or row that holds
+ * nothing is not drawn.
  */
 .mn-settings-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(min-content, 1fr) auto;
+  grid-template-columns: auto minmax(min-content, 1fr) auto;
   min-width: 0;
-  min-height: var(--row-min-height);
-  gap: var(--space-2) var(--space-3);
+  min-height: var(--row-min);
+  align-content: center;
   align-items: center;
-  padding: var(--row-inset-block) var(--surface-inset);
+  padding: var(--row-pad-block) var(--surface-inset);
   color: inherit;
 }
 
@@ -64,60 +71,142 @@
   container-type: inline-size;
 }
 
-.mn-settings-group > .mn-settings-row + .mn-settings-row,
-.mn-settings-cluster > .mn-settings-row + .mn-settings-row,
-.mn-settings-group > .mn-settings-cluster {
+/*
+ * The hairline between two rows, from the text edge to the card's end. The
+ * card (`mn-section`) draws it for its children; rows in a padded surface draw
+ * their own.
+ */
+.mn-settings-group > .mn-settings-row + .mn-settings-row::before,
+.mn-radio-list > .mn-settings-row + .mn-settings-row::before,
+.mn-settings-cluster > .mn-settings-row + .mn-settings-row::before,
+.mn-settings-group > .mn-settings-cluster::before {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: var(--surface-inset) 0;
   border-top: 1px solid var(--border-subtle);
+  content: '';
+  pointer-events: none;
 }
 
+.mn-settings-group > .mn-settings-cluster {
+  position: relative;
+}
+
+/* The label and the summary sit directly in the row's grid. */
 .mn-settings-row__label {
-  min-width: 0;
+  display: contents;
 }
 
 .mn-settings-row__title,
-.mn-settings-row__hint,
-.mn-settings-row__details {
+.mn-settings-row__details,
+.mn-settings-row__hint {
   display: block;
   margin: 0;
+}
+
+.mn-settings-row__title {
+  grid-column: 2;
+  grid-row: 1;
+  overflow-wrap: break-word;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+}
+
+/* A row with nothing under its label centres the label on its end. */
+.mn-settings-row:not(:has(.mn-settings-row__details:not(:empty), .mn-choice))
+  > .mn-settings-row__label
+  > .mn-settings-row__title {
+  grid-row: 1 / span 2;
+}
+
+/*
+ * The summary: a setting's value, or where it stands, under its label. It wraps
+ * at larger text sizes and never cuts a word.
+ */
+.mn-settings-row__details {
+  display: block;
+  grid-column: 2;
+  grid-row: 2;
+  margin-block-start: var(--line-gap);
+  overflow-wrap: break-word;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
 }
 
 .mn-settings-row__details:empty {
   display: none;
 }
 
-/* The label never wraps under the value beside it: the value yields first. */
-.mn-settings-row__title {
-  font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-  line-height: var(--leading-snug);
-  white-space: nowrap;
+/* Where a setting stands leads its summary, in the tone's colour and mark. */
+.mn-settings-row__status {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  vertical-align: top;
+  color: var(--status-tone, inherit);
+}
+
+.mn-settings-row__status > mn-icon,
+.mn-status-line > mn-icon {
+  /* The mark is centred on the first line of the words it leads. */
+  height: 1lh;
+  align-items: center;
+}
+
+.mn-settings-row__status[data-tone='success'],
+.mn-status-line[data-tone='success'] {
+  --status-tone: var(--status-success);
+}
+
+.mn-settings-row__status[data-tone='warning'],
+.mn-status-line[data-tone='warning'] {
+  --status-tone: var(--status-warning);
+}
+
+.mn-settings-row__status[data-tone='danger'],
+.mn-status-line[data-tone='danger'] {
+  --status-tone: var(--status-danger);
+}
+
+/* An identifier — a model's — is set in the monospace face. */
+.mn-settings-row__code {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
 }
 
 /* An action names itself in the accent colour, or the danger colour when it destroys. */
-.mn-settings-row--accent .mn-settings-row__title {
+.mn-settings-row--accent .mn-settings-row__title,
+.mn-settings-row--accent .mn-settings-row__end {
   color: var(--action-primary-text);
 }
 
-.mn-settings-row--danger .mn-settings-row__title {
+.mn-settings-row--danger .mn-settings-row__title,
+.mn-settings-row--danger .mn-settings-row__end {
   color: var(--status-danger);
 }
 
+/* Disabled is drawn: set at the quiet weight, and not pressable. */
 .mn-settings-row--disabled {
   cursor: not-allowed;
 }
 
-.mn-settings-row--disabled .mn-settings-row__label,
+.mn-settings-row--disabled .mn-settings-row__title,
+.mn-settings-row--disabled .mn-settings-row__details,
 .mn-settings-row--disabled .mn-settings-row__end {
   opacity: 0.72;
 }
 
 /*
- * An action row's one button covers the whole row, empty: the row's own words
- * name it and describe it, and the state layer is drawn on it.
+ * A pressable row's one button covers the whole row, empty: the row's own
+ * words name it and describe it, and the state layer is drawn on it.
  */
 .mn-settings-press {
   position: absolute;
   inset: 0;
+  display: block;
   width: 100%;
   margin: 0;
   padding: 0;
@@ -128,7 +217,8 @@
 }
 
 :where(html[data-pointer='mouse']) .mn-settings-press:where(:hover:not(:disabled)),
-.mn-settings-press:where(:active:not(:disabled)) {
+.mn-settings-press:where(:active:not(:disabled)),
+.mn-settings-press[aria-expanded='true'] {
   box-shadow: var(--state-layer-fill);
 }
 
@@ -137,7 +227,8 @@
   outline-offset: -3px;
 }
 
-.mn-settings-press:disabled {
+.mn-settings-press:disabled,
+.mn-settings-press[aria-disabled='true'] {
   cursor: not-allowed;
 }
 
@@ -157,15 +248,6 @@
   line-height: var(--leading-snug);
 }
 
-.mn-settings-row__note {
-  display: block;
-  grid-column: 1 / -1;
-  margin: calc(-1 * var(--space-1)) 0 0;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  line-height: var(--leading-snug);
-}
-
 .mn-settings-row__result {
   display: block;
   /* A result's line holds its place while the work that fills it runs. */
@@ -176,27 +258,38 @@
   line-height: var(--leading-snug);
 }
 
+/* The lead: a radio. It sits on the first line of the words. */
+.mn-settings-row .mn-settings-row__lead {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: start;
+  margin-inline-end: var(--glyph-gap);
+  margin-block-start: calc((var(--text-md) * var(--leading-snug) - var(--control-check-size)) / 2);
+}
+
+/* The end: a chevron, a value, a glyph, or a control. */
 .mn-settings-row__end {
   display: flex;
-  min-width: 0;
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  min-width: min-content;
   max-width: 100%;
   gap: var(--space-2);
+  margin-inline-start: var(--space-3);
   align-items: center;
   justify-self: end;
 }
 
-.mn-settings-row__end > .mn-settings-value {
-  min-width: 0;
+.mn-settings-row__end:empty {
+  display: none;
 }
 
 .mn-settings-value {
-  overflow: hidden;
   color: var(--text-secondary);
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   line-height: var(--leading-snug);
+  overflow-wrap: break-word;
   text-align: end;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .mn-settings-chevron {
@@ -205,32 +298,32 @@
   @include motion.turn;
 }
 
+/* A row of radios: the whole label is the target, and the chosen row's radio is the mark. */
+.mn-settings-row--radio {
+  cursor: pointer;
+  @include motion.state(box-shadow);
+}
+
+:where(html[data-pointer='mouse']) .mn-settings-row--radio:where(:hover),
+.mn-settings-row--radio:where(:active) {
+  box-shadow: var(--state-layer-fill);
+}
+
+.mn-settings-row--radio:has(input:focus-visible) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+.mn-settings-row--radio input[type='radio'] {
+  cursor: pointer;
+}
+
 /* A group's host is its feature component, so it is made a block here. */
+.mn-radio-list,
 .mn-settings-group,
 .mn-settings-block {
   display: block;
   min-width: 0;
-}
-
-/*
- * A group of rows inside a card of rows — Text, Voice — is not a second
- * surface. It is headed by a group title — the one plain sub-heading, sentence
- * case, semibold, secondary — on a row carrying its status, and
- * its rows sit on the card's own inset with a hairline between each, so the
- * card keeps one edge and one column of controls.
- */
-.mn-settings-group__header {
-  display: flex;
-  flex-wrap: wrap;
-  min-width: 0;
-  min-height: var(--touch-target);
-  gap: var(--inline-gap);
-  align-items: center;
-  padding: var(--stack-gap) var(--surface-inset) 0;
-}
-
-.mn-settings-group__header > .mn-group-title {
-  flex: 1;
 }
 
 /*
@@ -242,17 +335,10 @@
   min-width: 0;
 }
 
-.mn-settings-feedback {
-  margin: 0;
-  padding: 0 var(--surface-inset) var(--stack-gap);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-}
-
 /*
- * Every field at a row's end — an input, a segmented choice — is one width, so
- * a card's controls share one column and one edge. A choice is not a field: it
- * is its value's own width, and yields to the label.
+ * Every field at a row's end — an input — is one width, so a card's controls
+ * share one column and one edge. A choice is not a field: it is the row's own
+ * words.
  */
 .mn-settings-row :where(input.mn-control),
 .mn-settings-row :where(mn-token-budget-field, mn-segmented-control) {
@@ -305,20 +391,25 @@
   outline-offset: -3px;
 }
 
-/* Narrow or large text: the control takes a line of its own, the full row wide. */
-@container (max-width: 16em) {
+/*
+ * Narrow or large text: a control at the row's end takes a line of its own,
+ * the full row wide, and a segmented control that cannot fit stacks its options.
+ */
+@container (max-width: 20em) {
   .mn-settings-row {
-    grid-template-columns: minmax(0, 1fr);
+    padding-inline: min(var(--surface-inset), 12px);
   }
 
-  .mn-settings-row__end {
+  .mn-settings-row__end:has(> mn-segmented-control, > mn-token-budget-field, > .mn-settings-value) {
+    grid-column: 2 / -1;
+    grid-row: 3;
     justify-self: stretch;
+    margin-inline-start: 0;
+    margin-block-start: var(--space-2);
   }
 
-  /* Rem-based gutters grow with the text, so the control gets the width back. */
-  .mn-settings-row,
-  .mn-settings-group__header {
-    padding-inline: min(var(--space-2), 8px);
+  .mn-settings-row__end > .mn-settings-value {
+    text-align: start;
   }
 
   .mn-settings-row :where(input.mn-control),
@@ -326,25 +417,21 @@
     width: 100%;
   }
 
-  .mn-settings-row__title {
-    white-space: normal;
-  }
-
-  .mn-settings-row__end > .mn-settings-value,
-  .mn-settings-row .mn-choice__value {
-    overflow: visible;
-    overflow-wrap: anywhere;
-    text-align: start;
-    white-space: normal;
-  }
-
-  .mn-settings-row .mn-choice {
-    justify-content: flex-start;
-  }
-
-  .mn-settings-row .mn-segmented--joined {
+  .mn-settings-row .mn-segmented {
     grid-auto-flow: row;
-    width: 100%;
     border-radius: var(--radius-card);
+  }
+
+  .mn-settings-row .mn-segmented > label {
+    border-radius: var(--radius-card);
+  }
+
+  .mn-settings-row .mn-segmented::before {
+    inset-block-end: auto;
+    width: auto;
+    inset-inline-end: var(--segmented-pad);
+    height: calc((100% - 2 * var(--segmented-pad)) / var(--segment-count, 1));
+    border-radius: var(--radius-card);
+    transform: translateY(calc(var(--segment-index, 0) * 100%));
   }
 }

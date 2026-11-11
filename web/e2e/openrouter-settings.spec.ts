@@ -58,13 +58,14 @@ test.describe('the model tree', () => {
     await expect(connect).toBeFocused();
 
     await saveApiKey(page);
+    await page.goto('./#/settings/text-models');
 
     const trigger = page.getByTestId('text-model-picker').getByRole('combobox');
     const picker = page.getByRole('dialog', { name: 'text models' });
     await trigger.click();
     await expect(picker).toBeVisible();
     await expect(page.getByTestId(`model-option-${MODEL}`)).toBeVisible();
-    await page.getByRole('heading', { name: 'AI', level: 2 }).click();
+    await page.getByRole('heading', { name: 'Text model', level: 2 }).click();
     await expect(picker).toBeHidden();
 
     await trigger.click();
@@ -78,6 +79,7 @@ test.describe('the model tree', () => {
     await stubOpenRouter(page);
     await page.goto('./#/settings');
     await saveApiKey(page);
+    await page.goto('./#/settings/text-models');
     await expectReadiness(textModelReadiness(page), 'incomplete');
 
     // No Test button is pressed anywhere here: choosing the model is what runs
@@ -95,6 +97,7 @@ test.describe('the model tree', () => {
     await stubOpenRouter(page);
     await page.goto('./#/settings');
     await saveApiKey(page);
+    await page.goto('./#/settings/voice');
 
     await page.getByTestId('audio-model-picker').click();
     await expect(page.getByTestId('model-option-vendor/tts-model')).toBeVisible();
@@ -197,6 +200,7 @@ test.describe('the model tree', () => {
     // The preview plays itself; it never leaves a player for the learner to operate.
     await expect(page.locator('audio')).toHaveCount(1);
     await expect(page.locator('audio')).not.toHaveAttribute('controls', /.*/);
+    await page.goto('./#/settings/text-models');
     await expectReadiness(textModelReadiness(page), 'incomplete');
   });
 
@@ -204,6 +208,7 @@ test.describe('the model tree', () => {
     await stubOpenRouter(page);
     await page.goto('./#/settings');
     await saveApiKey(page);
+    await page.goto('./#/settings/text-models');
     // The catalogue is in hand before the device drops, so what fails here is
     // the test the selection starts rather than the browsing that precedes it.
     await page.getByTestId('text-model-picker').click();
@@ -245,8 +250,11 @@ test.describe('the model tree', () => {
       const controlBox = await control.boundingBox();
       expect(labelBox).not.toBeNull();
       expect(controlBox).not.toBeNull();
-      expect(labelBox!.y).toBeLessThan(controlBox!.y + controlBox!.height);
-      expect(controlBox!.y).toBeLessThan(labelBox!.y + labelBox!.height);
+      // The choice is the row's own words: it covers the label it is named by.
+      expect(controlBox!.y).toBeLessThanOrEqual(labelBox!.y + 0.5);
+      expect(controlBox!.y + controlBox!.height).toBeGreaterThanOrEqual(
+        labelBox!.y + labelBox!.height - 0.5,
+      );
     }
 
     await expectNoSeriousAccessibilityViolations(page);

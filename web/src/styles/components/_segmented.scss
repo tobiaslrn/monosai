@@ -1,23 +1,27 @@
 @use '../motion';
 
 /*
- * One choice out of a few, as native radios. Each option is a label wearing
- * the button silhouette — the same height, text size and weight — and the
- * chosen one takes the selection tint a pressed toggle uses, not the filled
- * primary, because choosing is not committing.
+ * One choice out of a few, as native radios in one joined control: a sunken
+ * track and the chosen option as a neutral raised thumb that slides to it.
+ * The thumb is not the action colour, because choosing here is not "press this":
+ * it applies at once and is judged by its words.
  *
  *   <div class="mn-segmented">
  *     <label><input type="radio" name="…" /><span>System</span></label>
  *   </div>
  */
 .mn-segmented {
-  --segmented-gap: var(--space-2);
-  --segmented-pad: 0px;
+  --segmented-pad: calc(var(--space-1) * 3 / 4);
 
-  display: grid;
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
   grid-auto-columns: minmax(0, 1fr);
   grid-auto-flow: column;
-  gap: var(--segmented-gap);
+  gap: 0;
+  padding: var(--segmented-pad);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
 }
 
 .mn-segmented > label {
@@ -25,35 +29,27 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
-  min-height: var(--touch-target);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-strong);
+  min-width: 4.25rem;
+  min-height: calc(var(--touch-target) - 2 * var(--segmented-pad));
+  padding: 0 var(--space-3);
   border-radius: var(--radius-pill);
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   line-height: var(--leading-tight);
   white-space: nowrap;
   cursor: pointer;
-  @include motion.state(background-color, border-color, color);
+  @include motion.state(color);
 }
 
-/* States follow in source order at one specificity: rest, hover, chosen, chosen and hovered. */
+/* States follow in source order at one specificity: rest, hover, chosen. */
 :where(html[data-pointer='mouse']) .mn-segmented > label:where(:hover),
 .mn-segmented > label:where(:active) {
-  background: var(--surface-sunken);
+  color: var(--text-primary);
 }
 
 .mn-segmented > label:where(:has(input:checked)) {
-  border-color: var(--action-primary);
-  background: var(--action-primary-soft);
-  color: var(--action-primary-text);
-}
-
-:where(html[data-pointer='mouse']) .mn-segmented > label:where(:has(input:checked):hover),
-.mn-segmented > label:where(:has(input:checked):active) {
-  background: var(--action-primary-soft-hover);
+  color: var(--text-primary);
 }
 
 .mn-segmented > label:has(input:focus-visible) {
@@ -71,86 +67,41 @@
   cursor: pointer;
 }
 
-/* A compact joined control for a row with one short, stable choice set. */
-.mn-segmented--joined {
-  --segmented-gap: 0px;
-  --segmented-pad: calc(var(--space-1) / 2);
-
-  display: inline-grid;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: 0;
-  padding: var(--segmented-pad);
-  border-radius: var(--radius-pill);
-  background: var(--surface-sunken);
-}
-
-.mn-segmented--joined > label {
-  min-height: calc(var(--touch-target) - var(--space-1));
-  padding-inline: var(--space-3);
-  border: 0;
-}
-
-.mn-segmented--joined > label:has(input:checked) {
-  border: 0;
-}
-
 /*
- * Sliding: where the control knows how many options it has and which is chosen
- * (`--segment-count`, `--segment-index`), the selection is one shape drawn
- * beneath the options that slides to the chosen one, and the chosen label
- * itself stays clear. The shape is the chosen look above — the action edge and
- * the selection tint — so nothing else changes.
+ * The thumb is one shape drawn beneath the options that slides to the chosen
+ * one (`--segment-count`, `--segment-index`).
  */
-.mn-segmented--sliding {
-  position: relative;
-  isolation: isolate;
-}
-
-.mn-segmented--sliding::before {
+.mn-segmented::before {
   position: absolute;
   z-index: -1;
   inset-block: var(--segmented-pad);
   inset-inline-start: var(--segmented-pad);
   box-sizing: border-box;
-  width: calc(
-    (100% - 2 * var(--segmented-pad) - (var(--segment-count) - 1) * var(--segmented-gap)) /
-      var(--segment-count)
-  );
-  border: 1px solid var(--action-primary);
+  width: calc((100% - 2 * var(--segmented-pad)) / var(--segment-count, 1));
   border-radius: var(--radius-pill);
-  background: var(--action-primary-soft);
+  background: var(--overlay-surface);
+  box-shadow: var(--shadow-segment-thumb);
   content: '';
-  transform: translateX(calc(var(--segment-index) * (100% + var(--segmented-gap))));
+  transform: translateX(calc(var(--segment-index, 0) * 100%));
   pointer-events: none;
   @include motion.settle;
 }
 
-.mn-segmented--joined.mn-segmented--sliding::before {
-  border: 0;
-}
-
-.mn-segmented--sliding > label:where(:has(input:checked)) {
-  border-color: transparent;
-  background: transparent;
+/* Nothing chosen: no thumb. */
+.mn-segmented--unchosen::before {
+  display: none;
 }
 
 /*
- * Disabled is last in the order and is drawn, not dimmed: the sunken surface,
- * secondary text, and a dashed boundary, with no hover. A choice that cannot be
- * changed stays readable as chosen, keeping the selection tint behind the
- * dashed boundary. The joined variant has no boundary to dash.
+ * Disabled is drawn, not dimmed: secondary text, no hover, and the chosen
+ * option still readable as chosen.
  */
 .mn-segmented > label:where(:has(input:disabled)) {
-  border-color: var(--border-subtle);
-  border-style: dashed;
-  background: var(--surface-sunken);
-  color: var(--text-secondary);
   cursor: not-allowed;
 }
 
 .mn-segmented > label:where(:has(input:checked:disabled)) {
-  background: var(--action-primary-soft);
-  color: var(--action-primary-text);
+  color: var(--text-secondary);
 }
 
 .mn-segmented input:disabled {

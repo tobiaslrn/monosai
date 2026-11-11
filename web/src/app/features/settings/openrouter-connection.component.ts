@@ -11,48 +11,30 @@ import { CredentialStore } from '../../application/settings/credential.store';
 import { TextModelStore } from '../../application/settings/text-model.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { FieldComponent } from '../../shared-ui/field/field.component';
-import {
-  OverlayTriggerDirective,
-  SheetPopoverComponent,
-} from '../../shared-ui/popover/sheet-popover.component';
-import { ModelCatalogView } from './model-catalog-view';
+import { SheetPopoverComponent } from '../../shared-ui/popover/sheet-popover.component';
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
+import type { AiStatus } from './ai-status';
 
 /** The OpenRouter key: where it stands, and connecting, replacing, or deleting it. */
 @Component({
   selector: 'mn-openrouter-connection',
   host: { class: 'mn-settings-block' },
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    ButtonDirective,
-    FieldComponent,
-    IconComponent,
-    OverlayTriggerDirective,
-    SheetPopoverComponent,
-  ],
+  imports: [ButtonDirective, FieldComponent, SettingsRowComponent, SheetPopoverComponent],
   template: `
-    <button
-      type="button"
-      class="mn-settings-row mn-settings-row--interactive"
-      data-testid="connect-openrouter"
-      aria-haspopup="dialog"
-      [mnOverlayTrigger]="connection"
-    >
-      <span class="mn-settings-row__label">
-        <span class="mn-settings-row__title">OpenRouter key</span>
-      </span>
-      <span class="mn-settings-row__end">
-        <span
-          class="mn-status-pill"
-          [class.mn-status-pill--success]="connectionLabel() === 'Connected'"
-          [class.mn-status-pill--danger]="connectionLabel() === 'Needs attention'"
-          >{{ connectionLabel() }}</span
-        >
-        <mn-icon class="mn-settings-chevron" name="chevron-right" [size]="18" />
-      </span>
-    </button>
+    <mn-settings-row
+      label="OpenRouter key"
+      end="nav"
+      opens="dialog"
+      testId="connect-openrouter"
+      [controls]="connection.id()"
+      [expanded]="connection.isOpen()"
+      [status]="connectionStatus().tone"
+      [statusText]="connectionStatus().tone === null ? '' : connectionStatus().text"
+      [summary]="connectionStatus().tone === null ? connectionStatus().text : null"
+    />
     <mn-sheet-popover
       #connection="mnSheetPopover"
       heading="OpenRouter key"
@@ -113,18 +95,22 @@ import { ModelCatalogView } from './model-catalog-view';
 })
 export class OpenRouterConnectionComponent {
   private readonly dialog = inject(Dialog);
-  private readonly catalog = inject(ModelCatalogView);
   private readonly text = inject(TextModelStore);
   private readonly tts = inject(TtsStore);
   protected readonly credential = inject(CredentialStore);
   protected readonly keyDraft = signal('');
-  protected readonly connectionLabel = computed(() => {
-    if (!this.credential.isConfigured()) return 'Not connected';
-    if (this.text.readiness() === 'failed' || this.tts.readiness() === 'failed')
-      return 'Needs attention';
+  /** Where the key stands: refused, working, or only saved. */
+  protected readonly connectionStatus = computed<AiStatus>(() => {
+    if (!this.credential.isConfigured()) return { tone: null, text: 'Not connected' };
+    if (
+      this.text.testFailure()?.code === 'authentication' ||
+      this.tts.testFailure()?.code === 'authentication'
+    ) {
+      return { tone: 'danger', text: 'Key refused' };
+    }
     return this.text.readiness() === 'ready' || this.tts.readiness() === 'ready'
-      ? 'Connected'
-      : 'Key saved';
+      ? { tone: 'success', text: 'Connected' }
+      : { tone: null, text: 'Key saved' };
   });
   private readonly connectionPanel = viewChild.required<SheetPopoverComponent>('connection');
 
@@ -136,7 +122,6 @@ export class OpenRouterConnectionComponent {
     this.keyDraft.set('');
     if (saved) {
       this.connectionPanel().hide();
-      this.catalog.reload();
     }
   }
   protected async removeKey(): Promise<void> {

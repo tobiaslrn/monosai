@@ -3,18 +3,22 @@
  * one placement rule for both, so every list that drops from a field or a
  * button lands the same way on every screen size:
  *
- * - Below the trigger, and above it only when the content does not fit below
+ * - Below its anchor, and above it only when the content does not fit below
  *   and there is more room above. The room is measured in the visual viewport,
  *   so an on-screen keyboard that covers the lower half moves it up rather than
  *   hiding it.
- * - Starting at the trigger's start edge, so a list begins where its field
- *   does. Where it would leave the column from there, it ends at the trigger's
- *   end edge instead, and then it is held inside the column. The column is the
- *   page's (`mn-page`), or an overlay's body when the trigger sits in a
- *   dialog, never closer than the overlay margin to the window's edge.
- * - At least as wide as the trigger when it is a dropdown, which is the panel's
- *   own width rule reading `--anchored-field-width`; it grows with its content
- *   up to its own maximum and never past the column.
+ * - The anchor is the trigger, or, for a dropdown, the settings row the trigger
+ *   is part of (`hangsFromRow`): a dropdown hangs from its row, and its edge
+ *   sits on the card's edge, so its text lines up with the rows' text.
+ * - Starting at the anchor's start edge (the card's, for a row), so a list
+ *   begins where its field does. Where it would leave the column from there,
+ *   it ends at the anchor's end edge instead, and then it is held inside the
+ *   column. The column is the page's (`mn-page`), or an overlay's body when
+ *   the trigger sits in a dialog, never closer than the overlay margin to the
+ *   window's edge.
+ * - At least as wide as the anchor's width when it is a dropdown (the card's,
+ *   for a row), which is the panel's own width rule reading
+ *   `--anchored-field-width`; it never grows past its own maximum or the column.
  *
  * It writes the room it found to the panel as `--anchored-room-inline` and
  * `--anchored-room-block`, which the panel's own width and height rules clamp
@@ -37,7 +41,16 @@ export interface AnchoredPlacementOptions {
   readonly scroller: () => HTMLElement | null;
   /** The custom property that caps the panel's height, if any. */
   readonly maxHeightToken?: string;
+  /**
+   * The panel hangs from the settings row its trigger is part of, with its edge
+   * on that row's card, not from the trigger itself.
+   */
+  readonly hangsFromRow?: boolean;
 }
+
+/** The row a choice is part of, and the card of rows that holds it. */
+const ROW = '.mn-settings-row';
+const CARD = '.mn-section__card, .mn-settings-group, .mn-settings-cluster';
 
 /** What a trigger is laid out in: an overlay's body, else the page's column. */
 const COLUMN = '.mn-overlay__body, mn-page, .mn-page, main';
@@ -108,7 +121,8 @@ export class AnchoredPlacement {
     if (trigger === null || !panel.isConnected) {
       return;
     }
-    const field = trigger.getBoundingClientRect();
+    const { down, across } = this.anchorOf(trigger);
+    const field = down;
     const column = this.writeRoom(trigger);
     const own = panel.getBoundingClientRect();
     if (own.width === 0) {
@@ -117,8 +131,8 @@ export class AnchoredPlacement {
 
     // Across: from the edge the trigger shares with the column, held inside it.
     const width = Math.min(own.width, column.right - column.left);
-    const fits = field.left + width <= column.right + EDGE_TOLERANCE;
-    const wanted = fits ? field.left : field.right - width;
+    const fits = across.left + width <= column.right + EDGE_TOLERANCE;
+    const wanted = fits ? across.left : across.right - width;
     const left = Math.min(Math.max(wanted, column.left), column.right - width);
 
     // Down, or up when it does not fit below and there is more room above.
@@ -151,13 +165,31 @@ export class AnchoredPlacement {
     const column = trigger === null ? this.viewportBox() : this.columnOf(trigger);
     this.options.panel.style.setProperty(
       '--anchored-field-width',
-      `${String(trigger?.getBoundingClientRect().width ?? 0)}px`,
+      `${String(trigger === null ? 0 : this.anchorOf(trigger).across.width)}px`,
     );
     this.options.panel.style.setProperty(
       '--anchored-room-inline',
       `${String(Math.max(0, column.right - column.left))}px`,
     );
     return column;
+  }
+
+  /**
+   * What the panel hangs from: `down` is the box it opens below (or above), and
+   * `across` the box whose edges and width it takes. Both are the trigger's own
+   * box unless the panel hangs from a row.
+   */
+  private anchorOf(trigger: Element): { down: DOMRect; across: DOMRect } {
+    const own = trigger.getBoundingClientRect();
+    if (this.options.hangsFromRow !== true) {
+      return { down: own, across: own };
+    }
+    const row = trigger.closest(ROW);
+    if (row === null) {
+      return { down: own, across: own };
+    }
+    const down = row.getBoundingClientRect();
+    return { down, across: (row.closest(CARD) ?? row).getBoundingClientRect() };
   }
 
   private columnOf(trigger: Element): Box {

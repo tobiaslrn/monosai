@@ -168,11 +168,38 @@ export const APP_ROUTES: Routes = [
   { path: 'grammar', redirectTo: readingLevelSection('grammar') },
   {
     path: 'settings',
-    title: 'Settings · Monosai',
-    loadComponent: () =>
-      import('../../features/settings/settings-page.component').then(
-        (m) => m.SettingsPageComponent,
-      ),
+    children: [
+      {
+        path: '',
+        title: 'Settings · Monosai',
+        loadComponent: () =>
+          import('../../features/settings/settings-page.component').then(
+            (m) => m.SettingsPageComponent,
+          ),
+      },
+      {
+        path: 'text-models',
+        title: 'Text models · Monosai',
+        loadComponent: () =>
+          import('../../features/settings/text-models-page.component').then(
+            (m) => m.TextModelsPageComponent,
+          ),
+      },
+      {
+        path: 'voice',
+        title: 'Voice · Monosai',
+        loadComponent: () =>
+          import('../../features/settings/voice-page.component').then((m) => m.VoicePageComponent),
+      },
+      {
+        path: 'technical',
+        title: 'Technical details · Monosai',
+        loadComponent: () =>
+          import('../../features/settings/technical-details-page.component').then(
+            (m) => m.TechnicalDetailsPageComponent,
+          ),
+      },
+    ],
   },
   // Root always resolves to the Library, which shows its own way in when it is
   // empty.

@@ -3,26 +3,24 @@ import { ChangeDetectionStrategy, Component, input, ViewEncapsulation } from '@a
 let nextSectionId = 0;
 
 /**
- * A titled section of a page: the heading on the canvas, an optional action
- * opposite it, and the content in one quiet raised card.
+ * A titled group of a page: a group label on the canvas, then its content in
+ * one quiet raised card, then — where the group has something to say about
+ * itself — one status line under the card.
  *
  *   <mn-section heading="Storage" [rows]="true">
- *     <button mn-section-action mnButton="ghost" type="button">Export</button>
- *     <mn-row heading="Used">12 MB</mn-row>
- *     <mn-row heading="Delete everything">…</mn-row>
+ *     <mn-settings-row label="Space used" value="12 MB" />
+ *     <mn-settings-row label="Delete saved audio" action="danger" … />
+ *     <mn-status-line mn-section-footer tone="success">Ready.</mn-status-line>
  *   </mn-section>
  *
- * A card of `rows` gives up its padding: each direct child spans the card and a
- * hairline separates it from the one before. Otherwise the content runs in one
- * stack inside the card's padding. A notice placed among rows keeps its own
- * border and sits inset from the card's edges.
+ * The label is the one group label (`mn-group-title`), inset to the text edge
+ * of the rows. A group with no label of its own names itself with `label`. A
+ * card of `rows` gives up its padding: each direct child spans the card and a
+ * hairline, from the text edge to the card's end, separates it from the one
+ * before. Otherwise the content runs in one stack inside the card's padding.
  *
- * A section that needs a sentence of explanation before its card says it with
- * `mn-section-lead`: body text in the secondary colour, between the heading
- * and the card, one rhythm tighter than the gap that follows it.
- *
- * What answers the section as a whole, such as the result of an action in it,
- * goes after the card with `mn-section-footer`.
+ * What answers the group as a whole — where it stands, and its fix — goes after
+ * the card with `mn-section-footer`.
  *
  * The hairline reaches projected children, so these styles are global and
  * rooted at the element; no selector names a class from outside the section.
@@ -32,14 +30,15 @@ let nextSectionId = 0;
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   template: `
-    <section class="mn-section__frame" [id]="sectionId()" [attr.aria-labelledby]="headingId">
-      <header class="mn-section__header">
-        <h2 [id]="headingId">{{ heading() }}</h2>
-        <span class="mn-section__action mn-trailing"
-          ><ng-content select="[mn-section-action]"
-        /></span>
-      </header>
-      <div class="mn-section__lead"><ng-content select="[mn-section-lead]" /></div>
+    <section
+      class="mn-section__frame"
+      [id]="sectionId()"
+      [attr.aria-labelledby]="heading() === null ? null : headingId"
+      [attr.aria-label]="heading() === null ? label() : null"
+    >
+      @if (heading(); as text) {
+        <h2 class="mn-group-title mn-section__heading" [id]="headingId">{{ text }}</h2>
+      }
       <div class="mn-section__card" [class.mn-section__card--rows]="rows()">
         <ng-content />
       </div>
@@ -59,50 +58,8 @@ let nextSectionId = 0;
       min-width: 0;
     }
 
-    mn-section > .mn-section__frame > .mn-section__header {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-      align-items: center;
-      min-width: 0;
-      min-height: var(--heading-row);
-    }
-
-    mn-section > .mn-section__frame > .mn-section__header > h2 {
-      margin: 0;
-      font-size: var(--text-lg);
-      font-weight: var(--weight-semibold);
-      line-height: var(--leading-tight);
-    }
-
-    mn-section > .mn-section__frame > .mn-section__header > .mn-section__action {
-      display: flex;
-      align-items: center;
-      min-width: 0;
-      margin-inline-start: auto;
-      margin-block: calc((var(--heading-row) - var(--touch-target)) / 2);
-    }
-
-    mn-section > .mn-section__frame > .mn-section__header > .mn-section__action:empty {
-      display: none;
-    }
-
-    mn-section > .mn-section__frame > .mn-section__lead {
-      display: flex;
-      flex-direction: column;
-      gap: var(--group-gap);
-      min-width: 0;
-      padding-block-end: var(--group-gap);
-      color: var(--text-secondary);
-      line-height: var(--leading-normal);
-    }
-
-    mn-section > .mn-section__frame > .mn-section__lead:empty {
-      display: none;
-    }
-
-    mn-section > .mn-section__frame > .mn-section__lead > :where(p) {
-      margin: 0;
+    mn-section > .mn-section__frame > .mn-section__heading {
+      padding-inline: var(--surface-inset);
     }
 
     mn-section > .mn-section__frame > .mn-section__card {
@@ -123,27 +80,30 @@ let nextSectionId = 0;
       overflow: clip;
     }
 
-    /* The card draws the corners, so a row's hairline runs straight to its edges. */
-    mn-section > .mn-section__frame > .mn-section__card--rows > :not(mn-notice) {
+    /* The card draws the corners, so a row's state layer runs straight to its edges. */
+    mn-section > .mn-section__frame > .mn-section__card--rows > * {
+      position: relative;
       border-radius: 0;
     }
 
-    mn-section > .mn-section__frame > .mn-section__card--rows > * + *:not(mn-notice) {
+    /* The hairline: from the text edge to the card's end. */
+    mn-section > .mn-section__frame > .mn-section__card--rows > * + *::before {
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline: var(--surface-inset) 0;
+      z-index: 1;
       border-top: 1px solid var(--border-subtle);
-    }
-
-    mn-section > .mn-section__frame > .mn-section__card--rows > mn-notice {
-      margin: var(--surface-inset);
-    }
-
-    mn-section > .mn-section__frame > .mn-section__card--rows > mn-notice + * {
-      border-top: 0;
+      content: '';
+      pointer-events: none;
     }
   `,
 })
 export class SectionComponent {
-  readonly heading = input.required<string>();
-  /** The section's own anchor, for links into the page. */
+  /** The group label; a group with none names itself with `label`. */
+  readonly heading = input<string | null>(null);
+  /** The accessible name of a group with no visible label. */
+  readonly label = input<string | null>(null);
+  /** The group's own anchor, for links into the page. */
   readonly sectionId = input<string | null>(null);
   /** The card is made of rows that bring their own padding. */
   readonly rows = input(false);

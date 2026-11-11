@@ -7,6 +7,7 @@ import type { Logger } from '../../application/shared/diagnostics';
 import { LOGGER } from '../../application/shared/diagnostics';
 import { DATABASE_SCHEMA_VERSION } from '../../application/shared/repository-tokens';
 import { InstallPromptService } from '../../core/platform/install-prompt.service';
+import { provideRouter } from '@angular/router';
 import { AboutSectionComponent } from './about-section.component';
 
 function loggerFake(entries = 1): {
@@ -59,6 +60,7 @@ describe('AboutSectionComponent', () => {
     TestBed.configureTestingModule({
       imports: [AboutSectionComponent],
       providers: [
+        provideRouter([]),
         {
           provide: InstallPromptService,
           useValue: {
@@ -135,12 +137,7 @@ describe('AboutSectionComponent', () => {
     fixture.detectChanges();
 
     expect(writeText).toHaveBeenCalledOnce();
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Diagnostics copied.');
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector(
-        '.mn-settings-row__label .mn-settings-row__result',
-      )?.textContent,
-    ).toContain('Diagnostics copied.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Copied.');
     expect(fakeLogger.info).toHaveBeenCalledWith('diagnostics.copy.succeeded', { count: 1 });
   });
 
@@ -168,7 +165,7 @@ describe('AboutSectionComponent', () => {
     fixture.detectChanges();
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-      'Diagnostics could not be copied on this browser.',
+      'Could not copy on this browser.',
     );
     expect(fakeLogger.warn).toHaveBeenCalledWith('diagnostics.copy.failed');
     expect(fakeLogger.warn).not.toHaveBeenCalledWith('diagnostics.copy.failed', expect.anything());

@@ -81,15 +81,18 @@ describe('ReadingLevelRowComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  function row(element: HTMLElement): HTMLAnchorElement | null {
-    return element.querySelector<HTMLAnchorElement>('[data-testid="settings-reading-level"]');
+  /** The whole row: its words are in the row, and the link is the press target over it. */
+  function row(element: HTMLElement): HTMLElement | null {
+    return element.querySelector<HTMLElement>('mn-settings-row');
   }
 
   /** A signpost, not a panel: Settings points at the page, it does not hold it. */
   it('names the destination and leads to it', () => {
     const element = render();
 
-    expect(row(element)?.getAttribute('href')).toBe('/reading-level');
+    expect(
+      element.querySelector('[data-testid="settings-reading-level"]')?.getAttribute('href'),
+    ).toBe('/reading-level');
     expect(row(element)?.textContent).toContain('What you can read');
   });
 
