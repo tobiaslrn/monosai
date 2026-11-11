@@ -26,6 +26,8 @@ It stores everything in the browser, only reads from Anki, and uses the learner'
   2. Add a throwaway `@smoke @mobile` spec in `web/e2e` that saves to `test-results/`.
   3. From `web`: `MONOSAI_PREBUILT_DIST=true npx playwright test --grep @<tag>`
   4. Delete the spec before committing.
+  5. Judge them with [the visual review checklist](docs/design/visual-review.md), first
+     impression first. Anything that looks worse than before blocks the change.
 
 ## Committing and pushing
 

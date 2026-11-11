@@ -20,8 +20,10 @@ difference between two call sites is a defect, never a variant. No input, modifi
 changes a role for one place.
 
 **R4.** Every visual change is judged from screenshots you opened: light and dark, desktop and
-phone, plus one contact sheet of every instance of each role you touched. State that proof in
-the commit or PR.
+phone, plus one contact sheet of every instance of each role you touched, following
+[the visual review checklist](visual-review.md) in order. A change that looks worse than
+before in any part is not committed, even when its task asked for it. State that proof in the
+commit or PR.
 
 **R5.** A rule changes only when the owner says so. Change it here, in the same commit as the
 code, the design system and the guards.
@@ -253,6 +255,8 @@ Never, because each is already a defect somewhere:
 
 Answer yes to every line before committing a visual change.
 
+- [ ] I went through [the visual review checklist](visual-review.md) and every screen is the
+      same or better than before, in every part (R4).
 - [ ] I read this file and no rule is broken, or I reported the conflict (R1).
 - [ ] The feature writes no style and adds no variant (R2, R3).
 - [ ] The contact sheet shows every instance of each role I touched identical, in light and dark,
