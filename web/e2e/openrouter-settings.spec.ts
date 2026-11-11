@@ -41,9 +41,8 @@ test.describe('the model tree', () => {
   });
 
   /**
-   * The key form and a picker are native popovers, so the browser dismisses them; this holds
-   * the wiring to that: a press outside and Escape close them, and focus goes
-   * back to the control that opened them.
+   * The key dialog and a picker are task dialogs: a press outside and Escape close them,
+   * and focus goes back to the control that opened them.
    */
   test('puts the connection panel and a model picker away on a press outside or Escape @smoke @mobile', async ({
     page,
@@ -55,10 +54,9 @@ test.describe('the model tree', () => {
     const connection = page.getByRole('dialog', { name: 'OpenRouter key' });
     await connect.click();
     await expect(connection).toBeVisible();
-    await expect(connect).toHaveAttribute('aria-expanded', 'true');
-    await page.getByRole('heading', { name: 'AI', level: 2 }).click();
+    // A press on the scrim only closes it.
+    await page.mouse.click(2, 2);
     await expect(connection).toBeHidden();
-    await expect(connect).toHaveAttribute('aria-expanded', 'false');
 
     await connect.click();
     await expect(connection).toBeVisible();
@@ -84,6 +82,54 @@ test.describe('the model tree', () => {
     await page.keyboard.press('Escape');
     await expect(picker).toBeHidden();
     await expect(trigger).toBeFocused();
+  });
+
+  test('asks for a key, refuses a blank one, and deletes the saved one after a confirmation', async ({
+    page,
+  }) => {
+    await stubOpenRouter(page);
+    await page.goto('./#/settings');
+    const connect = page.getByTestId('connect-openrouter');
+
+    await connect.click();
+    await page.getByTestId('save-key').click();
+    await expect(page.getByRole('alert')).toContainText('Enter your OpenRouter key.');
+    await expect(page.getByRole('button', { name: 'Delete key' })).toHaveCount(0);
+    await page.getByTestId('api-key-input').fill(KEY);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Show' }).click();
+    await expect(page.getByTestId('api-key-input')).toHaveAttribute('type', 'text');
+    await page.getByTestId('save-key').click();
+    await expect(page.getByTestId('api-key-input')).toBeHidden();
+    await expect(connect).toHaveAccessibleDescription(/Key saved/);
+
+    await connect.click();
+    await page.getByRole('button', { name: 'Delete key' }).click();
+    const confirmation = page.getByRole('alertdialog', { name: 'Delete OpenRouter key?' });
+    await expect(confirmation).toBeVisible();
+    await confirmation.getByRole('button', { name: 'Keep key' }).click();
+    await expect(connect).toHaveAccessibleDescription(/Key saved/);
+
+    await connect.click();
+    await page.getByRole('button', { name: 'Delete key' }).click();
+    await confirmation.getByRole('button', { name: 'Delete key' }).click();
+    await expect(confirmation).toBeHidden();
+    await expect(connect).toHaveAccessibleDescription(/Not connected/);
+  });
+
+  test('says a refused key was refused, on the row and under the field', async ({ page }) => {
+    await stubOpenRouter(page, { chat: { kind: 'status', status: 401 } });
+    await page.goto('./#/settings');
+    await saveApiKey(page, KEY);
+    await addTextModel(page, MODEL);
+    await page.goto('./#/settings');
+
+    const connect = page.getByTestId('connect-openrouter');
+    await expect(connect).toHaveAccessibleDescription(/Key refused/);
+    await connect.click();
+    await expect(page.getByRole('alert')).toContainText('OpenRouter refused the saved key');
+    await page.getByTestId('api-key-input').fill('a');
+    await expect(page.getByRole('alert')).toHaveCount(0);
   });
 
   test('tests the text model on selection and restores it', async ({ page }) => {

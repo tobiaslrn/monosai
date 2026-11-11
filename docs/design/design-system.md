@@ -306,6 +306,14 @@ place (R33), and the primary Save sits at the end (R22). A token limit and a
 voice name with no list are both this, and a row's summary shows the value in
 the shared number formatter (R50).
 
+**The key is a field dialog with a secret field.** The OpenRouter key row opens a
+task dialog: one sentence about billing and where the key lives with the link to
+get one, a secret field (`mn-secret-field`: masked, Show inside it, no autofill,
+monospace once shown), Delete key (the danger button, at the start, only while a
+key is saved, leading to its confirmation) and the primary Save key or Connect at
+the end. An empty entry and a saved key OpenRouter refused are each the field's
+one danger line (R33); the overview row then reads "Key refused" (R17).
+
 **One destructive pattern.** A destructive action is a row in the danger colour
 whose secondary line says what goes, then a confirmation that names it. It is
 never an inline fold or a button inside the row.
@@ -350,7 +358,7 @@ the way to build:
 | Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                                                                                                            |
 | Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                                                                                              |
 | Choices          | `mn-select` (one value from a short list, on `mn-dropdown`), `mn-segmented-control`, `mn-radio-list` (a radio list of settings rows), `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips                                                               |
-| Fields           | `mn-field` (label, hint, and error around a control), `openFieldDialog` (one typed value in Settings, in a task dialog), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                                      |
+| Fields           | `mn-field` (label, hint, and error around a control), `openFieldDialog` (one typed value in Settings, in a task dialog), `mn-secret-field` (a masked field with Show, in a dialog only), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                                      |
 | Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                                                                                        |
 | Status           | `mn-status-line` (a group's one line under its card), `mn-checklist` with `mn-checklist-step` for first steps, `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
 | Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen` and `mn-not-found-panel` on the one whole-page state                                                                                                                                                                                                       |
@@ -872,8 +880,7 @@ dialog, because it must stay open while a file chooser is up. That is a
 mechanism, not a kind: on a wide screen it is a centred task dialog over a scrim
 like any other, its sub-steps take the back arrow in its header, and on a phone
 it is a docked sheet. Escape, the close, the handle, and a press on the scrim all
-put it away and return focus to Add source. The OpenRouter key form is held up
-the same way, for the same light dismissal.
+put it away and return focus to Add source.
 
 The reader has two exceptions, both on the shared surface. A word's or a
 sentence's details stay **anchored to the word** on a wide screen, because the

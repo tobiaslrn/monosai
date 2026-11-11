@@ -17,6 +17,8 @@ import {
   LucideDatabase,
   LucideDices,
   LucideEllipsisVertical,
+  LucideEye,
+  LucideEyeOff,
   LucidePencil,
   LucideFileText,
   LucideGitFork,
@@ -110,6 +112,8 @@ export const ICON_SET = {
   'sort-descending': LucideArrowDown,
   'sort-ascending': LucideArrowUp,
   random: LucideDices,
+  show: LucideEye,
+  hide: LucideEyeOff,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICON_SET;
