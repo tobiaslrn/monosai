@@ -3,6 +3,7 @@ import type { GenerationJob } from '../../application/generation/generation-jobs
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { StatusLeadComponent } from '../../shared-ui/status-lead/status-lead.component';
 import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { generationWaitCopy } from '../generate/generation-wait.component';
 
@@ -19,7 +20,7 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
 @Component({
   selector: 'mn-generation-job-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonDirective, IconComponent, ListRowComponent],
+  imports: [ButtonDirective, IconComponent, ListRowComponent, StatusLeadComponent],
   template: `
     <mn-list-row [routerLink]="['/generate', job().id]" [state]="libraryOriginState">
       <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
@@ -27,7 +28,10 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
       </span>
       <span mn-list-row-title>{{ title() }}</span>
       <!-- The status leads the line, so it survives a long stage. -->
-      <span mn-list-row-meta>{{ stateLabel() }} · {{ stageLabel() }}</span>
+      <span mn-list-row-meta>
+        <mn-status-lead [tone]="needsAttention() ? 'warning' : 'info'" [text]="stateLabel()" />
+        <span>{{ stageLabel() }}</span>
+      </span>
       <span mn-list-row-menu>
         <button
           mnButton="icon"

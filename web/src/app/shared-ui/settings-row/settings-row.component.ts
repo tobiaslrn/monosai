@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { RouterLink, type NavigationExtras, type Params } from '@angular/router';
 import { IconComponent } from '../icon/icon.component';
 import type { IconName } from '../icon/icon-set';
+import { StatusLeadComponent, type StatusTone } from '../status-lead/status-lead.component';
 
 /** What pressing a row does: a plain action, or one that destroys something. */
 export type SettingsRowAction = 'accent' | 'danger';
@@ -18,14 +19,7 @@ export type SettingsRowAction = 'accent' | 'danger';
 export type SettingsRowEnd = 'nothing' | 'nav' | 'choice' | 'control';
 
 /** Where a setting stands, as the tone of the mark and words that lead its summary. */
-export type SettingsRowStatus = 'success' | 'warning' | 'danger' | 'info';
-
-const STATUS_ICON: Record<SettingsRowStatus, IconName> = {
-  success: 'synced',
-  warning: 'alert',
-  danger: 'alert',
-  info: 'info',
-};
+export type SettingsRowStatus = StatusTone;
 
 let nextSettingsRowId = 0;
 
@@ -53,7 +47,7 @@ let nextSettingsRowId = 0;
 @Component({
   selector: 'mn-settings-row',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, RouterLink],
+  imports: [IconComponent, RouterLink, StatusLeadComponent],
   host: {
     class: 'mn-settings-row',
     '[class.mn-settings-row--accent]': "action() === 'accent'",
@@ -66,9 +60,7 @@ let nextSettingsRowId = 0;
       <span class="mn-settings-row__title" [attr.id]="titleId()">{{ label() }}</span>
       <span class="mn-settings-row__details" [id]="detailId" [attr.role]="live() ? 'status' : null">
         @if (status(); as tone) {
-          <span class="mn-settings-row__status" [attr.data-tone]="tone"
-            ><mn-icon [name]="statusIcon()" [size]="16" />{{ statusText() }}</span
-          >
+          <mn-status-lead [tone]="tone" [text]="statusText()" />
           @if (summary() !== null || code() !== null) {
             <span aria-hidden="true"> · </span>
           }
@@ -191,7 +183,6 @@ export class SettingsRowComponent {
       this.link() !== null ||
       this.href() !== null,
   );
-  protected readonly statusIcon = computed(() => STATUS_ICON[this.status() ?? 'info']);
   protected readonly titleId = computed(
     () => this.labelId() ?? (this.pressable() ? this.ownTitleId : null),
   );

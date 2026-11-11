@@ -141,7 +141,7 @@
 }
 
 /* Where a setting stands leads its summary, in the tone's colour and mark. */
-.mn-settings-row__status {
+.mn-status-lead {
   display: inline-flex;
   gap: var(--space-1);
   align-items: center;
@@ -149,25 +149,25 @@
   color: var(--status-tone, inherit);
 }
 
-.mn-settings-row__status > mn-icon,
+.mn-status-lead > mn-icon,
 .mn-status-line > mn-icon {
   /* The mark is centred on the first line of the words it leads. */
   height: 1lh;
   align-items: center;
 }
 
-.mn-settings-row__status[data-tone='success'],
+.mn-status-lead[data-tone='success'],
 .mn-status-line[data-tone='success'] {
   --status-tone: var(--status-success);
 }
 
-.mn-settings-row__status[data-tone='warning'],
+.mn-status-lead[data-tone='warning'],
 .mn-status-line[data-tone='warning'],
 .mn-status-line[data-tone='setup'] {
   --status-tone: var(--status-warning);
 }
 
-.mn-settings-row__status[data-tone='danger'],
+.mn-status-lead[data-tone='danger'],
 .mn-status-line[data-tone='danger'] {
   --status-tone: var(--status-danger);
 }
