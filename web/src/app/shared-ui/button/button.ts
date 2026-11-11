@@ -25,6 +25,7 @@ export type ButtonVariant = 'default' | 'primary' | 'ghost' | 'danger' | 'icon' 
     '[class.mn-button--primary]': "variant() === 'primary'",
     '[class.mn-button--ghost]': "variant() === 'ghost'",
     '[class.mn-button--danger]': "variant() === 'danger'",
+    '[class.mn-button--tone-danger]': "tone() === 'danger'",
     '[class.mn-icon-button]': 'isIcon()',
     '[class.mn-icon-button--primary]': "variant() === 'icon-primary'",
     '[class.mn-button--edge-start]': "edge() === 'start'",
@@ -40,12 +41,23 @@ export class ButtonDirective {
    * hit area, lines up with the edge.
    */
   readonly edge = input<'start' | 'end' | null>(null);
+  /**
+   * The danger tone of the ghost emphasis: a footer action that deletes
+   * something and leads to a confirmation. Text only, like every ghost.
+   */
+  readonly tone = input<'danger' | null>(null);
 
   constructor() {
     const written = inject(new HostAttributeToken('mnButton'), { optional: true });
     if (written !== null) {
       const element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
       element.classList.add(...classesOf((written as ButtonVariant | '') || 'default'));
+    }
+    const toneWritten = inject(new HostAttributeToken('tone'), { optional: true });
+    if (toneWritten === 'danger') {
+      inject<ElementRef<HTMLElement>>(ElementRef).nativeElement.classList.add(
+        'mn-button--tone-danger',
+      );
     }
   }
 

@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
+import { ButtonDirective } from '../button/button';
 import { DialogComponent, dialogResult, openDialog } from '../dialog/dialog';
 import { IconComponent } from '../icon/icon.component';
 import { NoticeComponent } from '../notice/notice.component';
@@ -50,7 +51,7 @@ export type ModelPickerChoice =
 @Component({
   selector: 'mn-model-picker-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DialogComponent, IconComponent, NgTemplateOutlet, NoticeComponent],
+  imports: [ButtonDirective, DialogComponent, IconComponent, NgTemplateOutlet, NoticeComponent],
   template: `
     <mn-dialog kind="picker" [heading]="request.title" headingId="mn-picker-title">
       <label class="mn-overlay__search" mn-dialog-pinned>
@@ -65,6 +66,18 @@ export type ModelPickerChoice =
           [value]="query()"
           (input)="setQuery($event)"
         />
+        @if (query() !== '') {
+          <button
+            type="button"
+            mnButton="icon"
+            class="clear"
+            aria-label="Clear search"
+            title="Clear search"
+            (click)="query.set('')"
+          >
+            <mn-icon name="close" />
+          </button>
+        }
       </label>
 
       <div class="mn-overlay__options" role="listbox" [attr.aria-label]="request.title">

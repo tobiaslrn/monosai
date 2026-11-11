@@ -64,7 +64,8 @@ export type OpenRouterKeyOutcome = 'saved' | 'delete';
           <button
             mn-dialog-action="start"
             type="button"
-            mnButton="danger"
+            mnButton="ghost"
+            tone="danger"
             data-testid="delete-key"
             (click)="frame().close('delete')"
           >

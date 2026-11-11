@@ -527,8 +527,8 @@ for the ghost button that ends it; nothing is nudged per screen. A bare `mnButto
 ordinary reversible action. `mnButton="primary"` is the one filled action that
 starts or commits the main work on a surface. `mnButton="ghost"` is action-colour
 text without a border for quiet verbs such as adding a source, testing, or
-previewing. `mnButton="danger"` keeps a destructive action outlined in the
-danger colour and is used where confirmation follows. A surface has at most one
+previewing. `mnButton="ghost" tone="danger"` is the danger ghost: text only, in the danger tone, at the start of a footer for an action that deletes and leads to a confirmation. `mnButton="danger"` keeps a destructive action outlined in the
+danger colour and is the confirming button of a confirmation. A surface has at most one
 filled primary control; selected toggles use a soft selection tint instead.
 
 A choice of one out of a few short, unexplained options — the theme — is a
@@ -871,7 +871,7 @@ not an overlay at all but a segmented control or a radio list in place.
 Modal surfaces use the CDK Dialog pattern or a native popover that behaves like
 it: focus moves into the surface, is held there while it is open, `Escape`
 dismisses it, and focus returns to the control that opened it. A confirmation
-opens with its safe answer focused. A docked sheet lifts above the on-screen keyboard and is
+opens with its safe answer focused. A text field is one border: focused, 2px in the focus colour with no offset ring; wrong, 2px in the danger colour with or without focus. Footer buttons keep their natural width on every size, ghost at the start and primary at the end. A docked sheet lifts above the on-screen keyboard and is
 never taller than what can be seen, so a field in it, and the picker's list,
 stay in view.
 

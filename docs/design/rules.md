@@ -116,8 +116,11 @@ Settings holds no field: a typed value opens a field dialog.
 
 **R22.** Buttons commit a form, dialog or step. One filled primary per surface, at the end. A
 button is never inside a settings row. A task dialog has no Cancel; its ways out are the close,
-Escape, the scrim and the handle. Ghost and danger buttons sit at the far start for a reset or
-a delete.
+Escape, the scrim and the handle. Footer actions keep their natural width at every size.
+Two start-side roles sit at the far start: a **ghost** button for a reset, and a **danger ghost**
+(the ghost emphasis in the danger tone, text only) for a footer action that deletes something
+and leads to a confirmation. The confirmation's own confirming button is the outlined **danger**
+button, because that one commits the loss.
 
 ## 5. Overlays
 

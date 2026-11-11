@@ -65,9 +65,28 @@
   color: var(--action-primary-text);
 }
 
+.mn-button--ghost.mn-button--tone-danger {
+  color: var(--status-danger);
+}
+
 .mn-button--danger {
   border-color: var(--status-danger);
   color: var(--status-danger);
+}
+
+@media (hover: hover) {
+  :where(html[data-pointer='mouse'])
+    .mn-button--ghost.mn-button--tone-danger:where(
+      :hover:not(:disabled, [aria-disabled='true'], [aria-busy='true'])
+    ) {
+    background: var(--status-danger-soft);
+  }
+}
+
+.mn-button--ghost.mn-button--tone-danger:where(
+    :active:not(:disabled, [aria-disabled='true'], [aria-busy='true'])
+  ) {
+  background: var(--status-danger-soft);
 }
 
 /*

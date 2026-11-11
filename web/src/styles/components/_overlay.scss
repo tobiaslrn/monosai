@@ -118,6 +118,18 @@
   font: inherit;
 }
 
+/* The app's own clear button, the shared icon button, replaces the browser's. */
+.mn-overlay__search > .mn-icon-button {
+  flex: none;
+  margin-inline-end: calc(-1 * var(--space-3));
+  color: var(--text-secondary);
+}
+
+.mn-overlay__search > input::-webkit-search-cancel-button {
+  display: none;
+  appearance: none;
+}
+
 .mn-overlay__search > input::placeholder {
   color: var(--text-secondary);
 }
@@ -222,12 +234,6 @@
 
 .mn-overlay__footer > .mn-button--ghost:last-child {
   margin-inline-end: calc(-1 * var(--button-inset));
-}
-
-/* Docked, the actions share the width: side by side while they fit, stacked when not. */
-.mn-overlay--docked .mn-overlay__footer > * {
-  flex: 1 1 auto;
-  margin-inline: 0;
 }
 
 /*
