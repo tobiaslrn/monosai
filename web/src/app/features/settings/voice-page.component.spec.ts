@@ -32,6 +32,7 @@ import type { ModelCapabilities, ModelCatalog } from '../../domain/ai/model-cata
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
 import { ok, type Result } from '../../domain/shared/result';
+import { ModelCatalogView } from './model-catalog-view';
 import { VoicePageComponent } from './voice-page.component';
 
 const HASH: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
@@ -77,6 +78,7 @@ describe('VoicePageComponent', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
+        ModelCatalogView,
         provideRouter([]),
         { provide: SETTINGS_REPOSITORY, useValue: settings },
         { provide: CREDENTIAL_REPOSITORY, useValue: new FakeCredentialRepository() },

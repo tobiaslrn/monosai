@@ -453,7 +453,7 @@ describe('SentencePopoverComponent', () => {
     expect(rendered.querySelector('[role="alert"]')?.textContent).toContain(
       'No translation model is configured',
     );
-    expect(rendered.querySelector('a[routerlink="/settings"]')?.textContent).toContain(
+    expect(rendered.querySelector('a[href="/settings/text-models"]')?.textContent).toContain(
       'Open Settings',
     );
     expect(rendered.textContent).not.toContain('Choose a different model');
@@ -544,7 +544,7 @@ describe('SentencePopoverComponent', () => {
     expect(rendered.querySelector('[role="alert"]')?.textContent).toContain(
       'No grammar model is configured',
     );
-    expect(rendered.querySelectorAll('a[routerlink="/settings"]')).toHaveLength(1);
+    expect(rendered.querySelectorAll('a[href="/settings/text-models"]')).toHaveLength(1);
   });
 
   it('names the words the sentence was underlined for', () => {
@@ -603,7 +603,7 @@ describe('SentencePopoverComponent', () => {
         'No voice is configured.',
       );
       expect(rendered.textContent).toContain('Your reading and saved aids are unchanged.');
-      expect(rendered.querySelector('a[routerlink="/settings"]')?.textContent).toContain(
+      expect(rendered.querySelector('a[href="/settings/voice"]')?.textContent).toContain(
         'Open Settings',
       );
       expect(audioButton(rendered, 'Audio')).toBeUndefined();

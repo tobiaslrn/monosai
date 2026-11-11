@@ -16,7 +16,7 @@ import { describeEnrichmentFailure, enrichmentNeedsSettings } from './enrichment
           <p>Your reading and saved aids are unchanged.</p>
         </div>
         @if (setupMessage() || needsSettings()) {
-          <a class="mn-button" routerLink="/settings">Open Settings</a>
+          <a class="mn-button" [routerLink]="settingsLink()">Open Settings</a>
         } @else if (needsCredit()) {
           <a
             class="mn-button"
@@ -44,6 +44,16 @@ import { describeEnrichmentFailure, enrichmentNeedsSettings } from './enrichment
 export class AidFailureComponent {
   readonly failure = input<EnrichmentFailure | null>(null);
   readonly setupMessage = input<string | null>(null);
+  /** Whether the aid is made by a text model or by a voice: it decides which page of Settings fixes it. */
+  readonly aid = input<'text' | 'audio'>('text');
+  /** A refused key is fixed on the overview; otherwise the aid's own page. */
+  protected readonly settingsLink = computed(() => {
+    const failure = this.failure();
+    if (failure?.source === 'provider' && failure.error.code === 'authentication') {
+      return '/settings';
+    }
+    return this.aid() === 'audio' ? '/settings/voice' : '/settings/text-models';
+  });
   protected readonly message = computed(
     () => this.setupMessage() ?? describeEnrichmentFailure(this.failure()),
   );

@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import type { Route, RedirectFunction, Routes } from '@angular/router';
 import { HELP_TOPICS, type HelpTopicSlug } from '../../features/help/help-topics';
 import { unsavedImportGuard } from '../../features/add-text/unsaved-import.guard';
+import { ModelCatalogView } from '../../features/settings/model-catalog-view';
 import { firstUseRedirect } from './first-use.resolver';
 import { wellFormedGenerationJobLink } from './generation-job-link.guard';
 import { wellFormedReadingLink } from './reading-link.guard';
@@ -168,6 +169,8 @@ export const APP_ROUTES: Routes = [
   { path: 'grammar', redirectTo: readingLevelSection('grammar') },
   {
     path: 'settings',
+    // One catalogue fetch serves the overview's model names and both model pages.
+    providers: [ModelCatalogView],
     children: [
       {
         path: '',

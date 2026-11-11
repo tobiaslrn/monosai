@@ -208,14 +208,14 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('mn-reader-paragraph')).toHaveCount(1);
   });
 
-  test('opens the Settings route from the reader audio setup', async ({ page }) => {
+  test('opens the Voice settings from the reader audio setup', async ({ page }) => {
     await importReading(page, '猫が寝た。', 'Audio setup');
 
     await page.getByRole('button', { name: /^Audio$/ }).click();
     await page.getByRole('link', { name: 'Set up audio model' }).click();
 
-    await expect(page).toHaveURL(/#\/settings$/);
-    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+    await expect(page).toHaveURL(/#\/settings\/voice$/);
+    await expect(page.getByRole('heading', { name: 'Voice', level: 1 })).toBeVisible();
   });
 
   test('does not leave reader controls on a missing reading', async ({ page }) => {

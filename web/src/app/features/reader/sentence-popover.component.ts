@@ -121,6 +121,7 @@ export interface UnknownWord {
       />
 
       <mn-aid-failure
+        aid="audio"
         [failure]="aids().audioAction.error"
         [setupMessage]="audioSetupNeeded() ? 'No voice is configured.' : null"
       />
@@ -137,7 +138,7 @@ export interface UnknownWord {
       -->
       <div class="tray mn-popover-foot mn-actions mn-actions--fill">
         <button type="button" class="mn-button" (click)="copySentence()">
-          <mn-icon [name]="copyStatus() === 'copied' ? 'check' : 'copy'" [size]="18" />
+          <mn-icon [name]="copyStatus() === 'copied' ? 'check' : 'copy'" />
           <span>{{ copyStatus() === 'copied' ? 'Copied' : 'Copy' }}</span>
         </button>
 
@@ -153,7 +154,7 @@ export interface UnknownWord {
             [attr.aria-busy]="offer.busy ? 'true' : null"
             (click)="requestTranslation(offer)"
           >
-            <mn-icon name="translate" [size]="18" />
+            <mn-icon name="translate" />
             <span>{{ offer.label }}</span>
           </button>
         }
@@ -165,7 +166,7 @@ export interface UnknownWord {
             [attr.aria-busy]="offer.busy ? 'true' : null"
             (click)="requestGrammar(offer)"
           >
-            <mn-icon name="grammar" [size]="18" />
+            <mn-icon name="grammar" />
             <span>{{ offer.label }}</span>
           </button>
         }
@@ -178,7 +179,7 @@ export interface UnknownWord {
             [attr.aria-busy]="offer.busy ? 'true' : null"
             (click)="audioAction(offer)"
           >
-            <mn-icon [name]="offer.play ? 'play' : 'audio'" [size]="18" />
+            <mn-icon [name]="offer.play ? 'play' : 'audio'" />
             <span>{{ offer.label }}</span>
           </button>
         }

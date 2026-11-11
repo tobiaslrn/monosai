@@ -61,7 +61,6 @@ interface GroupStatus {
     SettingsRowComponent,
     StatusLineComponent,
   ],
-  providers: [ModelCatalogView],
   template: `
     <mn-page>
       <mn-page-header heading="Text models" backTo="/settings" backLabel="Back to settings" />

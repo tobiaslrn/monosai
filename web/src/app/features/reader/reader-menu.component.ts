@@ -71,7 +71,7 @@ import {
         @if (sharedSetup(); as setup) {
           <mn-notice tone="setup" data-testid="shared-setup">
             <p>{{ setup.status }}</p>
-            <a mn-notice-action mnButton routerLink="/settings" (click)="close()">{{
+            <a mn-notice-action mnButton [routerLink]="setup.link" (click)="close()">{{
               setup.label
             }}</a>
           </mn-notice>
@@ -95,7 +95,7 @@ import {
                   @switch (row.action) {
                     @case ('settings') {
                       @if (sharedSetup() === null || !row.setup) {
-                        <a class="mn-button" routerLink="/settings" (click)="close()">{{
+                        <a class="mn-button" [routerLink]="row.settingsLink" (click)="close()">{{
                           row.label
                         }}</a>
                       }
@@ -224,7 +224,7 @@ export class ReaderMenuComponent {
       return null;
     }
     const text = waiting.find((row) => row.layer !== 'audio') ?? first;
-    return { status: first.status, label: text.label };
+    return { status: first.status, label: text.label, link: text.settingsLink };
   });
 
   open(): void {

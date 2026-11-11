@@ -31,6 +31,7 @@ import type { ModelCapabilities, ModelCatalog } from '../../domain/ai/model-cata
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
 import { err, ok, type Result } from '../../domain/shared/result';
+import { ModelCatalogView } from './model-catalog-view';
 import { TextModelsPageComponent } from './text-models-page.component';
 
 const HASH: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
@@ -75,6 +76,7 @@ describe('TextModelsPageComponent', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
+        ModelCatalogView,
         provideRouter([]),
         { provide: SETTINGS_REPOSITORY, useValue: settings },
         { provide: CREDENTIAL_REPOSITORY, useValue: new FakeCredentialRepository() },

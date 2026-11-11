@@ -218,7 +218,7 @@ describe('ReadingPlayerComponent', () => {
       const element = fixture.nativeElement as HTMLElement;
       const link = element.querySelector<HTMLAnchorElement>('a[aria-label="Set up audio model"]');
 
-      expect(link?.getAttribute('href')).toBe('/settings');
+      expect(link?.getAttribute('href')).toBe('/settings/voice');
       expect(link?.classList.contains('mn-icon-button--primary')).toBe(true);
       expect(link?.textContent).toContain('Set up audio');
       expect(control(element, 'Generate audio')).toBeNull();
@@ -243,7 +243,7 @@ describe('ReadingPlayerComponent', () => {
       const notice = element.querySelector<HTMLElement>('[data-testid="player-stale-audio"]');
 
       expect(notice?.textContent).toContain('older settings');
-      expect(notice?.querySelector('a')?.getAttribute('href')).toBe('/settings');
+      expect(notice?.querySelector('a')?.getAttribute('href')).toBe('/settings/voice');
       expect(said(element)).toContain('It can still play');
     });
 

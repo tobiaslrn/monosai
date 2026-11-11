@@ -15,6 +15,7 @@ const ROW: ReaderContentState = {
   disabled: false,
   error: null,
   setup: false,
+  settingsLink: '/settings/text-models',
 };
 
 /** A layer waiting on the same missing key as the others. */
@@ -27,6 +28,7 @@ function waitingOnKey(layer: ReaderContentState['layer']): ReaderContentState {
     action: layer === 'audio' ? null : 'settings',
     label: layer === 'audio' ? '' : 'Open Settings',
     setup: true,
+    settingsLink: '/settings',
   };
 }
 
@@ -197,7 +199,9 @@ describe('Story options', () => {
     });
     fixture.componentRef.setInput('error', 'Could not save the stop request.');
     fixture.detectChanges();
-    expect(element.querySelector('.row-main a')?.getAttribute('href')).toBe('/settings');
+    expect(element.querySelector('.row-main a')?.getAttribute('href')).toBe(
+      '/settings/text-models',
+    );
     expect([...element.querySelectorAll('[role="alert"]')].map((node) => node.textContent)).toEqual(
       ['Test your model.', 'Could not save the stop request.'],
     );

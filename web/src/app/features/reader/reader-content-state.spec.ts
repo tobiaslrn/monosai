@@ -165,6 +165,19 @@ describe('reader content state', () => {
     });
   });
 
+  it.each([
+    ['english', 'no-credential', '/settings'],
+    ['audio', 'no-credential', '/settings'],
+    ['english', 'incomplete', '/settings/text-models'],
+    ['grammar', 'failed', '/settings/text-models'],
+    ['audio', 'untested', '/settings/voice'],
+  ] as const)(
+    'sends %s waiting on %s to the page of Settings that fixes it',
+    (layer, readiness, page) => {
+      expect(readerContentState(READING, layer, IDLE, readiness, true).settingsLink).toBe(page);
+    },
+  );
+
   it('does not claim an empty reading is ready', () => {
     expect(
       readerContentState({ ...READING, sentenceCount: 0 }, 'english', IDLE, 'ready', true),

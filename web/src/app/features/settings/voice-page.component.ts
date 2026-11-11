@@ -59,7 +59,6 @@ interface VoiceLine {
     SettingsRowComponent,
     StatusLineComponent,
   ],
-  providers: [ModelCatalogView],
   template: `
     <mn-page>
       <mn-page-header heading="Voice" backTo="/settings" backLabel="Back to settings" />

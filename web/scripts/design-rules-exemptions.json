@@ -7,7 +7,6 @@
   "src/app/features/library/library-first-steps.component.ts": ["R35"],
   "src/app/features/library/library-page.component.ts": ["R35"],
   "src/app/features/library/reading-card.component.ts": ["R35"],
-  "src/app/features/reader/sentence-popover.component.ts": ["R35"],
   "src/app/features/reading-level/reading-level-page.component.ts": ["R35"],
   "src/app/features/vocabulary/add-words.component.ts": ["R35"],
   "src/app/features/vocabulary/source-list.component.ts": ["R35"],

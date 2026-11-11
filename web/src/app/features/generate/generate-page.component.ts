@@ -296,7 +296,7 @@ function formatList(items: readonly string[]): string {
                 <!-- The action the sentence names, as the control that does it. -->
                 <a
                   mnButton="primary"
-                  routerLink="/settings"
+                  [routerLink]="failureSettingsLink()"
                   [queryParams]="{ from: 'generate' }"
                   [state]="generateOriginState"
                   data-testid="failure-settings"
@@ -551,6 +551,16 @@ export class GeneratePageComponent implements OnChanges {
           primaryAction: 'Try generating again.',
           escape: '',
         };
+  });
+
+  /** Where the failure is fixed: the key when it was refused, otherwise the text models. */
+  protected readonly failureSettingsLink = computed(() => {
+    const state = this.state();
+    return state.kind === 'failed' &&
+      state.error.domain === 'ai' &&
+      state.error.code === 'authentication'
+      ? '/settings'
+      : '/settings/text-models';
   });
 
   protected readonly canRetrySave = computed(() => {

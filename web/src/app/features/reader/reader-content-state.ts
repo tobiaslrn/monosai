@@ -17,6 +17,8 @@ export interface ReaderContentState {
   readonly error: string | null;
   /** The status is a setup step in Settings, which rows may share. */
   readonly setup: boolean;
+  /** The page of Settings that fixes it: the key, the voice, or the text models. */
+  readonly settingsLink: string;
 }
 
 const NAMES: Record<PreparationLayer, string> = {
@@ -24,6 +26,12 @@ const NAMES: Record<PreparationLayer, string> = {
   grammar: 'Grammar notes',
   audio: 'Audio',
 };
+/** Where Settings sends a layer that waits on setup: the key first, then its own page. */
+function settingsPageFor(layer: PreparationLayer, readiness: ConfigurationReadiness): string {
+  if (readiness === 'no-credential') return '/settings';
+  return layer === 'audio' ? '/settings/voice' : '/settings/text-models';
+}
+
 const ACTIONS: Record<PreparationLayer, string> = {
   english: 'Translate story',
   grammar: 'Add notes',
@@ -79,6 +87,7 @@ function layerState(
     busy: false,
     error: null,
     setup: false,
+    settingsLink: settingsPageFor(layer, readiness),
   };
   switch (progress.kind) {
     case 'queued':

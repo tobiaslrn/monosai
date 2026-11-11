@@ -96,7 +96,7 @@ import { ReadingTrackComponent } from './reading-track.component';
         <p class="notice" data-testid="player-stale-audio">
           Some audio is from older settings.
           @if (!modelConfigured()) {
-            <a routerLink="/settings">Audio settings</a>
+            <a routerLink="/settings/voice">Audio settings</a>
           }
         </p>
       }
@@ -138,7 +138,7 @@ import { ReadingTrackComponent } from './reading-track.component';
           -->
           <a
             class="mn-icon-button mn-icon-button--primary primary--wide"
-            routerLink="/settings"
+            routerLink="/settings/voice"
             aria-label="Set up audio model"
             title="Set up audio model"
           >

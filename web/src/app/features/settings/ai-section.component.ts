@@ -5,6 +5,7 @@ import { TtsStore } from '../../application/settings/tts.store';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { SectionComponent } from '../../shared-ui/section/section.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
+import { ModelCatalogView } from './model-catalog-view';
 import { audioStatus, joinSummary, readinessStatus, type AiStatus } from './ai-status';
 import { OpenRouterConnectionComponent } from './openrouter-connection.component';
 import { audioStatusOf } from './voice-status';
@@ -53,6 +54,7 @@ export class AiSectionComponent {
   protected readonly credential = inject(CredentialStore);
   private readonly text = inject(TextModelStore);
   private readonly tts = inject(TtsStore);
+  private readonly catalog = inject(ModelCatalogView);
   protected readonly origin = navigationOriginState('/settings');
 
   /**
@@ -79,7 +81,9 @@ export class AiSectionComponent {
         .map((level) => routes.find((route) => route.readiness === level))
         .find((route) => route !== undefined) ?? routes[0];
     const settings = this.text.settings();
+    // The model by its own name, as the catalogue gives it; its id only until that is known.
     const model =
+      this.catalog.textModels().find((entry) => entry.modelId === settings.modelId)?.name ??
       this.text.presets().find((preset) => preset.id === this.text.activePresetId())?.name ??
       (settings.modelId === '' ? null : settings.modelId);
     return {
@@ -94,6 +98,7 @@ export class AiSectionComponent {
     }
     const settings = this.tts.settings();
     const name =
+      this.catalog.speechModels().find((entry) => entry.modelId === settings.modelId)?.name ??
       this.tts.presets().find((preset) => preset.id === settings.activePresetId)?.name ??
       (settings.modelId === '' ? null : settings.modelId);
     return {

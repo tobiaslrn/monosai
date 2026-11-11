@@ -148,6 +148,12 @@ test.describe('the model tree', () => {
     await page.reload();
     await expectReadiness(textModelReadiness(page), 'ready');
     await expect(textModelReadiness(page)).toContainText(MODEL);
+
+    // The overview names the model as the catalogue does, not by its id.
+    await page.goto('./#/settings');
+    await expect(page.getByTestId('open-text-models')).toHaveAccessibleDescription(
+      /Ready Test text-model/,
+    );
   });
 
   test('offers a speech picker only speech models', async ({ page }) => {
