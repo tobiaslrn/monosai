@@ -2,8 +2,8 @@
 
 /*
  * A whole-page state: an error, an empty surface, something not found. One
- * anatomy wherever it appears, in the page column at the top of the page, on
- * the card surface:
+ * anatomy wherever it appears, filling the column it is in (the page's, or the
+ * reader's) at the top of the page, on the card surface:
  *
  *   <section class="mn-state mn-state--error" role="alert">
  *     <span class="mn-state__mark"><mn-icon name="warning" /></span>
@@ -23,8 +23,6 @@
   gap: var(--group-gap) var(--glyph-gap);
   align-items: start;
   width: 100%;
-  max-width: var(--page-measure);
-  margin-inline: auto;
   padding: var(--surface-inset);
   border: 1px solid var(--border-subtle-faint);
   border-radius: var(--radius-card);
