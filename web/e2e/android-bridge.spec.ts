@@ -23,14 +23,14 @@ test('connects, persists and refreshes the Android provider @smoke @mobile', asy
   await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
   await expect(page.getByTestId('words-standing')).toHaveText('1 word');
 
-  const row = page.getByTestId('source-row').filter({ hasText: 'Anki' });
+  const row = page.getByTestId('source-row').filter({ hasText: 'Core Japanese' });
   await expect(row).toHaveCount(1);
   await page.reload();
   await expect(row).toHaveCount(1);
   await expect(row).toContainText('On this device');
 
   await row.click();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Anki');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Core Japanese');
 
   await page.getByTestId('sync-now').click();
   await page.goBack();

@@ -247,7 +247,7 @@ test.describe('vocabulary', () => {
     const rows = page.getByTestId('source-row');
     await expect(rows).toHaveCount(2);
     await expect(rows.nth(0)).toContainText('My textbook');
-    await expect(rows.nth(1)).toContainText('Anki');
+    await expect(rows.nth(1)).toContainText('Core Japanese');
 
     const snapshots = await readSnapshots(page);
     expect(snapshots).toHaveLength(1);
@@ -346,8 +346,8 @@ test.describe('vocabulary', () => {
     await eatRow.locator('summary').click();
     await expect(eatRow).toContainText('Contributing sources');
     await expectNoSeriousAccessibilityViolations(page);
-    await eatRow.getByRole('link', { name: /Anki/ }).click();
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Anki');
+    await eatRow.getByRole('link', { name: /Core Japanese/ }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Core Japanese');
   });
 
   test('imports a package and applies its default mapping without a refresh step @smoke', async ({
@@ -486,7 +486,7 @@ test.describe('vocabulary', () => {
       timeout: 60_000,
     });
 
-    await openSource(page, 'Anki');
+    await openSource(page, 'Core Japanese');
     // Turning off automatic reading is not a way to lose your vocabulary.
     await page.getByTestId('automatic-sync').uncheck();
     await expect(page.getByTestId('include-source')).toBeChecked();
@@ -504,7 +504,7 @@ test.describe('vocabulary', () => {
     await expect(page.getByTestId('words-standing')).toHaveText('1 word', {
       timeout: 60_000,
     });
-    await openSource(page, 'Anki');
+    await openSource(page, 'Core Japanese');
     await page.getByTestId('automatic-sync').uncheck();
 
     await page.unrouteAll({ behavior: 'wait' });
@@ -530,7 +530,7 @@ test.describe('vocabulary', () => {
     await expect(page.getByTestId('words-standing')).toHaveText('2 words', {
       timeout: 60_000,
     });
-    await openSource(page, 'Anki');
+    await openSource(page, 'Core Japanese');
 
     await page.unrouteAll({ behavior: 'wait' });
     await refuseAnkiConnect(page);

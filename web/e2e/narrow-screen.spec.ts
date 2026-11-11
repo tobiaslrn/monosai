@@ -301,7 +301,7 @@ for (const { width, zoom } of SCREENS) {
       await connectAnki(page);
       await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
       await expect(page.getByTestId('words-standing')).toHaveText('1 word', { timeout: 60_000 });
-      await page.getByTestId('source-row').filter({ hasText: 'Anki' }).click();
+      await page.getByTestId('source-row').filter({ hasText: 'Core Japanese' }).click();
       await page.unrouteAll({ behavior: 'wait' });
       await refuseAnkiConnect(page);
       await page.getByTestId('sync-now').click();
