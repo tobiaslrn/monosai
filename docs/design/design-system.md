@@ -1108,6 +1108,8 @@ being read aloud wears its own, because both can be true at once. The selection 
 is lavender because the reading surface is the one place a neutral highlight is
 needed that is not an action (sage) and not a status; it is not a tone (R46) and
 marks nothing else.
+The tint is the only mark on the open word or sentence in the text, so it measures at least
+1.3:1 against the page in both themes, with the text on it well above 7:1.
 A new thing worth marking in the Japanese is a change to this document, not a
 new token, because every added marker is subtracted from the text's own
 legibility.

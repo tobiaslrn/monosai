@@ -140,6 +140,8 @@ const PAIRINGS: readonly {
   { foreground: 'status-success', background: 'status-success-soft', kind: 'text' },
   { foreground: 'status-warning', background: 'status-warning-soft', kind: 'text' },
   { foreground: 'status-danger', background: 'status-danger-soft', kind: 'text' },
+  { foreground: 'text-primary', background: 'accent-secondary-soft', kind: 'text' },
+  { foreground: 'text-secondary', background: 'accent-secondary-soft', kind: 'text' },
   { foreground: 'action-primary-text', background: 'action-primary-soft', kind: 'text' },
   { foreground: 'text-on-tint', background: 'surface-sunken', kind: 'text' },
   { foreground: 'text-secondary', background: 'surface-sunken', kind: 'text' },
