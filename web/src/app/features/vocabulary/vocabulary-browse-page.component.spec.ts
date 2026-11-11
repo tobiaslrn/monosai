@@ -123,7 +123,7 @@ describe('VocabularyBrowsePageComponent', () => {
     search.value = 'not present';
     search.dispatchEvent(new Event('input'));
     await settle(fixture);
-    expect(element.textContent).toContain('No words match your search.');
+    expect(element.textContent).toContain('No words match your search');
     expect(element.textContent).toContain('Reset filters');
   });
 

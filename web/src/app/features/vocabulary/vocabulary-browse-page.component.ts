@@ -7,6 +7,7 @@ import { DEFAULT_BROWSE_QUERY, type BrowseQuery } from '../../domain/vocabulary/
 import type { VocabularyEntry } from '../../domain/vocabulary/vocabulary-repository';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { openDialog } from '../../shared-ui/dialog/dialog';
+import { EmptyStateComponent } from '../../shared-ui/empty-state/empty-state.component';
 import { EntryListComponent } from '../../shared-ui/entry-list/entry-list.component';
 import {
   MenuComponent,
@@ -14,7 +15,7 @@ import {
   MenuTriggerDirective,
 } from '../../shared-ui/menu/menu.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { ClusterComponent, PageComponent, StackComponent } from '../../shared-ui/layout/layout';
+import { ClusterComponent, PageComponent } from '../../shared-ui/layout/layout';
 import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 import { SearchFieldComponent } from '../../shared-ui/search-field/search-field.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
@@ -42,6 +43,7 @@ interface VirtualVocabularyEntry {
     ButtonDirective,
     ClusterComponent,
     EntryListComponent,
+    EmptyStateComponent,
     IconComponent,
     NoticeComponent,
     PageComponent,
@@ -50,7 +52,6 @@ interface VirtualVocabularyEntry {
     MenuComponent,
     MenuItemDirective,
     MenuTriggerDirective,
-    StackComponent,
     VirtualListDirective,
     VirtualItemDirective,
     VocabularyBrowseRowComponent,
@@ -151,16 +152,16 @@ interface VirtualVocabularyEntry {
         }
         @case ('ready') {
           @if (store.matchCount() === 0) {
-            <mn-stack align="start">
-              <p class="mn-hint">
-                {{
-                  store.query().search.trim() !== ''
-                    ? 'No words match your search.'
-                    : 'No words match these filters.'
-                }}
-              </p>
-              <button mnButton="ghost" type="button" (click)="reset()">Reset filters</button>
-            </mn-stack>
+            <mn-empty-state
+              icon="search"
+              [heading]="
+                store.query().search.trim() !== ''
+                  ? 'No words match your search'
+                  : 'No words match these filters'
+              "
+            >
+              <button mnButton data-actions type="button" (click)="reset()">Reset filters</button>
+            </mn-empty-state>
           } @else {
             <mn-entry-list
               [columns]="['Word', 'Difficulty', 'Studied']"

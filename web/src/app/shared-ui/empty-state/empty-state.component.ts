@@ -6,7 +6,9 @@ import type { IconName } from '../icon/icon-set';
  * A surface with nothing on it yet: the shared whole-page state
  * (`_state.scss`) in its quiet tone — not a fault, so no danger colour. The
  * title says what is empty, one sentence says what would fill it, and the
- * projected actions are the ways to fill it, primary first.
+ * projected actions are the ways to fill it, primary first. A search or filter
+ * that matched nothing is the same state with its title alone, and Reset as
+ * its one action.
  *
  *   <mn-empty-state heading="No stories yet" description="Write one from your words.">
  *     <ng-container data-actions>…</ng-container>
@@ -20,7 +22,9 @@ import type { IconName } from '../icon/icon-set';
     <section class="mn-state" [attr.aria-labelledby]="headingId">
       <span class="mn-state__mark" aria-hidden="true"><mn-icon [name]="icon()" [size]="20" /></span>
       <h2 class="mn-state__title" [id]="headingId">{{ heading() }}</h2>
-      <p class="mn-state__what">{{ description() }}</p>
+      @if (description(); as text) {
+        <p class="mn-state__what">{{ text }}</p>
+      }
       <div class="mn-state__actions">
         <ng-content select="[data-actions]" />
       </div>
@@ -32,6 +36,7 @@ export class EmptyStateComponent {
   protected readonly headingId = `mn-empty-state-${String(EmptyStateComponent.nextId++)}`;
 
   readonly heading = input.required<string>();
-  readonly description = input.required<string>();
+  /** Left out where the title says it all, as for a search or filter with no results. */
+  readonly description = input<string | null>(null);
   readonly icon = input<IconName>('library');
 }

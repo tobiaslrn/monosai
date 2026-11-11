@@ -187,7 +187,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
             </mn-empty-state>
           }
         } @else if (store.isEmpty() && generationJobs().length === 0) {
-          <p class="mn-hint">No {{ store.filter() }} stories yet.</p>
+          <mn-empty-state icon="search" [heading]="'No ' + store.filter() + ' stories yet'" />
         } @else {
           <mn-library-virtual-list
             [groups]="readingGroups()"
