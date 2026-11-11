@@ -19,6 +19,7 @@ import {
 } from '../../domain/vocabulary/vocabulary-source';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { RowComponent } from '../../shared-ui/row/row.component';
+import { ClusterComponent } from '../../shared-ui/layout/layout';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import type { IconName } from '../../shared-ui/icon/icon-set';
 import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
@@ -42,7 +43,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
 @Component({
   selector: 'mn-source-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, ListRowComponent, ButtonDirective, RowComponent],
+  imports: [IconComponent, ListRowComponent, ButtonDirective, RowComponent, ClusterComponent],
   template: `
     <ul class="mn-list-group">
       @for (source of sources(); track source.id) {
@@ -59,10 +60,12 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
             </span>
             <span mn-list-row-title>{{ source.label }}</span>
             <span mn-list-row-meta>
-              @if (needsAttention(source)) {
-                <mn-icon name="warning" tone="warning" [size]="14" />
-              }
-              {{ whereLine(source) }}
+              <mn-cluster [gap]="1">
+                @if (needsAttention(source)) {
+                  <mn-icon name="warning" tone="warning" [size]="14" />
+                }
+                <span>{{ whereLine(source) }}</span>
+              </mn-cluster>
             </span>
             <mn-icon mn-list-row-trailing name="chevron-right" />
           </mn-list-row>

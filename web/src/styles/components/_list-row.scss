@@ -43,53 +43,6 @@
 }
 
 .mn-list-row__link {
-  display: grid;
-  grid-template-columns: auto minmax(min-content, 1fr) auto;
-  grid-template-rows: auto auto;
-  gap: var(--line-gap) var(--glyph-gap);
-}
-
-.mn-list-row--overview .mn-list-row__leading,
-.mn-list-row--overview .mn-list-row__title,
-.mn-list-row--overview .mn-list-row__trailing {
-  grid-row: 1;
-}
-
-.mn-list-row--overview .mn-list-row__leading {
-  grid-column: 1;
-}
-
-.mn-list-row--overview .mn-list-row__content {
-  display: contents;
-}
-
-.mn-list-row--overview .mn-list-row__title {
-  grid-column: 2;
-  align-self: center;
-  overflow-wrap: break-word;
-}
-
-.mn-list-row--overview .mn-list-row__meta {
-  grid-row: 2;
-  grid-column: 2 / 4;
-}
-
-.mn-list-row--overview .mn-list-row__trailing {
-  grid-column: 3;
-}
-
-.mn-list-row--overview .mn-list-row__trailing {
-  max-width: none;
-}
-
-.mn-list-row--overview .mn-list-row__trailing .mn-status-pill {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow-wrap: break-word;
-  white-space: normal;
-}
-
-.mn-list-row__link {
   display: flex;
   flex: 1 1 auto;
   gap: var(--glyph-gap);
@@ -120,7 +73,7 @@
 
 .mn-list-row__leading:empty,
 .mn-list-row__excerpt:empty,
-.mn-list-row__meta:empty,
+.mn-list-row__meta:has(> .mn-list-row__facts:empty),
 .mn-list-row__trailing:empty,
 .mn-list-row__menu:empty {
   display: none;
@@ -164,6 +117,44 @@
 }
 
 /*
+ * The facts of a row's line are separated by a middle dot that is never the
+ * first or last thing on a line. Each fact owns the dot before it, in the room
+ * its padding leaves; the line is pulled that far outward and clipped, so the
+ * dot of a fact that begins a line is cut off, and a fact that wraps takes its
+ * dot with it only when a fact precedes it on the same line.
+ */
+.mn-list-row__meta {
+  display: block;
+  overflow: hidden;
+}
+
+.mn-list-row__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) 0;
+  align-items: center;
+  margin-inline-start: calc(-1 * var(--meta-separator));
+}
+
+.mn-list-row__facts > [mn-list-row-meta] {
+  display: contents;
+}
+
+.mn-list-row__facts > [mn-list-row-meta] > :not(.mn-visually-hidden) {
+  position: relative;
+  max-width: 100%;
+  padding-inline-start: var(--meta-separator);
+}
+
+.mn-list-row__facts > [mn-list-row-meta] > :not(.mn-visually-hidden)::before {
+  position: absolute;
+  inset-inline-start: 0;
+  width: var(--meta-separator);
+  content: '·' / '';
+  text-align: center;
+}
+
+/*
  * The opening of what the row opens: one quiet line on the title's edge,
  * cut with an ellipsis rather than wrapped, so rows stay one height.
  */
@@ -186,13 +177,11 @@
  * items the gap separates. Without this the whole meta line was one inline run
  * with nothing between its facts and nowhere to break but mid-word.
  */
-.mn-list-row__meta > [mn-list-row-meta],
 .mn-list-row__trailing > [mn-list-row-trailing] {
   display: contents;
 }
 
 .mn-list-row__meta {
-  flex-wrap: wrap;
   overflow-wrap: break-word;
   line-height: var(--leading-snug);
 }

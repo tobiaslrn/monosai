@@ -68,11 +68,9 @@ const FORM_LABELS: Readonly<Record<StoryForm, string>> = {
       <span mn-list-row-meta>
         <span>{{ characterLabel() }}</span>
         @if (shapeLabel(); as shape) {
-          <span aria-hidden="true">·</span>
           <span>{{ shape }}</span>
         }
         @if (hasAudio()) {
-          <span aria-hidden="true">·</span>
           <mn-cluster [gap]="1" title="Audio">
             <mn-icon name="audio" [size]="16" />
             <span class="mn-visually-hidden">Audio</span>

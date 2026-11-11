@@ -75,5 +75,11 @@ export class GenerationJobCardComponent {
    * The same wording the wait screen uses, so the row and the screen it leads
    * to cannot describe the same run differently.
    */
-  protected readonly stageLabel = computed(() => generationWaitCopy(this.state()).title);
+  protected readonly stageLabel = computed(() => {
+    const state = this.state();
+    // "Needs attention · Generation stopped" says it twice; the short word keeps the line to one.
+    return state.kind === 'failed' || state.kind === 'cancelled'
+      ? 'Stopped'
+      : generationWaitCopy(state).title;
+  });
 }

@@ -412,8 +412,10 @@ describe('ReadingLevelPageComponent', () => {
     // The level a caption names rides beside the name, never inside it, and no pill holds it.
     const row = element.querySelector('[data-testid="reading-level-link"]');
     expect(row?.querySelector('.mn-status-pill')).toBeNull();
-    expect(row?.querySelector('[mn-list-row-meta]')?.textContent.replace(/\s+/g, ' ').trim()).toBe(
-      'Basic forms · N5',
-    );
+    expect(
+      [...(row?.querySelectorAll('[mn-list-row-meta] > span') ?? [])].map((fact) =>
+        fact.textContent.trim(),
+      ),
+    ).toEqual(['Basic forms', 'N5']);
   });
 });

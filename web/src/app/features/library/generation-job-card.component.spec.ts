@@ -51,9 +51,9 @@ describe('GenerationJobCardComponent', () => {
 
     const meta = page.querySelector('[mn-list-row-meta]')?.textContent ?? '';
     expect(meta).toContain('Needs attention');
-    expect(meta).toContain('Generation stopped');
+    expect(meta).toContain('Stopped');
     // The status leads the line, so a long stage cannot push it out of view.
-    expect(meta.indexOf('Needs attention')).toBeLessThan(meta.indexOf('Generation stopped'));
+    expect(meta.indexOf('Needs attention')).toBeLessThan(meta.indexOf('Stopped'));
   });
 
   it('names what its one control does now', () => {

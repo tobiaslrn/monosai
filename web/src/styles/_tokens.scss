@@ -220,6 +220,8 @@
   --glyph-gap: min(var(--space-3), 12px);
   --badge-size: min(2.25rem, 40px);
   --control-inset: min(var(--space-3), 12px);
+  /* The room a middle dot takes between two facts of a row's line. */
+  --meta-separator: var(--space-4);
   --control-width: 12rem;
   --button-inset: var(--space-4);
   --block-inset: var(--space-3);

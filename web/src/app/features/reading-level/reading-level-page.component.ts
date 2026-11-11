@@ -165,7 +165,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
               <span mn-list-row-meta>
                 <span data-testid="grammar-standing">{{ grammarValue() }}</span>
                 @if (grammarLevel(); as level) {
-                  <span> · {{ level }}</span>
+                  <span>{{ level }}</span>
                 }
               </span>
               <span mn-list-row-trailing>

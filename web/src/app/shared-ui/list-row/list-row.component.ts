@@ -43,7 +43,9 @@ let nextListRowId = 0;
             <ng-content select="[mn-list-row-excerpt]" />
           </span>
           <span class="mn-list-row__meta" [id]="metaId">
-            <ng-content select="[mn-list-row-meta]" />
+            <span class="mn-list-row__facts">
+              <ng-content select="[mn-list-row-meta]" />
+            </span>
           </span>
         </span>
         <span class="mn-list-row__trailing">
