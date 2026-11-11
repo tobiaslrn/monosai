@@ -151,8 +151,9 @@ export type ClusterJustify = 'start' | 'end' | 'between';
     }
     /*
      * A main action and a side one on one row, the main taking three parts to
-     * the side's one. Neither is narrower than its words, so a label is never
-     * cut: where both no longer fit they stack, the main one first, each full width.
+     * the side's one. The side one is never narrower than its own words, so on a
+     * phone it hugs them and the main one takes the rest; a label is never cut,
+     * and where both no longer fit they stack, the main one first, full width.
      */
     mn-cluster.cluster--fill-split > :first-child {
       flex: 3 1 0;
@@ -160,7 +161,7 @@ export type ClusterJustify = 'start' | 'end' | 'between';
     }
     mn-cluster.cluster--fill-split > :last-child {
       flex: 1 1 0;
-      min-width: var(--split-side-min);
+      min-width: min-content;
     }
     @media (max-width: breakpoints.$wide-max) {
       /* Equal columns, so every item is the same width whatever its label. */

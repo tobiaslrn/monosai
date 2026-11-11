@@ -221,9 +221,8 @@
   --control-width: 12rem;
   --button-inset: var(--space-4);
   --block-inset: var(--space-3);
-  /* The narrowest a main and a side action may be in a split row, so neither label is cut. */
+  /* The narrowest the main action may be in a split row, so its label is never cut. */
   --split-main-min: 10rem;
-  --split-side-min: 7rem;
 
   /*
    * Overlays. Every floating surface — a menu, a picker, a task dialog, a
