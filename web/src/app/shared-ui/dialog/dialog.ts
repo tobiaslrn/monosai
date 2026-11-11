@@ -85,6 +85,9 @@ export function dialogResult<R, C>(ref: DialogRef<R, C>): Promise<R | undefined>
  * The actions end at the inline end, the primary written last; one marked
  * `mn-dialog-action="start"` goes to the far start.
  *
+ * A notice may lead with the app's mark above its title (`mn-dialog-mark`);
+ * a dialog that has none draws nothing there.
+ *
  * `kind` is what the dialog is:
  *
  *   task      a form or a task. A close in the header on a wide viewport; on a
@@ -122,6 +125,7 @@ export function dialogResult<R, C>(ref: DialogRef<R, C>): Promise<R | undefined>
     @if (docked() && kind() !== 'confirm') {
       <mn-sheet-handle #handle [label]="closeLabel()" (dismissed)="dismiss()" />
     }
+    <div class="mn-overlay__mark"><ng-content select="[mn-dialog-mark]" /></div>
     <mn-overlay-header
       [heading]="heading()"
       [headingId]="headingId()"

@@ -13,6 +13,7 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
+import { AppMarkComponent } from '../app-mark/app-mark.component';
 import { IconComponent } from '../icon/icon.component';
 import { WordmarkComponent } from '../wordmark/wordmark.component';
 import { PageNoticeSlot } from './page-notice-slot';
@@ -28,7 +29,7 @@ import { PageNoticeSlot } from './page-notice-slot';
 @Component({
   selector: 'mn-page-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, RouterLink, IconComponent, WordmarkComponent],
+  imports: [NgTemplateOutlet, RouterLink, AppMarkComponent, IconComponent, WordmarkComponent],
   template: `
     <header #bar class="head" [class.head--home]="home()">
       @if (backTo(); as target) {
@@ -64,12 +65,7 @@ import { PageNoticeSlot } from './page-notice-slot';
           </a>
         }
       } @else if (home()) {
-        <span class="mark-wrap">
-          <img class="mark" src="icons/icon-192.png" alt="" width="32" height="30" />
-          @if (showAlpha()) {
-            <span class="alpha-marker" aria-label="Alpha version">α</span>
-          }
-        </span>
+        <mn-app-mark [alpha]="showAlpha()" />
       }
       <div class="titles" [class.titles--home]="home()">
         @if (home()) {
@@ -114,7 +110,8 @@ import { PageNoticeSlot } from './page-notice-slot';
       gap: var(--space-2);
       align-items: center;
       min-width: 0;
-      min-height: var(--touch-target);
+      /* One bar height, whether or not the page puts a control on it. */
+      min-height: calc(var(--touch-target) + 2 * var(--space-2));
       padding-block: var(--space-2);
       background: var(--surface-canvas);
     }
@@ -155,35 +152,6 @@ import { PageNoticeSlot } from './page-notice-slot';
       .back {
         margin-inline-start: calc(-1 * var(--touch-target));
       }
-    }
-
-    .mark {
-      flex: none;
-      inline-size: var(--space-6);
-      block-size: calc(var(--space-6) - calc(0.5 * var(--space-1)));
-      border-radius: var(--radius-token);
-      object-fit: cover;
-      object-position: center top;
-    }
-
-    .mark-wrap {
-      position: relative;
-      flex: none;
-      margin-inline-end: var(--space-1);
-    }
-
-    .alpha-marker {
-      position: absolute;
-      top: calc(-2.5 * var(--space-1));
-      right: calc(-0.5 * var(--space-2));
-      padding-inline: 1px;
-      border-radius: var(--radius-control);
-      background: var(--surface-canvas);
-      color: var(--status-danger);
-      font-size: var(--text-md);
-      font-weight: var(--weight-semibold);
-      line-height: var(--leading-tight);
-      white-space: nowrap;
     }
 
     /* The title keeps room to read; at large text the trailing action drops to its own line. */

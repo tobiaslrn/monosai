@@ -6,7 +6,7 @@ import { stubOpenRouter } from '../e2e/openrouter';
 
 test.beforeEach(async ({ page }) => {
   await page.addLocatorHandler(
-    page.getByRole('alertdialog', { name: 'Monosai is in alpha.' }),
+    page.getByRole('alertdialog', { name: 'Monosai is in alpha' }),
     async () => {
       await page.getByRole('button', { name: 'Continue' }).click();
     },

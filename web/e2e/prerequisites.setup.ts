@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
   // guide themselves and take the place of the offer this dismisses.
   await page.goto('./#/settings');
   await page
-    .getByRole('alertdialog', { name: 'Monosai is in alpha.' })
+    .getByRole('alertdialog', { name: 'Monosai is in alpha' })
     .getByRole('button', {
       name: 'Continue',
     })

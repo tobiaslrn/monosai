@@ -9,7 +9,7 @@ test.describe('alpha disclosure', () => {
   }) => {
     await page.goto('./#/library');
 
-    const dialog = page.getByRole('alertdialog', { name: 'Monosai is in alpha.' });
+    const dialog = page.getByRole('alertdialog', { name: 'Monosai is in alpha' });
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText(
       'It is still being built, so you may encounter bugs, missing features, or changes.',
@@ -29,7 +29,7 @@ test.describe('alpha disclosure', () => {
   test('also appears before a direct reader link on first load @smoke', async ({ page }) => {
     await page.goto('./#/reader/2f8d3f4e-1b6a-4f7c-9c2e-0d5a6b7c8d9e');
 
-    await expect(page.getByRole('alertdialog', { name: 'Monosai is in alpha.' })).toBeVisible();
+    await expect(page.getByRole('alertdialog', { name: 'Monosai is in alpha' })).toBeVisible();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Continue' }).click();
     await expect(page.getByRole('alertdialog')).toHaveCount(0);
   });

@@ -9,7 +9,7 @@ test.describe('first-use Help', () => {
     page,
   }) => {
     await page.goto('./#/library');
-    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha.' });
+    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha' });
     await expect(alpha).toBeVisible();
     await alpha.getByRole('button', { name: 'Continue' }).click();
     await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
@@ -43,7 +43,7 @@ test.describe('first-use Help', () => {
     page,
   }) => {
     await page.goto('./#/reader/2f8d3f4e-1b6a-4f7c-9c2e-0d5a6b7c8d9e');
-    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha.' });
+    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha' });
     await expect(alpha).toBeVisible();
     await alpha.getByRole('button', { name: 'Continue' }).click();
     await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
@@ -63,7 +63,7 @@ test.describe('first-use Help', () => {
   test('reading the guide from the first steps counts as the offer @smoke', async ({ page }) => {
     await page.goto('./#/library');
     await page
-      .getByRole('alertdialog', { name: 'Monosai is in alpha.' })
+      .getByRole('alertdialog', { name: 'Monosai is in alpha' })
       .getByRole('button', { name: 'Continue' })
       .click();
     await page
@@ -79,7 +79,7 @@ test.describe('first-use Help', () => {
 
   test('opens the full guide and persists the choice @smoke', async ({ page }) => {
     await page.goto('./#/settings');
-    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha.' });
+    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha' });
     await expect(alpha).toBeVisible();
     await alpha.getByRole('button', { name: 'Continue' }).click();
     await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
@@ -93,7 +93,7 @@ test.describe('first-use Help', () => {
 test.describe('Help and utility bar', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('./#/help');
-    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha.' });
+    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha' });
     await expect(alpha).toBeVisible();
     await alpha.getByRole('button', { name: 'Continue' }).click();
     await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);

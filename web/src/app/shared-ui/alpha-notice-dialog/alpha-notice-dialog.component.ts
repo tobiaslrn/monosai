@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import { DIALOG_DATA } from '@angular/cdk/dialog';
+import { AppMarkComponent } from '../app-mark/app-mark.component';
 import { ButtonDirective } from '../button/button';
 import { DialogComponent } from '../dialog/dialog';
 import { NoticeComponent } from '../notice/notice.component';
@@ -12,9 +13,10 @@ export interface AlphaNoticeDialogData {
 @Component({
   selector: 'mn-alpha-notice-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonDirective, DialogComponent, NoticeComponent],
+  imports: [AppMarkComponent, ButtonDirective, DialogComponent, NoticeComponent],
   template: `
-    <mn-dialog kind="confirm" heading="Monosai is in alpha." headingId="mn-alpha-title">
+    <mn-dialog kind="confirm" heading="Monosai is in alpha" headingId="mn-alpha-title">
+      <mn-app-mark mn-dialog-mark [alpha]="true" />
       <p id="mn-alpha-message">
         It is still being built, so you may encounter bugs, missing features, or changes.
       </p>

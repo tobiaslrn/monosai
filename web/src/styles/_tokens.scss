@@ -241,6 +241,8 @@
    *
    * overlay-surface     its fill: the floating surface, a step above a card in both
    *                     themes
+   * mark-ground         what the app mark's release label is knocked out against: the
+   *                     canvas, or the overlay's surface inside one
    * overlay-edge        its border colour
    * overlay-radius      its corners where it floats, smaller than a card's; docked
    *                     to a phone's bottom edge it takes the sheet radius on top
@@ -268,6 +270,7 @@
    * menu-max-width      the widest a menu of commands is drawn
    */
   --overlay-surface: var(--surface-floating);
+  --mark-ground: var(--surface-canvas);
   --overlay-edge: var(--border-subtle);
   --overlay-radius: var(--radius-control);
   --overlay-shadow: var(--shadow-overlay);

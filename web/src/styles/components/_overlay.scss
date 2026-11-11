@@ -30,6 +30,8 @@
   overflow: hidden;
   border: 1px solid var(--overlay-edge);
   border-radius: var(--overlay-radius);
+  --mark-ground: var(--overlay-surface);
+
   background: var(--overlay-surface);
   color: var(--text-primary);
   box-shadow: var(--overlay-shadow);
@@ -74,6 +76,16 @@
 .mn-overlay > mn-sheet-handle {
   flex: none;
   margin-block-end: calc(-1 * var(--stack-gap));
+}
+
+/* A mark that leads the dialog, above its title, on the title's inset. */
+.mn-overlay__mark {
+  flex: none;
+  padding-inline: var(--overlay-inset);
+}
+
+.mn-overlay__mark:empty {
+  display: none;
 }
 
 .mn-overlay__pinned {
