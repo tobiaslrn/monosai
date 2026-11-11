@@ -42,12 +42,7 @@
   box-shadow: var(--state-layer-fill);
 }
 
-/*
- * An overview row states a title and a compact current value first, then gives
- * its supporting sentence the remaining line. This keeps the sentence from
- * being squeezed into a narrow strip beside the value on small screens.
- */
-.mn-list-row--overview .mn-list-row__link {
+.mn-list-row__link {
   display: grid;
   grid-template-columns: auto minmax(min-content, 1fr) auto;
   grid-template-rows: auto auto;
@@ -251,8 +246,7 @@
 
 /*
  * Large text leaves no room beside a title, so a word is never broken to fit:
- * the badge takes its own line and the title the full width under it. An
- * overview row's value also drops to a line of its own, under the title.
+ * the badge takes its own line and the title the full width under it.
  */
 .mn-list-row {
   container-type: inline-size;
@@ -266,28 +260,5 @@
   .mn-list-row__leading {
     flex: 0 0 100%;
     justify-content: flex-start;
-  }
-
-  .mn-list-row--overview .mn-list-row__link:has(.mn-status-pill) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .mn-list-row--overview
-    .mn-list-row__link:has(.mn-status-pill)
-    :is(.mn-list-row__leading, .mn-list-row__title, .mn-list-row__trailing, .mn-list-row__meta) {
-    grid-column: 1;
-  }
-
-  .mn-list-row--overview .mn-list-row__link:has(.mn-status-pill) .mn-list-row__title {
-    grid-row: 2;
-  }
-
-  .mn-list-row--overview .mn-list-row__link:has(.mn-status-pill) .mn-list-row__trailing {
-    grid-row: 3;
-    justify-self: start;
-  }
-
-  .mn-list-row--overview .mn-list-row__link:has(.mn-status-pill) .mn-list-row__meta {
-    grid-row: 4;
   }
 }

@@ -145,7 +145,7 @@ describe('ReadingLevelPageComponent', () => {
     const { element } = await render();
 
     expect(element.querySelector('mn-preset-picker')).toBeNull();
-    expect(element.querySelector('.mn-list-row--overview')).not.toBeNull();
+    expect(element.querySelector('mn-list-row')).not.toBeNull();
     expect(element.querySelector('[data-testid="reading-level-link"]')?.getAttribute('href')).toBe(
       '/reading-level/level',
     );
