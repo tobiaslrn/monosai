@@ -97,12 +97,18 @@ let nextChecklistId = 0;
       align-items: center;
       padding: var(--row-inset-block) var(--surface-inset);
       border-top: 1px solid var(--border-subtle);
+      text-wrap: balance;
     }
 
+    /*
+     * Side by side where both fit. Where they do not, they stack on one edge:
+     * the guide link already carries a touch target's height of its own, so
+     * the rows add no gap on top of it.
+     */
     mn-checklist > .mn-checklist__foot {
       display: flex;
       flex-wrap: wrap;
-      gap: var(--space-1) var(--stack-gap);
+      gap: 0 var(--stack-gap);
       align-items: center;
       justify-content: space-between;
       padding: var(--row-inset-block) var(--surface-inset);
@@ -270,6 +276,7 @@ export class ChecklistComponent {
     }
 
     mn-checklist-step .mn-checklist-step__detail {
+      text-wrap: balance;
       color: var(--text-secondary);
       font-size: var(--text-sm);
       line-height: var(--leading-snug);
