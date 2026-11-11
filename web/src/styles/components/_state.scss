@@ -32,9 +32,19 @@
   @include motion.enter;
 }
 
+/*
+ * The mark and the title share the first line; everything under them — the
+ * sentences and the actions — starts at the card's padding edge, so the card
+ * has one left edge below its heading.
+ */
 .mn-state > :not(.mn-state__mark) {
-  grid-column: 2;
+  grid-column: 1 / -1;
   margin: 0;
+}
+
+.mn-state > .mn-state__title {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .mn-state__mark {
@@ -75,11 +85,6 @@
   gap: var(--inline-gap);
   align-items: center;
   padding-block-start: var(--group-gap);
-}
-
-/* The actions run the card's full content width, from padding edge to padding edge. */
-.mn-state > .mn-state__actions {
-  grid-column: 1 / -1;
 }
 
 .mn-state__actions > mn-cluster {

@@ -1516,8 +1516,9 @@ sentence on what happened, one on what is safe or what to do, and the actions
 with the primary first. Nothing about it changes between screens but its words.
 
 An empty surface offers its primary action and explains what would fill it. The
-actions run the card's full content width, from padding edge to padding edge,
-under the mark and the words, on every state. An
+mark and the title share the first line; the sentences and the actions start at
+the card's padding edge and run its full content width, so the card has one left
+edge below its heading, on every state. An
 error surface states what failed, what is unaffected, and the one action worth
 taking — retry only where retrying could plausibly succeed unchanged. Where its
 sentence names a place to fix it — Settings — that place is one of its actions.
