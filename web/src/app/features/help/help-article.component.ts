@@ -29,11 +29,11 @@ import { adjacentHelpTopics, HELP_TOPICS } from './help-topics';
       <mn-page-header [heading]="topic().title" backTo="/help" backLabel="Back to Help" />
       <mn-prose [measure]="true">
         <ng-content />
+        <mn-pager label="More topics" [previous]="previous()" [next]="next()" />
+        <mn-cluster>
+          <a mnButton="ghost" edge="start" routerLink="/help">All topics</a>
+        </mn-cluster>
       </mn-prose>
-      <mn-pager label="More topics" [previous]="previous()" [next]="next()" />
-      <mn-cluster>
-        <a mnButton="ghost" edge="start" routerLink="/help">All topics</a>
-      </mn-cluster>
     </mn-page>
   `,
 })

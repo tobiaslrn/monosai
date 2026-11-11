@@ -17,10 +17,10 @@ export interface PagerLink {
  *   <mn-pager label="More topics" [previous]="{ title: 'Your words', link: [...] }" [next]="…" />
  *
  * Both cards share one anatomy: a small eyebrow naming the direction, then the
- * title, with the arrow on the outer side (before the text for Previous, after
- * it for Next). Their text starts at the same inset, because each reserves the
- * arrow's place on both sides. Side by side each takes half of the row; a row
- * too narrow for two titles stacks them, Previous first.
+ * title, with the arrow on the outer side: Previous reads left to right after its
+ * arrow, Next is right-aligned and ends in its arrow. Side by side each takes half
+ * of the row and a lone Next keeps the right half; a row too narrow for two
+ * titles stacks them, Previous first, each at full width.
  *
  * Styles reach the projected links, so they are global and rooted at the element.
  */
@@ -83,23 +83,18 @@ export interface PagerLink {
       @include motion.state(box-shadow);
     }
 
-    /* Previous: the arrow, then the text; Next: the text at the same inset, then its arrow. */
+    /* Previous: the arrow, then its text; Next: its text, right-aligned, then the arrow. */
     mn-pager .mn-pager__card:not(.mn-pager__card--next) {
       grid-template-columns: var(--icon-control) minmax(0, 1fr);
     }
 
     mn-pager .mn-pager__card--next {
-      grid-template-columns: var(--icon-control) minmax(0, 1fr) var(--icon-control);
+      grid-template-columns: minmax(0, 1fr) var(--icon-control);
+      text-align: end;
     }
 
     mn-pager .mn-pager__card--next > .mn-pager__text {
-      grid-column: 2;
-      grid-row: 1;
-    }
-
-    mn-pager .mn-pager__card--next > .mn-pager__arrow {
-      grid-column: 3;
-      grid-row: 1;
+      align-items: flex-end;
     }
 
     :where(html[data-pointer='mouse']) mn-pager .mn-pager__card:where(:hover),
