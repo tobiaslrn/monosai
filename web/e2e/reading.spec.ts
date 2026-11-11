@@ -170,22 +170,21 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(steps.getByRole('link', { name: /Write your first story/ })).toHaveCount(0);
     await expect(steps.getByRole('link', { name: /paste Japanese text/i })).toBeVisible();
     // Nothing can be written yet, so the steps are the way in, not Create.
-    await expect(page.getByRole('button', { name: 'Create a new story' })).toHaveCount(0);
+    await expect(page.getByRole('group', { name: 'New story' })).toHaveCount(0);
   });
 
-  test('New story offers both ways in, and Paste text reaches the reader', async ({ page }) => {
+  test('The shelf offers both ways in, and Paste reaches the reader', async ({ page }) => {
     // New story appears once the shelf has something on it; a first visit
     // offers its two starting paths as cards instead. A different text, because
     // re-importing the same one is not a second reading.
     await importReading(page, '空が青いです。風が気持ちいいです。');
     await page.goto('./#/library');
 
-    await page.getByRole('button', { name: 'Create a new story' }).click();
-    const chooser = page.getByRole('dialog', { name: 'New story' });
-    await expect(chooser.getByRole('link', { name: 'Paste text' })).toBeVisible();
-    await expect(chooser.getByRole('link', { name: 'Write with AI' })).toBeVisible();
+    const ways = page.getByRole('group', { name: 'New story' });
+    await expect(ways.getByRole('link', { name: 'Write with AI' })).toBeVisible();
+    await expect(ways.getByRole('link', { name: 'Paste a Japanese text' })).toBeVisible();
 
-    await chooser.getByRole('link', { name: 'Paste text' }).click();
+    await ways.getByRole('link', { name: 'Paste a Japanese text' }).click();
     await expect(page).toHaveURL(/#\/add/);
 
     await pasteAndContinue(page, SAMPLE_TEXT);
@@ -1482,7 +1481,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
   });
 
   /** A compact row identifies the reading without repeating its contents. */
-  test('a dated library row shows the title and character count without a preview', async ({
+  test('a dated library row shows the title, the opening line and the character count', async ({
     page,
   }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
@@ -1492,7 +1491,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await expect(card).toContainText('第一章');
     await expect(page.getByRole('heading', { name: 'Today', level: 2 })).toBeVisible();
     await expect(card).toContainText(/\d+ characters/);
-    await expect(card).not.toContainText('吾輩は猫である');
+    await expect(card.locator('[mn-list-row-excerpt]')).toContainText('吾輩は猫である');
     await expect(card).not.toContainText('sentences');
     await expect(card).not.toContainText('none yet');
     await expect(card).not.toContainText('Last opened');

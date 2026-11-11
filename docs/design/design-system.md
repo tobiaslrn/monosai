@@ -123,8 +123,9 @@ then the application's utilities in a labelled navigation landmark — Help and
 Settings. The wordmark is decoration; the bar's heading still names the page
 "Library" for assistive technology. Every other page is reached
 from the Library and leads back to it, so the utilities live there and nowhere
-else. The shelf's own Create button is the one way to start a story; the bar does
-not repeat it once it has scrolled away. Help carries a
+else. The shelf's own two ways in — Write with AI and Paste, side by side — are
+the one way to start a story; the bar does not repeat them once they have
+scrolled away. Help carries a
 labelled GitHub link at the end of its own bar, because Help is where a learner
 looks for where the application comes from, and no icon reads as GitHub rather
 than as a branch.
@@ -162,14 +163,21 @@ The crop follows the illustration's arch and low foreground, preserving the
 whole reading character and books. The asset is cropped to the drawing itself,
 so the hero's frame is the picture rather than the empty space around it and
 the distance to the bar above is the page rail and nothing else. Its
-proportions stay fixed as the column changes width. Once the shelf holds a story the hero steps down to a compact
-size, so the stories come up the screen; only its size changes, never its crop.
+proportions stay fixed as the column changes width. Once the shelf holds a story, or a story could be written, the hero steps down to
+a standing line: the illustration at its own smaller size token and the
+headline at the page-title size (the section size on a phone), so it takes two
+lines at most and never dominates the shelf; only sizes change, never the crop.
+The display headline belongs to a shelf still waiting on its setup. The standing
+line holds its two lines of room while its facts are read, so nothing below moves.
 The home headline is tightly set beside it, centred on the
 illustration's own axis so the two read as one composition rather than a
 sentence hanging from the top edge. It is stated whole, once every fact in it
-has been read; it never states one clause and appends the next. The creation
-action spans the column; filter pills share the available width on phones and
-stay compact on desktop.
+has been read; it never states one clause and appends the next. The two ways in
+share one row across the column — writing with AI is the main way: the filled
+primary, three parts of the row to the paste action's one, the plain secondary — and
+stack, writing first, only where two no longer fit side by side without cutting a
+label; there is no menu behind a button. Filter pills share the available
+width on phones and stay compact on desktop.
 Home's primary action uses the shared primary action colour; each palette shows
 its own illustration unfiltered, as drawn.
 
@@ -362,7 +370,7 @@ the way to build:
 | Fields           | `mn-field` (label, hint, and error around a control), `openFieldDialog` (one typed value in Settings, in a task dialog), `mn-secret-field` (a masked field with Show, in a dialog only), `mn-range-field` (the one slider row, or a range with two thumbs), `mn-search-field`, `mn-count` for a character count                                                                                                                                         |
 | Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                                                                                                                                              |
 | Status           | `mn-status-line` (a group's one line under its card), `mn-checklist` with `mn-checklist-step` for first steps, `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
-| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen` and `mn-not-found-panel` on the one whole-page state                                                                                                                                                                                                                                                             |
+| Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen`, `mn-not-found-panel` and `mn-empty-state` on the one whole-page state                                                                                                                                                                                                                                                             |
 | Overlays         | `mn-menu` (a menu), `mn-dropdown` (the list a select drops), the searchable model picker (`openModelPicker`, on the task-dialog frame), `mn-sheet-popover` with `mnOverlayTrigger` (a popover-held task dialog: Add words, Story options), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                                 |
 | Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                                                                                                                                                           |
 | Glyphs           | `mn-icon`                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -425,7 +433,8 @@ something up, not when it was filed, and something never opened says so rather
 than substituting the other date.
 
 Rows on one shelf are the same height, and a row standing in for work still
-running matches the row it will become.
+running is the same row it will become: the same surface and anatomy, its status
+leading its one line of facts so the title keeps the full width.
 
 The vocabulary sources are one card of such rows, where the count joins the
 line saying what is inside rather than sitting opposite the name, because a
@@ -470,15 +479,20 @@ change that fact.
 The home Library is a compact shelf exception: each date group is one
 `mn-list-group`, one pair of card edges with a hairline between its rows. A
 generated or imported story uses its origin icon inside `.mn-icon-badge`; an
-empty decorative circle is not used. The row carries a system-sans title and one
-visible line of metadata — the character count and the story's shape (its length,
-or how it was imported), with an audio glyph when audio exists — and, opposite,
-an Unread badge on a story never opened, then the overflow. Only what is still
-new is marked: a Read badge on every opened row was the same word down the whole
-shelf. The origin is already the icon and opened-or-not is already the badge's
-presence, so neither is repeated in the visible line; both, with the last-opened
-day, remain accessible metadata. Opened is not completed. Premises and filenames
-do not replace the character count here.
+empty decorative circle is not used. The row carries a system-sans title, one
+quiet line holding the opening of the text (Japanese, cut with an ellipsis, on the
+title's edge) and one visible line of metadata — the character count and, for a
+generated story, its length, with an audio glyph when audio exists — and, opposite,
+a neutral Unread pill on a story never opened, then the overflow. Only what is
+still new is marked: a Read badge on every opened row was the same word down the
+whole shelf. The origin is already the icon and opened-or-not is already the
+pill's presence, so neither is repeated in the visible line; both, with the
+last-opened day, remain accessible metadata. Opened is not completed. Premises and
+filenames do not replace the opening line here.
+
+A shelf with nothing on it uses the shared empty surface: a short title, one
+sentence on what would fill it, and the two ways in inside it, split the same
+way, so they are not offered twice.
 
 ## 3. Controls
 
@@ -784,8 +798,8 @@ wears the selection tint, the same one a pressed toggle wears. Every checkbox an
 (`--control-check-size`), so a choice does not change how large its control is
 between screens. What an option was built from is a row of status
 pills: a value the learner chose is a plain pill, a value code chose is the
-dashed pill, and an event code chose is the accent pill named as such to
-assistive technology. An option the learner changed says Edited. Only the picked
+dashed pill, and an event code chose is a plain pill led by a turn glyph and its
+visible word, so colour never tells it apart. An option the learner changed says Edited. Only the picked
 option offers Edit, a ghost action that turns its text into a field and becomes
 Done. A Regenerate in the card heading rewrites every option the learner has not
 edited; an edited option is the learner's text and is never replaced.
@@ -1349,10 +1363,10 @@ Four exceptions:
   no setup sits beside them, visibly secondary; the guide and the one promise a
   stranger needs — nothing leaves the device — are the card's foot, so the
   page-top offer of the guide is not shown beside it. While the card is there,
-  the shelf's Create button is not: two ways in with no order is what the card
+  the shelf's two ways in are not: two ways in with no order is what the card
   replaced. It ends, like any empty state, the moment there is a story — or
-  once a story could be written, when Create is the primary action again and
-  the empty shelf says in one line what will fill it.
+  once a story could be written, when the two ways in are the primary action again
+  and the empty shelf says what will fill it.
 - **Release-stage disclosure.** A new alpha installation may require one short
   acknowledgment before use. This is a product disclosure rather than Help;
   it is persisted locally and is not shown again after acknowledgment.
@@ -1421,7 +1435,8 @@ The lavender accent is not a status colour: a setup step drawn in it read as a
 decoration rather than as what stands in the way. A short word that
 says where something stands — Ready, Unread, Test failed, a word's form — is a
 **status pill**, which is never pressable and so never takes the action colour.
-Pills are for shelves and plots; settings rows show status as text (see Status
+Pills are for shelves and plots, plain unless they say success, warning or
+danger — the lavender accent is never a pill; settings rows show status as text (see Status
 is a line, not a chip).
 Its dashed variant marks a value code chose rather than the learner; the dash,
 not a colour, is what says so.
@@ -1473,9 +1488,8 @@ analysis, which have no shape to promise in advance.
 **Work the learner walked away from keeps a row where its result will appear.**
 A story being written is a Library row of the same shape and height as the
 story it will become, so the shelf is laid out identically before, during, and
-after. The row is muted — secondary text on the sunken surface — and states in
-words both that it is not a story yet and which stage it is in; the muting is
-never the only thing saying so. It leads back to the screen that shows the run
+after. The row is a story row and states in words, leading its line, both that it
+is not a story yet and which stage it is in. It leads back to the screen that shows the run
 in full. A run that stopped without producing anything keeps its row, marked as
 needing attention, until the learner dismisses it: work they were not watching
 when it failed is not allowed to disappear.

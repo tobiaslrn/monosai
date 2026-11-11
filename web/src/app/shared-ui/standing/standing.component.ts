@@ -21,6 +21,9 @@ import { RouterLink, type NavigationExtras } from '@angular/router';
  * breakable on a narrow screen, so the mark fragmented across lines instead of
  * pointing anywhere.
  *
+ * `compact` is the standing line of a shelf in use: the same sentence at the
+ * page-title size, so it takes two lines at most on a phone.
+ *
  * Without a `link` it is the same headline as plain words: what Monosai is for,
  * on a first visit, has no page behind it.
  *
@@ -31,6 +34,7 @@ import { RouterLink, type NavigationExtras } from '@angular/router';
   selector: 'mn-standing',
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
+  host: { '[class.is-compact]': 'compact()' },
   imports: [NgTemplateOutlet, RouterLink],
   template: `
     <ng-template #lines>
@@ -108,9 +112,30 @@ import { RouterLink, type NavigationExtras } from '@angular/router';
       display: none;
     }
 
+    /*
+     * Once the shelf is in use the headline is a standing line, not an
+     * invitation: the page-title size, with its two lines of room held while
+     * the facts are read so nothing below moves when they arrive.
+     */
+    mn-standing.is-compact .mn-standing__headline {
+      font-size: var(--text-page-title);
+      letter-spacing: -0.02em;
+      line-height: var(--leading-snug);
+    }
+
+    mn-standing.is-compact .mn-standing__headline:empty {
+      display: flex;
+      min-block-size: 2lh;
+    }
+
     @media (max-width: breakpoints.$narrow-max) {
       mn-standing .mn-standing__headline {
         font-size: var(--text-2xl);
+      }
+
+      /* Two lines beside the small illustration on a phone, and no more. */
+      mn-standing.is-compact .mn-standing__headline {
+        font-size: var(--text-xl);
       }
     }
   `,
@@ -122,4 +147,6 @@ export class StandingComponent {
   readonly state = input<NavigationExtras['state']>(undefined);
   /** For durable tests: on the link. */
   readonly testId = input<string | null>(null);
+  /** The shelf is in use: the headline steps down from display to the page-title size. */
+  readonly compact = input(false);
 }

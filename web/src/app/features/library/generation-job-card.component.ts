@@ -10,33 +10,24 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
  * One library row for a story that is still being written, or one that stopped
  * without producing anything.
  *
- * It is deliberately the same shape and height as a reading row, so the shelf
- * is laid out identically before, during, and after a generation and nothing
- * jumps when the story lands. The row is quiet rather than empty: it names the
- * stage the run is actually in, because a bar or a spinner would promise
- * progress the pipeline cannot measure.
+ * It is a reading row: the same anatomy, surface and height, so the shelf is
+ * laid out identically before, during, and after a generation and nothing
+ * jumps when the story lands. Its status and the stage the run is actually in
+ * are its one line, because a bar or a spinner would promise progress the
+ * pipeline cannot measure, and the title keeps the row's full width.
  */
 @Component({
   selector: 'mn-generation-job-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ButtonDirective, IconComponent, ListRowComponent],
   template: `
-    <mn-list-row
-      variant="muted"
-      [class.needs-attention]="needsAttention()"
-      [routerLink]="['/generate', job().id]"
-      [state]="libraryOriginState"
-    >
+    <mn-list-row [routerLink]="['/generate', job().id]" [state]="libraryOriginState">
       <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-        <mn-icon name="generate" [size]="18" />
+        <mn-icon name="generate" />
       </span>
       <span mn-list-row-title>{{ title() }}</span>
-      <span mn-list-row-meta>{{ stageLabel() }}</span>
-      <span mn-list-row-trailing>
-        <span class="mn-status-pill" [class.mn-status-pill--danger]="needsAttention()">
-          {{ stateLabel() }}
-        </span>
-      </span>
+      <!-- The status leads the line, so it survives a long stage. -->
+      <span mn-list-row-meta>{{ stateLabel() }} · {{ stageLabel() }}</span>
       <span mn-list-row-menu>
         <button
           mnButton="icon"
@@ -45,7 +36,7 @@ import { generationWaitCopy } from '../generate/generation-wait.component';
           [attr.aria-label]="dismissLabel()"
           (click)="dismissRequested.emit(job())"
         >
-          <mn-icon name="close" [size]="20" />
+          <mn-icon name="close" />
         </button>
       </span>
     </mn-list-row>
@@ -68,7 +59,7 @@ export class GenerationJobCardComponent {
   protected readonly needsAttention = computed(() => !this.job().store.isBusy());
 
   protected readonly stateLabel = computed(() =>
-    this.needsAttention() ? 'Needs attention' : 'Being written',
+    this.needsAttention() ? 'Needs attention' : 'Writing…',
   );
 
   /** Names what the control does now, since it stops a run or clears a result. */

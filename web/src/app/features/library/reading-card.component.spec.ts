@@ -106,10 +106,25 @@ describe('ReadingCardComponent', () => {
   it('names how long a reading is in the words the screen that made it uses', () => {
     expect(textOf(generated({ form: 'micro' }), '[mn-list-row-meta]')).toContain('Micro');
     expect(textOf(generated({ form: 'long' }), '[mn-list-row-meta]')).toContain('Long');
-    expect(textOf(imported(), '[mn-list-row-meta]')).toContain('Pasted');
-    expect(textOf(imported({ importSource: 'text-file' }), '[mn-list-row-meta]')).toContain(
+  });
+
+  it('does not repeat how an import came in beside its length: the icon says it', () => {
+    const meta = textOf(imported(), '[mn-list-row-meta]');
+    expect(meta).not.toContain('Pasted');
+    expect(meta).not.toContain('·');
+    expect(meta).toContain('Imported');
+    expect(textOf(imported({ importSource: 'text-file' }), '[mn-list-row-meta]')).not.toContain(
       'Text file',
     );
+  });
+
+  it('shows the opening of the text as one quiet line in Japanese', () => {
+    const line = render(imported({ excerpt: '吾輩は猫である。名前はまだ無い。' })).querySelector(
+      '[mn-list-row-excerpt]',
+    );
+    expect(line?.textContent).toBe('吾輩は猫である。名前はまだ無い。');
+    expect(line?.getAttribute('lang')).toBe('ja');
+    expect(render(imported({ excerpt: '' })).querySelector('[mn-list-row-excerpt]')).toBeNull();
   });
 
   /** When you last picked something up, not when it was filed. */

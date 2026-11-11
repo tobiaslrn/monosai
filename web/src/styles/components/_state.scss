@@ -77,6 +77,10 @@
   padding-block-start: var(--group-gap);
 }
 
+.mn-state__actions > mn-cluster {
+  flex: 1 1 100%;
+}
+
 .mn-state__actions:empty {
   display: none;
 }

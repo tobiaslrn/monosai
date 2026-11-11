@@ -26,7 +26,8 @@ describe('GenerationJobCardComponent', () => {
     expect(page.querySelector('[mn-list-row-title]')?.textContent.trim()).toBe(
       'A cat visits the market',
     );
-    expect(page.querySelector('[mn-list-row-trailing]')?.textContent).toContain('Being written');
+    expect(page.querySelector('[mn-list-row-trailing]')).toBeNull();
+    expect(page.querySelector('[mn-list-row-meta]')?.textContent).toContain('Writing…');
     expect(page.querySelector('[mn-list-row-meta]')?.textContent).toContain(
       'Reviewing 2 unfamiliar words',
     );
@@ -48,9 +49,11 @@ describe('GenerationJobCardComponent', () => {
       }),
     ).nativeElement as HTMLElement;
 
-    expect(page.querySelector('[mn-list-row-trailing]')?.textContent).toContain('Needs attention');
-    expect(page.querySelector('[mn-list-row-meta]')?.textContent).toContain('Generation stopped');
-    expect(page.querySelector('mn-list-row')?.classList.contains('needs-attention')).toBe(true);
+    const meta = page.querySelector('[mn-list-row-meta]')?.textContent ?? '';
+    expect(meta).toContain('Needs attention');
+    expect(meta).toContain('Generation stopped');
+    // The status leads the line, so a long stage cannot push it out of view.
+    expect(meta.indexOf('Needs attention')).toBeLessThan(meta.indexOf('Generation stopped'));
   });
 
   it('names what its one control does now', () => {

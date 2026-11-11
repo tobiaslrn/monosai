@@ -188,6 +188,14 @@
   --line-gap: 0.125rem;
   --heading-row: 1.75rem;
   /*
+   * hero-art         the widest the home illustration is drawn beside the
+   *                  invitation of a library still empty
+   * hero-art-standing the same drawing once the shelf is in use, so the stories
+   *                  come up the screen and the standing line stays short
+   */
+  --hero-art: 16rem;
+  --hero-art-standing: 6rem;
+  /*
    * inline-gap       between things side by side in one row: buttons, chips, a
    *                  field and its button
    * glyph-gap        between a row's leading glyph and its words
@@ -210,6 +218,9 @@
   --control-width: 12rem;
   --button-inset: var(--space-4);
   --block-inset: var(--space-3);
+  /* The narrowest a main and a side action may be in a split row, so neither label is cut. */
+  --split-main-min: 10rem;
+  --split-side-min: 7rem;
 
   /*
    * Overlays. Every floating surface — a menu, a picker, a task dialog, a

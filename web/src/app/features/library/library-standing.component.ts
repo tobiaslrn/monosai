@@ -58,6 +58,7 @@ type StandingHeadline =
         fragment="words"
         [state]="libraryOriginState"
         testId="library-standing"
+        [compact]="compact()"
       >
         @if (headline(); as line) {
           @switch (line.kind) {
@@ -91,6 +92,8 @@ export class LibraryStandingComponent {
    * Monosai instead of stating a standing of nothing.
    */
   readonly firstVisit = input(false);
+  /** The shelf is in use: the line is a standing line, not the opening invitation. */
+  readonly compact = input(false);
 
   protected readonly libraryOriginState = navigationOriginState('/library');
   private readonly vocabulary = inject(VocabularyAvailabilityStore);

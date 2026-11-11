@@ -97,6 +97,8 @@ export type ClusterJustify = 'start' | 'end' | 'between';
  * narrower than the wide layout, such as a set of filters a thumb has to hit.
  * `fill="first"` gives the first item what the rest leave, on one line: a
  * text field and the button that submits it.
+ * `fill="split"` gives a main action three parts of the row and a side action
+ * one, and stacks them, main first, when they no longer fit side by side.
  * That reaches the projected items, so the styles are global, rooted at the
  * element.
  */
@@ -111,6 +113,7 @@ export type ClusterJustify = 'start' | 'end' | 'between';
     '[class.cluster--between]': "justify() === 'between'",
     '[class.cluster--fill-narrow]': "fill() === 'narrow'",
     '[class.cluster--fill-first]': "fill() === 'first'",
+    '[class.cluster--fill-split]': "fill() === 'split'",
   },
   template: `<ng-content />`,
   styles: `
@@ -146,6 +149,19 @@ export type ClusterJustify = 'start' | 'end' | 'between';
       flex: 1;
       min-width: 0;
     }
+    /*
+     * A main action and a side one on one row, the main taking three parts to
+     * the side's one. Neither is narrower than its words, so a label is never
+     * cut: where both no longer fit they stack, the main one first, each full width.
+     */
+    mn-cluster.cluster--fill-split > :first-child {
+      flex: 3 1 0;
+      min-width: var(--split-main-min);
+    }
+    mn-cluster.cluster--fill-split > :last-child {
+      flex: 1 1 0;
+      min-width: var(--split-side-min);
+    }
     @media (max-width: breakpoints.$wide-max) {
       /* Equal columns, so every item is the same width whatever its label. */
       mn-cluster.cluster--fill-narrow {
@@ -159,7 +175,7 @@ export class ClusterComponent {
   /** Omitted, the inline gap every row of side-by-side things shares. */
   readonly gap = input<Space | null>(null);
   readonly justify = input<ClusterJustify>('start');
-  readonly fill = input<'none' | 'narrow' | 'first'>('none');
+  readonly fill = input<'none' | 'narrow' | 'first' | 'split'>('none');
   protected readonly gapValue = computed(() => {
     const step = this.gap();
     return step === null ? null : spaceToken(step);

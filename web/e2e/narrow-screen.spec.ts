@@ -101,6 +101,9 @@ async function brokenText(page: Page, zoom: number): Promise<string[]> {
       const top = Math.min(...rects.map((rect) => rect.top));
       const bottom = Math.max(...rects.map((rect) => rect.bottom));
       const where = label(host, text);
+      // Deliberate: a story's one-line opening ends in an ellipsis at any text size; the
+      // story itself, in full, is one tap away.
+      if (host.closest('.mn-list-row__excerpt') !== null) continue;
 
       // Deliberate: a model name or value ends in an ellipsis at normal text size.
       const ellipsised = percent === 100 && getComputedStyle(host).textOverflow === 'ellipsis';

@@ -53,7 +53,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
      * taller of the two and the page's gap is the only space around it.
      */
     :host {
-      --hero-art-max: 16rem;
+      --hero-art-max: var(--hero-art);
 
       display: grid;
       grid-template-columns: minmax(0, 1fr) min(45%, var(--hero-art-max));
@@ -62,7 +62,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
     }
 
     :host(.is-compact) {
-      --hero-art-max: 9rem;
+      --hero-art-max: var(--hero-art-standing);
     }
 
     .hero-text {

@@ -209,8 +209,8 @@ describe('LibraryPageComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  function newReadingButton(fixture: Awaited<ReturnType<typeof render>>): HTMLButtonElement | null {
-    return element(fixture).querySelector<HTMLButtonElement>('[data-testid="new-story"]');
+  function newReadingButton(fixture: Awaited<ReturnType<typeof render>>): HTMLElement | null {
+    return element(fixture).querySelector<HTMLElement>('[data-testid="new-story"]');
   }
 
   /** Enough readings that the filter chips are worth showing. */
@@ -301,17 +301,38 @@ describe('LibraryPageComponent', () => {
     ).toEqual(['assets/home-reader.png', 'assets/home-reader-dark.png']);
   });
 
-  it('offers both ways in from the one New story button', async () => {
+  it('offers both ways in side by side, writing first, without a menu', async () => {
     repository.readings = [reading('a', 'imported', 1_000)];
     const fixture = await render();
 
-    newReadingButton(fixture)?.click();
-    await settle(fixture);
+    const links = [...(newReadingButton(fixture)?.querySelectorAll('a') ?? [])];
+    expect(links.map((link) => link.textContent.trim())).toEqual(['Write with AI', 'Paste']);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/generate', '/add']);
+    expect(links[1]?.getAttribute('aria-label')).toBe('Paste a Japanese text');
+    expect(links[0]?.classList.contains('mn-button--primary')).toBe(true);
+    expect(links[1]?.classList.contains('mn-button--primary')).toBe(false);
+    expect(element(fixture).querySelector('mn-menu[aria-label="New story"]')).toBeNull();
+  });
 
-    const menu = document.querySelector('mn-menu[aria-label="New story"]');
-    const links = [...(menu?.querySelectorAll('a') ?? [])];
-    expect(links.map((link) => link.textContent.trim())).toEqual(['Paste text', 'Write with AI']);
-    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/add', '/generate']);
+  it('puts the two ways in inside the empty shelf, once, instead of beside it', async () => {
+    setup.complete.set(true);
+    const fixture = await render();
+
+    const empty = element(fixture).querySelector('[data-testid="empty-shelf"]');
+    expect(empty?.querySelector('h2')?.textContent).toBe('No stories yet');
+    expect(empty?.querySelector('[data-testid="new-story"]')).not.toBeNull();
+    expect(element(fixture).querySelectorAll('[data-testid="new-story"]')).toHaveLength(1);
+  });
+
+  it('keeps the display headline for a shelf still waiting on setup, and steps down after', async () => {
+    const waiting = await render();
+    expect(element(waiting).querySelector('mn-hero.is-compact')).toBeNull();
+    waiting.destroy();
+
+    setup.complete.set(true);
+    const ready = await render();
+    expect(element(ready).querySelector('mn-hero.is-compact')).not.toBeNull();
+    expect(element(ready).querySelector('mn-standing.is-compact')).not.toBeNull();
   });
 
   it('leaves shared destinations to the shell and keeps the standing line as the level door', async () => {
@@ -382,7 +403,7 @@ describe('LibraryPageComponent', () => {
     expect(
       [...element(fixture).querySelectorAll('mn-reading-card')].every((card) => {
         const text = card.textContent;
-        return text.includes('Pasted') && !text.includes('Micro');
+        return text.includes('Imported') && !text.includes('Micro');
       }),
     ).toBe(true);
     expect(
@@ -473,7 +494,7 @@ describe('LibraryPageComponent', () => {
     const row = element(fixture).querySelector('mn-reading-card');
 
     expect(row?.textContent).toContain('1 character');
-    expect(row?.textContent).toContain('Pasted');
+    expect(row?.textContent).toContain('Imported');
     expect(row?.textContent).toContain('Audio');
     expect(row?.querySelector('.excerpt')).toBeNull();
     expect(
@@ -725,7 +746,7 @@ describe('LibraryPageComponent', () => {
 
     const card = element(fixture).querySelector('mn-generation-job-card');
     expect(card?.textContent).toContain('A cat visits the market');
-    expect(card?.textContent).toContain('Being written');
+    expect(card?.textContent).toContain('Writing…');
     expect(card?.textContent).toContain('Generating your story');
     expect(card?.querySelector('a')?.getAttribute('href')).toBe('/generate/job-1');
     // Above the shelf, so starting one and leaving has a visible result.

@@ -74,7 +74,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
         [state]="libraryOriginState"
         data-testid="first-step-paste"
       >
-        <mn-icon name="add" [size]="18" />
+        <mn-icon name="add" />
         <span>Or paste Japanese text — no setup needed</span>
       </a>
 

@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
-import type { ImportSource, Reading, StoryForm } from '../../domain/reading/reading';
+import type { Reading, StoryForm } from '../../domain/reading/reading';
 import { formatCountOf, formatRelativeDay } from '../../domain/shared/locale';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import type { IconName } from '../../shared-ui/icon/icon-set';
@@ -30,13 +30,7 @@ const FORM_LABELS: Readonly<Record<StoryForm, string>> = {
   long: 'Long',
 };
 
-/** Where an imported reading came from. */
-const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
-  paste: 'Pasted',
-  'text-file': 'Text file',
-};
-
-/** A compact home row: title, character count, opened status, and actions. */
+/** A compact home row: title, opening line, character count, opened status, and actions. */
 @Component({
   selector: 'mn-reading-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -56,22 +50,31 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       [testId]="'reading-row'"
     >
       <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-        <mn-icon [name]="originIcon()" [size]="18" />
+        <mn-icon [name]="originIcon()" />
       </span>
       <span mn-list-row-title lang="ja">{{ reading().title }}</span>
       <!--
-        One visible line: size and shape. The origin is the leading icon and
-        opened-or-not is the status pill, so both are said here only to
-        assistive technology, together with when it was last read.
+        The opening of the text, so a row says what is in it. The title above
+        and the line below stay short; this is the one line that is Japanese.
+      -->
+      @if (reading().excerpt !== '') {
+        <span mn-list-row-excerpt lang="ja">{{ reading().excerpt }}</span>
+      }
+      <!--
+        One visible line: size, and a story's length. The origin is the leading
+        icon and opened-or-not is the status pill, so both are said here only
+        to assistive technology, together with when it was last read.
       -->
       <span mn-list-row-meta>
         <span>{{ characterLabel() }}</span>
-        <span aria-hidden="true">·</span>
-        <span>{{ shapeLabel() }}</span>
+        @if (shapeLabel(); as shape) {
+          <span aria-hidden="true">·</span>
+          <span>{{ shape }}</span>
+        }
         @if (hasAudio()) {
           <span aria-hidden="true">·</span>
           <mn-cluster [gap]="1" title="Audio">
-            <mn-icon name="audio" [size]="14" />
+            <mn-icon name="audio" [size]="16" />
             <span class="mn-visually-hidden">Audio</span>
           </mn-cluster>
         }
@@ -80,7 +83,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
       <!-- Only what is still new is marked; a pill on every opened row was noise. -->
       @if (reading().lastOpenedAt === null) {
         <span mn-list-row-trailing>
-          <span class="mn-status-pill mn-status-pill--accent">Unread</span>
+          <span class="mn-status-pill">Unread</span>
         </span>
       }
       <span mn-list-row-menu>
@@ -92,7 +95,7 @@ const IMPORT_LABELS: Readonly<Record<ImportSource, string>> = {
           [attr.aria-label]="'Actions for ' + reading().title"
           [attr.title]="'Actions for ' + reading().title"
         >
-          <mn-icon name="overflow" [size]="20" />
+          <mn-icon name="overflow" />
         </button>
         <mn-menu
           #actions="mnMenu"
@@ -134,12 +137,13 @@ export class ReadingCardComponent {
     this.reading().kind === 'generated' ? 'Generated' : 'Imported',
   );
 
-  /** How long the reading is, said the way the screen that made it says it. */
+  /**
+   * How long a generated story is, said the way the screen that made it says
+   * it. An import has no such length, and how it came in is the leading icon.
+   */
   protected readonly shapeLabel = computed(() => {
     const reading = this.reading();
-    return reading.kind === 'generated'
-      ? FORM_LABELS[reading.form]
-      : IMPORT_LABELS[reading.importSource];
+    return reading.kind === 'generated' ? FORM_LABELS[reading.form] : null;
   });
 
   /**

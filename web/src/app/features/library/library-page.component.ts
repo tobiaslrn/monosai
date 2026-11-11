@@ -9,10 +9,11 @@ import {
   effect,
   inject,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
 import { NavigationStart, Router, RouterLink } from '@angular/router';
-import { LibraryScrollMemoryService } from '../../core/routing/library-scroll-memory.service';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
+import { LibraryScrollMemoryService } from '../../core/routing/library-scroll-memory.service';
 import { LibraryStore } from '../../application/reading/library.store';
 import { SetupProgressStore } from '../../application/generation/setup-progress.store';
 import { HelpIntroService } from '../../core/layout/help-intro.service';
@@ -26,15 +27,11 @@ import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog
 import { openRenameDialog } from '../../shared-ui/rename-dialog/rename-dialog.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ButtonDirective } from '../../shared-ui/button/button';
+import { EmptyStateComponent } from '../../shared-ui/empty-state/empty-state.component';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { ShelfHeadingComponent } from '../../shared-ui/group/shelf-heading.component';
 import { HeroComponent } from '../../shared-ui/hero/hero.component';
 import { ClusterComponent, PageComponent } from '../../shared-ui/layout/layout';
-import {
-  MenuComponent,
-  MenuItemDirective,
-  MenuTriggerDirective,
-} from '../../shared-ui/menu/menu.component';
 import {
   GenerationJobsStore,
   type GenerationJob,
@@ -69,15 +66,14 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
   selector: 'mn-library-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NgTemplateOutlet,
     RouterLink,
     ButtonDirective,
+    EmptyStateComponent,
     ErrorScreenComponent,
     ClusterComponent,
     HeroComponent,
     IconComponent,
-    MenuComponent,
-    MenuItemDirective,
-    MenuTriggerDirective,
     PageComponent,
     PageHeaderComponent,
     ShelfHeadingComponent,
@@ -119,9 +115,9 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           darkSrc="assets/home-reader-dark.png"
           [artWidth]="1254"
           [artHeight]="1070"
-          [compact]="!isFirstRun()"
+          [compact]="isStanding()"
         >
-          <mn-library-standing [firstVisit]="isFirstRun()" />
+          <mn-library-standing [firstVisit]="isFirstRun()" [compact]="isStanding()" />
         </mn-hero>
 
         @if (showsFirstSteps()) {
@@ -130,7 +126,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
             the way in, and their next step is the screen's one primary action.
           -->
           <mn-library-first-steps />
-        } @else if (!isFirstRun() || setup.known()) {
+        } @else if (!isFirstRun()) {
           <!--
             The action sits directly below the invitation it acts on. Generating
             is a branch of adding rather than a destination of its own: it
@@ -138,32 +134,8 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
             billing in a navigation bar was what made Monosai look like an AI
             tool with a reader attached.
           -->
-          <button
-            mnButton="primary"
-            type="button"
-            aria-haspopup="dialog"
-            data-testid="new-story"
-            [mnMenuTrigger]="newStory"
-          >
-            <mn-icon name="add" [size]="18" />
-            <span>Create a new story</span>
-          </button>
+          <ng-container [ngTemplateOutlet]="ways" />
         }
-        <mn-menu #newStory="mnMenu" role="dialog" aria-label="New story">
-          <a mnMenuItem routerLink="/add" [state]="libraryOriginState" (click)="newStory.hide()">
-            <mn-icon name="add" />
-            <span>Paste text</span>
-          </a>
-          <a
-            mnMenuItem
-            routerLink="/generate"
-            [state]="libraryOriginState"
-            (click)="newStory.hide()"
-          >
-            <mn-icon name="generate" />
-            <span>Write with AI</span>
-          </a>
-        </mn-menu>
 
         @if (showsFilters()) {
           <mn-cluster fill="narrow" role="group" aria-label="Filter stories">
@@ -204,9 +176,15 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
 
         @if (isFirstRun()) {
           @if (!showsFirstSteps() && setup.known()) {
-            <p class="mn-hint" data-testid="empty-shelf">
-              Stories you write or paste will appear here.
-            </p>
+            <mn-empty-state
+              data-testid="empty-shelf"
+              heading="No stories yet"
+              description="Write one from your words, or paste a Japanese text you want to read."
+            >
+              <ng-container data-actions>
+                <ng-container [ngTemplateOutlet]="ways" />
+              </ng-container>
+            </mn-empty-state>
           }
         } @else if (store.isEmpty() && generationJobs().length === 0) {
           <p class="mn-hint">No {{ store.filter() }} stories yet.</p>
@@ -218,6 +196,35 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
           />
         }
       }
+
+      <!--
+        The two ways to start a story, side by side: write one with AI (the
+        main way, three parts of the row) or paste Japanese text you already have. One template, so
+        the shelf and the empty shelf cannot offer them differently.
+      -->
+      <ng-template #ways>
+        <mn-cluster fill="split" role="group" aria-label="New story" data-testid="new-story">
+          <a
+            mnButton="primary"
+            routerLink="/generate"
+            [state]="libraryOriginState"
+            data-testid="new-story-generate"
+          >
+            <mn-icon name="generate" />
+            <span>Write with AI</span>
+          </a>
+          <a
+            mnButton
+            routerLink="/add"
+            [state]="libraryOriginState"
+            aria-label="Paste a Japanese text"
+            data-testid="new-story-paste"
+          >
+            <mn-icon name="add" />
+            <span>Paste</span>
+          </a>
+        </mn-cluster>
+      </ng-template>
 
       <p class="mn-visually-hidden" role="status" aria-live="polite">{{ store.announcement() }}</p>
     </mn-page>
@@ -255,6 +262,16 @@ export class LibraryPageComponent {
   );
 
   protected readonly setup = inject(SetupProgressStore);
+
+  /**
+   * Whether the hero is a standing line rather than the invitation: once a
+   * story exists or could be written, the illustration steps down and the
+   * headline takes the page-title size. Only a shelf still waiting on its
+   * setup keeps the display hero.
+   */
+  protected readonly isStanding = computed(
+    () => !this.isFirstRun() || (this.setup.known() && this.setup.complete()),
+  );
   private readonly intro = inject(HelpIntroService, { optional: true });
 
   /**

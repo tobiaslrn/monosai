@@ -356,12 +356,12 @@ test.describe('generating a story', () => {
     await page.goto('./#/library');
     const card = page.locator('mn-reading-card').first();
     await expect(card).toContainText(STRICT_STORY.titleJa);
-    // Home keeps a compact title and character count; the premise belongs to
-    // the story, not the shelf row.
+    // Home shows the title, the opening line and the character count; the
+    // premise belongs to the story, not the shelf row.
     await expect(card.locator('[mn-list-row-meta]')).toContainText(/\d+ characters/);
     await expect(card).not.toContainText(FIRST_PLOT);
     await expect(card).toContainText('Micro');
-    await expect(card).not.toContainText('庭で遊びます');
+    await expect(card.locator('[mn-list-row-excerpt]')).toContainText('庭で遊びます');
     await expect(card).not.toContainText('Translations:');
 
     // The card's title is the link into the reader.
@@ -557,7 +557,7 @@ test.describe('generating in the background', () => {
     // The row is named by the plot the story is being written from.
     const row = page.locator('mn-generation-job-card');
     await expect(row).toContainText(FIRST_PLOT);
-    await expect(row).toContainText('Being written');
+    await expect(row).toContainText('Writing…');
     await expect(row).toContainText('Generating your story');
 
     // The row leads back to the run it started, not to a fresh form.
