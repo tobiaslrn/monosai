@@ -59,17 +59,21 @@ describe('StartupFailureComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  /** The recovery actions' labels; the reset row is a whole-row button named by its title. */
   function labels(fixture: ComponentFixture<StartupFailureComponent>): readonly string[] {
-    return Array.from(element(fixture).querySelectorAll('button')).map((button) =>
+    return Array.from(element(fixture).querySelectorAll('mn-error-screen button')).map((button) =>
       button.textContent.trim(),
     );
   }
 
   function press(fixture: ComponentFixture<StartupFailureComponent>, name: string): void {
-    const button = Array.from(element(fixture).querySelectorAll('button')).find((candidate) =>
-      candidate.textContent.includes(name),
-    );
-    if (button === undefined) {
+    const button =
+      name === 'Delete all'
+        ? element(fixture).querySelector<HTMLButtonElement>('[data-testid="delete-all-data"]')
+        : Array.from(element(fixture).querySelectorAll('button')).find((candidate) =>
+            candidate.textContent.includes(name),
+          );
+    if (button === undefined || button === null) {
       throw new Error(`no ${name} button`);
     }
     button.click();
@@ -79,25 +83,26 @@ describe('StartupFailureComponent', () => {
     expect(labels(render(false))).toEqual(['Try again']);
   });
 
+  it('sets the destructive reset apart from the recovery actions', () => {
+    const element = render(true).nativeElement as HTMLElement;
+
+    const recovery = element.querySelector('mn-error-screen')!;
+    const reset = element.querySelector('[data-testid="delete-all-data"]')!;
+    expect(recovery.contains(reset)).toBe(false);
+    expect(element.querySelector('mn-page-header')).not.toBeNull();
+  });
+
   it('offers a copy before the reset when the data is the problem', () => {
     const fixture = render(true);
 
     expect(element(fixture).textContent).toContain('The stored database could not be upgraded.');
-    expect(labels(fixture)).toEqual([
-      'Try again',
-      'Save a copy of my data',
-      'Delete all Monosai data',
-    ]);
+    expect(labels(fixture)).toEqual(['Try again', 'Save a copy of my data']);
   });
 
   it('reloads into the newest build, rather than retrying in place, for a newer database', () => {
     const fixture = render(true, 'newer-version');
 
-    expect(labels(fixture)).toEqual([
-      'Reload',
-      'Save a copy of my data',
-      'Delete all Monosai data',
-    ]);
+    expect(labels(fixture)).toEqual(['Reload', 'Save a copy of my data']);
     press(fixture, 'Reload');
     expect(updates.reloadIntoLatest).toHaveBeenCalledTimes(1);
   });
@@ -153,7 +158,7 @@ describe('StartupFailureComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(element(fixture).querySelector('.mn-notice')?.textContent).toContain(
+    expect(element(fixture).querySelector('mn-status-line')?.textContent).toContain(
       'Browser storage is unavailable.',
     );
     expect(element(fixture).textContent).not.toContain('have not been changed');
@@ -164,12 +169,12 @@ describe('StartupFailureComponent', () => {
     const fixture = render(true);
     const retried = vi.fn();
     fixture.componentRef.instance.retry.subscribe(retried);
-    expect(element(fixture).querySelector('.mn-notice')).not.toBeNull();
+    expect(element(fixture).querySelector('mn-status-line')).not.toBeNull();
 
     press(fixture, 'Try again');
     fixture.detectChanges();
 
-    expect(element(fixture).querySelector('.mn-notice')).toBeNull();
+    expect(element(fixture).querySelector('mn-status-line')).toBeNull();
     expect(retried).toHaveBeenCalledOnce();
   });
 

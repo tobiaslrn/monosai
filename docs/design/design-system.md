@@ -481,7 +481,8 @@ semantics and the expanded row remains fully usable.
 
 Search and filters have explicit empty-results states. Search text and the
 active filters remain visible when there are no matches, with a Reset action
-near the result. A list that has never been filled and a list whose current
+near the result, drawn as the empty state's title alone with Reset as its one
+action. A list that has never been filled and a list whose current
 snapshot is empty are separate states, and both offer the one action that can
 change that fact.
 
@@ -1380,7 +1381,9 @@ Four exceptions:
   yet." — is not a headline. The way in is **one first-steps card**
   (`mn-checklist`): numbered steps in order, each a row that leads to where it
   is done, each showing where it stands — a finished step wears a tick and goes
-  quiet, the next step is the screen's one primary action, and a step that
+  quiet, the next step is the screen's one primary action (its filled mark and
+  soft ground say so; the whole row is the target and holds only its chevron, never
+  a button or pill beside it), and a step that
   cannot be done yet is dashed, is not a link, and says what it waits for as
   its state rather than as advice. The steps are read from the same checks that
   block Generate, so the two never disagree. A way round the steps that needs
@@ -1394,6 +1397,14 @@ Four exceptions:
 - **Release-stage disclosure.** A new alpha installation may require one short
   acknowledgment before use. This is a product disclosure rather than Help;
   it is persisted locally and is not shown again after acknowledgment.
+  It leads with the app mark and its alpha label (`mn-app-mark`) above a title
+  with no full stop, like every dialog title.
+- **The startup failure screen wears the page frame.** When the database cannot
+  be opened there is no application, but the screen is still a page: the Library's
+  bar, then the one whole-page error state in the page column. Its recovery
+  actions (Try again or Reload, and a copy of the data) share one row; deleting
+  everything is the same danger row Settings has, set below in its own card and
+  confirmed the same way. A whole-page state fills the column it is in.
 - **Failures explain.** A failure states what happened, what is unaffected, and
   what to do next, however quiet the surrounding screen is.
 

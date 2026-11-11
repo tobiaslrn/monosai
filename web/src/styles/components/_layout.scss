@@ -71,3 +71,19 @@
   align-self: start;
   block-size: 1lh;
 }
+
+/*
+ * The frame around a page's column: the gutter beside it and the room below
+ * it, with no top padding so the page's sticky bar starts at the viewport's
+ * edge. The application shell and the startup recovery screen both wear it.
+ */
+.mn-main {
+  min-width: 0;
+  padding: 0 var(--page-gutter) var(--space-6);
+  /* Clip stray paint without turning this sticky ancestor into a scrollport. */
+  overflow-x: clip;
+}
+
+.mn-main:focus {
+  outline: none;
+}

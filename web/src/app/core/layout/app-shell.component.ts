@@ -87,7 +87,7 @@ import { PageNoticeSlot } from '../../shared-ui/page-header/page-notice-slot';
       }
     </ng-template>
 
-    <main id="mn-main" class="main" tabindex="-1">
+    <main id="mn-main" class="mn-main" tabindex="-1">
       <router-outlet />
     </main>
   `,
@@ -95,18 +95,6 @@ import { PageNoticeSlot } from '../../shared-ui/page-header/page-notice-slot';
     :host {
       display: block;
       min-height: 100dvh;
-    }
-
-    /* No top padding: each page's sticky top bar starts at the viewport edge. */
-    .main {
-      min-width: 0;
-      padding: 0 var(--page-gutter) var(--space-6);
-      /* Clip stray paint without turning this sticky ancestor into a scrollport. */
-      overflow-x: clip;
-    }
-
-    .main:focus {
-      outline: none;
     }
   `,
 })

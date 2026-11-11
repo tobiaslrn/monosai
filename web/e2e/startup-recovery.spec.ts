@@ -11,7 +11,7 @@ const API_KEY = 'sk-or-startup-recovery-secret';
  */
 async function corruptStoredSettings(page: Page): Promise<void> {
   await page.goto('./');
-  await expect(page.getByRole('alertdialog', { name: 'Monosai is in alpha.' })).toBeVisible();
+  await expect(page.getByRole('alertdialog', { name: 'Monosai is in alpha' })).toBeVisible();
   await page.evaluate(
     (apiKey) =>
       new Promise<void>((resolve, reject) => {
@@ -103,7 +103,7 @@ test.describe('startup recovery', () => {
     });
     expect(Object.keys(copy.tables)).not.toContain('credentials');
 
-    await panel.getByRole('button', { name: 'Delete all Monosai data' }).click();
+    await page.getByRole('button', { name: 'Delete all data' }).click();
     const confirm = page.getByRole('alertdialog', { name: 'Delete all Monosai data?' });
     await expect(confirm).toContainText('API key');
     await confirm.getByRole('button', { name: 'Keep my data' }).click();
@@ -111,9 +111,9 @@ test.describe('startup recovery', () => {
     await page.reload();
     await expect(recoveryPanel(page)).toBeVisible();
 
-    await recoveryPanel(page).getByRole('button', { name: 'Delete all Monosai data' }).click();
+    await page.getByRole('button', { name: 'Delete all data' }).click();
     await confirm.getByRole('button', { name: 'Delete everything' }).click();
-    await expect(page.getByRole('alertdialog', { name: 'Monosai is in alpha.' })).toBeVisible();
+    await expect(page.getByRole('alertdialog', { name: 'Monosai is in alpha' })).toBeVisible();
     await expect(recoveryPanel(page)).toHaveCount(0);
   });
 
@@ -121,7 +121,7 @@ test.describe('startup recovery', () => {
     page,
   }) => {
     await page.goto('./');
-    await expect(page.getByRole('alertdialog', { name: 'Monosai is in alpha.' })).toBeVisible();
+    await expect(page.getByRole('alertdialog', { name: 'Monosai is in alpha' })).toBeVisible();
     await page.addInitScript(() => {
       if (sessionStorage.getItem('seeded') !== null) {
         return;
@@ -142,7 +142,7 @@ test.describe('startup recovery', () => {
 
     const panel = recoveryPanel(page);
     await expect(panel).toContainText('The stored database could not be upgraded.');
-    await expect(panel.getByRole('button', { name: 'Delete all Monosai data' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Delete all data' })).toBeVisible();
 
     const download = page.waitForEvent('download');
     await panel.getByRole('button', { name: 'Save a copy of my data' }).click();
@@ -151,16 +151,16 @@ test.describe('startup recovery', () => {
     };
     expect(copy.tables['settings']).toContainEqual({ key: 'app', v: 1, value: 'not an object' });
 
-    await panel.getByRole('button', { name: 'Delete all Monosai data' }).click();
+    await page.getByRole('button', { name: 'Delete all data' }).click();
     await page.getByRole('button', { name: 'Delete everything' }).click();
-    await expect(page.getByRole('alertdialog', { name: 'Monosai is in alpha.' })).toBeVisible();
+    await expect(page.getByRole('alertdialog', { name: 'Monosai is in alpha' })).toBeVisible();
   });
 
   test('refuses a database from a newer build without changing it @smoke @mobile', async ({
     page,
   }) => {
     await page.goto('./');
-    await expect(page.getByRole('alertdialog', { name: 'Monosai is in alpha.' })).toBeVisible();
+    await expect(page.getByRole('alertdialog', { name: 'Monosai is in alpha' })).toBeVisible();
     await page.evaluate(
       () =>
         new Promise<void>((resolve, reject) => {
@@ -206,7 +206,7 @@ test.describe('startup recovery', () => {
     expect(copy.tables['futureStore']).toEqual([{ id: 'a' }]);
     expect(await nativeState(page)).toEqual(seeded);
 
-    await panel.getByRole('button', { name: 'Delete all Monosai data' }).click();
+    await page.getByRole('button', { name: 'Delete all data' }).click();
     const confirm = page.getByRole('alertdialog', { name: 'Delete all Monosai data?' });
     await confirm.getByRole('button', { name: 'Keep my data' }).click();
     await expect(confirm).toHaveCount(0);

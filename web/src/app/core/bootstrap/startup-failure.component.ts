@@ -13,7 +13,13 @@ import { StorageStore } from '../../application/settings/storage.store';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import type { Clock } from '../../domain/shared/clock';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
+import { ButtonDirective } from '../../shared-ui/button/button';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
+import { PageComponent } from '../../shared-ui/layout/layout';
+import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
+import { SectionComponent } from '../../shared-ui/section/section.component';
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
+import { StatusLineComponent } from '../../shared-ui/status-line/status-line.component';
 import type { BootstrapFailure } from './initialization-state';
 
 /** Long enough for the browser to have started the download from the object URL. */
@@ -28,74 +34,78 @@ const EXPORT_URL_LIFETIME_MS = 60_000;
 @Component({
   selector: 'mn-startup-failure',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ErrorScreenComponent],
+  imports: [
+    ButtonDirective,
+    ErrorScreenComponent,
+    PageComponent,
+    PageHeaderComponent,
+    SectionComponent,
+    SettingsRowComponent,
+    StatusLineComponent,
+  ],
   template: `
-    <mn-error-screen
-      heading="Monosai could not start"
-      [description]="failure().error.message"
-      [dataStatus]="resetFailed() ? null : 'Your saved stories have not been changed.'"
-    >
-      <ng-container data-actions>
-        @if (failure().error.code === 'newer-version') {
-          <button
-            type="button"
-            class="mn-button mn-button--primary"
-            [disabled]="reloading() || storage.action() !== 'idle'"
-            [attr.aria-busy]="reloading() ? 'true' : null"
-            (click)="reload()"
-          >
-            {{ reloading() ? 'Reloading…' : 'Reload' }}
-          </button>
-        } @else {
-          <button
-            type="button"
-            class="mn-button mn-button--primary"
-            [disabled]="storage.action() !== 'idle'"
-            (click)="tryAgain()"
-          >
-            Try again
-          </button>
-        }
+    <main id="mn-main" class="mn-main" tabindex="-1">
+      <mn-page>
+        <mn-page-header heading="Monosai" [home]="true" />
+        <mn-error-screen
+          heading="Monosai could not start"
+          [description]="failure().error.message"
+          [dataStatus]="resetFailed() ? null : 'Your saved stories have not been changed.'"
+        >
+          <ng-container data-actions>
+            @if (failure().error.code === 'newer-version') {
+              <button
+                type="button"
+                mnButton="primary"
+                [disabled]="reloading() || storage.action() !== 'idle'"
+                [attr.aria-busy]="reloading() ? 'true' : null"
+                (click)="reload()"
+              >
+                {{ reloading() ? 'Reloading…' : 'Reload' }}
+              </button>
+            } @else {
+              <button
+                type="button"
+                mnButton="primary"
+                [disabled]="storage.action() !== 'idle'"
+                (click)="tryAgain()"
+              >
+                Try again
+              </button>
+            }
+            @if (failure().resetMayHelp) {
+              <button
+                type="button"
+                mnButton
+                [disabled]="storage.action() !== 'idle'"
+                (click)="saveCopy()"
+              >
+                Save a copy of my data
+              </button>
+            }
+          </ng-container>
+        </mn-error-screen>
         @if (failure().resetMayHelp) {
-          <button
-            type="button"
-            class="mn-button"
-            [disabled]="storage.action() !== 'idle'"
-            (click)="saveCopy()"
-          >
-            Save a copy of my data
-          </button>
-          <button
-            type="button"
-            class="mn-button mn-button--danger"
-            [disabled]="storage.action() !== 'idle'"
-            (click)="deleteAllData()"
-          >
-            Delete all Monosai data
-          </button>
+          <mn-section heading="Storage" [rows]="true">
+            <mn-settings-row
+              label="Delete all data"
+              action="danger"
+              testId="delete-all-data"
+              summary="Every story, word list, setting and clip on this device"
+              [disabled]="storage.action() !== 'idle'"
+              (pressed)="deleteAllData()"
+            />
+            @if (storage.failure(); as actionFailure) {
+              <mn-status-line mn-section-footer tone="danger">{{
+                actionFailure.message
+              }}</mn-status-line>
+            }
+          </mn-section>
+        } @else if (storage.failure(); as actionFailure) {
+          <mn-status-line tone="danger">{{ actionFailure.message }}</mn-status-line>
         }
-      </ng-container>
-    </mn-error-screen>
-    @if (storage.failure(); as actionFailure) {
-      <p role="alert" class="action-failure mn-notice mn-notice--error">
-        {{ actionFailure.message }}
-      </p>
-    }
-  `,
-  styles: `
-    /* No bar to sit under, so the page's gap stands in for one. */
-    :host {
-      display: flex;
-      flex-direction: column;
-      gap: var(--page-gap);
-      padding: var(--page-gap) var(--page-gutter);
-    }
-
-    .action-failure {
-      width: 100%;
-      max-width: var(--page-measure);
-      margin-inline: auto;
-    }
+      </mn-page>
+    </main>
   `,
 })
 export class StartupFailureComponent {
