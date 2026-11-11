@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 const TOKENS_PATH = join(process.cwd(), 'src', 'styles', '_tokens.scss');
 
 type Palette = ReadonlyMap<string, string>;
+type Layers = ReadonlyMap<string, readonly [string, number]>;
 
 function extractMixin(source: string, mixinName: string): Palette {
   const start = source.indexOf(`@mixin ${mixinName}`);
@@ -42,6 +43,27 @@ function extractMixin(source: string, mixinName: string): Palette {
     }
   }
   return palette;
+}
+
+/** A tint written as a translucent layer of another token: `color-mix(in srgb, var(--a) 16%, transparent)`. */
+function extractLayers(
+  source: string,
+  mixinName: string,
+): ReadonlyMap<string, readonly [string, number]> {
+  const start = source.indexOf(`@mixin ${mixinName}`);
+  const bodyStart = source.indexOf('{', start);
+  const body = source.slice(bodyStart, source.indexOf('\n}', bodyStart));
+  const layers = new Map<string, readonly [string, number]>();
+  for (const match of body.matchAll(
+    /--([a-z0-9-]+):\s*color-mix\(in srgb, var\(--([a-z0-9-]+)\) (\d+)%, transparent\);/g,
+  )) {
+    layers.set(match[1]!, [match[2]!, Number(match[3]) / 100]);
+  }
+  return layers;
+}
+
+function toHex(rgb: readonly number[]): string {
+  return `#${rgb.map((component) => Math.round(component).toString(16).padStart(2, '0')).join('')}`;
 }
 
 function hexToRgb(hex: string): readonly [number, number, number] {
@@ -69,7 +91,20 @@ function contrastRatio(hexA: string, hexB: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function tokenOf(palette: Palette, name: string): string {
+function tokenOf(
+  palette: Palette,
+  name: string,
+  layers: Layers = new Map(),
+  ground?: string,
+): string {
+  const layer = layers.get(name);
+  if (layer !== undefined && ground !== undefined) {
+    const over = hexToRgb(tokenOf(palette, ground));
+    const ink = hexToRgb(tokenOf(palette, layer[0]));
+    return toHex(
+      ink.map((component, index) => component * layer[1] + over[index]! * (1 - layer[1])),
+    );
+  }
   const value = palette.get(name);
   if (value === undefined) {
     throw new Error(`token --${name} not found`);
@@ -105,6 +140,9 @@ const PAIRINGS: readonly {
   { foreground: 'status-success', background: 'status-success-soft', kind: 'text' },
   { foreground: 'status-warning', background: 'status-warning-soft', kind: 'text' },
   { foreground: 'status-danger', background: 'status-danger-soft', kind: 'text' },
+  { foreground: 'action-primary-text', background: 'action-primary-soft', kind: 'text' },
+  { foreground: 'text-on-tint', background: 'surface-sunken', kind: 'text' },
+  { foreground: 'text-secondary', background: 'surface-sunken', kind: 'text' },
   // Outlines interactive control boundaries (buttons, text inputs), not a
   // decorative divider, so it must clear the UI-component minimum.
   { foreground: 'border-strong', background: 'surface-canvas', kind: 'ui' },
@@ -126,15 +164,32 @@ describe.each([
 ] as const)('%s theme token contrast', (themeName, mixinName) => {
   const source = readFileSync(TOKENS_PATH, 'utf8');
   const palette = extractMixin(source, mixinName);
+  const layers = extractLayers(source, mixinName);
+  // A translucent tint is whatever it lands on, so it is checked on each surface it can.
+  const GROUNDS = ['surface-canvas', 'surface-raised', 'surface-floating'] as const;
 
   it.each(PAIRINGS)(
     '$foreground on $background meets the $kind minimum',
     ({ foreground, background, kind }) => {
-      const ratio = contrastRatio(tokenOf(palette, foreground), tokenOf(palette, background));
-      expect(
-        ratio,
-        `${themeName}: --${foreground} on --${background} is ${ratio.toFixed(2)}:1, needs ${String(MINIMUM_RATIO[kind])}:1`,
-      ).toBeGreaterThanOrEqual(MINIMUM_RATIO[kind]);
+      const grounds = layers.has(background) ? GROUNDS : [undefined];
+      for (const ground of grounds) {
+        const ratio = contrastRatio(
+          tokenOf(palette, foreground),
+          tokenOf(palette, background, layers, ground),
+        );
+        // The secondary ink on a recess is only asked for where the recess is not on the floating surface.
+        if (
+          foreground === 'text-secondary' &&
+          background === 'surface-sunken' &&
+          ground === 'surface-floating'
+        ) {
+          continue;
+        }
+        expect(
+          ratio,
+          `${themeName}: --${foreground} on --${background}${ground === undefined ? '' : ` over --${ground}`} is ${ratio.toFixed(2)}:1, needs ${String(MINIMUM_RATIO[kind])}:1`,
+        ).toBeGreaterThanOrEqual(MINIMUM_RATIO[kind]);
+      }
     },
   );
 });

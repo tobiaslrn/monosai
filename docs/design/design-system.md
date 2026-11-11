@@ -1112,6 +1112,14 @@ A new thing worth marking in the Japanese is a change to this document, not a
 new token, because every added marker is subtracted from the text's own
 legibility.
 
+**Layers in dark.** Surfaces run lighter as they rise: canvas, card, floating. A
+recess (the sunken fill) and a tone's soft fill are therefore translucent layers of
+the text colour or of the tone, never a darker slab, so each is lighter than whatever
+it sits on, whether page, card, sheet or popover. A darker fill on a raised surface
+reads as a hole. The ink on a neutral tint is the primary text colour in dark, because
+the tint lightens its ground. In light the same tokens are the opaque tints they were.
+The Android bridge carries these tints flattened over the raised surface.
+
 Colour is never the sole carrier of meaning. The two reading markers are drawn
 as squiggles as well as colours; status is named as well as tinted.
 

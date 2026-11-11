@@ -11,6 +11,8 @@
 
   --text-primary: #252824;
   --text-secondary: #5a6058;
+  /* The ink on a neutral tint: a pill's word. */
+  --text-on-tint: var(--text-secondary);
   --text-inverse: #f8f6f1;
   --text-on-action: #ffffff;
 
@@ -67,11 +69,19 @@
   --surface-panel: #232622;
   --surface-raised: #2b2f2a;
   --surface-floating: #3d433c;
-  --surface-sunken: #161815;
+  /*
+   * A recess is a translucent layer of the text colour, never a darker slab:
+   * a fill darker than the surface it sits on reads as a hole, and the
+   * surfaces here run from the canvas up to the floating one. The tints do the
+   * same with their tone's colour, so each lightens whatever it sits on.
+   */
+  --surface-sunken: color-mix(in srgb, var(--text-primary) 8%, transparent);
   --surface-inverse: #f0eee8;
 
   --text-primary: #eceae4;
   --text-secondary: #adb3a9;
+  /* A tint here lightens its ground, which leaves the secondary ink under 4.5:1 on the floating one. */
+  --text-on-tint: var(--text-primary);
   --text-inverse: #1b1d1a;
   --text-on-action: #12150f;
 
@@ -80,17 +90,17 @@
 
   --action-primary: #9dbfa8;
   --action-primary-hover: #b3d0bc;
-  --action-primary-soft: #2c3730;
-  --action-primary-text: var(--action-primary);
+  --action-primary-soft: color-mix(in srgb, var(--action-primary) 10%, transparent);
+  --action-primary-text: #a9c7b2;
   --accent-secondary: #b6aada;
   --accent-secondary-soft: #322e42;
 
-  --status-success: #93c3a3;
-  --status-success-soft: #26332a;
-  --status-warning: #dcb779;
-  --status-warning-soft: #37301f;
-  --status-danger: #e59b93;
-  --status-danger-soft: #3a2724;
+  --status-success: #a0caae;
+  --status-success-soft: color-mix(in srgb, var(--status-success) 10%, transparent);
+  --status-warning: #debb81;
+  --status-warning-soft: color-mix(in srgb, var(--status-warning) 10%, transparent);
+  --status-danger: #ebb3ad;
+  --status-danger-soft: color-mix(in srgb, var(--status-danger) 10%, transparent);
 
   --marker-vocabulary: #e0a874;
   --marker-grammar: #8fb4dc;
