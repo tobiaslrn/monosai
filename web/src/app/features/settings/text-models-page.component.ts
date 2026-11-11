@@ -6,9 +6,9 @@ import { TextModelStore, type TextModelTask } from '../../application/settings/t
 import type { AiError } from '../../domain/ai/ai-error';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
-import { formatCount } from '../../domain/shared/locale';
 import { MAX_STORY_TOKEN_BUDGET } from '../../domain/settings/settings';
 import { PageComponent } from '../../shared-ui/layout/layout';
+import { openFieldDialog } from '../../shared-ui/field-dialog/field-dialog.component';
 import { openModelPicker } from '../../shared-ui/model-picker/model-picker-dialog.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { SectionComponent } from '../../shared-ui/section/section.component';
@@ -25,7 +25,12 @@ import {
 import { ModelCatalogView } from './model-catalog-view';
 import { modelRowWords } from './model-row';
 import { reasoningOptions } from './reasoning-options';
-import { TokenBudgetFieldComponent } from './token-budget-field.component';
+import {
+  parseTokenLimit,
+  tokenLimitHint,
+  tokenLimitProblem,
+  tokenLimitSummary,
+} from './token-limit';
 
 /** What a group says about itself under its card: its tone, its words, and the one way to act. */
 interface GroupStatus {
@@ -55,7 +60,6 @@ interface GroupStatus {
     SelectComponent,
     SettingsRowComponent,
     StatusLineComponent,
-    TokenBudgetFieldComponent,
   ],
   providers: [ModelCatalogView],
   template: `
@@ -92,19 +96,13 @@ interface GroupStatus {
 
         <mn-settings-row
           label="Token limit"
-          labelId="mn-text-limit-label"
-          end="control"
-          [summary]="budgetHint(storyTokenBudgetMax())"
-        >
-          <mn-token-budget-field
-            testId="story-token-budget-input"
-            labelledBy="mn-text-limit-label"
-            [value]="text.settings().storyTokenBudget"
-            [maxValue]="storyTokenBudgetMax()"
-            [disabled]="!credential.isConfigured()"
-            (committed)="saveStoryBudget($event)"
-          />
-        </mn-settings-row>
+          end="nav"
+          opens="dialog"
+          testId="story-token-limit"
+          [disabled]="!credential.isConfigured()"
+          [summary]="limitSummary(text.settings().storyTokenBudget, storyTokenBudgetMax())"
+          (pressed)="editStoryBudget()"
+        />
 
         @if (!credential.isConfigured()) {
           <mn-status-line mn-section-footer tone="warning">
@@ -164,17 +162,14 @@ interface GroupStatus {
             </mn-settings-row>
             <mn-settings-row
               label="Token limit"
-              end="control"
-              [labelId]="'mn-' + task.id + '-limit'"
-              [summary]="budgetHint(tokenBudgetMax(routeModel(task.id)))"
-            >
-              <mn-token-budget-field
-                [labelledBy]="'mn-' + task.id + '-limit'"
-                [value]="text.routeTokenBudget(task.id)"
-                [maxValue]="tokenBudgetMax(routeModel(task.id))"
-                (committed)="setTaskBudget(task.id, $event)"
-              />
-            </mn-settings-row>
+              end="nav"
+              opens="dialog"
+              [testId]="task.id + '-token-limit'"
+              [summary]="
+                limitSummary(text.routeTokenBudget(task.id), tokenBudgetMax(routeModel(task.id)))
+              "
+              (pressed)="editTaskBudget(task.id)"
+            />
           }
           @if (taskStatus(task.id); as status) {
             <mn-status-line
@@ -356,12 +351,41 @@ export class TextModelsPageComponent {
     await this.text.setTaskReasoning(task, String(value) || null);
     await this.text.testTask(task);
   }
-  protected saveStoryBudget(tokenBudget: number): void {
-    this.text.setStoryTokenBudgetDraft(String(tokenBudget));
-    void this.text.saveStoryTokenBudget();
+  protected limitSummary(value: number, max: number): string {
+    return tokenLimitSummary(value, max);
   }
-  protected setTaskBudget(task: TextModelTask, tokenBudget: number): void {
-    void this.text.setTaskTokenBudget(task, tokenBudget);
+  protected async editStoryBudget(): Promise<void> {
+    const entered = await this.askTokenLimit(
+      this.text.settings().storyTokenBudget,
+      this.storyTokenBudgetMax(),
+    );
+    if (entered !== null) {
+      this.text.setStoryTokenBudgetDraft(String(entered));
+      void this.text.saveStoryTokenBudget();
+    }
+  }
+  protected async editTaskBudget(task: TextModelTask): Promise<void> {
+    const entered = await this.askTokenLimit(
+      this.text.routeTokenBudget(task),
+      this.tokenBudgetMax(this.routeModel(task)),
+    );
+    if (entered !== null) {
+      void this.text.setTaskTokenBudget(task, entered);
+    }
+  }
+  /** Asks for a limit in the field dialog; null when it was put away or left as it was. */
+  private async askTokenLimit(current: number, max: number): Promise<number | null> {
+    const entry = await openFieldDialog(this.dialog, {
+      title: 'Token limit',
+      label: 'Tokens',
+      value: String(current),
+      hint: tokenLimitHint(max),
+      inputMode: 'numeric',
+      problem: (text) => tokenLimitProblem(text, max),
+      testId: 'token-limit-input',
+    });
+    const parsed = entry === null ? Number.NaN : parseTokenLimit(entry);
+    return Number.isNaN(parsed) || parsed === current ? null : parsed;
   }
   protected reasoningOptions(model: ModelCapabilities | null): readonly SelectOption<string>[] {
     return reasoningOptions(model?.reasoning?.supportedEfforts ?? ['low', 'medium', 'high']);
@@ -372,9 +396,6 @@ export class TextModelsPageComponent {
     return reported !== null && reported !== undefined && reported > 0
       ? Math.min(reported, MAX_STORY_TOKEN_BUDGET)
       : MAX_STORY_TOKEN_BUDGET;
-  }
-  protected budgetHint(max: number): string {
-    return `Up to ${formatCount(max)} tokens`;
   }
 
   /**

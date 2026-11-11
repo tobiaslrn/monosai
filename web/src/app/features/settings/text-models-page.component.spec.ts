@@ -290,22 +290,35 @@ describe('TextModelsPageComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const budget = element.querySelector<HTMLInputElement>(
-      '[data-testid="story-token-budget-input"]',
-    );
-    expect(element.textContent).toContain('Up to 65,536 tokens');
-    expect(budget?.value).toBe('16,384');
+    expect(element.textContent).toContain('16,384 · up to 65,536');
 
-    budget!.value = '65537';
-    budget!.dispatchEvent(new Event('input'));
-    budget!.dispatchEvent(new Event('change'));
+    element.querySelector<HTMLButtonElement>('[data-testid="story-token-limit"]')!.click();
+    for (let pass = 0; pass < 5; pass += 1) {
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+    const dialog = document.querySelector('mn-field-dialog')!;
+    const field = dialog.querySelector<HTMLInputElement>('input')!;
+    const save = dialog.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    expect(dialog.textContent).toContain('Up to 65,536 tokens');
+
+    field.value = '65537';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(dialog.textContent).toContain('between 4,096 and 65,536');
+    expect(save.disabled).toBe(true);
     expect(settings.textModel.storyTokenBudget).toBe(16_384);
 
-    budget!.value = '65536';
-    budget!.dispatchEvent(new Event('input'));
-    budget!.dispatchEvent(new Event('change'));
+    field.value = '65536';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    save.click();
+    // The dialog leaves before it closes, and the value is kept once it has.
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(settings.textModel.storyTokenBudget).toBe(65_536);
+    fixture.detectChanges();
+    expect(element.textContent).toContain('65,536 · up to 65,536');
   });
 
   describe('retesting', () => {

@@ -3,17 +3,18 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
- * One form control with its visible label above it and, when the value is
- * wrong, what is wrong with it below.
+ * One form control with its visible label above it and, below it, one line:
+ * its hint, or — when the value is wrong — what is wrong with it, which
+ * replaces the hint.
  *
- *   <mn-field label="API key">
- *     <input type="password" … />
+ *   <mn-field label="Tokens" hint="Up to 65,536 tokens">
+ *     <input type="text" … />
  *   </mn-field>
  *
  * Without a `label` the control is named from elsewhere (`aria-labelledby` on
- * a row title) and the field only keeps it and its error together. The error
- * is announced and carries `errorId`, which the control names in
- * `aria-describedby`.
+ * a row title) and the field only keeps it and its error together. The line
+ * carries `errorId` (or `hintId`), which the control names in
+ * `aria-describedby`; the error is announced.
  */
 @Component({
   selector: 'mn-field',
@@ -35,6 +36,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       <p class="mn-field-error" role="alert" [id]="errorId()">
         <mn-icon name="warning" [size]="16" /><span>{{ message }}</span>
       </p>
+    } @else if (hint(); as text) {
+      <p class="mn-hint" [id]="hintId()">{{ text }}</p>
     }
   `,
   styles: `
@@ -52,4 +55,7 @@ export class FieldComponent {
   readonly label = input<string | null>(null);
   readonly error = input<string | null>(null);
   readonly errorId = input<string | null>(null);
+  /** What to enter, until something is wrong. */
+  readonly hint = input<string | null>(null);
+  readonly hintId = input<string | null>(null);
 }

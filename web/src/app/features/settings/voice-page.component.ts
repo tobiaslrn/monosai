@@ -16,6 +16,7 @@ import { CredentialStore } from '../../application/settings/credential.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 import { PageComponent } from '../../shared-ui/layout/layout';
+import { openFieldDialog } from '../../shared-ui/field-dialog/field-dialog.component';
 import { openModelPicker } from '../../shared-ui/model-picker/model-picker-dialog.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import {
@@ -93,17 +94,15 @@ interface VoiceLine {
             />
           </mn-settings-row>
         } @else {
-          <mn-settings-row label="Voice" labelId="mn-voice-label" end="control">
-            <input
-              class="mn-control"
-              type="text"
-              aria-labelledby="mn-voice-label"
-              placeholder="Default"
-              [disabled]="!credential.isConfigured()"
-              [value]="tts.draft().voiceId"
-              (change)="setVoice($event)"
-            />
-          </mn-settings-row>
+          <mn-settings-row
+            label="Voice"
+            end="nav"
+            opens="dialog"
+            testId="tts-voice-field"
+            [disabled]="!credential.isConfigured()"
+            [summary]="tts.draft().voiceId || 'Default'"
+            (pressed)="editVoice()"
+          />
         }
       </mn-section>
 
@@ -316,9 +315,20 @@ export class VoicePageComponent {
     this.tts.setDraft({ modelId: model.modelId, voiceId: model.supportedVoices[0] ?? '' });
     await this.tts.save();
   }
-  protected setVoice(event: Event): void {
-    this.tts.setDraft({ voiceId: (event.target as HTMLInputElement).value });
-    void this.tts.save();
+  /** A model with no list of voices takes the voice's name as typed. */
+  protected async editVoice(): Promise<void> {
+    const entry = await openFieldDialog(this.dialog, {
+      title: 'Voice',
+      label: 'Voice name',
+      value: this.tts.draft().voiceId,
+      placeholder: 'Default',
+      problem: () => null,
+      testId: 'tts-voice-input',
+    });
+    if (entry !== null && entry !== this.tts.draft().voiceId) {
+      this.tts.setDraft({ voiceId: entry });
+      void this.tts.save();
+    }
   }
   protected chooseVoice(voiceId: SelectValue): void {
     this.tts.setDraft({ voiceId: String(voiceId) });

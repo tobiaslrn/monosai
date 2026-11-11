@@ -329,39 +329,12 @@
 }
 
 /*
- * Every field at a row's end — an input — is one width, so a card's controls
- * share one column and one edge. A choice is not a field: it is the row's own
- * words.
+ * A segmented control at a row's end is one width, so a card's controls share
+ * one column and one edge. A row holds no field: a typed value opens a dialog.
  */
-.mn-settings-row :where(input.mn-control),
-.mn-settings-row :where(mn-token-budget-field, mn-segmented-control) {
+.mn-settings-row :where(mn-segmented-control) {
   width: min(var(--control-width), 50cqi);
   max-width: 100%;
-}
-
-/*
- * Typing is the one setting that is not a press: its field sits in the row as
- * its value does — plain text at the end, the value's own size and colour —
- * and shows a field's edge only while it is being edited or is wrong.
- */
-.mn-settings-row input.mn-control {
-  padding-inline: 0;
-  border-color: transparent;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  text-align: end;
-}
-
-.mn-settings-row input.mn-control:focus-visible {
-  border-color: var(--action-primary);
-  padding-inline: var(--space-2);
-  color: var(--text-primary);
-  outline: none;
-}
-
-.mn-settings-row input.mn-control[aria-invalid='true'] {
-  border-color: var(--status-danger);
 }
 
 /* A row whose whole surface is a destination or a disclosure trigger. */

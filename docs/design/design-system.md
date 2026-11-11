@@ -299,7 +299,12 @@ retired, and settings rows carry no pill.
 
 **Typed values open a field dialog.** A number, a name or a key in Settings is a
 navigation row that shows the value and opens a dialog holding the field. Fields
-live only in forms and dialogs.
+live only in forms and dialogs. The field dialog (`openFieldDialog`) is built
+once: the row's label titles it, one labelled field (`mn-field`) holds the value
+with its hint under it, a problem is the field's one danger line in the hint's
+place (R33), and the primary Save sits at the end (R22). A token limit and a
+voice name with no list are both this, and a row's summary shows the value in
+the shared number formatter (R50).
 
 **One destructive pattern.** A destructive action is a row in the danger colour
 whose secondary line says what goes, then a confirmation that names it. It is
@@ -345,7 +350,7 @@ the way to build:
 | Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                                                                                                            |
 | Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                                                                                              |
 | Choices          | `mn-select` (one value from a short list, on `mn-dropdown`), `mn-segmented-control`, `mn-radio-list` (a radio list of settings rows), `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips                                                               |
-| Fields           | `mn-field` (label, hint, and error around a control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                                      |
+| Fields           | `mn-field` (label, hint, and error around a control), `openFieldDialog` (one typed value in Settings, in a task dialog), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                                      |
 | Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                                                                                        |
 | Status           | `mn-status-line` (a group's one line under its card), `mn-checklist` with `mn-checklist-step` for first steps, `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
 | Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen` and `mn-not-found-panel` on the one whole-page state                                                                                                                                                                                                       |

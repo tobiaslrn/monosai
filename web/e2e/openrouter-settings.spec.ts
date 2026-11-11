@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import {
   addTaskModel,
@@ -19,6 +19,15 @@ const KEY = 'sk-or-v1-e2e-placeholder';
 function textModelSettings(stored: unknown): Record<string, unknown> {
   const value = (stored as { value?: unknown } | null)?.value;
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+}
+
+/** Sets a token limit through its row and field dialog, and waits for the dialog to leave. */
+async function setTokenLimit(page: Page, row: string, value: string): Promise<void> {
+  await page.getByTestId(row).click();
+  const field = page.getByTestId('token-limit-input');
+  await field.fill(value);
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(field).toBeHidden();
 }
 
 test.describe('the model tree', () => {
@@ -148,11 +157,8 @@ test.describe('the model tree', () => {
     await addTextModel(page, MODEL);
     await addTaskModel(page, 'translation', 'vendor/translator');
 
-    await page.getByTestId('story-token-budget-input').fill('20000');
-    await page.getByTestId('story-token-budget-input').blur();
-    const translationLimit = taskReadiness(page, 'translation').getByLabel('Token limit');
-    await translationLimit.fill('8000');
-    await translationLimit.blur();
+    await setTokenLimit(page, 'story-token-limit', '20000');
+    await setTokenLimit(page, 'translation-token-limit', '8000');
 
     // Both limits are written before the reload, or the reload is what the
     // test would be measuring instead of the storage.
@@ -164,8 +170,12 @@ test.describe('the model tree', () => {
       });
 
     await page.reload();
-    await expect(page.getByTestId('story-token-budget-input')).toHaveValue('20,000');
-    await expect(taskReadiness(page, 'translation').getByLabel('Token limit')).toHaveValue('8,000');
+    await expect(page.getByTestId('story-token-limit')).toHaveAccessibleDescription(
+      /20,000 · up to/,
+    );
+    await expect(page.getByTestId('translation-token-limit')).toHaveAccessibleDescription(
+      /8,000 · up to/,
+    );
     // The budget says nothing about compatibility, so the test still vouches.
     await expectReadiness(taskReadiness(page, 'translation'), 'ready');
   });
@@ -176,14 +186,15 @@ test.describe('the model tree', () => {
     await saveApiKey(page);
     await addTextModel(page, MODEL);
 
-    await page.getByTestId('story-token-budget-input').fill('99');
-    await page.getByTestId('story-token-budget-input').blur();
+    await page.getByTestId('story-token-limit').click();
+    const field = page.getByTestId('token-limit-input');
+    await field.fill('99');
 
-    await expect(page.getByTestId('story-token-budget-input')).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    );
-    await expect(page.getByRole('alert')).toContainText('between 4096 and 65536');
+    await expect(field).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.getByRole('alert')).toContainText('between 4,096 and 65,536');
+    await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await page.keyboard.press('Escape');
+    await expect(field).toBeHidden();
     expect(
       textModelSettings(await readSettingsRecord(page, 'text-model'))['storyTokenBudget'],
     ).toBe(16_384);

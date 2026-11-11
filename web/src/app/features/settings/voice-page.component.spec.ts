@@ -380,7 +380,7 @@ describe('VoicePageComponent', () => {
 
     it('takes a typed voice when the catalogue does not know the model', async () => {
       await connect();
-      const { element, tts, detect } = await render();
+      const { element, tts, detect, fixture } = await render();
 
       // A model the catalogue cannot describe still has to be configurable:
       // the catalogue is fetched lazily and may never answer.
@@ -391,16 +391,22 @@ describe('VoicePageComponent', () => {
       expect(
         element.querySelector('[role="combobox"][aria-labelledby="mn-voice-label"]'),
       ).toBeNull();
-      const typed = element.querySelector<HTMLInputElement>(
-        'input[aria-labelledby="mn-voice-label"]',
-      );
-      expect(typed).not.toBeNull();
-      expect(typed?.value).toBe('nova');
+      const row = element.querySelector<HTMLButtonElement>('[data-testid="tts-voice-field"]')!;
+      expect(element.textContent).toContain('nova');
 
-      if (typed !== null) {
-        typed.value = 'shimmer';
-        typed.dispatchEvent(new Event('change'));
+      // A voice with no list is a typed value, so it is asked for in a dialog.
+      row.click();
+      for (let pass = 0; pass < 5; pass += 1) {
+        await fixture.whenStable();
+        detect();
       }
+      const typed = document.querySelector<HTMLInputElement>('mn-field-dialog input')!;
+      expect(typed.value).toBe('nova');
+      typed.value = 'shimmer';
+      typed.dispatchEvent(new Event('input'));
+      detect();
+      document.querySelector<HTMLButtonElement>('mn-field-dialog button[type="submit"]')!.click();
+      await new Promise((resolve) => setTimeout(resolve, 500));
       await settled();
       detect();
 
