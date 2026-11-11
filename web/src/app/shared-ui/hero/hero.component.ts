@@ -66,6 +66,13 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
       --hero-art-share: var(--hero-art-share-standing);
     }
 
+    @media (max-width: 24em) {
+      :host(.is-compact) {
+        --hero-art-share: var(--hero-art-share-standing-narrow);
+        gap: var(--inline-gap);
+      }
+    }
+
     .hero-text {
       min-width: 0;
     }
