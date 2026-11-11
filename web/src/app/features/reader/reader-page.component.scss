@@ -133,8 +133,9 @@
   min-width: 0;
   margin: 0;
   overflow: hidden;
-  font-size: var(--text-xl);
+  font-size: var(--text-page-title);
   font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
   white-space: nowrap;
   text-overflow: ellipsis;
   opacity: 0;
