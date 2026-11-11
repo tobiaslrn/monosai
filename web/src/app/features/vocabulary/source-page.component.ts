@@ -10,6 +10,8 @@ import {
   afterNextRender,
   resource,
   signal,
+  viewChild,
+  type ElementRef,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import {
@@ -52,18 +54,15 @@ import type {
 } from '../../domain/vocabulary/vocabulary-source';
 import { isIncludedInVocabulary } from '../../domain/vocabulary/vocabulary-source';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { SectionComponent } from '../../shared-ui/section/section.component';
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
+import { StatusLineComponent } from '../../shared-ui/status-line/status-line.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { SwitchRowComponent } from '../../shared-ui/switch-row/switch-row.component';
 import { PackageImportComponent } from './package-import.component';
 import { TextListSourceComponent } from './text-list-source.component';
-import { ButtonDirective } from '../../shared-ui/button/button';
-import { CardComponent } from '../../shared-ui/card/card.component';
-import { CheckboxComponent } from '../../shared-ui/checkbox/checkbox.component';
 import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
-import { DividerComponent } from '../../shared-ui/divider/divider.component';
-import { ClusterComponent, PageComponent } from '../../shared-ui/layout/layout';
-import { NoticeComponent } from '../../shared-ui/notice/notice.component';
+import { PageComponent } from '../../shared-ui/layout/layout';
 
 const STALE_REASONS: Record<StaleReason, string> = {
   'deck-missing': 'That deck is no longer in your collection.',
@@ -81,29 +80,22 @@ const STALE_REASONS: Record<StaleReason, string> = {
  * source reads is a disclosure that states its own answer, because it is right
  * nine times in ten. Removing it is last, after a rule, and names what is lost.
  */
-import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
-
 @Component({
   selector: 'mn-source-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   // Page-scoped, so leaving discards any connection this page opened.
   providers: [VocabularyRefreshStore, PackageImportStore],
   imports: [
-    ButtonDirective,
-    CardComponent,
-    CheckboxComponent,
-    ClusterComponent,
     DisclosureComponent,
-    DividerComponent,
-    IconComponent,
-    NoticeComponent,
     PageComponent,
     PageHeaderComponent,
     PackageImportComponent,
+    SectionComponent,
     SelectComponent,
+    SettingsRowComponent,
+    StatusLineComponent,
     SwitchRowComponent,
     TextListSourceComponent,
-    SettingsRowComponent,
   ],
   template: `
     <mn-page>
@@ -112,25 +104,9 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
       <p class="mn-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
 
       @if (source(); as source) {
-        <mn-card role="region" [attr.aria-label]="source.label">
-          <p class="mn-hint" data-testid="source-summary">{{ summary(source) }}</p>
-
-          @if (attention(); as message) {
-            <mn-notice tone="warning" role="status" data-testid="source-attention">
-              <p>{{ message }}</p>
-              @if (source.kind === 'anki-connect') {
-                <button
-                  mn-notice-action
-                  mnButton="ghost"
-                  type="button"
-                  [attr.aria-busy]="manual.isSyncing() ? 'true' : null"
-                  (click)="syncNow(source)"
-                >
-                  Try now
-                </button>
-              }
-            </mn-notice>
-          }
+        <mn-section [label]="source.label" [rows]="true">
+          <mn-settings-row label="Source" [value]="origin(source)" />
+          <mn-settings-row label="Words" [value]="words(source)" testId="source-summary" />
 
           <mn-switch-row
             testId="include-source"
@@ -141,8 +117,6 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
             Count these words
           </mn-switch-row>
 
-          <mn-divider />
-
           @if (source.kind === 'anki-connect') {
             <mn-switch-row
               testId="automatic-sync"
@@ -152,81 +126,87 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
             >
               Keep it up to date
             </mn-switch-row>
-            <mn-cluster justify="between" [gap]="3">
-              <button
-                type="button"
-                mnButton
-                [disabled]="busy() && !manual.isSyncingSource(source.id)"
-                [attr.aria-busy]="manual.isSyncingSource(source.id) ? 'true' : null"
-                (click)="syncNow(source)"
-                data-testid="sync-now"
-              >
-                {{ manual.isSyncingSource(source.id) ? 'Reading…' : 'Refresh now' }}
-              </button>
-              @if (manual.isSyncingSource(source.id)) {
-                <button type="button" mnButton (click)="manual.cancel()">Cancel</button>
-              } @else {
-                <span class="mn-hint">{{ lastReadLine(source.id) }}</span>
-              }
-            </mn-cluster>
-          } @else if (source.kind === 'anki-package') {
-            <mn-cluster justify="between" [gap]="3">
-              <button
-                type="button"
-                mnButton
-                [disabled]="packageBusy()"
-                (click)="packageInput.click()"
-                data-testid="replace-package"
-              >
-                Replace…
-              </button>
-            </mn-cluster>
-            <input
-              #packageInput
-              class="mn-visually-hidden"
-              type="file"
-              aria-label="Choose a replacement Anki package"
-              aria-hidden="true"
-              tabindex="-1"
-              accept=".apkg,.colpkg"
-              [disabled]="packageBusy()"
-              (change)="replacePackage($event)"
-              data-testid="package-input"
+            <mn-settings-row
+              action="accent"
+              glyph="sync"
+              label="Refresh now"
+              testId="sync-now"
+              [summary]="manual.isSyncingSource(source.id) ? 'Reading…' : lastReadLine(source.id)"
+              [disabled]="busy() && !manual.isSyncingSource(source.id)"
+              [busy]="manual.isSyncingSource(source.id)"
+              (pressed)="syncNow(source)"
             />
-            <mn-package-import />
-          } @else {
-            <mn-cluster justify="between" [gap]="3">
-              <strong>Your own words</strong>
-              <button
-                type="button"
-                mnButton
-                [disabled]="editing()"
-                (click)="editing.set(true)"
-                data-testid="edit-text-list"
-              >
-                Edit list
-              </button>
-            </mn-cluster>
-            @if (editing() && source.kind === 'text-list') {
-              <mn-text-list-source
-                [source]="textList(source)"
-                (saved)="finishEdit()"
-                (cancelled)="closeEditor()"
-              />
+            @if (manual.isSyncingSource(source.id)) {
+              <mn-settings-row action="accent" label="Cancel" (pressed)="manual.cancel()" />
             }
+          } @else if (source.kind === 'anki-package') {
+            <mn-settings-row
+              action="accent"
+              label="Replace file"
+              testId="replace-package"
+              [disabled]="packageBusy()"
+              (pressed)="choosePackage()"
+            />
+          } @else {
+            <mn-settings-row
+              action="accent"
+              label="Edit list"
+              testId="edit-text-list"
+              [disabled]="editing()"
+              (pressed)="editing.set(true)"
+            />
           }
 
-          <mn-divider />
+          @if (attention(); as message) {
+            <mn-status-line mn-section-footer tone="warning" data-testid="source-attention">
+              {{ message }}
+              @if (source.kind === 'anki-connect') {
+                <button
+                  mn-status-line-action
+                  type="button"
+                  [attr.aria-busy]="manual.isSyncing() ? 'true' : null"
+                  (click)="syncNow(source)"
+                >
+                  Try now
+                </button>
+              }
+            </mn-status-line>
+          }
+        </mn-section>
 
-          @if (source.kind === 'anki-package') {
-            <p class="mn-hint">{{ mappingSummary(source) }}</p>
+        @if (source.kind === 'anki-package') {
+          <input
+            #packageInput
+            class="mn-visually-hidden"
+            type="file"
+            aria-label="Choose a replacement Anki package"
+            aria-hidden="true"
+            tabindex="-1"
+            accept=".apkg,.colpkg"
+            [disabled]="packageBusy()"
+            (change)="replacePackage($event)"
+            data-testid="package-input"
+          />
+          <mn-package-import />
+        }
 
-            <mn-divider />
-          } @else if (source.kind !== 'text-list') {
+        @if (editing() && source.kind === 'text-list') {
+          <mn-text-list-source
+            [source]="textList(source)"
+            (saved)="finishEdit()"
+            (cancelled)="closeEditor()"
+          />
+        }
+
+        @if (source.kind === 'anki-package') {
+          <mn-section label="What it reads" [rows]="true">
+            <mn-settings-row label="What it reads" [summary]="mappingSummary(source)" />
+          </mn-section>
+        } @else if (source.kind !== 'text-list') {
+          <mn-section label="What it reads" [rows]="true">
             <mn-disclosure
-              tone="quiet"
-              [flush]="true"
-              [heading]="mappingSummary(source)"
+              heading="What it reads"
+              [value]="mappingSummary(source)"
               (openChange)="onMappingOpen($event, source)"
             >
               @if (configurable(source)) {
@@ -251,7 +231,7 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
                       (valueChange)="setNoteType(source, $event)"
                     />
                   </mn-settings-row>
-                  <mn-settings-row label="Field" labelId="mn-source-map-3-label">
+                  <mn-settings-row label="Expression field" labelId="mn-source-map-3-label">
                     <mn-select
                       labelledBy="mn-source-map-3-label"
                       label="Expression field"
@@ -261,7 +241,7 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
                       (valueChange)="setField(source, $event)"
                     />
                   </mn-settings-row>
-                  <mn-settings-row label="Meaning" labelId="mn-source-map-4-label">
+                  <mn-settings-row label="Meaning field" labelId="mn-source-map-4-label">
                     <mn-select
                       labelledBy="mn-source-map-4-label"
                       label="Meaning field"
@@ -271,15 +251,16 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
                       (valueChange)="setMeaningField(source, $event)"
                     />
                   </mn-settings-row>
+                  @if (hasChildren(source.deckName)) {
+                    <mn-switch-row
+                      [disabled]="refresh.isBusy()"
+                      [checked]="source.deckScope === 'deck-and-subdecks'"
+                      (checkedChange)="setScope(source, $event)"
+                    >
+                      Include the subdecks
+                    </mn-switch-row>
+                  }
                 </div>
-                @if (hasChildren(source.deckName)) {
-                  <mn-checkbox
-                    [disabled]="refresh.isBusy()"
-                    [checked]="source.deckScope === 'deck-and-subdecks'"
-                    (checkedChange)="setScope(source, $event)"
-                    >Include the subdecks</mn-checkbox
-                  >
-                }
               } @else if (source.kind === 'anki-connect') {
                 <p class="mn-hint" role="status">
                   {{
@@ -290,39 +271,30 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
                 </p>
               }
             </mn-disclosure>
-
             @if (staleReason(source); as reason) {
-              <mn-notice tone="error" role="alert" data-testid="source-stale">
-                <p>{{ staleMessage(reason) }} Add this source again to repair it.</p>
-              </mn-notice>
+              <mn-status-line mn-section-footer tone="danger" data-testid="source-stale">
+                {{ staleMessage(reason) }} Add this source again to repair it.
+              </mn-status-line>
             }
+          </mn-section>
+        }
 
-            <mn-divider />
-          }
-
+        <mn-section label="Remove source" [rows]="true">
+          <mn-settings-row
+            action="danger"
+            label="Remove source"
+            testId="remove-source"
+            [disabled]="busy()"
+            (pressed)="confirmRemove(source)"
+          />
           @if (changeError(); as error) {
-            <mn-notice tone="error" role="alert"
-              ><p>{{ error }}</p></mn-notice
-            >
+            <mn-status-line mn-section-footer tone="danger">{{ error }}</mn-status-line>
           }
-
-          <mn-cluster justify="between" [gap]="3">
-            <button
-              type="button"
-              mnButton="danger"
-              [disabled]="busy()"
-              (click)="confirmRemove(source)"
-              [attr.aria-label]="'Remove ' + source.label"
-              data-testid="remove-source"
-            >
-              <mn-icon name="delete" /> Remove source
-            </button>
-          </mn-cluster>
-        </mn-card>
+        </mn-section>
       } @else if (store.loaded()) {
-        <mn-card>
-          <p>This source is no longer here.</p>
-        </mn-card>
+        <mn-section label="Source" [rows]="true">
+          <mn-settings-row label="This source is no longer here." />
+        </mn-section>
       }
     </mn-page>
   `,
@@ -341,6 +313,8 @@ export class SourcePageComponent {
   private readonly clock = inject(CLOCK);
   private readonly createConnection = inject(ANKI_PROVIDER_FACTORY);
   protected readonly formatDate = formatDate;
+
+  private readonly packageInput = viewChild<ElementRef<HTMLInputElement>>('packageInput');
 
   /** The route parameter, bound as an input by the router. */
   readonly sourceId = input.required<string>();
@@ -417,13 +391,12 @@ export class SourcePageComponent {
     return source.kind === 'text-list' ? source : null;
   }
 
-  protected summary(source: VocabularySource): string {
+  protected words(source: VocabularySource): string {
     const standing = this.standings.standingFor(source.id);
-    const words = standing === null ? 'not read yet' : formatCountOf(standing.entryCount, 'word');
-    return `${this.origin(source)} · ${words}`;
+    return standing === null ? 'Not read yet' : formatCountOf(standing.entryCount, 'word');
   }
 
-  private origin(source: VocabularySource): string {
+  protected origin(source: VocabularySource): string {
     switch (source.kind) {
       case 'anki-connect':
         return source.providerKind === 'android-connect'
@@ -443,7 +416,7 @@ export class SourcePageComponent {
       : `Last read ${formatRelativeDay(standing.readAt, this.clock.now())}`;
   }
 
-  /** A closed disclosure answers the question its label asks. */
+  /** The row answers the question its label asks, so it is never a fold with the answer inside. */
   protected mappingSummary(source: VocabularySource): string {
     if (source.kind === 'text-list') {
       return '';
@@ -574,6 +547,10 @@ export class SourcePageComponent {
     if (this.manual.state().kind === 'complete') {
       await this.reload();
     }
+  }
+
+  protected choosePackage(): void {
+    this.packageInput()?.nativeElement.click();
   }
 
   protected async replacePackage(event: Event): Promise<void> {

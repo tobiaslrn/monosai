@@ -48,6 +48,16 @@ describe('SwitchRowComponent', () => {
     expect(input.getAttribute('aria-describedby')).toBe('reason');
   });
 
+  it('is the settings row, with its label and a line of its own that describes the switch', () => {
+    const { fixture, input } = render();
+    const label = (fixture.nativeElement as HTMLElement).querySelector('label')!;
+
+    expect(label.classList.contains('mn-settings-row')).toBe(true);
+    expect(label.querySelector('.mn-settings-row__title')?.textContent.trim()).toBe('Furigana');
+    expect(label.querySelector('.mn-settings-row__end')?.contains(input)).toBe(true);
+    expect(label.querySelector('.mn-settings-row__details')).toBeNull();
+  });
+
   it('toggles the bound value from the switch, and the switch from the value', () => {
     const { fixture, host, input } = render();
 

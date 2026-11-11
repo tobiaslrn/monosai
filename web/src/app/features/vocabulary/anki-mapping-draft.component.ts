@@ -83,7 +83,15 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
           <p lang="ja">{{ store.sampleWords().join(' · ') || 'No reviewed words found.' }}</p>
           <p class="mn-hint">Your vocabulary stays unchanged until you confirm.</p>
         }
-        <mn-cluster>
+        <mn-cluster justify="end">
+          <button
+            type="button"
+            mnButton="ghost"
+            [disabled]="store.refresh.state().kind === 'committing'"
+            (click)="store.cancel()"
+          >
+            Cancel
+          </button>
           @if (store.preview()) {
             <button type="button" mnButton="primary" (click)="store.confirm()">
               Confirm vocabulary
@@ -98,14 +106,6 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
               {{ store.refresh.isBusy() ? 'Reading vocabulary…' : 'Preview vocabulary' }}
             </button>
           }
-          <button
-            type="button"
-            mnButton
-            [disabled]="store.refresh.state().kind === 'committing'"
-            (click)="store.cancel()"
-          >
-            Cancel
-          </button>
         </mn-cluster>
       </mn-card>
     }

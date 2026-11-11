@@ -14,7 +14,6 @@
   "src/app/shared-ui/banner/banner.component.ts": ["R35"],
   "src/app/shared-ui/blocker/blocker.component.ts": ["R35"],
   "src/app/shared-ui/checklist/checklist.component.ts": ["R35"],
-  "src/app/shared-ui/disclosure/disclosure.component.ts": ["R35"],
   "src/app/shared-ui/notice/notice.component.ts": ["R35"],
   "src/app/shared-ui/outcome/outcome.component.ts": ["R35"],
   "src/app/shared-ui/row/row.component.ts": ["R35"],

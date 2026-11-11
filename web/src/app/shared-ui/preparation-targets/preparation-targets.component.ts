@@ -1,9 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
+import { SectionComponent } from '../section/section.component';
 import { SwitchRowComponent } from '../switch-row/switch-row.component';
-
-let instanceCount = 0;
 
 const LABELS: Readonly<Record<PreparationLayer, string>> = {
   english: 'English translation',
@@ -31,25 +30,23 @@ export function audioPreparationUnavailableReason(
 @Component({
   selector: 'mn-preparation-targets',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SwitchRowComponent],
+  imports: [SectionComponent, SwitchRowComponent],
   template: `
-    <fieldset [disabled]="disabled()">
-      <legend>{{ legend() }}</legend>
-      @for (layer of layers; track layer) {
-        <mn-switch-row
-          [testId]="'preparation-' + layer"
-          [checked]="isSelected(layer)"
-          [disabled]="layer === 'audio' && audioReadiness() !== 'ready'"
-          [describedBy]="layer === 'audio' ? audioReasonId : null"
-          (checkedChange)="toggle(layer, $event)"
-        >
-          {{ labels[layer] }}
-        </mn-switch-row>
-      }
-      @if (audioReason(); as reason) {
-        <p [id]="audioReasonId" class="reason">{{ reason }}</p>
-      }
-    </fieldset>
+    <mn-section [heading]="legend()" [rows]="true">
+      <fieldset class="mn-settings-group" [disabled]="disabled()" [attr.aria-label]="legend()">
+        @for (layer of layers; track layer) {
+          <mn-switch-row
+            [testId]="'preparation-' + layer"
+            [checked]="isSelected(layer)"
+            [disabled]="layer === 'audio' && audioReadiness() !== 'ready'"
+            [description]="layer === 'audio' ? audioReason() : null"
+            (checkedChange)="toggle(layer, $event)"
+          >
+            {{ labels[layer] }}
+          </mn-switch-row>
+        }
+      </fieldset>
+    </mn-section>
   `,
   styles: `
     :host {
@@ -57,27 +54,10 @@ export function audioPreparationUnavailableReason(
     }
 
     fieldset {
-      display: grid;
-      gap: var(--space-2);
+      min-width: 0;
       margin: 0;
       padding: 0;
       border: 0;
-    }
-
-    legend {
-      margin-bottom: var(--space-2);
-      /* The user-agent inline padding would indent the group from its siblings. */
-      padding: 0;
-      color: var(--text-primary);
-      font-size: var(--text-sm);
-      font-weight: var(--weight-semibold);
-    }
-
-    .reason {
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-xs);
-      line-height: var(--leading-snug);
     }
   `,
 })
@@ -90,8 +70,6 @@ export class PreparationTargetsComponent {
 
   protected readonly layers = ['english', 'grammar', 'audio'] as const;
   protected readonly labels = LABELS;
-  /** Own id, so several mounted groups never collide on one description id. */
-  protected readonly audioReasonId = `mn-preparation-audio-reason-${(instanceCount += 1)}`;
   protected readonly audioReason = computed(() => {
     const readiness = this.audioReadiness();
     return readiness === 'ready' ? null : audioPreparationUnavailableReason(readiness);

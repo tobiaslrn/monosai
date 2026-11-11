@@ -10,8 +10,8 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
  *     <mn-facts [facts]="facts" />
  *   </mn-disclosure>
  *
- * The summary is a full row with its title, an optional current value, and a
- * chevron that turns when it is open. The body is padded and stacks what it
+ * The summary is a full row with its title, an optional current value under
+ * it, and the up-down chevron of a row that opens in place. The body is padded and stacks what it
  * holds across its width (a button goes in an `mn-cluster` to keep its own);
  * `[flush]` is for a disclosure inside a padded card: the body
  * drops its side padding for content that needs the whole width, such as a
@@ -47,7 +47,7 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
           }
         </span>
         <span class="mn-settings-row__end">
-          <mn-icon class="mn-disclosure__chevron" name="chevron-right" [size]="18" />
+          <mn-icon class="mn-disclosure__chevron" name="chevron-up-down" />
         </span>
       </summary>
       <div class="mn-disclosure__body" [class.mn-disclosure__body--flush]="flush()">
@@ -88,19 +88,11 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
     mn-disclosure .mn-disclosure__chevron {
       flex: none;
       color: var(--text-secondary);
-      @include motion.turn;
     }
 
     /* The fold opens its height rather than appearing under the summary. */
     mn-disclosure > .mn-disclosure__details {
       @include motion.expand;
-    }
-
-    mn-disclosure
-      > .mn-disclosure__details[open]
-      > .mn-disclosure__summary
-      .mn-disclosure__chevron {
-      transform: rotate(90deg);
     }
 
     mn-disclosure.mn-disclosure--quiet > .mn-disclosure__details > .mn-disclosure__summary {

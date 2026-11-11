@@ -216,15 +216,13 @@ const STRICTNESS_OPTIONS: readonly SelectOption<VocabularyStrictness>[] = (
           }
           @case (3) {
             <mn-story-plots [disabled]="disabled()" />
-            <mn-card aria-label="After the story">
-              <mn-preparation-targets
-                legend="Prepare after generation"
-                [targets]="preparationTargets()"
-                [audioReadiness]="audioReadiness()"
-                [disabled]="disabled()"
-                (targetsChanged)="preparationTargetsChanged.emit($event)"
-              />
-            </mn-card>
+            <mn-preparation-targets
+              legend="Prepare after generation"
+              [targets]="preparationTargets()"
+              [audioReadiness]="audioReadiness()"
+              [disabled]="disabled()"
+              (targetsChanged)="preparationTargetsChanged.emit($event)"
+            />
           }
         }
       </mn-wizard-step>

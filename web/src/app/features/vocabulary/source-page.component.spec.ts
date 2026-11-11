@@ -134,7 +134,7 @@ describe('SourcePageComponent', () => {
     const list = await render(TEXT_LIST.id);
     expect(list.element.querySelector('[data-testid="automatic-sync"]')).toBeNull();
     expect(list.element.querySelector('[data-testid="sync-now"]')).toBeNull();
-    expect(list.element.textContent).toContain('Your own words');
+    expect(list.element.textContent).toContain('A list you typed');
   });
 
   it('returns focus to Edit list when the pasted-list editor is cancelled', async () => {
@@ -277,7 +277,9 @@ describe('SourcePageComponent', () => {
     const { fixture, element } = await render(anki.id);
     const button = required(element, '[data-testid="sync-now"]') as HTMLButtonElement;
     expect(button.getAttribute('aria-busy')).toBeNull();
-    expect(button.textContent.trim()).toBe('Refresh now');
+    const row = button.closest('mn-settings-row')!;
+    expect(row.textContent).toContain('Refresh now');
+    expect(row.textContent).not.toContain('Reading…');
 
     button.click();
     await settle(fixture);
@@ -285,9 +287,13 @@ describe('SourcePageComponent', () => {
     expect(required(element, '[data-testid="sync-now"]')).toBe(button);
     expect(button.disabled).toBe(false);
     expect(button.getAttribute('aria-busy')).toBe('true');
-    expect(button.textContent.trim()).toBe('Reading…');
+    // The label stays; the result's line says what is happening.
+    expect(row.textContent).toContain('Refresh now');
+    expect(row.textContent).toContain('Reading…');
     expect(
-      [...element.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Cancel'),
+      [...element.querySelectorAll('mn-settings-row')].some(
+        (r) => r.textContent.trim() === 'Cancel',
+      ),
     ).toBe(true);
 
     button.click();

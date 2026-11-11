@@ -293,14 +293,21 @@
   @include motion.turn;
 }
 
-/* A row of radios: the whole label is the target, and the chosen row's radio is the mark. */
-.mn-settings-row--radio {
+/*
+ * A row of radios, or of a switch: the whole label is the target, and the
+ * control at its start or end is the mark.
+ */
+.mn-settings-row--radio,
+.mn-settings-row--switch {
   cursor: pointer;
   @include motion.state(box-shadow);
 }
 
 :where(html[data-pointer='mouse']) .mn-settings-row--radio:where(:hover),
-.mn-settings-row--radio:where(:active) {
+:where(html[data-pointer='mouse'])
+  .mn-settings-row--switch:where(:hover:not(.mn-settings-row--disabled)),
+.mn-settings-row--radio:where(:active),
+.mn-settings-row--switch:where(:active:not(.mn-settings-row--disabled)) {
   box-shadow: var(--state-layer-fill);
 }
 
@@ -309,8 +316,13 @@
   outline-offset: -3px;
 }
 
-.mn-settings-row--radio input[type='radio'] {
+.mn-settings-row--radio input[type='radio'],
+.mn-settings-row--switch input[type='checkbox'] {
   cursor: pointer;
+}
+
+.mn-settings-row--switch.mn-settings-row--disabled input[type='checkbox'] {
+  cursor: not-allowed;
 }
 
 /* A group's host is its feature component, so it is made a block here. */
@@ -322,7 +334,7 @@
 }
 
 /* The hairline above a group's child is drawn from the child's own top edge. */
-.mn-settings-group > :where(.mn-radio-list, mn-range-field) {
+.mn-settings-group > :where(.mn-radio-list, mn-range-field, mn-switch-row) {
   position: relative;
 }
 
