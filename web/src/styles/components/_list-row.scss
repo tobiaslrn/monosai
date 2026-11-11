@@ -228,8 +228,13 @@
   border-radius: 0;
 }
 
-/* The group clips its corners, so a focused row draws its ring inside itself. */
-.mn-list-group .mn-list-row:has(.mn-list-row__link:focus-visible) {
+/* A group or card clips its corners, so a focused row in one draws its ring inside itself. */
+:is(.mn-list-group .mn-list-row, .mn-list-row--flush):has(.mn-list-row__link:focus-visible) {
+  outline-offset: -3px;
+}
+
+/* So does the button that ends the row, which sits on the group's edge. */
+.mn-list-group .mn-list-row__menu .mn-icon-button:focus-visible {
   outline-offset: -3px;
 }
 
