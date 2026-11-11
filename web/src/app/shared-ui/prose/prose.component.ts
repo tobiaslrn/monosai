@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, ViewEncapsulation } from '@angular/core';
 
 /**
  * A column of explanation: Help's sections, headings, paragraphs, and lists.
@@ -12,6 +12,10 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/
  * A section is a stack, so nothing in it needs a margin: a notice, a card, or
  * a row placed between paragraphs gets the same gap as a paragraph.
  *
+ * `measure` gives the column a reading measure, narrower than the page, for long-form
+ * articles whose lines would otherwise run past a comfortable length; headings, notes
+ * and everything else in it follow the same column.
+ *
  * Two roles are marked with attributes rather than classes:
  *
  *   <p mn-lead>        the opening line, larger and quieter
@@ -21,6 +25,7 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/
   selector: 'mn-prose',
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
+  host: { '[class.mn-prose--measure]': 'measure()' },
   template: `<ng-content />`,
   styles: `
     mn-prose {
@@ -28,6 +33,10 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/
       flex-direction: column;
       gap: var(--page-gap);
       min-width: 0;
+    }
+
+    mn-prose.mn-prose--measure {
+      max-width: var(--prose-measure);
     }
 
     /* A section is a stack: its blocks keep one gap and carry no margins. */
@@ -68,6 +77,7 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/
     :where(mn-prose, mn-prose > section) > :where(ul, ol) > :where(li) {
       line-height: var(--leading-prose);
       overflow-wrap: anywhere;
+      text-wrap: pretty;
     }
 
     :where(mn-prose, mn-prose > section) > :where(ul, ol) > :where(li + li) {
@@ -101,4 +111,7 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/
     }
   `,
 })
-export class ProseComponent {}
+export class ProseComponent {
+  /** Narrows the column to the reading measure. */
+  readonly measure = input(false);
+}

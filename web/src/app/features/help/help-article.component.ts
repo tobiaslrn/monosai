@@ -1,17 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonDirective } from '../../shared-ui/button/button';
-import { IconComponent } from '../../shared-ui/icon/icon.component';
-import { ClusterComponent, PageComponent, StackComponent } from '../../shared-ui/layout/layout';
+import { ClusterComponent, PageComponent } from '../../shared-ui/layout/layout';
+import { PagerComponent, type PagerLink } from '../../shared-ui/pager/pager.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { ProseComponent } from '../../shared-ui/prose/prose.component';
-import { RowComponent } from '../../shared-ui/row/row.component';
 import { adjacentHelpTopics, HELP_TOPICS } from './help-topics';
 
 /**
  * The frame every topic page wears: the shared page header with Back to Help,
- * one prose column for the topic's own words, and the way on to the next
- * topic as rows, the same shape as the topic list they come from.
+ * one prose column at a reading measure for the topic's own words, and the
+ * way to the previous and next topic.
  */
 @Component({
   selector: 'mn-help-article',
@@ -20,48 +19,21 @@ import { adjacentHelpTopics, HELP_TOPICS } from './help-topics';
     RouterLink,
     ButtonDirective,
     ClusterComponent,
-    IconComponent,
     PageComponent,
     PageHeaderComponent,
     ProseComponent,
-    RowComponent,
-    StackComponent,
+    PagerComponent,
   ],
   template: `
     <mn-page>
       <mn-page-header [heading]="topic().title" backTo="/help" backLabel="Back to Help" />
-      <mn-prose>
+      <mn-prose [measure]="true">
         <ng-content />
       </mn-prose>
-      <nav aria-label="More topics">
-        <mn-stack [gap]="2">
-          @if (adjacent().previous; as previous) {
-            <mn-row
-              surface="card"
-              [link]="['/help', previous.slug]"
-              [heading]="previous.title"
-              testId="help-previous"
-            >
-              <mn-icon mn-row-leading name="back" [size]="18" />
-              <span mn-row-meta>Previous topic</span>
-            </mn-row>
-          }
-          @if (adjacent().next; as next) {
-            <mn-row
-              surface="card"
-              [link]="['/help', next.slug]"
-              [heading]="next.title"
-              testId="help-next"
-            >
-              <span mn-row-meta>Next topic</span>
-              <mn-icon name="chevron-right" [size]="18" />
-            </mn-row>
-          }
-          <mn-cluster>
-            <a mnButton="ghost" routerLink="/help">All topics</a>
-          </mn-cluster>
-        </mn-stack>
-      </nav>
+      <mn-pager label="More topics" [previous]="previous()" [next]="next()" />
+      <mn-cluster>
+        <a mnButton="ghost" edge="start" routerLink="/help">All topics</a>
+      </mn-cluster>
     </mn-page>
   `,
 })
@@ -78,5 +50,17 @@ export class HelpArticleComponent {
     return topic;
   });
 
-  protected readonly adjacent = computed(() => adjacentHelpTopics(this.slug()));
+  private readonly adjacent = computed(() => adjacentHelpTopics(this.slug()));
+
+  protected readonly previous = computed<PagerLink | null>(() => {
+    const topic = this.adjacent().previous;
+    return topic
+      ? { title: topic.title, link: ['/help', topic.slug], testId: 'help-previous' }
+      : null;
+  });
+
+  protected readonly next = computed<PagerLink | null>(() => {
+    const topic = this.adjacent().next;
+    return topic ? { title: topic.title, link: ['/help', topic.slug], testId: 'help-next' } : null;
+  });
 }

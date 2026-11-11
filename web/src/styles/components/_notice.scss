@@ -28,6 +28,7 @@
   color: var(--notice-ink);
   font-size: var(--text-sm);
   line-height: var(--leading-snug);
+  text-wrap: pretty;
   /* A notice arrives rather than popping in beside what it reports on. */
   @include motion.enter;
 }

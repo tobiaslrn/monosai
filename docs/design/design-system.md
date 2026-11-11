@@ -70,7 +70,10 @@ same column, so they all share one left and one right edge. The measure is a
 comfortable line of English rather than a share of the window: on a wide screen
 a page gains canvas around the column, never a wider column, and no page keeps
 a narrower or wider variant of its own. Prose inside the column fills it, so a
-paragraph and the card under it end on the same edge. A table of real columns
+paragraph and the card under it end on the same edge. One exception: long-form
+prose, a help article, takes a reading measure (`--prose-measure`) through
+`mn-prose`, left-aligned in the column, so its headings, paragraphs and notes keep
+a comfortable line while the page's bar and cards keep the page measure. A table of real columns
 may ask for more only when the common measure cannot hold it.
 
 The page's spacing is steered from **one set of layout tokens** in
@@ -374,7 +377,7 @@ the way to build:
 | Status           | `mn-status-line` (a group's one line under its card), `mn-checklist` with `mn-checklist-step` for first steps, `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
 | Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen`, `mn-not-found-panel` and `mn-empty-state` on the one whole-page state; `mn-status-lead` for a status that leads a secondary line, in a settings row or a shelf row                                                                                                                                              |
 | Overlays         | `mn-menu` (a menu), `mn-dropdown` (the list a select drops), the searchable model picker (`openModelPicker`, on the task-dialog frame), `mn-sheet-popover` with `mnOverlayTrigger` (a popover-held task dialog: Add words, Story options), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                      |
-| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                                                                                                                                                           |
+| Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` and `mn-pager` for Help                                                                                                                                                                                                                                                                                                                            |
 | Glyphs           | `mn-icon`                                                                                                                                                                                                                                                                                                                                                                                              |
 
 A menu is a native popover (`mn-menu`), so the browser dismisses it on a press
@@ -1348,7 +1351,11 @@ Four exceptions:
   section headings, short paragraphs, and links close to the actions they
   explain. `/help` carries what the application is for, what it is not for, and a
   shelf of topics; each topic is its own route below it, wearing the shared page
-  frame with Back to Help and ending in its neighbours. The measure and the prose
+  frame with Back to Help and ending in its neighbours, as one pagination (`mn-pager`):
+  a Previous and a Next card with the same anatomy, an eyebrow over the title and the
+  arrow on the outer side, side by side when they fit and stacked when they do not.
+  The hub opens with its lead sentence and the shelf of topics, since a learner opens
+  Help to find one, and the essays follow. The measure and the prose
   elements live in `mn-prose`, so a topic page writes words and nothing else.
   Two options being compared are a card each, never a table: the figures are few,
   the prose beside them is long, and a table of that shape either scrolls

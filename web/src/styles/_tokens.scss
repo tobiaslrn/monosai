@@ -160,6 +160,10 @@
    * measure for a line of English, which cards, headings and prose all fill.
    */
   --page-measure: 44rem;
+  /* The narrower measure of long-form prose, such as a help article, at any width. */
+  --prose-measure: 62ch;
+  /* The control icon's size, for a layout that reserves its place beside text. */
+  --icon-control: 20px;
 
   /*
    * Layout roles. Every page, card and row takes its spacing from these, and

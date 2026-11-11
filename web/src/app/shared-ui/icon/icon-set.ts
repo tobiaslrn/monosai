@@ -1,6 +1,7 @@
 import {
   LucideArrowDown,
   LucideArrowLeft,
+  LucideArrowRight,
   LucideArrowUp,
   LucideAudioLines,
   LucideBookOpen,
@@ -75,6 +76,7 @@ export const ICON_SET = {
   more: LucideMenu,
   close: LucideX,
   back: LucideArrowLeft,
+  forward: LucideArrowRight,
   warning: LucideCircleAlert,
   alert: LucideTriangleAlert,
   check: LucideCheck,
