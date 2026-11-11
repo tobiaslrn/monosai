@@ -1,7 +1,6 @@
 {
   "src/app/features/generate/story-direction.component.ts": ["R35"],
   "src/app/features/generate/story-form.component.ts": ["R35"],
-  "src/app/features/generate/story-plots.component.ts": ["R35"],
   "src/app/features/help/help-article.component.ts": ["R35"],
   "src/app/features/reading-level/reading-level-page.component.ts": ["R35"],
   "src/app/features/vocabulary/add-words.component.ts": ["R35"],

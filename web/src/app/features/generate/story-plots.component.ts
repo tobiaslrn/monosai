@@ -68,7 +68,7 @@ interface PlotChip {
         [disabled]="disabled() || !plots.canRegenerate()"
         (click)="regenerate()"
       >
-        <mn-icon name="retry" [size]="18" />
+        <mn-icon name="retry" />
         <span>Regenerate</span>
       </button>
 
@@ -94,9 +94,9 @@ interface PlotChip {
                   <span
                     class="mn-status-pill"
                     [class.mn-status-pill--dashed]="chip.kind === 'rolled'"
-                    [class.mn-status-pill--accent]="chip.kind === 'turn'"
                   >
                     @if (chip.kind === 'turn') {
+                      <mn-icon name="sentence-details" [size]="16" />
                       <span class="mn-visually-hidden">Turning point: </span>
                     }
                     {{ chip.text }}
@@ -106,7 +106,7 @@ interface PlotChip {
                   </span>
                 }
                 @if (edited(card)) {
-                  <span class="mn-status-pill mn-status-pill--accent">Edited</span>
+                  <span class="mn-status-pill">Edited</span>
                 }
               </mn-cluster>
               @if (editing() !== card.id) {
@@ -153,10 +153,10 @@ interface PlotChip {
                     (click)="toggleEdit(index, card.id)"
                   >
                     @if (editing() === card.id) {
-                      <mn-icon name="check" [size]="18" />
+                      <mn-icon name="check" />
                       <span>Done</span>
                     } @else {
-                      <mn-icon name="rename" [size]="18" />
+                      <mn-icon name="rename" />
                       <span>Edit</span>
                     }
                   </button>

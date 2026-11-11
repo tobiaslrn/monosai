@@ -249,7 +249,7 @@ test.describe('steering a story', () => {
     // The chips say who chose what: the learner's genre solid, rolled values dashed.
     const first = page.getByTestId('plot-option').first();
     await expect(first.locator('.mn-status-pill--dashed')).toHaveCount(3);
-    await expect(first.locator('.mn-status-pill--accent')).toContainText('Turning point');
+    await expect(first.locator('.mn-status-pill', { hasText: 'Turning point' })).toHaveCount(1);
 
     await page.getByTestId('plot-option').nth(1).locator('input[type="radio"]').check();
     await page.getByTestId('plot-option').nth(1).getByTestId('edit-plot').click();

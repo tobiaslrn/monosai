@@ -1,7 +1,8 @@
 /*
  * A short word that says where something stands — Ready, Unread, Test failed,
- * a word form. It is never pressable, so it never takes the action colour: the
- * accent is the lavender, and the rest are the status pairs.
+ * a word form. It is never pressable, so it never takes the action colour. It
+ * is plain by default and the status pairs name success, warning and danger;
+ * the lavender accent marks no status, so it is never a pill.
  */
 .mn-status-pill {
   --pill-soft: var(--surface-sunken);
@@ -35,12 +36,6 @@
 .mn-status-pill--danger {
   --pill-soft: var(--status-danger-soft);
   --pill-ink: var(--status-danger);
-}
-
-.mn-status-pill--accent {
-  --pill-soft: var(--accent-secondary-soft);
-  /* The bare lavender misses text contrast on its own soft ground at pill size. */
-  --pill-ink: color-mix(in srgb, var(--accent-secondary) 70%, var(--text-primary));
 }
 
 /*

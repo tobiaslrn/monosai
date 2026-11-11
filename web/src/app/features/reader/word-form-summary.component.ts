@@ -15,16 +15,14 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
           @if (summary().dictionaryForm !== surface()) {
             <span class="separator" aria-hidden="true">·</span>
           }
-          <span class="part-of-speech mn-status-pill mn-status-pill--accent">{{
-            partOfSpeech
-          }}</span>
+          <span class="part-of-speech mn-status-pill">{{ partOfSpeech }}</span>
         }
       </p>
 
       @if (summary().formLabels.length > 0) {
         <p class="form-line">
           @for (label of summary().formLabels; track label) {
-            <span class="mn-status-pill mn-status-pill--accent">{{ label }}</span>
+            <span class="mn-status-pill">{{ label }}</span>
             @if (!$last) {
               <span class="separator form-separator" aria-hidden="true">{{ ' · ' }}</span>
             }
