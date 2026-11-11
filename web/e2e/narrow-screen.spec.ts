@@ -101,6 +101,9 @@ async function brokenText(page: Page, zoom: number): Promise<string[]> {
       const top = Math.min(...rects.map((rect) => rect.top));
       const bottom = Math.max(...rects.map((rect) => rect.bottom));
       const where = label(host, text);
+      // Text that is not shown cannot be cut off: the reader's bar echo of the title stays
+      // hidden until the heading has scrolled beneath the bar.
+      if (getComputedStyle(host).visibility === 'hidden') continue;
       // Deliberate: a story's one-line opening ends in an ellipsis at any text size; the
       // story itself, in full, is one tap away.
       if (host.closest('.mn-list-row__excerpt') !== null) continue;
@@ -267,6 +270,47 @@ for (const { width, zoom } of SCREENS) {
       await expect(page.getByRole('heading', { name: 'Help', level: 1 })).toBeVisible();
       await expect(page.locator('main a').nth(3)).toBeVisible();
       await expectWhole(page, zoom);
+    });
+
+    test('keeps Add text whole @smoke @mobile', async ({ page }) => {
+      await page.goto('./#/add');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expect(page.locator('textarea').first()).toBeVisible();
+      await expectWhole(page, zoom);
+    });
+
+    test('keeps the reading level choice whole @smoke @mobile', async ({ page }) => {
+      await page.goto('./#/reading-level/level');
+      await expect(page.getByRole('heading', { name: 'Reading level', level: 1 })).toBeVisible();
+      await expectWhole(page, zoom);
+    });
+
+    test('keeps the word list whole @smoke @mobile', async ({ page }) => {
+      await page.goto('./#/reading-level/vocabulary');
+      await expect(page.getByRole('heading', { name: 'Your vocabulary', level: 1 })).toBeVisible();
+      await expectWhole(page, zoom);
+    });
+
+    test('keeps the reader whole @smoke @mobile', async ({ page }) => {
+      await importReading(page, 'これは長い題名の物語です。'.repeat(8), LONG_TITLE);
+      await expect(page.locator('mn-reader-sentence').first()).toBeVisible();
+      await expectWhole(page, zoom);
+    });
+
+    test.describe('with a text and voice model', () => {
+      test.use({ storageState: TTS_READY_STATE });
+
+      for (const [name, route] of [
+        ['Text models', 'text-models'],
+        ['Voice', 'voice'],
+        ['Technical details', 'technical'],
+      ] as const) {
+        test(`keeps ${name} whole @smoke @mobile`, async ({ page }) => {
+          await page.goto(`./#/settings/${route}`);
+          await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+          await expectWhole(page, zoom);
+        });
+      }
     });
 
     test('keeps a Library with a long story title whole @smoke @mobile', async ({ page }) => {
