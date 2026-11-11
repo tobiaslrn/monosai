@@ -120,12 +120,13 @@
  * The facts of a row's line are separated by a middle dot that is never the
  * first or last thing on a line. Each fact owns the dot before it, in the room
  * its padding leaves; the line is pulled that far outward and clipped, so the
- * dot of a fact that begins a line is cut off, and a fact that wraps takes its
+ * dot of a fact that begins a line is cut off at the line's start edge, and a fact that wraps takes its
  * dot with it only when a fact precedes it on the same line.
  */
 .mn-list-row__meta {
   display: block;
-  overflow: hidden;
+  /* Clips the left edge only: a word too long for large text still shows to the right. */
+  clip-path: inset(0 -100vmax 0 0);
 }
 
 .mn-list-row__facts {
@@ -142,7 +143,6 @@
 
 .mn-list-row__facts > [mn-list-row-meta] > :not(.mn-visually-hidden) {
   position: relative;
-  max-width: 100%;
   padding-inline-start: var(--meta-separator);
 }
 
