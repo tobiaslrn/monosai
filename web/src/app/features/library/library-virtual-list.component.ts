@@ -22,6 +22,15 @@ import {
 
 export const LIBRARY_VIRTUAL_OVERSCAN_PX = 600;
 export const LIBRARY_LOAD_MORE_THRESHOLD_PX = 480;
+/**
+ * What a story row and a group heading measure, in pixels, before they are
+ * measured for real: a title, its opening line and its facts with the hairline
+ * above the row, and a heading with the gap above it. Both are the measured
+ * height rounded up, never down: an unmeasured shelf that is shorter than the
+ * real one cannot reach a saved scroll position, a taller one can.
+ */
+export const LIBRARY_ROW_ESTIMATE_PX = 85;
+export const LIBRARY_HEADING_ESTIMATE_PX = 50;
 
 export type LibraryVirtualItem =
   | {
@@ -190,7 +199,7 @@ export class LibraryVirtualListComponent {
     flattenLibraryVirtualItems(this.groups(), this.store.hasMore()),
   );
   protected readonly estimateHeight = (item: LibraryVirtualItem): number =>
-    item.kind === 'heading' ? 48 : 62;
+    item.kind === 'heading' ? LIBRARY_HEADING_ESTIMATE_PX : LIBRARY_ROW_ESTIMATE_PX;
   protected readonly overscanPx = LIBRARY_VIRTUAL_OVERSCAN_PX;
   protected readonly loadMoreThresholdPx = LIBRARY_LOAD_MORE_THRESHOLD_PX;
 
