@@ -123,9 +123,26 @@ import { RouterLink, type NavigationExtras } from '@angular/router';
       line-height: var(--leading-snug);
     }
 
+    /*
+     * A balanced pair of lines, never one lone word. Where the column is wide
+     * the sentence's two clauses are unbreakable units and the headline's
+     * measure is too short for both on one line, so the break falls between
+     * them: the count, then what is read.
+     */
+    mn-standing.is-compact .mn-standing__headline {
+      max-inline-size: var(--standing-measure);
+      text-wrap: balance;
+    }
+
     mn-standing.is-compact .mn-standing__headline:empty {
       display: flex;
       min-block-size: 2lh;
+    }
+
+    @media (min-width: breakpoints.$narrow) {
+      mn-standing.is-compact .mn-standing__clause {
+        display: inline-block;
+      }
     }
 
     @media (max-width: breakpoints.$narrow-max) {
@@ -133,7 +150,7 @@ import { RouterLink, type NavigationExtras } from '@angular/router';
         font-size: var(--text-2xl);
       }
 
-      /* Two lines beside the small illustration on a phone, and no more. */
+      /* Two lines beside the illustration on a phone, and no more. */
       mn-standing.is-compact .mn-standing__headline {
         font-size: var(--text-xl);
       }

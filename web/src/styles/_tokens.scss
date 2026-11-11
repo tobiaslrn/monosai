@@ -198,6 +198,8 @@
   --hero-art-share: 45%;
   --hero-art-standing: 12rem;
   --hero-art-share-standing: 34%;
+  /* How wide the standing headline runs before it breaks between its two clauses. */
+  --standing-measure: 18em;
   /*
    * inline-gap       between things side by side in one row: buttons, chips, a
    *                  field and its button

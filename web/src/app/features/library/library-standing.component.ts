@@ -65,8 +65,10 @@ type StandingHeadline =
             @case ('standing') {
               @if (line.level !== null) {
                 <span
-                  >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" /> and
-                  read {{ line.level }}.</span
+                  ><span class="mn-standing__clause"
+                    >You know <mn-counting-count [count]="line.count" [format]="wordsLabel" /></span
+                  >{{ ' '
+                  }}<span class="mn-standing__clause">and read {{ line.level }}.</span></span
                 >
               } @else {
                 <span

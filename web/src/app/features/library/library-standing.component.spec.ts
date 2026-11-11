@@ -180,6 +180,19 @@ describe('LibraryStandingComponent', () => {
     expect(lines(fixture).headline).toBe('You know 340 words and read starter forms.');
   });
 
+  /** The two clauses are the places the headline may break, so it never strands a word. */
+  it('builds the sentence from a count clause and a level clause', () => {
+    state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
+    preset.set(PRESET);
+    languageStatus.set('ready');
+    const fixture = render();
+    const clauses = [
+      ...(fixture.nativeElement as HTMLElement).querySelectorAll('.mn-standing__clause'),
+    ].map((clause) => clause.textContent.trim());
+
+    expect(clauses).toEqual(['You know 340 words', 'and read starter forms.']);
+  });
+
   /** A bundle that failed is not a level still coming; the clause is dropped. */
   it('states the count alone once the level is established not to be coming', () => {
     preset.set(null);
