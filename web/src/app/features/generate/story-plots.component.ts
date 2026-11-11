@@ -96,7 +96,7 @@ interface PlotChip {
                     [class.mn-status-pill--dashed]="chip.kind === 'rolled'"
                   >
                     @if (chip.kind === 'turn') {
-                      <mn-icon name="sentence-details" [size]="16" />
+                      <mn-icon name="turning-point" [size]="16" />
                       <span class="mn-visually-hidden">Turning point: </span>
                     }
                     {{ chip.text }}

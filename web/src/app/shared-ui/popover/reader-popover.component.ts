@@ -7,14 +7,11 @@ import {
   inject,
   input,
   output,
-  signal,
   viewChild,
 } from '@angular/core';
 import { ViewportService } from '../../core/platform/viewport.service';
 import { IconComponent } from '../icon/icon.component';
-
-/** How far a sheet must be dragged down before letting go dismisses it. */
-const DISMISS_DISTANCE_PX = 80;
+import { SheetHandleComponent } from '../sheet/sheet-handle.component';
 
 /**
  * The card every floating reader surface is rendered in.
@@ -35,7 +32,7 @@ const DISMISS_DISTANCE_PX = 80;
 @Component({
   selector: 'mn-reader-popover',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [A11yModule, IconComponent],
+  imports: [A11yModule, IconComponent, SheetHandleComponent],
   host: { '[class.is-sheet]': 'isSheet()' },
   template: `
     <div
@@ -49,23 +46,8 @@ const DISMISS_DISTANCE_PX = 80;
       cdkTrapFocus
     >
       @if (isSheet()) {
-        <!--
-          The grab handle is the sheet's affordance and its dismissal: a press
-          anywhere on it can be flicked down, and a plain press on it closes.
-          It is a real button, so the gesture is never the only way out.
-        -->
-        <button
-          type="button"
-          class="handle"
-          aria-label="Close"
-          (pointerdown)="onDragStart($event)"
-          (pointermove)="onDragMove($event)"
-          (pointerup)="onDragEnd()"
-          (pointercancel)="onDragEnd()"
-          (click)="onHandleClick()"
-        >
-          <span class="grip" aria-hidden="true"></span>
-        </button>
+        <!-- The shared handle: the sheet's affordance, its dismissal and its flick. -->
+        <mn-sheet-handle #handle (dismissed)="closed.emit()" />
       } @else {
         <!--
           An anchored card closes from its own top corner, the way every card
@@ -211,38 +193,9 @@ const DISMISS_DISTANCE_PX = 80;
       transition: none;
     }
 
-    /*
-     * Sticky, so the way out stays reachable while the sheet's own content is
-     * scrolled — which is most of the point of docking it.
-     */
-    .handle {
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: calc(100% + 2 * var(--space-4));
-      min-height: var(--touch-target);
-      margin-inline: calc(-1 * var(--space-4));
-      padding: 0;
-      border: 0;
-      background: var(--surface-panel);
-      cursor: grab;
-      touch-action: none;
-    }
-
-    .grip {
-      display: block;
-      width: 2.5rem;
-      height: 4px;
-      border-radius: var(--radius-pill);
-      background: var(--border-strong);
-      opacity: 0.6;
-    }
-
-    .handle:active .grip {
-      opacity: 1;
+    /* The shared handle reaches past the card's side padding, so its surface spans the sheet. */
+    mn-sheet-handle {
+      --mn-sheet-handle-bleed: var(--overlay-inset);
     }
   `,
 })
@@ -256,20 +209,16 @@ export class ReaderPopoverComponent implements AfterViewInit {
   readonly closed = output<void>();
 
   private readonly card = viewChild.required<ElementRef<HTMLElement>>('card');
+  private readonly handle = viewChild<SheetHandleComponent>('handle');
   private readonly viewport = inject(ViewportService);
 
   protected readonly isSheet = computed(() => this.mobileSheet() && this.viewport.isMobile());
 
-  private readonly dragOffsetSignal = signal(0);
-  protected readonly dragOffset = this.dragOffsetSignal.asReadonly();
+  protected readonly dragOffset = computed(() => this.handle()?.offset() ?? 0);
   protected readonly dragTransform = computed(() => {
-    const offset = this.dragOffsetSignal();
+    const offset = this.dragOffset();
     return offset === 0 ? null : `translateY(${String(offset)}px)`;
   });
-
-  private dragStartY: number | null = null;
-  /** Set by a drag, so the click a release produces is not a second dismissal. */
-  private dragged = false;
 
   /**
    * Focus starts on the card rather than on its first control, so a screen
@@ -280,47 +229,5 @@ export class ReaderPopoverComponent implements AfterViewInit {
     // Without `preventScroll` the browser scrolls the docked card into view as
     // it takes focus, which on a phone moves the reading behind it.
     this.card().nativeElement.focus({ preventScroll: true });
-  }
-
-  protected onDragStart(event: PointerEvent): void {
-    this.dragStartY = event.clientY;
-    (event.target as Element).setPointerCapture(event.pointerId);
-  }
-
-  protected onDragMove(event: PointerEvent): void {
-    if (this.dragStartY === null) {
-      return;
-    }
-    // Downwards only: dragging a docked sheet up would lift it off the edge it
-    // is docked to and leave a gap under it.
-    const offset = Math.max(0, event.clientY - this.dragStartY);
-    if (offset > 0) {
-      this.dragged = true;
-    }
-    this.dragOffsetSignal.set(offset);
-  }
-
-  protected onDragEnd(): void {
-    const dismissed = this.dragOffsetSignal() >= DISMISS_DISTANCE_PX;
-    this.dragStartY = null;
-    this.dragOffsetSignal.set(0);
-    if (dismissed) {
-      this.closed.emit();
-    }
-  }
-
-  /**
-   * A press on the handle that was not a drag closes the sheet.
-   *
-   * A drag that fell short of the threshold has already answered the gesture by
-   * springing back, and the click its release produces must not close what the
-   * reader just decided to keep.
-   */
-  protected onHandleClick(): void {
-    if (this.dragged) {
-      this.dragged = false;
-      return;
-    }
-    this.closed.emit();
   }
 }

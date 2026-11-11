@@ -13,6 +13,7 @@ import { WordInspectorStore } from '../../application/reading/word-inspector.sto
 import type { GrammarFinding } from '../../domain/enrichment/records';
 import type { DictionaryEntry } from '../../domain/language/dictionary';
 import { wordRubySegments } from '../../domain/reading/word-ruby';
+import { ButtonDirective } from '../../shared-ui/button/button';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { WordFormSummaryComponent } from './word-form-summary.component';
 
@@ -77,7 +78,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
 @Component({
   selector: 'mn-word-inspector',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, WordFormSummaryComponent],
+  imports: [ButtonDirective, IconComponent, WordFormSummaryComponent],
   template: `
     @if (store.selected(); as word) {
       <div class="inspector">
@@ -97,11 +98,9 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
             </h2>
           </div>
           <!--
-            The route on to everything the sentence can be asked for. An arrow
-            that branches off and turns up rather than a labelled row: the
-            sentence is the level this word sits inside, not the next thing
-            along, and that is the one relationship an icon can actually draw.
-            The tooltip and accessible name carry the word.
+            The route on to everything the sentence can be asked for: a speech
+            bubble, the mark for saying something about a line of text. The
+            tooltip and accessible name carry the word, and name the card it opens.
           -->
           <button
             type="button"
@@ -110,7 +109,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
             aria-label="Sentence details"
             (click)="sentenceActions.emit()"
           >
-            <mn-icon name="sentence-details" />
+            <mn-icon name="sentence" />
           </button>
         </header>
 
@@ -153,7 +152,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
                 are a dictionary page, and asking for one is a press.
               -->
               @if (hiddenSenseCount() > 0) {
-                <button type="button" class="mn-button mn-button--ghost" (click)="expand()">
+                <button type="button" mnButton="ghost" edge="start" (click)="expand()">
                   More ({{ hiddenSenseCount() }})
                 </button>
               }

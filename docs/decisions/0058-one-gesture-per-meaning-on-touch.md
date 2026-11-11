@@ -75,11 +75,11 @@ deliberate hold rather than something a reader is handed for asking to read.
 **Details are quieter and shorter.**
 
 - Word details lead with the word and an unlabelled icon button on the same row
-  — `LucideCornerRightUp` under the semantic name `sentence-details`, with the
-  accessible name and tooltip "Sentence details". It replaces the labelled
-  **Sentence** row. No icon draws a sentence, so it draws the relationship
-  instead: an arrow that branches off and turns up, because the sentence is the
-  level this word sits inside rather than the next thing along. The form summary
+  — a speech bubble (`LucideMessageSquareText`, semantic name `sentence`), with
+  the accessible name and tooltip "Sentence details", the name of the card it
+  opens. It replaces the labelled **Sentence** row. (It was first drawn as an
+  arrow that turns up, `LucideCornerRightUp`; that glyph said nothing about what
+  it did, and is now only the story plots' turning-point mark.) The form summary
   sits under both. The headword size is expressed in `rem`.
 - Grammar is always readable: every stored rule appears once, title and full
   explanation together. The disclosure and the duplicate title list are gone.

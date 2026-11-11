@@ -292,7 +292,7 @@ export interface UnknownWord {
       margin-inline: calc(-1 * var(--space-4));
       padding: var(--space-3) var(--space-4) var(--mn-popover-pad-bottom, 0px);
       border-top: 1px solid var(--border-subtle);
-      background: var(--surface-panel);
+      background: var(--overlay-surface);
     }
 
     .tray button > span {

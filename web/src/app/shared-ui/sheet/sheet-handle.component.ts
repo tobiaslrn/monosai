@@ -69,7 +69,8 @@ interface DragSample {
       display: block;
       width: calc(100% + 2 * var(--mn-sheet-handle-bleed));
       margin-inline: calc(-1 * var(--mn-sheet-handle-bleed));
-      background: var(--surface-panel);
+      /* Sticky over scrolled content, so opaque; the surface's own fill, or a seam shows. */
+      background: var(--overlay-surface);
     }
 
     .handle {

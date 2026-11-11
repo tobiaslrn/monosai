@@ -918,6 +918,11 @@ sheet and a plain press does the same; either discards whatever the sheet was
 drafting, exactly as dismissing it from outside would. A sheet that commits its
 draft does so through its own primary action, never through the handle.
 
+The handle is part of the sheet's surface: it is drawn in the overlay surface, the
+same as the body under it, so a sheet is one surface with no seam between the
+handle and its content, light or dark. The reader's word and sentence cards use the
+same handle component as every other sheet.
+
 The gesture is read the way a phone reads it. The sheet follows the finger
 exactly while it is held. Letting go answers with the same two outcomes a
 native sheet gives: a drag that went far enough, or a downward flick of any
@@ -1089,6 +1094,12 @@ Colour carries meaning in exactly three places:
    word.
 
 The reading surface is the strictest. It may carry those colours and no others.
+The open word and the open sentence wear one and the same tint, because both mean
+"this is what the open surface is about" and only one is ever open; the sentence
+being read aloud wears its own, because both can be true at once. The selection tint
+is lavender because the reading surface is the one place a neutral highlight is
+needed that is not an action (sage) and not a status; it is not a tone (R46) and
+marks nothing else.
 A new thing worth marking in the Japanese is a change to this document, not a
 new token, because every added marker is subtracted from the text's own
 legibility.

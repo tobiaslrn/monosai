@@ -427,7 +427,7 @@ describe('StoryFormComponent', () => {
     expect(options).toHaveLength(3);
     const first = options[0]!;
     expect(first.querySelectorAll('.mn-status-pill--dashed').length).toBe(4);
-    expect(first.querySelector('.mn-status-pill mn-icon[name="sentence-details"]')).not.toBeNull();
+    expect(first.querySelector('.mn-status-pill mn-icon[name="turning-point"]')).not.toBeNull();
     expect(first.textContent).toContain('Turning point');
     expect(first.textContent).toContain('(random)');
     expect(first.querySelector('[data-testid="edit-plot"]')).not.toBeNull();

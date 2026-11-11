@@ -12,9 +12,6 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
           <strong class="dictionary-form" lang="ja">{{ summary().dictionaryForm }}</strong>
         }
         @if (summary().partOfSpeech; as partOfSpeech) {
-          @if (summary().dictionaryForm !== surface()) {
-            <span class="separator" aria-hidden="true">·</span>
-          }
           <span class="part-of-speech mn-status-pill">{{ partOfSpeech }}</span>
         }
       </p>
@@ -23,9 +20,6 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
         <p class="form-line">
           @for (label of summary().formLabels; track label) {
             <span class="mn-status-pill">{{ label }}</span>
-            @if (!$last) {
-              <span class="separator form-separator" aria-hidden="true">{{ ' · ' }}</span>
-            }
           }
         </p>
       }
@@ -46,7 +40,7 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
     .dictionary-line {
       display: flex;
       flex-wrap: wrap;
-      gap: 0 var(--space-1);
+      gap: 0 var(--space-2);
       align-items: baseline;
       font-size: var(--text-lg);
       line-height: var(--leading-tight);
@@ -57,18 +51,10 @@ import type { WordFormSummary } from '../../domain/reading/word-form-summary';
       overflow-wrap: anywhere;
     }
 
-    .separator {
-      color: var(--text-secondary);
-    }
-
     .form-line {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-1);
-    }
-
-    .form-separator {
-      display: none;
     }
   `,
 })
