@@ -77,6 +77,11 @@
   padding-block-start: var(--group-gap);
 }
 
+/* The actions run the card's full content width, from padding edge to padding edge. */
+.mn-state > .mn-state__actions {
+  grid-column: 1 / -1;
+}
+
 .mn-state__actions > mn-cluster {
   flex: 1 1 100%;
 }

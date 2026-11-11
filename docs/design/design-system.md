@@ -1226,7 +1226,7 @@ screen:
 | **enter**           | A message or block arrives where it will stay: a notice, a field's error, an outcome, the working line               |
 | **reveal, conceal** | A banner arrives at the top of the window and later leaves: its row opens and closes, so the page moves once         |
 | **dialog**          | A centred task dialog or confirmation fades in over the page, and fades back out when put away                       |
-| **grow**            | A centred dialog held by a native popover (Add words, Story options) fades in, and back out, never resizing         |
+| **grow**            | A centred dialog held by a native popover (Add words, Story options) fades in, and back out, never resizing          |
 | **drop**            | A menu or a dropdown fades in from the trigger's side — down from above, up from below — and back out                |
 | **sheet**           | A docked sheet rises from its edge and goes back down it, continuing a drag from where the finger let go             |
 | **scrim**           | The page behind a modal surface dims as it arrives and clears as it leaves                                           |
