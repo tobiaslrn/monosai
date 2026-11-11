@@ -130,7 +130,7 @@ describe('openModelPicker', () => {
   it('marks the chosen model with a check and shows each id on its own line', async () => {
     await open(request({ selectedId: () => 'vendor/ordinary' }));
 
-    const chosen = dialog().querySelector('[aria-selected="true"]')!;
+    const chosen = dialog().querySelector('[aria-current="true"]')!;
     expect(chosen.textContent).toContain('Ordinary');
     expect(chosen.closest('.mn-dropdown-row')?.querySelector('.mn-dropdown-row__check')).not.toBe(
       null,
@@ -154,9 +154,9 @@ describe('openModelPicker', () => {
   it('offers the fallback first, and closes with it', async () => {
     const { choice, fixture } = await open(request({ fallbackLabel: 'Use the text model' }));
 
-    const first = dialog().querySelector('[role="option"]')!;
+    const first = dialog().querySelector('[data-testid="model-picker-fallback"]')!;
     expect(first.textContent).toContain('Use the text model');
-    expect(first.getAttribute('aria-selected')).toBe('true');
+    expect(first.getAttribute('aria-current')).toBe('true');
 
     dialog().querySelector<HTMLButtonElement>('[data-testid="model-picker-fallback"]')!.click();
     await settle(fixture);

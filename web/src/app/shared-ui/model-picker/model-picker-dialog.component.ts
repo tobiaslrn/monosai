@@ -46,7 +46,8 @@ export type ModelPickerChoice =
  * dialog of fixed height with the search pinned at its top. Favourites form a
  * group above all the others, the chosen option carries a check, and each
  * model's id is monospace on one line. Choosing closes it. The list is a
- * listbox of options; a favourite's star is its own control beside the option.
+ * group of buttons, the chosen one marked current; a favourite's star is its own
+ * control beside it. It is not a listbox, because a listbox holds nothing to press.
  */
 @Component({
   selector: 'mn-model-picker-dialog',
@@ -80,14 +81,13 @@ export type ModelPickerChoice =
         }
       </label>
 
-      <div class="mn-overlay__options" role="listbox" [attr.aria-label]="request.title">
+      <div class="mn-overlay__options" role="group" [attr.aria-label]="request.title">
         @if (request.fallbackLabel; as fallback) {
           <button
             type="button"
             class="mn-dropdown-row fallback"
             data-testid="model-picker-fallback"
-            role="option"
-            [attr.aria-selected]="request.selectedId() === ''"
+            [attr.aria-current]="request.selectedId() === '' ? 'true' : null"
             (click)="chooseFallback()"
           >
             <span class="mn-dropdown-row__words">
@@ -139,9 +139,8 @@ export type ModelPickerChoice =
         <button
           type="button"
           class="mn-dropdown-row__choice"
-          role="option"
           [attr.data-testid]="'model-option-' + model.modelId"
-          [attr.aria-selected]="model.modelId === request.selectedId()"
+          [attr.aria-current]="model.modelId === request.selectedId() ? 'true' : null"
           (click)="choose(model)"
         >
           <span class="mn-dropdown-row__words">
