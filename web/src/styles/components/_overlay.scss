@@ -47,12 +47,27 @@
 .mn-overlay--docked {
   width: 100%;
   max-width: none;
-  max-height: calc(100dvh - var(--overlay-margin));
+  /* Above the on-screen keyboard, and never taller than what can be seen. */
+  max-height: calc(var(--visible-height, 100dvh) - var(--overlay-margin));
+  margin-block-end: var(--keyboard-inset, 0px);
   /* The grab handle sits flush against the docked edge. */
   padding-block: 0 max(var(--overlay-inset), env(safe-area-inset-bottom, 0px));
   padding-inline: 0;
   border-width: 1px 0 0;
   border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+}
+
+/*
+ * The searchable picker: a task dialog whose height is fixed, so filtering a
+ * long list never makes it jump. Docked, it fills what can be seen, above the
+ * on-screen keyboard, and the list scrolls inside it.
+ */
+.mn-overlay--picker {
+  height: min(var(--picker-height), calc(100dvh - 2 * var(--overlay-margin)));
+}
+
+.mn-overlay--picker.mn-overlay--docked {
+  height: calc(var(--visible-height, 100dvh) - var(--overlay-margin));
 }
 
 /* A docked surface without a handle (a confirmation) still starts at the inset. */
@@ -72,6 +87,50 @@
 
 .mn-overlay__pinned:empty {
   display: none;
+}
+
+/*
+ * The picker's search, pinned above its list: borderless, the search glyph
+ * leading, one hairline under it that runs the surface's width. The surface is
+ * the focus context, so the field has no ring of its own.
+ */
+.mn-overlay__search {
+  display: flex;
+  gap: var(--glyph-gap);
+  align-items: center;
+  min-height: var(--touch-target);
+  margin-inline: calc(-1 * var(--overlay-inset));
+  padding-inline: var(--overlay-inset);
+  border-block-end: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.mn-overlay__search > input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(--touch-target);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+}
+
+.mn-overlay__search > input::placeholder {
+  color: var(--text-secondary);
+}
+
+/*
+ * A list of options to choose from, in a dialog's body: its rows are the
+ * dropdown's rows, reaching out by their own inset so their words line up with
+ * the title's.
+ */
+.mn-overlay__options {
+  display: flex;
+  flex-direction: column;
+  margin-inline: calc(-1 * var(--dropdown-row-inset));
 }
 
 /*

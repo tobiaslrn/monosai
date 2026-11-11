@@ -93,11 +93,10 @@ export async function openRenameDialog(
   dialog: Dialog,
   data: RenameDialogData,
 ): Promise<string | null> {
-  // The field must stay above the on-screen keyboard, so this one never docks.
   const ref = openDialog<string | null, RenameDialogData, RenameDialogComponent>(
     dialog,
     RenameDialogComponent,
-    { data, modal: true, labelledBy: 'mn-rename-title', docks: false },
+    { data, modal: true, labelledBy: 'mn-rename-title' },
   );
   const result = await dialogResult(ref);
   return result ?? null;

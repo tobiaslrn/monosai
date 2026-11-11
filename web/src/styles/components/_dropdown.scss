@@ -8,7 +8,6 @@
  * two differ only in what their rows do and in their width:
  *
  *   <… class="mn-dropdown | mn-popup">     the surface
- *     <div class="mn-dropdown__pinned">    a dropdown's search, kept above the list
  *     <div class="mn-dropdown__scroller">  the one scroller (a menu is its own)
  *       <div class="mn-dropdown__content"> the rows
  *         <… class="mn-dropdown-row">      one row
@@ -91,50 +90,6 @@
   min-height: 0;
 }
 
-/*
- * What stays put above the list while it scrolls: a search, as its first row,
- * with one hairline under it that runs between the panel's insets.
- */
-.mn-dropdown__pinned {
-  flex: none;
-  margin-block-end: var(--dropdown-inset);
-  border-block-end: 1px solid var(--border-subtle);
-}
-
-.mn-dropdown__pinned:empty {
-  display: none;
-}
-
-/*
- * The search in that row: borderless, with the search glyph leading, and no
- * ring of its own, because the panel is the focus context.
- */
-.mn-dropdown__search {
-  display: flex;
-  gap: var(--glyph-gap);
-  align-items: center;
-  min-height: var(--touch-target);
-  padding-inline: var(--dropdown-row-inset);
-  color: var(--text-secondary);
-}
-
-.mn-dropdown__search > input {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: var(--touch-target);
-  margin: 0;
-  padding: 0;
-  border: 0;
-  outline: none;
-  color: var(--text-primary);
-  background: transparent;
-  font: inherit;
-}
-
-.mn-dropdown__search > input::placeholder {
-  color: var(--text-secondary);
-}
-
 /* A real split in a list: one line, inset with the rows. */
 .mn-dropdown__separator {
   flex: none;
@@ -144,7 +99,7 @@
   border-block-start: 1px solid var(--border-subtle);
 }
 
-/* A muted name over a group of rows. */
+/* A muted name over a group of rows (the searchable picker's Favourites). */
 .mn-dropdown__group-title {
   margin: 0;
   padding: var(--row-inset-block) var(--dropdown-row-inset) var(--line-gap);
@@ -163,7 +118,7 @@
  * panel with its own small radius, and no line between rows. Its words are a
  * label and, optionally, one muted line under it; a chosen option is marked by
  * a check in the accent colour at the row's end, and its label stays as it
- * was. A row with a control of its own (the model picker's
+ * was. A row with a control of its own (the picker's
  * favourite star) holds a `__choice` that takes the press and the control after
  * it, so the row still reads as one.
  */
@@ -226,6 +181,10 @@
   color: var(--text-secondary);
 }
 
+.mn-dropdown-row__control[aria-pressed='true'] {
+  color: var(--action-primary-text);
+}
+
 .mn-dropdown-row__control[aria-pressed='true'] svg {
   fill: currentcolor;
 }
@@ -255,6 +214,13 @@
   font-size: var(--text-xs);
   font-weight: var(--weight-regular);
   overflow-wrap: anywhere;
+}
+
+/* A description that is an identifier and what it can take: one line, cut with an ellipsis. */
+.mn-dropdown-row__line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mn-dropdown-row__check {

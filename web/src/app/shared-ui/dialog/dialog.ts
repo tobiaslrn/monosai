@@ -32,15 +32,8 @@ export interface DialogOptions<D> {
   readonly describedBy?: string;
   /** Escape and the scrim do not close it; only its own answer does. */
   readonly requireAnswer?: boolean;
-  /**
-   * Whether it docks to a phone's bottom edge (the default). A dialog whose
-   * text field must stay above the on-screen keyboard stays a centred card.
-   */
-  readonly docks?: boolean;
 }
 
-/** The pane class of a dialog that stays a centred card at every width. */
-const FLOATING_PANE = 'mn-floating-pane';
 /** Longer than the departure, so a missed `transitionend` still closes the dialog. */
 const DEPARTURE_FALLBACK_MS = 400;
 
@@ -63,7 +56,7 @@ export function openDialog<R, D, C>(
     ariaModal: options.modal,
     hasBackdrop: options.modal,
     disableClose: options.requireAnswer ?? false,
-    panelClass: options.docks === false ? FLOATING_PANE : 'mn-docked-pane',
+    panelClass: 'mn-docked-pane',
     maxWidth: '100vw',
   });
 }
@@ -96,6 +89,9 @@ export function dialogResult<R, C>(ref: DialogRef<R, C>): Promise<R | undefined>
  *
  *   task      a form or a task. A close in the header on a wide viewport; on a
  *             phone it is a sheet with a grab handle.
+ *   picker    the searchable picker: a task dialog of a fixed height, with its
+ *             search in `[mn-dialog-pinned]`. On a phone it fills the visible
+ *             viewport, above the on-screen keyboard.
  *   confirm   a confirmation or a notice: its own answers are its only ways
  *             out besides Escape and the scrim, so it has neither a close nor a
  *             handle.
@@ -114,20 +110,23 @@ export function dialogResult<R, C>(ref: DialogRef<R, C>): Promise<R | undefined>
   host: {
     class: 'mn-overlay mn-overlay--dialog',
     '[class.mn-overlay--docked]': 'docked()',
+    '[class.mn-overlay--picker]': "kind() === 'picker'",
+    '[style.--keyboard-inset]': 'keyboardInset()',
+    '[style.--visible-height]': 'visibleHeight()',
     '[class.is-dragging]': 'dragOffset() > 0 && !leaving()',
     '[class.is-leaving]': 'leaving()',
     '[style.transform]': 'leaving() ? null : dragTransform()',
     '(transitionend)': 'onTransitionEnd($event)',
   },
   template: `
-    @if (docked() && kind() === 'task') {
+    @if (docked() && kind() !== 'confirm') {
       <mn-sheet-handle #handle [label]="closeLabel()" (dismissed)="dismiss()" />
     }
     <mn-overlay-header
       [heading]="heading()"
       [headingId]="headingId()"
       [backLabel]="backLabel()"
-      [closeLabel]="kind() === 'task' && !docked() ? closeLabel() : null"
+      [closeLabel]="kind() !== 'confirm' && !docked() ? closeLabel() : null"
       (back)="back.emit()"
       (dismissed)="dismiss()"
     />
@@ -174,7 +173,7 @@ export class DialogComponent implements OnInit {
   readonly heading = input.required<string>();
   /** Named by the opener as `labelledBy`, so the dialog has its accessible name. */
   readonly headingId = input.required<string>();
-  readonly kind = input<'task' | 'confirm'>('task');
+  readonly kind = input<'task' | 'picker' | 'confirm'>('task');
   /** Names the back arrow of a step below the first; without one there is none. */
   readonly backLabel = input<string | null>(null);
   /** Names the close on a wide viewport and the grab handle when docked. */
@@ -184,11 +183,18 @@ export class DialogComponent implements OnInit {
   private readonly ref = inject<DialogRef<unknown>>(DialogRef, { optional: true });
   private readonly viewport = inject(ViewportService);
   private readonly handle = viewChild<SheetHandleComponent>('handle');
-  private readonly docks = !(this.ref?.config.panelClass ?? '').includes(FLOATING_PANE);
   private fallback: ReturnType<typeof setTimeout> | undefined;
   private result: unknown;
 
-  protected readonly docked = computed(() => this.docks && this.viewport.isMobile());
+  protected readonly docked = computed(() => this.viewport.isMobile());
+  /** A docked sheet stays above the on-screen keyboard and inside what is visible. */
+  protected readonly keyboardInset = computed(() =>
+    this.docked() ? `${String(this.viewport.keyboardInset())}px` : null,
+  );
+  protected readonly visibleHeight = computed(() => {
+    const height = this.viewport.visibleHeight();
+    return this.docked() && height !== null ? `${String(height)}px` : null;
+  });
   /** Set once a dismissal has begun, so a second one during the slide is ignored. */
   protected readonly leaving = signal(false);
   protected readonly dragOffset = computed(() => this.handle()?.offset() ?? 0);

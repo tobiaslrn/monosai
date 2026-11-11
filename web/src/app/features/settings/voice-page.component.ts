@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { DOCUMENT } from '@angular/common';
 import type { ElementRef } from '@angular/core';
 import {
@@ -15,7 +16,7 @@ import { CredentialStore } from '../../application/settings/credential.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 import { PageComponent } from '../../shared-ui/layout/layout';
-import { ModelPickerComponent } from '../../shared-ui/model-picker/model-picker.component';
+import { openModelPicker } from '../../shared-ui/model-picker/model-picker-dialog.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import {
   RadioListComponent,
@@ -34,6 +35,7 @@ import {
 } from '../../shared-ui/status-line/status-line.component';
 import type { AudioStatus } from './ai-status';
 import { ModelCatalogView } from './model-catalog-view';
+import { modelRowWords } from './model-row';
 import { audioStatusOf } from './voice-status';
 
 /** What the voice group says about itself under the sample: its tone and its words. */
@@ -47,7 +49,6 @@ interface VoiceLine {
   selector: 'mn-voice-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    ModelPickerComponent,
     PageComponent,
     PageHeaderComponent,
     RadioListComponent,
@@ -68,24 +69,16 @@ interface VoiceLine {
         data-capability="audio"
         [attr.data-readiness]="tts.readiness()"
       >
-        <mn-settings-row label="Model" labelId="mn-audio-model-row-label" end="choice">
-          <mn-model-picker
-            data-testid="audio-model-picker"
-            label="speech models"
-            labelledBy="mn-audio-model-row-label"
-            [speech]="true"
-            [models]="speechModels()"
-            [favoriteIds]="tts.favoriteModelIds()"
-            [selectedId]="tts.settings().modelId"
-            [selectedLabel]="speechModelLabel()"
-            [loading]="catalogLoading()"
-            [failure]="catalogFailure()"
-            [disabled]="!credential.isConfigured()"
-            (opened)="retryCatalog()"
-            (modelSelected)="selectSpeechModel($event)"
-            (favoriteToggled)="tts.toggleFavorite($event)"
-          />
-        </mn-settings-row>
+        <mn-settings-row
+          label="Model"
+          end="nav"
+          opens="dialog"
+          testId="audio-model-picker"
+          [disabled]="!credential.isConfigured()"
+          [summary]="modelWords().summary"
+          [code]="modelWords().code"
+          (pressed)="pickSpeechModel()"
+        />
 
         @if (selectedSpeechModel()?.supportedVoices?.length) {
           <mn-settings-row label="Voice" labelId="mn-voice-label" end="choice">
@@ -176,6 +169,7 @@ interface VoiceLine {
 })
 export class VoicePageComponent {
   private readonly catalog = inject(ModelCatalogView);
+  private readonly dialog = inject(Dialog);
   private readonly document = inject(DOCUMENT);
   protected readonly credential = inject(CredentialStore);
   protected readonly tts = inject(TtsStore);
@@ -196,6 +190,16 @@ export class VoicePageComponent {
     () =>
       this.tts.presets().find((preset) => preset.id === this.tts.settings().activePresetId)?.name ??
       null,
+  );
+  protected readonly modelWords = computed(() =>
+    modelRowWords(
+      {
+        id: this.tts.settings().modelId,
+        catalogName: this.selectedSpeechModel()?.name ?? null,
+        savedName: this.speechModelLabel(),
+      },
+      'Choose a model',
+    ),
   );
   protected readonly voiceOptions = computed<readonly SelectOption[]>(() =>
     (this.selectedSpeechModel()?.supportedVoices ?? []).map((voice) => ({
@@ -290,8 +294,23 @@ export class VoicePageComponent {
     this.playedSample.set(sample);
     this.playSample();
   }
-  protected retryCatalog(): void {
+  protected async pickSpeechModel(): Promise<void> {
     this.catalog.retry();
+    const choice = await openModelPicker(this.dialog, {
+      title: 'Speech model',
+      models: this.speechModels,
+      favoriteIds: () => this.tts.favoriteModelIds(),
+      selectedId: () => this.tts.settings().modelId,
+      loading: this.catalogLoading,
+      failure: this.catalogFailure,
+      speech: true,
+      toggleFavorite: (modelId) => {
+        void this.tts.toggleFavorite(modelId);
+      },
+    });
+    if (choice?.kind === 'model') {
+      await this.selectSpeechModel(choice.model);
+    }
   }
   protected async selectSpeechModel(model: ModelCapabilities): Promise<void> {
     this.tts.setDraft({ modelId: model.modelId, voiceId: model.supportedVoices[0] ?? '' });

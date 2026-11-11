@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CredentialStore } from '../../application/settings/credential.store';
@@ -8,7 +9,7 @@ import type { ModelCapabilities } from '../../domain/ai/model-catalog';
 import { formatCount } from '../../domain/shared/locale';
 import { MAX_STORY_TOKEN_BUDGET } from '../../domain/settings/settings';
 import { PageComponent } from '../../shared-ui/layout/layout';
-import { ModelPickerComponent } from '../../shared-ui/model-picker/model-picker.component';
+import { openModelPicker } from '../../shared-ui/model-picker/model-picker-dialog.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { SectionComponent } from '../../shared-ui/section/section.component';
 import {
@@ -22,6 +23,7 @@ import {
   type StatusTone,
 } from '../../shared-ui/status-line/status-line.component';
 import { ModelCatalogView } from './model-catalog-view';
+import { modelRowWords } from './model-row';
 import { reasoningOptions } from './reasoning-options';
 import { TokenBudgetFieldComponent } from './token-budget-field.component';
 
@@ -46,7 +48,6 @@ interface GroupStatus {
   selector: 'mn-text-models-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    ModelPickerComponent,
     PageComponent,
     PageHeaderComponent,
     RouterLink,
@@ -67,23 +68,16 @@ interface GroupStatus {
         data-capability="text"
         [attr.data-readiness]="text.readiness()"
       >
-        <mn-settings-row label="Model" labelId="mn-text-model-row-label" end="choice">
-          <mn-model-picker
-            data-testid="text-model-picker"
-            label="text models"
-            labelledBy="mn-text-model-row-label"
-            [models]="textModels()"
-            [favoriteIds]="text.favoriteModelIds()"
-            [selectedId]="text.settings().modelId"
-            [selectedLabel]="storyModelLabel()"
-            [loading]="catalogLoading()"
-            [failure]="catalogFailure()"
-            [disabled]="!credential.isConfigured()"
-            (opened)="retryCatalog()"
-            (modelSelected)="selectStoryModel($event)"
-            (favoriteToggled)="text.toggleFavorite($event)"
-          />
-        </mn-settings-row>
+        <mn-settings-row
+          label="Model"
+          end="nav"
+          opens="dialog"
+          testId="text-model-picker"
+          [disabled]="!credential.isConfigured()"
+          [summary]="storyModelWords().summary"
+          [code]="storyModelWords().code"
+          (pressed)="pickStoryModel()"
+        />
 
         <mn-settings-row label="Reasoning" labelId="mn-text-reasoning-label" end="choice">
           <mn-select
@@ -143,26 +137,16 @@ interface GroupStatus {
             text.routePreset(task.id) === null ? 'inherited' : text.routeReadiness(task.id)
           "
         >
-          <mn-settings-row label="Model" end="choice" [labelId]="'mn-' + task.id + '-model-label'">
-            <mn-model-picker
-              [attr.data-testid]="task.id + '-model-picker'"
-              [label]="task.id + ' models'"
-              [labelledBy]="'mn-' + task.id + '-model-label'"
-              fallbackLabel="Use the text model"
-              [inheritedLabel]="inheritedLabel()"
-              [models]="textModels()"
-              [favoriteIds]="text.favoriteModelIds()"
-              [selectedId]="routeModelId(task.id)"
-              [selectedLabel]="text.routePreset(task.id)?.name ?? null"
-              [loading]="catalogLoading()"
-              [failure]="catalogFailure()"
-              [disabled]="!credential.isConfigured()"
-              (opened)="retryCatalog()"
-              (fallbackSelected)="clearTaskModel(task.id)"
-              (modelSelected)="selectTaskModel(task.id, $event)"
-              (favoriteToggled)="text.toggleFavorite($event)"
-            />
-          </mn-settings-row>
+          <mn-settings-row
+            label="Model"
+            end="nav"
+            opens="dialog"
+            [testId]="task.id + '-model-picker'"
+            [disabled]="!credential.isConfigured()"
+            [summary]="taskModelWords(task.id).summary"
+            [code]="taskModelWords(task.id).code"
+            (pressed)="pickTaskModel(task)"
+          />
 
           @if (text.routePreset(task.id) !== null) {
             <mn-settings-row
@@ -218,6 +202,7 @@ interface GroupStatus {
 })
 export class TextModelsPageComponent {
   private readonly catalog = inject(ModelCatalogView);
+  private readonly dialog = inject(Dialog);
   protected readonly credential = inject(CredentialStore);
   protected readonly text = inject(TextModelStore);
   protected readonly textModels = this.catalog.textModels;
@@ -227,6 +212,16 @@ export class TextModelsPageComponent {
     { id: 'translation' as const, label: 'Translation' },
     { id: 'grammar' as const, label: 'Grammar' },
   ];
+  protected readonly storyModelWords = computed(() =>
+    modelRowWords(
+      {
+        id: this.text.settings().modelId,
+        catalogName: this.selectedStoryModel()?.name ?? null,
+        savedName: this.storyModelLabel(),
+      },
+      'Choose a model',
+    ),
+  );
 
   protected readonly selectedStoryModel = computed(() =>
     this.modelById(this.text.settings().modelId),
@@ -246,7 +241,7 @@ export class TextModelsPageComponent {
     const name = this.storyModelLabel() ?? this.selectedStoryModel()?.name ?? '';
     return name === '' ? null : name;
   });
-  /** Said in the picker's value: the model in force, as what it is — the text model's. */
+  /** Said in the row's value: the model in force, as what it is — the text model's. */
   protected readonly inheritedLabel = computed(() => {
     const name = this.inheritedName();
     return name === null ? 'Same as text model' : `Same as text model · ${name}`;
@@ -272,8 +267,58 @@ export class TextModelsPageComponent {
     );
   }
 
-  protected retryCatalog(): void {
+  /** What a task's model row says: its own model, or the text model it falls back to. */
+  protected taskModelWords(task: TextModelTask): { summary: string; code: string | null } {
+    const id = this.routeModelId(task);
+    return id === ''
+      ? { summary: this.inheritedLabel(), code: null }
+      : modelRowWords(
+          {
+            id,
+            catalogName: this.routeModel(task)?.name ?? null,
+            savedName: this.text.routePreset(task)?.name ?? null,
+          },
+          '',
+        );
+  }
+
+  protected async pickStoryModel(): Promise<void> {
     this.catalog.retry();
+    const choice = await openModelPicker(this.dialog, {
+      title: 'Text model',
+      models: this.textModels,
+      favoriteIds: () => this.text.favoriteModelIds(),
+      selectedId: () => this.text.settings().modelId,
+      loading: this.catalogLoading,
+      failure: this.catalogFailure,
+      toggleFavorite: (modelId) => {
+        void this.text.toggleFavorite(modelId);
+      },
+    });
+    if (choice?.kind === 'model') {
+      await this.selectStoryModel(choice.model);
+    }
+  }
+
+  protected async pickTaskModel(task: { id: TextModelTask; label: string }): Promise<void> {
+    this.catalog.retry();
+    const choice = await openModelPicker(this.dialog, {
+      title: `${task.label} model`,
+      models: this.textModels,
+      favoriteIds: () => this.text.favoriteModelIds(),
+      selectedId: () => this.routeModelId(task.id),
+      loading: this.catalogLoading,
+      failure: this.catalogFailure,
+      fallbackLabel: 'Use the text model',
+      toggleFavorite: (modelId) => {
+        void this.text.toggleFavorite(modelId);
+      },
+    });
+    if (choice?.kind === 'model') {
+      await this.selectTaskModel(task.id, choice.model);
+    } else if (choice?.kind === 'fallback') {
+      this.clearTaskModel(task.id);
+    }
   }
 
   /**

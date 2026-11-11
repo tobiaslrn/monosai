@@ -1,6 +1,6 @@
 import { optionValues, selectedValue } from '../../../testing/select';
+import { Dialog } from '@angular/cdk/dialog';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -31,7 +31,6 @@ import type { ModelCapabilities, ModelCatalog } from '../../domain/ai/model-cata
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
 import { err, ok, type Result } from '../../domain/shared/result';
-import { ModelPickerComponent } from '../../shared-ui/model-picker/model-picker.component';
 import { TextModelsPageComponent } from './text-models-page.component';
 
 const HASH: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
@@ -243,25 +242,24 @@ describe('TextModelsPageComponent', () => {
     it('asks again only when a picker opens after a failure', async () => {
       const catalog = countingCatalog(true);
       await connect();
-      const { fixture } = await render();
+      const { element, fixture } = await render();
       await fixture.whenStable();
       fixture.detectChanges();
-      const picker = fixture.debugElement.queryAll(By.directive(ModelPickerComponent))[0]!
-        .componentInstance as ModelPickerComponent;
       expect(catalog.asked()).toBe(1);
-      expect(picker.failure()).toBe('Too many requests.');
 
-      picker.opened.emit();
+      const row = element.querySelector<HTMLButtonElement>('[data-testid="text-model-picker"]')!;
+      row.click();
       await fixture.whenStable();
       fixture.detectChanges();
-
       expect(catalog.asked()).toBe(2);
-      expect(picker.failure()).toBeNull();
+      expect(document.querySelector('mn-model-picker-dialog')).not.toBeNull();
 
-      picker.opened.emit();
+      TestBed.inject(Dialog).closeAll();
+      row.click();
       await fixture.whenStable();
 
       expect(catalog.asked()).toBe(2);
+      TestBed.inject(Dialog).closeAll();
     });
   });
 

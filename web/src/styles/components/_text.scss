@@ -19,3 +19,10 @@
   font-weight: var(--weight-semibold);
   line-height: var(--leading-tight);
 }
+
+/* An identifier — a model's — is set in the monospace face, wherever it is shown. */
+.mn-code {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}

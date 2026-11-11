@@ -11,8 +11,8 @@ export type SettingsRowAction = 'accent' | 'danger';
  *
  * - `nothing`: a press does something now, or there is nothing to press.
  * - `nav`: a press opens a new page or dialog (`›`).
- * - `choice`: a press opens a list in place (`⌃⌄`), drawn by the `mn-select` or
- *   `mn-model-picker` projected into the row.
+ * - `choice`: a press opens a list in place (`⌃⌄`), drawn by the `mn-select`
+ *   projected into the row.
  * - `control`: the projected control changes a setting now (a segmented choice).
  */
 export type SettingsRowEnd = 'nothing' | 'nav' | 'choice' | 'control';
@@ -40,7 +40,7 @@ let nextSettingsRowId = 0;
  * - A setting's value is its summary, under the label. Where it stands
  *   (`status`, `statusText`) leads the summary, so it survives truncation.
  * - A plain fact's value is at the end (`value`).
- * - A choice projects an `mn-select` or `mn-model-picker`, which is the row's
+ * - A choice projects an `mn-select`, which is the row's
  *   own words and chevron.
  * - A row that does something is an `action` (`accent`, or `danger` when it
  *   destroys), one button over the whole row that emits `pressed`. A `link` or an
@@ -69,12 +69,18 @@ let nextSettingsRowId = 0;
           <span class="mn-settings-row__status" [attr.data-tone]="tone"
             ><mn-icon [name]="statusIcon()" [size]="16" />{{ statusText() }}</span
           >
-          @if (summary() !== null) {
+          @if (summary() !== null || code() !== null) {
             <span aria-hidden="true"> · </span>
           }
         }
         @if (summary(); as text) {
           {{ text }}
+        }
+        @if (code(); as identifier) {
+          @if (summary() !== null) {
+            <span aria-hidden="true"> · </span>
+          }
+          <span class="mn-code">{{ identifier }}</span>
         }
         <ng-content select="[mn-settings-row-detail]" />
       </span>
@@ -136,6 +142,8 @@ export class SettingsRowComponent {
   readonly state = input<NavigationExtras['state']>(undefined);
   /** The value under the label: what the setting is now. */
   readonly summary = input<string | null>(null);
+  /** An identifier that follows the summary, set in the monospace face: a model's id. */
+  readonly code = input<string | null>(null);
   /** Where it stands, leading the summary; with `statusText`. */
   readonly status = input<SettingsRowStatus | null>(null);
   readonly statusText = input('');

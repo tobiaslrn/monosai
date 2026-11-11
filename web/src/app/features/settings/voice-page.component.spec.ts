@@ -1,6 +1,5 @@
 import { chooseValue } from '../../../testing/select';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -33,7 +32,6 @@ import type { ModelCapabilities, ModelCatalog } from '../../domain/ai/model-cata
 import { fixedClock } from '../../domain/shared/clock';
 import type { Hasher } from '../../domain/shared/hashing';
 import { ok, type Result } from '../../domain/shared/result';
-import { ModelPickerComponent } from '../../shared-ui/model-picker/model-picker.component';
 import { VoicePageComponent } from './voice-page.component';
 
 const HASH: Hasher = { algorithm: 'test', hashText: (text) => `h(${text})` };
@@ -310,18 +308,22 @@ describe('VoicePageComponent', () => {
    * where a control can be wired to nothing and still look right on screen.
    */
   describe('driven through its own controls', () => {
-    /** The audio node's picker, which reports a choice rather than making it. */
-    function audioPicker(fixture: ComponentFixture<VoicePageComponent>): ModelPickerComponent {
-      const pickers = fixture.debugElement.queryAll(By.directive(ModelPickerComponent));
-      const audio = pickers.find(
-        (picker) =>
-          (picker.nativeElement as HTMLElement).getAttribute('data-testid') ===
-          'audio-model-picker',
-      );
-      if (audio === undefined) {
-        throw new Error('the audio panel rendered no model picker');
+    /** Opens the speech model picker from its row and chooses a model in it. */
+    async function pickModel(
+      element: HTMLElement,
+      fixture: ComponentFixture<VoicePageComponent>,
+      modelId: string,
+    ): Promise<void> {
+      element.querySelector<HTMLButtonElement>('[data-testid="audio-model-picker"]')!.click();
+      for (let pass = 0; pass < 5; pass += 1) {
+        await fixture.whenStable();
+        fixture.detectChanges();
       }
-      return audio.componentInstance as ModelPickerComponent;
+      document.querySelector<HTMLButtonElement>(`[data-testid="model-option-${modelId}"]`)!.click();
+      // The dialog leaves before it closes, and the choice is made once it has.
+      await new Promise((resolve) => {
+        setTimeout(resolve, 500);
+      });
     }
 
     /** Drains the store's persist-then-call chain, which no control awaits. */
@@ -345,7 +347,7 @@ describe('VoicePageComponent', () => {
       await connect();
       const { element, tts, detect, fixture } = await render();
 
-      audioPicker(fixture).modelSelected.emit(SPEECH_MODEL);
+      await pickModel(element, fixture, SPEECH_MODEL.modelId);
       await Promise.resolve();
       await Promise.resolve();
       detect();

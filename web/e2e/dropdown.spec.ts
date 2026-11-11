@@ -139,5 +139,6 @@ test.describe('a dropdown and the page around it', () => {
     await page.getByTestId('audio-model-picker').click({ force: true });
 
     await expect(page.locator('.mn-dropdown:popover-open')).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: 'Speech model' })).toHaveCount(0);
   });
 });

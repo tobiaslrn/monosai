@@ -138,7 +138,7 @@ export type ClusterJustify = 'start' | 'end' | 'between';
      * end and never grows past it, so with text too large for both the
      * neighbour wraps below it rather than the value being cut off.
      */
-    mn-cluster > :is(mn-select, mn-model-picker) {
+    mn-cluster > mn-select {
       flex: 1 1 9rem;
       max-width: var(--control-width);
     }

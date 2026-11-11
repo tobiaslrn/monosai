@@ -21,12 +21,12 @@ let nextDropdownId = 0;
 
 /**
  * The dropdown: the one list that drops from a field to choose a value from.
- * The select (`mn-select`) and the model picker (`mn-model-picker`) are both
- * this, on every screen size — never a bottom sheet, never a centred dialog:
+ * The select (`mn-select`) is this, on every screen size — never a bottom sheet,
+ * never a centred dialog. A searched list is the picker (`openModelPicker`),
+ * never a dropdown.
  *
  *   <button … [attr.popovertarget]="list.id">…</button>
  *   <mn-dropdown #list="mnDropdown" label="Voice">
- *     <input mn-dropdown-pinned … />           optional: stays put while the list scrolls
  *     …the rows (`.mn-dropdown-row`)…
  *   </mn-dropdown>
  *
@@ -57,7 +57,6 @@ let nextDropdownId = 0;
     '(toggle)': 'onToggle()',
   },
   template: `
-    <div class="mn-dropdown__pinned"><ng-content select="[mn-dropdown-pinned]" /></div>
     <div class="mn-dropdown__scroller">
       <div class="mn-dropdown__content"><ng-content /></div>
     </div>

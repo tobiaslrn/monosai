@@ -170,13 +170,6 @@
   --status-tone: var(--status-danger);
 }
 
-/* An identifier — a model's — is set in the monospace face. */
-.mn-settings-row__code {
-  overflow-wrap: anywhere;
-  font-family: var(--font-mono);
-  font-size: 0.9em;
-}
-
 /* An action names itself in the accent colour, or the danger colour when it destroys. */
 .mn-settings-row--accent .mn-settings-row__title,
 .mn-settings-row--accent .mn-settings-row__end {

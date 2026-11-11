@@ -19,7 +19,7 @@ import { PopupDirective } from '../popup/popup.directive';
  * greatest width. `[menu]="true"` makes it a `role="menu"` with arrow-key
  * movement.
  *
- * Choosing a value is a dropdown (`mn-select`, `mn-model-picker`), and a form
+ * Choosing a value is a dropdown (`mn-select`), and a form
  * or a task is a task dialog (`mn-sheet-popover`, `mn-dialog`); neither is a
  * menu.
  */

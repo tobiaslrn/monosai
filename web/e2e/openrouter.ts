@@ -876,6 +876,8 @@ export async function openSettingsPage(page: Page, name: 'text-models' | 'voice'
 async function chooseModel(page: Page, picker: string, modelId: string): Promise<void> {
   await page.getByTestId(picker).click();
   await page.getByTestId(`model-option-${modelId}`).click();
+  // Choosing closes the picker; what follows must not meet its scrim.
+  await expect(page.getByTestId(`model-option-${modelId}`)).toBeHidden();
 }
 
 /**

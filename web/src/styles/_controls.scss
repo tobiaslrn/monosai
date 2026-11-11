@@ -45,7 +45,7 @@
 }
 
 /*
- * A choice — the select, the model picker, and the filter above a list — is one
+ * A choice — the select and the filter above a list — is one
  * button that reads as its current value: the value as plain text in the
  * secondary colour, then the app's up-down chevron. It has no box, no border,
  * and no field background; it is not a form field.
@@ -53,7 +53,7 @@
  * Its press target is the whole of what it sits in. The button's `::before`
  * stretches to the nearest positioned ancestor, so in a settings row (which is
  * positioned) the whole row is the control and wears the state layer, and on
- * its own (`mn-select` and `mn-model-picker` are positioned) the button is the
+ * its own (`mn-select` is positioned) the button is the
  * target. The list hangs from the button, which is the value and its chevron.
  */
 .mn-choice {
@@ -116,7 +116,7 @@
 }
 
 /* Where a choice is on its own, its box is the select's and the press target is that box. */
-:where(mn-select, mn-model-picker) {
+:where(mn-select) {
   position: relative;
   display: inline-block;
   max-width: 100%;
@@ -129,11 +129,11 @@
  * out on the row's grid, the value under the row's label and the chevron at the
  * end.
  */
-.mn-settings-row__end:has(> mn-select, > mn-model-picker) {
+.mn-settings-row__end:has(> mn-select) {
   display: contents;
 }
 
-.mn-settings-row :where(mn-select, mn-model-picker) {
+.mn-settings-row :where(mn-select) {
   position: static;
   display: grid;
   grid-column: 2 / -1;
@@ -174,13 +174,6 @@
   grid-column: 2;
   grid-row: 1 / -1;
   margin-inline-start: var(--space-3);
-}
-
-/* An identifier — a model's — is set in the monospace face. */
-.mn-choice__code {
-  overflow-wrap: anywhere;
-  font-family: var(--font-mono);
-  font-size: 0.9em;
 }
 
 textarea.mn-control,

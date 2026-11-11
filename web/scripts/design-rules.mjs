@@ -18,7 +18,7 @@ export const ICON_SIZES = [16, 20, 24];
 
 /** What each guard enforces; the key is the rule number in the rulebook. */
 export const RULES = {
-  R20: 'uses a native <select>; every choice from a list is mn-select or mn-model-picker',
+  R20: 'uses a native <select>; every choice from a list is mn-select or the model picker dialog',
   R35: `sets an mn-icon size outside the three icon-size roles (${ICON_SIZES.join(', ')})`,
   R15: 'puts a button inside an <mn-settings-row>; a row never holds a button, field or pill',
   R39: 'writes a colour literal outside _tokens.scss; use a colour token',

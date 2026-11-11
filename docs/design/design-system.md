@@ -344,12 +344,12 @@ the way to build:
 | Surfaces         | `mn-section` (a group label on the canvas, one card, and an optional status line under it), `mn-card` (one raised surface with an optional heading action); `mn-settings-section` and `mn-settings-row` for settings (one row with five trailing ends)                                                                                                                             |
 | Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                                                                                                            |
 | Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                                                                                              |
-| Choices          | `mn-select` (one value from a short list, on `mn-dropdown`) and `mn-model-picker` (a model from the catalogue, the searchable picker), `mn-segmented-control`, `mn-radio-list` (a radio list of settings rows), `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips                                                               |
+| Choices          | `mn-select` (one value from a short list, on `mn-dropdown`), `mn-segmented-control`, `mn-radio-list` (a radio list of settings rows), `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips                                                               |
 | Fields           | `mn-field` (label, hint, and error around a control), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                                                                                                      |
 | Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                                                                                        |
 | Status           | `mn-status-line` (a group's one line under its card), `mn-checklist` with `mn-checklist-step` for first steps, `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
 | Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen` and `mn-not-found-panel` on the one whole-page state                                                                                                                                                                                                       |
-| Overlays         | `mn-menu` (a menu), `mn-dropdown` (the list a select drops), the searchable model picker (`mn-model-picker`, on the task-dialog frame), `mn-sheet-popover` with `mnOverlayTrigger` (a popover-held task dialog, Story options), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`           |
+| Overlays         | `mn-menu` (a menu), `mn-dropdown` (the list a select drops), the searchable model picker (`openModelPicker`, on the task-dialog frame), `mn-sheet-popover` with `mnOverlayTrigger` (a popover-held task dialog, Story options), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`           |
 | Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                                                                                                     |
 | Glyphs           | `mn-icon`                                                                                                                                                                                                                                                                                                                                        |
 
@@ -748,7 +748,8 @@ catalogue is a navigation row that opens a task dialog, not a dropdown, because
 a list that is searched needs room that a field-wide popup cannot give on a
 phone: a centred card of fixed height on a wide viewport (so filtering never
 makes it jump), a full-height sheet with a grab handle on a phone. The search
-field is pinned at its top and the keyboard leaves the list scrollable. Favourites
+field is pinned at its top, and the sheet keeps to the visible viewport so the
+keyboard leaves the list scrollable. Favourites
 form a group; the chosen model carries the check in the accent colour; a model's
 ID is monospace on one truncated line. Choosing closes it. It draws its rows as
 the dropdown does and is the one place a searched list lives (R25).
@@ -857,8 +858,9 @@ not an overlay at all but a segmented control or a radio list in place.
 Modal surfaces use the CDK Dialog pattern or a native popover that behaves like
 it: focus moves into the surface, is held there while it is open, `Escape`
 dismisses it, and focus returns to the control that opened it. A confirmation
-opens with its safe answer focused. The Rename dialog stays a centred card on a
-phone, since its text field must stay above the on-screen keyboard.
+opens with its safe answer focused. A docked sheet lifts above the on-screen keyboard and is
+never taller than what can be seen, so a field in it, and the picker's list,
+stay in view.
 
 Add words is the one task dialog held up by a native popover rather than a CDK
 dialog, because it must stay open while a file chooser is up. That is a

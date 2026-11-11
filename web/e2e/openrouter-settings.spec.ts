@@ -60,12 +60,14 @@ test.describe('the model tree', () => {
     await saveApiKey(page);
     await page.goto('./#/settings/text-models');
 
-    const trigger = page.getByTestId('text-model-picker').getByRole('combobox');
-    const picker = page.getByRole('dialog', { name: 'text models' });
+    const trigger = page.getByTestId('text-model-picker');
+    const picker = page.getByRole('dialog', { name: 'Text model' });
     await trigger.click();
     await expect(picker).toBeVisible();
+    await expect(picker.getByRole('searchbox')).toBeFocused();
     await expect(page.getByTestId(`model-option-${MODEL}`)).toBeVisible();
-    await page.getByRole('heading', { name: 'Text model', level: 2 }).click();
+    // A press on the scrim only closes it.
+    await page.mouse.click(2, 2);
     await expect(picker).toBeHidden();
 
     await trigger.click();
@@ -241,7 +243,7 @@ test.describe('the model tree', () => {
     const reasoningControl = page.getByRole('combobox', { name: 'Reasoning' }).first();
     const translation = taskReadiness(page, 'translation');
     const translationLabel = translation.getByText('Model', { exact: true });
-    const translationControl = translation.getByRole('combobox', { name: 'Model' });
+    const translationControl = translation.getByTestId('translation-model-picker');
     for (const [label, control] of [
       [reasoningLabel, reasoningControl],
       [translationLabel, translationControl],
