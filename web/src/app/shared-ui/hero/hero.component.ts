@@ -56,13 +56,14 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
       --hero-art-max: var(--hero-art);
 
       display: grid;
-      grid-template-columns: minmax(0, 1fr) min(45%, var(--hero-art-max));
+      grid-template-columns: minmax(0, 1fr) min(var(--hero-art-share), var(--hero-art-max));
       gap: var(--stack-gap);
       align-items: center;
     }
 
     :host(.is-compact) {
       --hero-art-max: var(--hero-art-standing);
+      --hero-art-share: var(--hero-art-share-standing);
     }
 
     .hero-text {

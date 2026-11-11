@@ -189,12 +189,15 @@
   --heading-row: 1.75rem;
   /*
    * hero-art         the widest the home illustration is drawn beside the
-   *                  invitation of a library still empty
-   * hero-art-standing the same drawing once the shelf is in use, so the stories
-   *                  come up the screen and the standing line stays short
+   *                  invitation of a library still empty, and its share of the
+   *                  column on a phone
+   * hero-art-standing the same drawing at three quarters of that once the shelf
+   *                  is in use: only the headline gets smaller
    */
   --hero-art: 16rem;
-  --hero-art-standing: 6rem;
+  --hero-art-share: 45%;
+  --hero-art-standing: 12rem;
+  --hero-art-share-standing: 34%;
   /*
    * inline-gap       between things side by side in one row: buttons, chips, a
    *                  field and its button

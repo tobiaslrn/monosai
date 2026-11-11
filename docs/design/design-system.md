@@ -164,9 +164,11 @@ whole reading character and books. The asset is cropped to the drawing itself,
 so the hero's frame is the picture rather than the empty space around it and
 the distance to the bar above is the page rail and nothing else. Its
 proportions stay fixed as the column changes width. Once the shelf holds a story, or a story could be written, the hero steps down to
-a standing line: the illustration at its own smaller size token and the
+a standing line: the illustration at three quarters of its display size and the
 headline at the page-title size (the section size on a phone), so it takes two
-lines at most and never dominates the shelf; only sizes change, never the crop.
+lines beside it where it fits, never three on a phone, and never dominates the
+shelf; the picture keeps three quarters of its size and only the headline gets
+smaller; the crop never changes.
 The display headline belongs to a shelf still waiting on its setup. The standing
 line holds its two lines of room while its facts are read, so nothing below moves.
 The home headline is tightly set beside it, centred on the
