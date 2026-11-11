@@ -525,7 +525,11 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(details.locator('.surface')).toContainText('からなかった');
     await expect(details.locator('.dictionary-form')).toHaveText('分かる');
     await expect(details.locator('.part-of-speech')).toHaveText('verb');
-    await expect(details.locator('.form-line')).toHaveText('Plain · negative · past');
+    await expect(details.locator('.form-line .mn-status-pill')).toHaveText([
+      'Plain',
+      'negative',
+      'past',
+    ]);
     await expect(details.locator('.derivation, .step, .detail, .tinted')).toHaveCount(0);
 
     await expectNoSeriousAccessibilityViolations(page);
@@ -539,7 +543,11 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await openWordDetails(page, '行き');
     const details = wordDetails(page);
 
-    await expect(details.locator('.form-line')).toHaveText('Polite · negative · past');
+    await expect(details.locator('.form-line .mn-status-pill')).toHaveText([
+      'Polite',
+      'negative',
+      'past',
+    ]);
     await expect(details).not.toContainText('行きませんです');
     await expect(details.locator('.derivation, .step, .detail')).toHaveCount(0);
   });
@@ -1445,14 +1453,14 @@ test.describe('scenario 2 — pasted text validation', () => {
 test.describe('scenario 14 — library, filtering, deletion', () => {
   test('restores Library context with both in-app and browser Back', async ({ page }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
-    await page.getByRole('link', { name: 'Back to library' }).click();
+    await page.getByRole('link', { name: 'Back to library' }).first().click();
     await page.addStyleTag({ content: 'mn-reading-card { display: block; margin-top: 80rem; }' });
     await page.getByRole('link', { name: '第一章' }).scrollIntoViewIfNeeded();
     const libraryScroll = await page.evaluate(() => window.scrollY);
     expect(libraryScroll).toBeGreaterThan(100);
 
     await page.getByRole('link', { name: '第一章' }).click();
-    await page.getByRole('link', { name: 'Back to library' }).click();
+    await page.getByRole('link', { name: 'Back to library' }).first().click();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
 
     await page.getByRole('link', { name: '第一章' }).click();
@@ -1725,7 +1733,7 @@ test.describe('scenario 15 — offline reading', () => {
     // Visit the library once while online so its lazy route chunk is loaded;
     // serving code offline is the service worker's job in Milestone 10, whereas
     // what this scenario proves is that the reading data and aids are local.
-    await page.getByRole('link', { name: 'Back to library' }).click();
+    await page.getByRole('link', { name: 'Back to library' }).first().click();
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
 
     await context.setOffline(true);
@@ -1739,7 +1747,7 @@ test.describe('scenario 15 — offline reading', () => {
 
   test('the library lists saved readings with the network removed', async ({ page, context }) => {
     await importReading(page, SAMPLE_TEXT, '第一章');
-    await page.getByRole('link', { name: 'Back to library' }).click();
+    await page.getByRole('link', { name: 'Back to library' }).first().click();
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
 
     await context.setOffline(true);
@@ -1748,7 +1756,7 @@ test.describe('scenario 15 — offline reading', () => {
     // this proves is that listing the library needs nothing but local data.
     await page.getByRole('link', { name: '第一章' }).click();
     await expect(page.locator('mn-reader-paragraph').first()).toBeVisible();
-    await page.getByRole('link', { name: 'Back to library' }).click();
+    await page.getByRole('link', { name: 'Back to library' }).first().click();
 
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
     await expect(page.locator('mn-reading-card')).toContainText('第一章');

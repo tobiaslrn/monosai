@@ -399,7 +399,7 @@ test.describe('generating a story', () => {
     await expect(marked.first()).toBeVisible({ timeout: 60_000 });
     await expect(marked.first()).toContainText('図書館');
 
-    await page.getByRole('link', { name: 'Back to library' }).click();
+    await page.getByRole('link', { name: 'Back to library' }).first().click();
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
     await expect(page).not.toHaveURL(/#\/generate/);
   });

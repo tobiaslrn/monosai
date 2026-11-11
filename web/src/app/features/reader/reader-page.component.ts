@@ -25,6 +25,8 @@ import { NavigationHistoryService } from '../../core/routing/navigation-history.
 import { readingId, type ReadingId } from '../../domain/shared/ids';
 import { clampTextScale } from '../../domain/settings/settings';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
+import { ClusterComponent } from '../../shared-ui/layout/layout';
+import { TextEndComponent } from '../../shared-ui/text-end/text-end.component';
 import { PopoverService } from '../../shared-ui/popover/popover.service';
 import { ReaderPopoverComponent } from '../../shared-ui/popover/reader-popover.component';
 import { ReaderContentActionsService } from './reader-content-actions.service';
@@ -67,6 +69,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
   imports: [
     RouterLink,
     ButtonDirective,
+    ClusterComponent,
     ErrorScreenComponent,
     IconComponent,
     ReaderParagraphComponent,
@@ -74,6 +77,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
     ReaderPopoverComponent,
     ReadingPlayerComponent,
     SentencePopoverComponent,
+    TextEndComponent,
     WordInspectorComponent,
     WordPreviewComponent,
     NotFoundPanelComponent,
@@ -270,14 +274,26 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
                 [style.height.px]="paragraphWindow.spacers().after"
               ></div>
             </article>
-            <a
-              #afterStory
-              id="mn-after-story"
-              class="mn-button"
-              routerLink="/library"
-              (click)="backToLibrary($event)"
-              >Go to library</a
-            >
+            <mn-text-end heading="The end">
+              <mn-cluster [fill]="preparation.hasTextModel() ? 'split' : 'none'">
+                <a
+                  #afterStory
+                  id="mn-after-story"
+                  mnButton="primary"
+                  routerLink="/library"
+                  (click)="backToLibrary($event)"
+                >
+                  <mn-icon name="library" />
+                  <span>Back to library</span>
+                </a>
+                @if (preparation.hasTextModel()) {
+                  <a mnButton routerLink="/generate">
+                    <mn-icon name="generate" />
+                    <span>Write another</span>
+                  </a>
+                }
+              </mn-cluster>
+            </mn-text-end>
 
             @if (store.hasMoreBelow()) {
               <p class="mn-hint" role="status">
@@ -335,7 +351,7 @@ export class ReaderPageComponent implements OnChanges {
   protected readonly popover = inject(PopoverService);
   protected readonly geometry = inject(ReaderGeometryService);
   protected readonly wordPreview = inject(ReaderWordPreviewService);
-  private readonly preparation = inject(ReaderPreparationStore);
+  protected readonly preparation = inject(ReaderPreparationStore);
   private readonly settings = inject(AppSettingsStore);
   private readonly navigation = inject(NavigationHistoryService);
 

@@ -53,6 +53,8 @@ export class ReaderPreparationStore {
 
   readonly online = computed(() => this.network.isOnline());
 
+  /** A text model that can write a story: tested, and unchanged since. */
+  readonly hasTextModel = computed(() => this.textModel.readiness() === 'ready');
   readonly hasTranslationModel = computed(() => this.textModel.hasModelForTask('translation'));
   readonly hasGrammarModel = computed(() => this.textModel.hasModelForTask('grammar'));
 
