@@ -37,7 +37,6 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       <mn-checklist-step
         [number]="1"
         heading="Add your words"
-        action="Add words"
         link="/reading-level"
         fragment="words"
         testId="first-step-words"
@@ -49,7 +48,6 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       <mn-checklist-step
         [number]="2"
         heading="Connect OpenRouter and choose a model"
-        action="Open Settings"
         link="/settings"
         testId="first-step-model"
         [navigationState]="libraryOriginState"

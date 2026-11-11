@@ -26,7 +26,7 @@ let nextChecklistId = 0;
  *     <mn-checklist-step [number]="1" heading="Add your words" state="done" link="/words">
  *       120 words
  *     </mn-checklist-step>
- *     <mn-checklist-step [number]="2" heading="Connect a model" state="next" action="Connect"
+ *     <mn-checklist-step [number]="2" heading="Connect a model" state="next"
  *       link="/settings">Add an OpenRouter key.</mn-checklist-step>
  *     <mn-checklist-step [number]="3" heading="Write a story" state="waiting">
  *       After steps 1 and 2
@@ -36,7 +36,7 @@ let nextChecklistId = 0;
  *   </mn-checklist>
  *
  * The state is shown, not narrated: a finished step wears a tick and quiet
- * words, the next step wears the filled action colour, and a waiting one is
+ * words, the next step wears the filled action colour on its mark and a soft ground behind it, and a waiting one is
  * dashed and is not a link. The order is the list's own.
  *
  * Styles reach projected content and are therefore global, rooted at the
@@ -154,9 +154,6 @@ export class ChecklistComponent {
           <ng-content />
         </span>
       </span>
-      @if (state() === 'next' && action()) {
-        <span class="mn-checklist-step__action" aria-hidden="true">{{ action() }}</span>
-      }
       @if (state() !== 'waiting') {
         <mn-icon class="mn-checklist-step__chevron" name="chevron-right" [size]="18" />
       }
@@ -288,29 +285,9 @@ export class ChecklistComponent {
       color: var(--action-primary-text);
     }
 
-    /* The verb is drawn as the filled action it leads to; the whole row is the link. */
-    mn-checklist-step .mn-checklist-step__action {
-      flex: none;
-      padding: var(--space-1) var(--space-3);
-      border-radius: var(--radius-pill);
-      background: var(--action-primary);
-      color: var(--text-on-action);
-      font-size: var(--text-sm);
-      font-weight: var(--weight-semibold);
-      line-height: var(--leading-tight);
-      white-space: nowrap;
-    }
-
     mn-checklist-step .mn-checklist-step__chevron {
       flex: none;
       color: var(--text-secondary);
-    }
-
-    /* Narrow, the verb gives way to the chevron alone: the soft ground still marks the step. */
-    @container (max-width: 30rem) {
-      mn-checklist-step .mn-checklist-step__action {
-        display: none;
-      }
     }
   `,
 })
@@ -322,8 +299,6 @@ export class ChecklistStepComponent {
   readonly number = input.required<number>();
   readonly heading = input.required<string>();
   readonly state = input.required<ChecklistStepState>();
-  /** The verb for the next step, drawn as its action. */
-  readonly action = input<string | null>(null);
   readonly link = input<string | null>(null);
   readonly fragment = input<string | undefined>(undefined);
   readonly navigationState = input<NavigationExtras['state']>(undefined);
