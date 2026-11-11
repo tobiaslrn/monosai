@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { stubOpenRouter } from './openrouter';
 import { expectMotionSettled } from './sheets';
-import { GENERATION_READY_STATE, TTS_READY_STATE } from './state';
+import { TTS_READY_STATE } from './state';
 
 /**
  * Every dropdown is one dropdown: it hangs from its row, with its edge on the
@@ -79,18 +79,6 @@ for (const width of [320, 393]) {
         // The row sits inside the card's one-pixel border; the list's edge is the card's.
         expect(Math.abs(placed.list.left - placed.field.left)).toBeLessThanOrEqual(1.5);
         expect(Math.abs(placed.list.right - placed.field.right)).toBeLessThanOrEqual(1.5);
-      });
-    });
-
-    test.describe('from a field at the column start', () => {
-      test.use({ storageState: GENERATION_READY_STATE });
-
-      test('stays inside the column and the screen @mobile', async ({ page }) => {
-        await page.goto('./#/reading-level/vocabulary');
-        const placed = await openDropdown(page, page.getByTestId('vocabulary-source-filter'));
-
-        expectInside(placed, page);
-        expect(placed.list.left).toBeCloseTo(placed.field.left, 0);
       });
     });
   });

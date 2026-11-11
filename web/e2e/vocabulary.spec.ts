@@ -300,7 +300,7 @@ test.describe('vocabulary', () => {
 
     await page.getByTestId('browse-vocabulary').click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your vocabulary');
-    await expect(page.getByTestId('page-subtitle')).toHaveText('3 words');
+    await expect(page.getByTestId('vocabulary-count')).toHaveText('3 words');
     await expect(page.locator('mn-vocabulary-browse-row')).toHaveCount(4);
     await expectNoSeriousAccessibilityViolations(page);
 

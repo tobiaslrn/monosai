@@ -62,7 +62,8 @@ export class MenuTriggerDirective {
 }
 
 /**
- * One action in an `mn-menu`, or one destination when it is a link. It is a
+ * One action in an `mn-menu`, or one destination when it is a link. A menu that
+ * sets one value marks the item in force with `checked`, and a check at its end. It is a
  * `menuitem` only in a panel that is a menu; in a small dialog of choices a
  * link stays a link.
  */
@@ -70,11 +71,15 @@ export class MenuTriggerDirective {
   selector: 'button[mnMenuItem], a[mnMenuItem]',
   host: {
     class: 'mn-dropdown-row mn-menu-item',
-    '[attr.role]': "panel?.popup.menu() ? 'menuitem' : null",
+    '[attr.role]':
+      "panel?.popup.menu() ? (checked() === null ? 'menuitem' : 'menuitemradio') : null",
+    '[attr.aria-checked]': 'panel?.popup.menu() && checked() !== null ? checked() : null',
     '[class.mn-menu-item--danger]': "mnMenuItem() === 'danger'",
   },
 })
 export class MenuItemDirective {
   protected readonly panel = inject(MenuComponent, { optional: true });
   readonly mnMenuItem = input<'' | 'danger'>('');
+  /** For a menu that sets one value, such as an order: whether this is the one in force. */
+  readonly checked = input<boolean | null>(null);
 }

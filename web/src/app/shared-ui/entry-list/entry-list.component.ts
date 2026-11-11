@@ -23,8 +23,9 @@ import { IconComponent } from '../icon/icon.component';
  * The column heads and every item's figures share `figureTracks`, declared in
  * rem so they grow with the text, so each head sits over its column. Items lay
  * themselves out against the list, not the window: a list too narrow for the
- * columns, such as a phone at a large text size, drops the heads and lines the
- * figures up under the name, each with its own label.
+ * columns, such as a phone, collapses to list rows. It drops the heads and the
+ * figures, and an item that wants them stated puts them in its detail on a
+ * line marked `mn-entry-narrow`.
  *
  * Styles reach projected content and are therefore global, rooted at the
  * element.
@@ -188,11 +189,6 @@ import { IconComponent } from '../icon/icon.component';
       color: var(--text-secondary);
     }
 
-    mn-figure.mn-figure--warning {
-      color: var(--status-warning);
-      font-weight: var(--weight-semibold);
-    }
-
     mn-figure .mn-figure__label {
       position: absolute;
       width: 1px;
@@ -202,7 +198,17 @@ import { IconComponent } from '../icon/icon.component';
       white-space: nowrap;
     }
 
-    @container mn-entry-list (max-width: 20rem) {
+    /* A line only a narrow list needs: the figures its summary has no room for. */
+    mn-entry .mn-entry__body > [mn-entry-narrow] {
+      display: none;
+    }
+
+    /*
+     * A list too narrow for its columns, such as a phone, collapses to list
+     * rows: the name and its lines, and a chevron. The figures leave the
+     * summary and the detail states them.
+     */
+    @container mn-entry-list (max-width: 32rem) {
       mn-entry-list .mn-entry-list__columns {
         display: none;
       }
@@ -212,25 +218,11 @@ import { IconComponent } from '../icon/icon.component';
       }
 
       mn-entry .mn-entry__figures {
-        display: flex;
-        flex-wrap: wrap;
-        grid-column: 1;
-        gap: 0 var(--space-3);
+        display: none;
       }
 
-      mn-figure .mn-figure__label {
-        position: static;
-        width: auto;
-        height: auto;
-        overflow: visible;
-        clip-path: none;
-        color: var(--text-secondary);
-        font-weight: var(--weight-regular);
-      }
-
-      mn-entry .mn-entry__chevron {
-        grid-row: 1 / span 2;
-        grid-column: 2;
+      mn-entry .mn-entry__body > [mn-entry-narrow] {
+        display: block;
       }
     }
   `,
@@ -284,11 +276,10 @@ export class EntryComponent {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.mn-figure--quiet]': "tone() === 'quiet'",
-    '[class.mn-figure--warning]': "tone() === 'warning'",
   },
   template: `<span class="mn-figure__label">{{ label() }} </span><ng-content />`,
 })
 export class FigureComponent {
   readonly label = input.required<string>();
-  readonly tone = input<'default' | 'quiet' | 'warning'>('default');
+  readonly tone = input<'default' | 'quiet'>('default');
 }

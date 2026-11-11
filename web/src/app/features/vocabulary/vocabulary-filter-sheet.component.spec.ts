@@ -112,6 +112,39 @@ describe('VocabularyFilterSheetComponent', () => {
     expect(closed).toEqual([{ ...DEFAULT_BROWSE_QUERY, search: 'neko' }]);
   });
 
+  it('sets the difficulty band with one two-thumb slider, whose thumbs never cross', () => {
+    const { closed, sheet } = open();
+    const thumbs = sheet.querySelectorAll<HTMLInputElement>('mn-range-field input[type="range"]');
+    const [low, high] = [thumbs[0]!, thumbs[1]!];
+    expect(thumbs).toHaveLength(2);
+    expect(low.getAttribute('aria-label')).toBe('Minimum difficulty');
+    expect(high.getAttribute('aria-label')).toBe('Maximum difficulty');
+    expect(sheet.querySelector('mn-range-field output')?.textContent).toBe('0–100%');
+
+    low.value = '20';
+    low.dispatchEvent(new Event('input'));
+    high.value = '80';
+    high.dispatchEvent(new Event('input'));
+    detect();
+    expect(sheet.querySelector('mn-range-field output')?.textContent).toBe('20–80%');
+
+    // Pushing the low thumb past the high one stops at it.
+    low.value = '95';
+    low.dispatchEvent(new Event('input'));
+    detect();
+    expect(low.value).toBe('80');
+
+    sheet.querySelector<HTMLButtonElement>('.mn-button--primary')!.click();
+    endSlide(sheet);
+    expect(closed[0]?.difficulty).toEqual({ min: 80, max: 80 });
+  });
+
+  it('holds no sort: the order is a menu on the list', () => {
+    const { sheet } = open();
+
+    expect(sheet.textContent).not.toContain('Sort by');
+  });
+
   it('discards the draft when the handle dismisses it', () => {
     const { closed, sheet } = open();
 

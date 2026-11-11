@@ -66,7 +66,7 @@ let nextRangeId = 0;
           [disabled]="disabled()"
           [attr.data-testid]="highTestId()"
           [attr.aria-label]="highLabel()"
-          [attr.aria-valuetext]="valueText()"
+          [attr.aria-valuetext]="highValueText()"
           [attr.aria-describedby]="describedBy()"
           (input)="onHigh($event)"
         />
@@ -216,6 +216,8 @@ export class RangeFieldComponent {
   readonly disabled = input(false);
   /** What the slider says its value is, when the number alone means nothing. */
   readonly valueText = input<string | null>(null);
+  /** The same for a range's high thumb, whose number alone means nothing either. */
+  readonly highValueText = input<string | null>(null);
   readonly describedBy = input<string | null>(null);
   /** The names of a range's two thumbs. */
   readonly lowLabel = input('Minimum');

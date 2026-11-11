@@ -10,8 +10,6 @@
   "src/app/features/reading-level/reading-level-page.component.ts": ["R35"],
   "src/app/features/vocabulary/add-words.component.ts": ["R35"],
   "src/app/features/vocabulary/source-list.component.ts": ["R35"],
-  "src/app/features/vocabulary/vocabulary-browse-page.component.ts": ["R35"],
-  "src/app/features/vocabulary/vocabulary-browse-row.component.ts": ["R35"],
   "src/app/features/vocabulary/vocabulary-card.component.ts": ["R35"],
   "src/app/shared-ui/banner/banner.component.ts": ["R35"],
   "src/app/shared-ui/blocker/blocker.component.ts": ["R35"],

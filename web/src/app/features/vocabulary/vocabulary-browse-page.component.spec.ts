@@ -213,7 +213,7 @@ describe('VocabularyBrowsePageComponent', () => {
 
     const { fixture, element } = await render();
     const count = (): string =>
-      element.querySelector('[data-testid="page-subtitle"]')?.textContent.trim() ?? '';
+      element.querySelector('[data-testid="vocabulary-count"]')?.textContent.trim() ?? '';
     expect(count()).toBe('3 words');
 
     shouldFail = true;
@@ -226,7 +226,7 @@ describe('VocabularyBrowsePageComponent', () => {
     expect(element.textContent).not.toContain('3 words');
   });
 
-  it('keeps the word count and adds how many rows a search leaves', async () => {
+  it('counts the words a search leaves out of all of them', async () => {
     await seedVocabulary();
     const { fixture, element } = await render();
     const search = element.querySelector<HTMLInputElement>('[data-testid="vocabulary-search"]');
@@ -236,8 +236,8 @@ describe('VocabularyBrowsePageComponent', () => {
     search.dispatchEvent(new Event('input'));
     await settle(fixture);
 
-    expect(element.querySelector('[data-testid="page-subtitle"]')?.textContent.trim()).toBe(
-      '3 words · 1 match',
+    expect(element.querySelector('[data-testid="vocabulary-count"]')?.textContent.trim()).toBe(
+      '1 of 3 words',
     );
   });
 
@@ -251,14 +251,64 @@ describe('VocabularyBrowsePageComponent', () => {
     expect(headings.indexOf('H3')).toBeGreaterThan(headings.indexOf('H2'));
   });
 
-  it('marks a hard word by more than its colour', async () => {
+  it('sorts from a menu on the count line and marks the order in force', async () => {
+    await seedVocabulary();
+    const { fixture, element } = await render();
+    const store = TestBed.inject(VocabularyBrowseStore);
+    const items = (): HTMLElement[] => [
+      ...element.querySelectorAll<HTMLElement>('mn-menu [role="menuitemradio"]'),
+    ];
+
+    expect(element.querySelector('[data-testid="vocabulary-sort"]')?.textContent).toContain(
+      'Recently studied',
+    );
+    expect(items().map((item) => item.getAttribute('aria-checked'))).toEqual([
+      'true',
+      'false',
+      'false',
+      'false',
+      'false',
+    ]);
+
+    items()[4]?.click();
+    await settle(fixture);
+
+    expect(store.query().sort).toBe('expression');
+    expect(element.querySelector('[data-testid="vocabulary-sort"]')?.textContent).toContain(
+      'By word',
+    );
+    expect(element.querySelector('[data-testid="vocabulary-source-filter"]')).toBeNull();
+  });
+
+  it('counts the filters in force on the Filters button', async () => {
+    await seedVocabulary();
+    const { fixture, element } = await render();
+    const store = TestBed.inject(VocabularyBrowseStore);
+    const badge = (): string | undefined =>
+      element
+        .querySelector('[data-testid="vocabulary-filters"] .mn-button__badge')
+        ?.textContent.trim();
+
+    expect(badge()).toBeUndefined();
+
+    store.applyQuery({
+      ...store.query(),
+      firstStudied: 'last-7-days',
+      difficulty: { min: 20, max: 80 },
+    });
+    await settle(fixture);
+
+    expect(badge()).toBe('2');
+  });
+
+  it('prints a difficulty as plain text, never as a warning', async () => {
     await seedVocabulary();
     const { element } = await render();
     const eat = element.querySelector('mn-vocabulary-browse-row [data-testid="difficulty"]');
 
-    // Anki's 5.5 on its 1-10 scale is half way: hard, and printed as a number.
+    // Anki's 5.5 on its 1-10 scale is half way: a normal value, printed as a number.
     expect(eat?.textContent).toContain('50%');
-    expect(eat?.classList.contains('mn-figure--warning')).toBe(true);
+    expect(eat?.className).not.toContain('warning');
     expect(eat?.textContent).toContain('Difficulty');
   });
 

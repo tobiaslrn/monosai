@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { DialogComponent } from '../../shared-ui/dialog/dialog';
+import { RangeFieldComponent } from '../../shared-ui/range-field/range-field.component';
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { SelectComponent, type SelectOption } from '../../shared-ui/select/select.component';
 import {
   applyBrowseQuery,
@@ -24,12 +26,17 @@ export interface VocabularyFilterSheetData {
 }
 
 /** The Filters task dialog: a centred card on a wide screen, a docked sheet on a phone. */
-import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
-
 @Component({
   selector: 'mn-vocabulary-filter-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ButtonDirective, DialogComponent, SelectComponent, SettingsRowComponent],
+  imports: [
+    FormsModule,
+    ButtonDirective,
+    DialogComponent,
+    RangeFieldComponent,
+    SelectComponent,
+    SettingsRowComponent,
+  ],
   template: `
     <mn-dialog heading="Filters" headingId="vocabulary-filter-heading" closeLabel="Close filters">
       <div class="mn-settings-group mn-settings-bleed">
@@ -42,37 +49,6 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
             (ngModelChange)="setSource($event)"
           />
         </mn-settings-row>
-      </div>
-
-      <fieldset>
-        <legend>Difficulty</legend>
-        <label class="mn-field">
-          <span>Minimum difficulty: {{ draft().difficulty.min }}%</span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            [value]="draft().difficulty.min"
-            aria-label="Minimum difficulty"
-            (input)="setMinimum(value($event))"
-          />
-        </label>
-        <label class="mn-field">
-          <span>Maximum difficulty: {{ draft().difficulty.max }}%</span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            [value]="draft().difficulty.max"
-            aria-label="Maximum difficulty"
-            (input)="setMaximum(value($event))"
-          />
-        </label>
-      </fieldset>
-
-      <div class="mn-settings-group mn-settings-bleed">
         <mn-settings-row label="First studied" labelId="mn-filter-2-label">
           <mn-select
             labelledBy="mn-filter-2-label"
@@ -82,18 +58,19 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
             (ngModelChange)="setFirstStudied($event)"
           />
         </mn-settings-row>
-      </div>
-
-      <div class="mn-settings-group mn-settings-bleed">
-        <mn-settings-row label="Sort by" labelId="mn-filter-3-label">
-          <mn-select
-            labelledBy="mn-filter-3-label"
-            label="Sort by"
-            [options]="sortOptions"
-            [ngModel]="draft().sort"
-            (ngModelChange)="setSort($event)"
-          />
-        </mn-settings-row>
+        <mn-range-field
+          label="Difficulty"
+          lowLabel="Minimum difficulty"
+          highLabel="Maximum difficulty"
+          [max]="100"
+          [value]="draft().difficulty.min"
+          [high]="draft().difficulty.max"
+          [valueLabel]="difficultyLabel()"
+          [valueText]="draft().difficulty.min + '%'"
+          [highValueText]="draft().difficulty.max + '%'"
+          (valueChange)="setMinimum($event)"
+          (highChange)="setMaximum($event)"
+        />
       </div>
 
       <button mn-dialog-action="start" mnButton="ghost" type="button" (click)="reset()">
@@ -121,39 +98,30 @@ export class VocabularyFilterSheetComponent {
     { value: 'last-30-days', label: 'Last 30 days' },
     { value: 'last-90-days', label: 'Last 90 days' },
   ];
-  protected readonly sortOptions: readonly SelectOption<string>[] = [
-    { value: 'first-studied-desc', label: 'First studied, newest' },
-    { value: 'first-studied-asc', label: 'First studied, oldest' },
-    { value: 'difficulty-desc', label: 'Difficulty, high to low' },
-    { value: 'difficulty-asc', label: 'Difficulty, low to high' },
-    { value: 'expression', label: 'Expression' },
-  ];
   protected readonly formatCountOf = formatCountOf;
   protected readonly matchCount = () =>
     applyBrowseQuery(this.data.entries, this.draft(), this.clock.now()).length;
 
-  protected value(event: Event): string {
-    return (event.target as HTMLInputElement).value;
+  /** The band as one range, such as "20–80%". */
+  protected difficultyLabel(): string {
+    const { min, max } = this.draft().difficulty;
+    return `${String(min)}–${String(max)}%`;
   }
 
   protected setSource(value: string): void {
     this.update({ sourceId: value === '' ? null : vocabularySourceId(value) });
   }
 
-  protected setMinimum(value: string): void {
-    this.update({ difficulty: { min: Number(value), max: this.draft().difficulty.max } });
+  protected setMinimum(value: number): void {
+    this.update({ difficulty: { min: value, max: this.draft().difficulty.max } });
   }
 
-  protected setMaximum(value: string): void {
-    this.update({ difficulty: { min: this.draft().difficulty.min, max: Number(value) } });
+  protected setMaximum(value: number): void {
+    this.update({ difficulty: { min: this.draft().difficulty.min, max: value } });
   }
 
   protected setFirstStudied(value: string): void {
     this.update({ firstStudied: value as BrowseQuery['firstStudied'] });
-  }
-
-  protected setSort(value: string): void {
-    this.update({ sort: value as BrowseQuery['sort'] });
   }
 
   /**

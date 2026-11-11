@@ -102,6 +102,25 @@
   margin-inline-end: calc(-1 * var(--button-inset));
 }
 
+/*
+ * How many choices a button's dialog is holding, such as Filters: a quiet round
+ * count after its label. It is not a status, so it takes no tone.
+ */
+.mn-button__badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5em;
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: 1.5;
+}
+
 .mn-button--edge-start {
   max-width: calc(100% + var(--button-inset));
   margin-inline-start: calc(-1 * var(--button-inset));

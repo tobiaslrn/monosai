@@ -435,8 +435,8 @@ stopping them — and holds the one control that can change that.
 ### Lists with filters
 
 A list that helps the learner find a known item keeps one quiet column and a
-compact toolbar: the search field, then one labelled Filters action (with a count
-when filters are on). **A filter is never in both the toolbar and the Filters
+compact toolbar: the search field, then one labelled Filters action (with a quiet
+round count after its label, `mn-button__badge`, when filters are on). **A filter is never in both the toolbar and the Filters
 dialog**: every less frequent choice lives in the dialog, as choice rows, and a
 range (a difficulty band) is one two-thumb slider. Under the toolbar, one line
 holds the result count (visible, and announced through a polite live region) and,
@@ -449,9 +449,11 @@ line beneath it, and only the metadata needed to choose between rows. Where
 every row carries the same few figures they are columns under a quiet header
 row; the header is presentation, so each figure also names itself to
 assistive technology. The columns are sized in `rem`, and a list too narrow
-for them lays its figures under the value instead — a container query on the
-list, not a breakpoint. A figure that says the learner still finds something
-hard takes the warning colour, and the figure itself says so too. A row
+for them (a phone) collapses to list rows — the word, its reading and meaning,
+and a chevron — with the figures stated in the opened row; a container query on
+the list, not a breakpoint. A figure is plain text: a difficulty is a fact, and
+the warning colour is for what may go wrong. A missing meaning draws nothing,
+never a dash per row. A row
 that has more to say uses native `details`/`summary`; its closed summary still
 states the current value. Expanded detail may include provenance links, but it
 does not create a second row action hierarchy. Long lists may mount a measured

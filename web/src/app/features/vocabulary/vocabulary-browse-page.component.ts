@@ -2,23 +2,21 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { Dialog } from '@angular/cdk/dialog';
 import { RouterLink } from '@angular/router';
 import { VocabularyBrowseStore } from '../../application/vocabulary/vocabulary-browse.store';
-import { vocabularySourceId } from '../../domain/shared/ids';
 import { formatCount, formatCountOf } from '../../domain/shared/locale';
-import type { BrowseQuery } from '../../domain/vocabulary/vocabulary-browse';
+import { DEFAULT_BROWSE_QUERY, type BrowseQuery } from '../../domain/vocabulary/vocabulary-browse';
 import type { VocabularyEntry } from '../../domain/vocabulary/vocabulary-repository';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { openDialog } from '../../shared-ui/dialog/dialog';
 import { EntryListComponent } from '../../shared-ui/entry-list/entry-list.component';
 import {
-  SelectComponent,
-  type SelectOption,
-  type SelectValue,
-} from '../../shared-ui/select/select.component';
+  MenuComponent,
+  MenuItemDirective,
+  MenuTriggerDirective,
+} from '../../shared-ui/menu/menu.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ClusterComponent, PageComponent, StackComponent } from '../../shared-ui/layout/layout';
 import { NoticeComponent } from '../../shared-ui/notice/notice.component';
 import { SearchFieldComponent } from '../../shared-ui/search-field/search-field.component';
-import type { IconName } from '../../shared-ui/icon/icon-set';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import {
   VirtualItemDirective,
@@ -49,7 +47,9 @@ interface VirtualVocabularyEntry {
     PageComponent,
     PageHeaderComponent,
     SearchFieldComponent,
-    SelectComponent,
+    MenuComponent,
+    MenuItemDirective,
+    MenuTriggerDirective,
     StackComponent,
     VirtualListDirective,
     VirtualItemDirective,
@@ -61,23 +61,14 @@ interface VirtualVocabularyEntry {
         heading="Your vocabulary"
         backTo="/reading-level"
         backLabel="Back to what you can read"
-        [subtitle]="countLabel()"
       />
 
-      <mn-search-field
-        label="Search Japanese or English"
-        testId="vocabulary-search"
-        [value]="store.query().search"
-        (valueChange)="store.setSearch($event)"
-      />
-
-      <mn-cluster justify="between">
-        <mn-select
-          label="Filter by source"
-          testId="vocabulary-source-filter"
-          [options]="sourceOptions()"
-          [value]="store.query().sourceId ?? ''"
-          (valueChange)="setSource($event)"
+      <mn-cluster fill="first">
+        <mn-search-field
+          label="Search Japanese or English"
+          testId="vocabulary-search"
+          [value]="store.query().search"
+          (valueChange)="store.setSearch($event)"
         />
         <button
           mnButton
@@ -86,16 +77,46 @@ interface VirtualVocabularyEntry {
           (click)="openFilters()"
           data-testid="vocabulary-filters"
         >
-          <mn-icon name="filter" [size]="18" /> Filters
+          <mn-icon name="filter" />
+          <span>Filters</span>
+          @if (activeFilters(); as count) {
+            <span class="mn-button__badge" aria-hidden="true">{{ count }}</span>
+            <span class="mn-visually-hidden">, {{ count }} on</span>
+          }
         </button>
       </mn-cluster>
 
-      <mn-cluster [gap]="1" class="mn-hint">
-        <span>{{ sortLabel() }}</span>
-        @if (sortIcon(); as icon) {
-          <mn-icon [name]="icon" [size]="16" />
-        }
+      <mn-cluster justify="between">
+        <p class="mn-hint" data-testid="vocabulary-count">{{ countLabel() }}</p>
+        <button
+          mnButton="ghost"
+          type="button"
+          edge="end"
+          aria-haspopup="menu"
+          data-testid="vocabulary-sort"
+          [mnMenuTrigger]="sortMenu"
+        >
+          <span>{{ sortLabel() }}</span>
+          <mn-icon name="chevron-up-down" />
+        </button>
       </mn-cluster>
+      <mn-menu #sortMenu="mnMenu" [menu]="true" aria-label="Sort by">
+        @for (option of sortOptions; track option.value) {
+          <button
+            mnMenuItem
+            type="button"
+            [checked]="store.query().sort === option.value"
+            (click)="setSort(option.value); sortMenu.hide()"
+          >
+            <span class="mn-dropdown-row__words">
+              <span class="mn-dropdown-row__label">{{ option.label }}</span>
+            </span>
+            @if (store.query().sort === option.value) {
+              <mn-icon class="mn-dropdown-row__check" name="check" tone="accent" />
+            }
+          </button>
+        }
+      </mn-menu>
 
       <p class="mn-visually-hidden" role="status" aria-live="polite">
         {{ matchAnnouncement() }}
@@ -189,25 +210,34 @@ export class VocabularyBrowsePageComponent {
     this.store.visible().map((entry) => ({ key: entry.itemId, entry })),
   );
   protected readonly estimateHeight = (): number => 82;
-  protected readonly sourceOptions = computed<readonly SelectOption<string>[]>(() => [
-    { value: '', label: 'All sources' },
-    ...this.store.sources().map((source) => ({ value: source.sourceId, label: source.label })),
-  ]);
   /**
-   * How many words there are, and how many rows are showing once a search or a
-   * filter has narrowed them. A word with two meanings is one word and two
-   * rows, so the two are never written as "x of y".
+   * How many words there are, and how many a search or a filter leaves. A word
+   * with two meanings is one word and two rows, so the matches are counted as
+   * words too, and the line never mixes the two.
    */
   protected readonly countLabel = computed(() => {
     const snapshot = this.store.snapshot();
-    const total = snapshot === null ? '0 words' : formatCountOf(snapshot.uniqueEntryCount, 'word');
+    const total = snapshot === null ? 0 : snapshot.uniqueEntryCount;
     if (this.store.state() !== 'ready' || this.store.matchCount() === this.store.entries().length) {
-      return total;
+      return formatCountOf(total, 'word');
     }
-    return `${total} · ${formatCountOf(this.store.matchCount(), 'match', 'matches')}`;
+    const matched = new Set(this.store.visible().map((entry) => entry.canonicalExpression)).size;
+    return `${formatCount(matched)} of ${formatCountOf(total, 'word')}`;
   });
-  protected readonly sortLabel = computed(() => sortLabel(this.store.query().sort));
-  protected readonly sortIcon = computed(() => sortIcon(this.store.query().sort));
+  protected readonly sortLabel = computed(
+    () => SORT_OPTIONS.find((option) => option.value === this.store.query().sort)?.label ?? '',
+  );
+  /** How many of the Filters dialog's choices are narrowing the list. */
+  protected readonly activeFilters = computed(() => {
+    const query = this.store.query();
+    return [
+      query.sourceId !== DEFAULT_BROWSE_QUERY.sourceId,
+      query.firstStudied !== DEFAULT_BROWSE_QUERY.firstStudied,
+      query.difficulty.min !== DEFAULT_BROWSE_QUERY.difficulty.min ||
+        query.difficulty.max !== DEFAULT_BROWSE_QUERY.difficulty.max,
+    ].filter(Boolean).length;
+  });
+  protected readonly sortOptions = SORT_OPTIONS;
   protected readonly matchAnnouncement = computed(
     () =>
       `${formatCount(this.store.matchCount())} ${this.store.matchCount() === 1 ? 'word' : 'words'} shown.`,
@@ -217,8 +247,8 @@ export class VocabularyBrowsePageComponent {
     void this.store.load();
   }
 
-  protected setSource(sourceId: SelectValue): void {
-    this.store.setSource(sourceId === '' ? null : vocabularySourceId(String(sourceId)));
+  protected setSort(sort: BrowseQuery['sort']): void {
+    this.store.applyQuery({ ...this.store.query(), sort });
   }
 
   protected setExpanded(id: VocabularyEntry['itemId'], expanded: boolean): void {
@@ -256,32 +286,11 @@ export class VocabularyBrowsePageComponent {
   }
 }
 
-/** The current order, as one short line above the list. */
-function sortLabel(sort: BrowseQuery['sort']): string {
-  switch (sort) {
-    case 'first-studied-desc':
-      return 'Recently studied';
-    case 'first-studied-asc':
-      return 'First studied, oldest first';
-    case 'difficulty-desc':
-      return 'Difficulty, high to low';
-    case 'difficulty-asc':
-      return 'Difficulty, low to high';
-    case 'expression':
-      return 'By word';
-  }
-}
-
-/** The direction glyph beside the sort line; an alphabetical order has none. */
-function sortIcon(sort: BrowseQuery['sort']): IconName | null {
-  switch (sort) {
-    case 'first-studied-desc':
-    case 'difficulty-desc':
-      return 'sort-descending';
-    case 'first-studied-asc':
-    case 'difficulty-asc':
-      return 'sort-ascending';
-    case 'expression':
-      return null;
-  }
-}
+/** The orders on offer, named as the sort button states the one in force. */
+const SORT_OPTIONS: readonly { readonly value: BrowseQuery['sort']; readonly label: string }[] = [
+  { value: 'first-studied-desc', label: 'Recently studied' },
+  { value: 'first-studied-asc', label: 'First studied, oldest first' },
+  { value: 'difficulty-desc', label: 'Difficulty, high to low' },
+  { value: 'difficulty-asc', label: 'Difficulty, low to high' },
+  { value: 'expression', label: 'By word' },
+];
