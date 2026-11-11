@@ -227,6 +227,12 @@ import { PageNoticeSlot } from './page-notice-slot';
       gap: var(--space-1);
       align-items: center;
       margin-inline: auto calc(-1 * var(--space-2));
+      /*
+       * The bar's end hangs this far past the column so an icon's glyph lines
+       * up with it. A text button at the end already gives up its own padding,
+       * so it takes this back: its label, not the bar's overhang, ends the column.
+       */
+      --trailing-overhang: var(--space-2);
     }
 
     .trailing:empty {

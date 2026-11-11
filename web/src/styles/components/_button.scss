@@ -99,7 +99,7 @@
 .mn-trailing > .mn-button--ghost:last-child,
 .mn-button--edge-end {
   max-width: calc(100% + var(--button-inset));
-  margin-inline-end: calc(-1 * var(--button-inset));
+  margin-inline-end: calc(-1 * var(--button-inset) + var(--trailing-overhang, 0px));
 }
 
 /*
