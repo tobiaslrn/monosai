@@ -216,7 +216,9 @@ another.
 **One column edge.** Section headings, the sentences under them, prose, page
 titles and the outer edge of every card start on the same edge; a heading is
 never inset from the card it names, except the small section label over a card
-of rows (see List section labels). Inside a card, every row's words — a shelf
+of rows (see List section labels). That label is one role wherever it stands, over a
+settings card, a topics card or a shelf's day, on the words' edge one card inset in
+(`mn-group-title`). Inside a card, every row's words — a shelf
 row, a settings row, a fold's summary, a blocker — sit one card inset from the
 card's edge, the same inset a padded card gives its content, so text in a card
 of rows lines up with text in the padded card above it. An inset group inside a

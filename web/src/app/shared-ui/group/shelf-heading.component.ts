@@ -23,6 +23,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     :host {
       display: block;
       padding-block: var(--page-gap) var(--group-gap);
+      /* The label stands on the text edge of the rows under it, as every group label does. */
+      padding-inline: var(--surface-inset);
     }
     :host(.is-first) {
       padding-block-start: 0;
