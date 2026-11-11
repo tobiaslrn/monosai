@@ -123,6 +123,7 @@ function readingKey(id: string): string {
       [overscanPx]="overscanPx"
       [loadMoreThresholdPx]="loadMoreThresholdPx"
       [generation]="store.collectionRevision()"
+      [seedHeights]="seedHeights()"
       (nearEnd)="loadMore()"
     >
       <div
@@ -190,6 +191,8 @@ export class LibraryVirtualListComponent {
   protected readonly store = inject(LibraryStore);
 
   readonly groups = input.required<readonly LibraryDateGroup[]>();
+  /** Heights measured on an earlier visit, so a returned-to shelf is as tall as it was. */
+  readonly seedHeights = input<ReadonlyMap<string, number> | null>(null);
   readonly deleteRequested = output<Reading>();
   readonly renameRequested = output<Reading>();
 
@@ -259,6 +262,11 @@ export class LibraryVirtualListComponent {
       readings: group.readings,
     }));
   });
+
+  /** What has been measured of the shelf so far. */
+  measuredHeights(): ReadonlyMap<string, number> {
+    return this.list().measuredHeights();
+  }
 
   protected retryLoadMore(): void {
     void this.store.retryLoadMore();

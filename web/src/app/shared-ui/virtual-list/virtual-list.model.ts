@@ -109,6 +109,26 @@ export class VariableHeightVirtualListModel<T extends VirtualListItem> {
     return true;
   }
 
+  /** Every measurement kept for an item that is still in the list. */
+  measuredHeights(): ReadonlyMap<string, number> {
+    return new Map(this.heights);
+  }
+
+  /** Takes earlier measurements for items that have none yet. Returns whether layout changed. */
+  seedMeasurements(heights: ReadonlyMap<string, number>): boolean {
+    let changed = false;
+    for (const [key, height] of heights) {
+      if (this.indexes.has(key) && !this.heights.has(key) && height > 0) {
+        this.heights.set(key, height);
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.rebuildOffsets();
+    }
+    return changed;
+  }
+
   heightOf(key: string): number | null {
     const index = this.indexes.get(key);
     const item = index === undefined ? undefined : this.itemsValue[index];

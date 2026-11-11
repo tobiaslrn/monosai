@@ -65,7 +65,9 @@ test('loads the next library page at the window end without Show more @smoke @mo
   await importReading(page, '猫がいる。', 'Seed story');
   await page.goto('./#/library');
   await seedMoreLibraryRows(page);
-  await page.goto('./#/library');
+  // A same-address goto is only a hash navigation and keeps the shelf already read;
+  // the shelf has to be read again after the seed.
+  await page.reload();
 
   await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Seed story' })).toBeVisible();
@@ -133,7 +135,9 @@ test('restores a deep window position after leaving and returning @smoke @mobile
   await importReading(page, '猫がいる。', 'Seed story');
   await page.goto('./#/library');
   await seedMoreLibraryRows(page, 48);
-  await page.goto('./#/library');
+  // A same-address goto is only a hash navigation and keeps the shelf already read;
+  // the shelf has to be read again after the seed.
+  await page.reload();
 
   await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Seed story' })).toBeVisible();
@@ -171,7 +175,9 @@ test('deleting a deep story keeps the shelf position and focuses the next row @s
   await importReading(page, '猫がいる。', 'Seed story');
   await page.goto('./#/library');
   await seedMoreLibraryRows(page, 48);
-  await page.goto('./#/library');
+  // A same-address goto is only a hash navigation and keeps the shelf already read;
+  // the shelf has to be read again after the seed.
+  await page.reload();
 
   await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
   await expect

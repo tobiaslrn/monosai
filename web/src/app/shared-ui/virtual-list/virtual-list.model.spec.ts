@@ -86,4 +86,21 @@ describe('VariableHeightVirtualListModel', () => {
     // The overscan reaches one row further than it did without it.
     expect(virtualizer.rangeFor(100, 0)).toMatchObject({ start: 0, end: 2 });
   });
+
+  it('seeds earlier measurements without overriding new ones', () => {
+    const virtualizer = model();
+    virtualizer.reset(items(3));
+    virtualizer.updateMeasurement('item-0', 120);
+    const seeded = virtualizer.seedMeasurements(
+      new Map([
+        ['item-0', 999],
+        ['item-1', 140],
+        ['gone', 50],
+      ]),
+    );
+    expect(seeded).toBe(true);
+    expect(virtualizer.totalHeight).toBe(120 + 140 + 100);
+    expect(virtualizer.measuredHeights().get('item-0')).toBe(120);
+    expect(virtualizer.seedMeasurements(new Map([['item-1', 10]]))).toBe(false);
+  });
 });

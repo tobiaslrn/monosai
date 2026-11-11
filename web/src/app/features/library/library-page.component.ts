@@ -8,6 +8,7 @@ import {
   computed,
   effect,
   inject,
+  viewChild,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
@@ -62,6 +63,9 @@ const FILTERS: readonly FilterOption[] = [
 export const FILTER_VISIBILITY_THRESHOLD = 8;
 
 /** The library: the shelf of readings, and the one way to add another. */
+/** Frames the shelf's height must hold still before a position that cannot be reached is given up. */
+const RESTORATION_SETTLED_FRAMES = 8;
+
 @Component({
   selector: 'mn-library-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -191,6 +195,7 @@ export const FILTER_VISIBILITY_THRESHOLD = 8;
         } @else {
           <mn-library-virtual-list
             [groups]="readingGroups()"
+            [seedHeights]="seedHeights"
             (deleteRequested)="confirmDelete($event)"
             (renameRequested)="promptRename($event)"
           />
@@ -238,6 +243,10 @@ export class LibraryPageComponent {
   private restorationCancelled = false;
   private restorationPosition: number | null = null;
   private restorationFrame: number | null = null;
+  private readonly shelf = viewChild(LibraryVirtualListComponent);
+  protected seedHeights: ReadonlyMap<string, number> | null = null;
+  private settledFrames = 0;
+  private lastHeight = -1;
   private readonly translationJob = inject(TranslationJobStore);
   private readonly audioJob = inject(AudioJobStore);
   private readonly playback = inject(AudioPlaybackStore);
@@ -300,9 +309,14 @@ export class LibraryPageComponent {
     const navigationEvents = inject(Router).events.subscribe((event) => {
       if (event instanceof NavigationStart) {
         this.scrollMemory.remember(window.scrollY);
+        const shelf = this.shelf();
+        if (shelf !== undefined) {
+          this.scrollMemory.rememberHeights(shelf.measuredHeights());
+        }
       }
     });
     this.restorationPosition = this.scrollMemory.take();
+    this.seedHeights = this.restorationPosition === null ? null : this.scrollMemory.takeHeights();
     effect(() => {
       const status = this.store.status();
       const loadingMore = this.store.loadingMore();
@@ -321,7 +335,18 @@ export class LibraryPageComponent {
         this.intro?.absorb();
       }
     });
+    // The learner taking over the scroll ends the restoration for good.
+    const takeOver = (): void => {
+      this.restorationPosition = null;
+    };
+    const takeOverEvents = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
+    for (const name of takeOverEvents) {
+      window.addEventListener(name, takeOver, { passive: true });
+    }
     destroyRef.onDestroy(() => {
+      for (const name of takeOverEvents) {
+        window.removeEventListener(name, takeOver);
+      }
       this.restorationCancelled = true;
       if (this.restorationFrame !== null) {
         cancelAnimationFrame(this.restorationFrame);
@@ -368,17 +393,34 @@ export class LibraryPageComponent {
     }
 
     window.scrollTo(0, position);
-    if (
-      window.scrollY >= position ||
-      !this.store.hasMore() ||
-      this.store.loadMoreError() !== null
-    ) {
-      this.restorationPosition = null;
+    if (window.scrollY >= position) {
+      this.finishScrollRestoration();
       return;
     }
-    if (!this.store.loadingMore()) {
-      void this.store.loadMore();
+    if (this.store.hasMore() && this.store.loadMoreError() === null) {
+      this.settledFrames = 0;
+      if (!this.store.loadingMore()) {
+        void this.store.loadMore();
+      }
+      return;
     }
+    // Everything is loaded, but rows that were only estimated are measured as
+    // they mount, and the shelf grows under a position that was clamped to the
+    // estimate. Keep going until the height stops changing.
+    const height = document.documentElement.scrollHeight;
+    this.settledFrames = height === this.lastHeight ? this.settledFrames + 1 : 0;
+    this.lastHeight = height;
+    if (this.settledFrames >= RESTORATION_SETTLED_FRAMES) {
+      this.finishScrollRestoration();
+      return;
+    }
+    this.scheduleScrollRestoration();
+  }
+
+  private finishScrollRestoration(): void {
+    this.restorationPosition = null;
+    this.settledFrames = 0;
+    this.lastHeight = -1;
   }
 
   /**

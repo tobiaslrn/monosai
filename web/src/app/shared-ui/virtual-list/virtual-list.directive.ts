@@ -64,6 +64,11 @@ export class VirtualListDirective<T extends VirtualListItem> implements OnChange
    * measurement; otherwise items keep the measurements of their stable keys.
    */
   readonly generation = input<unknown>(undefined);
+  /**
+   * Heights measured earlier, for items not measured yet. They stand in for the
+   * estimate, so a list rebuilt after a visit is as tall as it was.
+   */
+  readonly seedHeights = input<ReadonlyMap<string, number> | null>(null);
   /** The viewport has reached the end of the loaded items. */
   readonly nearEnd = output();
 
@@ -148,7 +153,16 @@ export class VirtualListDirective<T extends VirtualListItem> implements OnChange
     } else {
       model.setItems(this.items());
     }
+    const seeds = this.seedHeights();
+    if (seeds !== null) {
+      model.seedMeasurements(seeds);
+    }
     this.refresh();
+  }
+
+  /** What has been measured so far, to be seeded into a later list of the same items. */
+  measuredHeights(): ReadonlyMap<string, number> {
+    return this.model?.measuredHeights() ?? new Map();
   }
 
   protected refresh(): void {
