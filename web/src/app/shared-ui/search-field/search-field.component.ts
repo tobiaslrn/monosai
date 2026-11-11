@@ -52,7 +52,6 @@ import { IconComponent } from '../icon/icon.component';
     }
 
     input {
-      min-height: 3rem;
       padding-inline-start: 2.75rem;
     }
 

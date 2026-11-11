@@ -44,7 +44,6 @@ import { IconComponent } from '../icon/icon.component';
     <ng-content />
   `,
   styles: `
-    @use '../../../styles/motion' as motion;
     mn-entry-list {
       display: block;
       min-width: 0;
@@ -136,11 +135,6 @@ import { IconComponent } from '../icon/icon.component';
 
     mn-entry .mn-entry__chevron {
       color: var(--text-secondary);
-      @include motion.turn;
-    }
-
-    mn-entry > details[open] .mn-entry__chevron {
-      transform: rotate(-90deg);
     }
 
     mn-entry .mn-entry__body {
@@ -247,7 +241,7 @@ export class EntryListComponent {
           <span class="mn-entry__meta"><ng-content select="[mn-entry-meta]" /></span>
         </span>
         <span class="mn-entry__figures"><ng-content select="[mn-entry-figure]" /></span>
-        <mn-icon class="mn-entry__chevron" name="chevron-right" />
+        <mn-icon class="mn-entry__chevron" name="chevron-up-down" />
       </summary>
       <div class="mn-entry__body"><ng-content /></div>
     </details>

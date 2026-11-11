@@ -464,7 +464,7 @@ every row carries the same few figures they are columns under a quiet header
 row; the header is presentation, so each figure also names itself to
 assistive technology. The columns are sized in `rem`, and a list too narrow
 for them (a phone) collapses to list rows — the word, its reading and meaning,
-and a chevron — with the figures stated in the opened row; a container query on
+and the up-down chevron of a row that opens in place, as every disclosure ends — with the figures stated in the opened row; a container query on
 the list, not a breakpoint. A figure is plain text: a difficulty is a fact, and
 the warning colour is for what may go wrong. A missing meaning draws nothing,
 never a dash per row. A row
