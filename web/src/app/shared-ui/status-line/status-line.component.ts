@@ -3,13 +3,14 @@ import { IconComponent } from '../icon/icon.component';
 import type { IconName } from '../icon/icon-set';
 
 /** What the line says about its group; each tone has one meaning, app-wide. */
-export type StatusTone = 'success' | 'warning' | 'danger' | 'info';
+export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'setup';
 
 const ICONS: Record<StatusTone, IconName> = {
   success: 'synced',
   warning: 'alert',
   danger: 'alert',
   info: 'info',
+  setup: 'alert',
 };
 
 /**

@@ -15,13 +15,12 @@
   min-height: var(--heading-row);
   gap: var(--space-2);
   align-items: center;
+  /* The label stands on the text edge of the rows under it, as every group label does. */
+  padding-inline: var(--surface-inset);
 }
 
 .mn-settings-section__header h2 {
   margin: 0;
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  line-height: var(--leading-tight);
 }
 
 .mn-settings-section__action {
@@ -77,11 +76,11 @@
  * their own.
  */
 .mn-settings-group
-  > :where(.mn-settings-row, .mn-radio-list, mn-range-field)
-  + :where(.mn-settings-row, .mn-radio-list, mn-range-field)::before,
+  > :where(.mn-settings-row, .mn-radio-list, mn-range-field, mn-switch-row)
+  + :where(.mn-settings-row, .mn-radio-list, mn-range-field, mn-switch-row)::before,
 .mn-radio-list > .mn-settings-row + .mn-settings-row::before,
 .mn-settings-cluster > .mn-settings-row + .mn-settings-row::before,
-.mn-settings-group > .mn-settings-cluster::before {
+.mn-settings-group > * + .mn-settings-cluster::before {
   position: absolute;
   inset-block-start: 0;
   inset-inline: var(--surface-inset) 0;
@@ -163,7 +162,8 @@
 }
 
 .mn-settings-row__status[data-tone='warning'],
-.mn-status-line[data-tone='warning'] {
+.mn-status-line[data-tone='warning'],
+.mn-status-line[data-tone='setup'] {
   --status-tone: var(--status-warning);
 }
 
@@ -331,6 +331,11 @@
 .mn-settings-block {
   display: block;
   min-width: 0;
+}
+
+/* A status line under a group's rows sits on their text edge, set off from the last row. */
+.mn-settings-group > mn-status-line {
+  padding-block-start: var(--group-gap);
 }
 
 /* The hairline above a group's child is drawn from the child's own top edge. */

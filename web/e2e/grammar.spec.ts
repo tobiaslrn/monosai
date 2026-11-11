@@ -45,11 +45,11 @@ test.describe('grammar profile', () => {
     test.skip(!isMobile, 'sticky hover is a touch-only interaction');
     await openOverview(page);
 
-    const summary = page.locator('#forms > summary');
+    const summary = page.locator('#forms summary');
     const resting = await summary.evaluate((element) => getComputedStyle(element).backgroundColor);
 
     await tap(page, summary);
-    await expect(page.locator('#forms')).toHaveAttribute('open', /.*/);
+    await expect(page.locator('#forms details')).toHaveAttribute('open', /.*/);
 
     // The phone still reports the last tap as a hover; once the press tint has faded the fold
     // must look as it did before.
@@ -94,11 +94,12 @@ test.describe('grammar profile', () => {
     const section = page.locator('mn-structural-baseline-section');
 
     // Collapsed on arrival: 177 entries must not push the level off the screen.
-    await expect(forms).not.toHaveAttribute('open', /.*/);
-    await expect(forms.locator('.summary-value')).toHaveText('9 categories');
+    const fold = forms.locator('details');
+    await expect(fold).not.toHaveAttribute('open', /.*/);
+    await expect(forms.locator('.mn-settings-row__details')).toHaveText('9 categories');
     await expect(section.locator('.entry').first()).toBeHidden();
 
-    await forms.locator('> summary').click();
+    await forms.locator('summary').click();
 
     await expect(section.locator('.entry').first()).toBeVisible();
     await expect(section.getByRole('heading', { name: /Particles/ })).toBeVisible();

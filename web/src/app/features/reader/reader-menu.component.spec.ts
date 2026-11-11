@@ -46,13 +46,18 @@ describe('Story options', () => {
     Object.defineProperty(element.querySelector('mn-sheet-popover'), 'hidePopover', {
       value: hide,
     });
-    // By accessible name, because the destructive controls shorten their
-    // visible word and carry the whole phrase as their label.
+    // By accessible name: a row's one button is named by the row's own label.
+    const nameOf = (button: Element): string => {
+      const label = button.getAttribute('aria-label');
+      if (label !== null) return label;
+      const id = button.getAttribute('aria-labelledby');
+      return id === null
+        ? button.textContent.trim()
+        : (document.getElementById(id)?.textContent.trim() ?? '');
+    };
     const press = (label: string) =>
-      [...element.querySelectorAll<HTMLButtonElement>('button')]
-        .find(
-          (button) => (button.getAttribute('aria-label') ?? button.textContent.trim()) === label,
-        )
+      [...element.querySelectorAll<HTMLElement>('button, a.mn-settings-press')]
+        .find((button) => nameOf(button) === label)
         ?.click();
     return { fixture, element, hide, press };
   }
@@ -77,9 +82,11 @@ describe('Story options', () => {
     expect(notice?.textContent).toContain('Add an OpenRouter key.');
     expect(notice?.querySelector('a')?.getAttribute('href')).toBe('/settings');
     expect(element.querySelectorAll('a[href="/settings"]')).toHaveLength(1);
+    // The rows say the state in their own line, with no pill beside it.
+    expect(element.querySelector('.mn-status-pill')).toBeNull();
     expect(
-      [...element.querySelectorAll('.content-row .mn-status-pill')].map((pill) =>
-        pill.textContent.trim(),
+      [...element.querySelectorAll('[data-layer] .mn-settings-row__details')].map((line) =>
+        line.textContent.trim(),
       ),
     ).toEqual(['Not set up', 'Not set up', 'Not set up']);
   });
@@ -88,7 +95,7 @@ describe('Story options', () => {
     const { element } = render(waitingOnKey('english'));
 
     expect(element.querySelector('[data-testid="shared-setup"]')).toBeNull();
-    expect(element.querySelector('.content-row .mn-status-pill')?.textContent).toContain(
+    expect(element.querySelector('[data-layer] .mn-settings-row__details')?.textContent).toContain(
       'Add an OpenRouter key.',
     );
   });
@@ -114,8 +121,12 @@ describe('Story options', () => {
     expect(cancel).toHaveBeenCalledWith('english');
     fixture.componentRef.setInput('pending', 'english');
     fixture.detectChanges();
-    expect(element.querySelector<HTMLButtonElement>('.row-main button')?.disabled).toBe(true);
-    expect(element.textContent).toContain('Stopping…');
+    // Busy keeps the row, its label and its size, and a second press does nothing.
+    const stop = element.querySelector<HTMLButtonElement>('[data-layer] button')!;
+    expect(stop.getAttribute('aria-busy')).toBe('true');
+    expect(stop.disabled).toBe(false);
+    stop.click();
+    expect(cancel).toHaveBeenCalledOnce();
   });
   it('leaves deleting the story to the library', () => {
     const { element } = render();
@@ -128,7 +139,7 @@ describe('Story options', () => {
       label: '',
       status: 'Ready',
     });
-    expect(element.querySelector('.row-main button')).toBeNull();
+    expect(element.querySelector('[data-layer] button, [data-layer] a')).toBeNull();
     expect(element.textContent).toContain('Ready');
   });
 
@@ -199,7 +210,7 @@ describe('Story options', () => {
     });
     fixture.componentRef.setInput('error', 'Could not save the stop request.');
     fixture.detectChanges();
-    expect(element.querySelector('.row-main a')?.getAttribute('href')).toBe(
+    expect(element.querySelector('[data-layer] a')?.getAttribute('href')).toBe(
       '/settings/text-models',
     );
     expect([...element.querySelectorAll('[role="alert"]')].map((node) => node.textContent)).toEqual(
@@ -242,7 +253,7 @@ describe('Story options', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       expect(document.activeElement).toBe(
-        element.querySelector('[data-layer="grammar"] .row-actions button'),
+        element.querySelector('[data-layer="grammar"] button.mn-settings-press'),
       );
     });
 

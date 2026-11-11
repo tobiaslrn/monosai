@@ -9,8 +9,6 @@
   "src/app/features/reader/aid-failure.component.ts": ["styles"],
   "src/app/features/reader/generation-ring.component.ts": ["styles"],
   "src/app/features/reader/reader-aids.component.ts": ["styles"],
-  "src/app/features/reader/reader-menu.component.scss": ["styles"],
-  "src/app/features/reader/reader-menu.component.ts": ["styles"],
   "src/app/features/reader/reader-page.component.scss": ["styles"],
   "src/app/features/reader/reader-page.component.ts": ["styles"],
   "src/app/features/reader/reader-paragraph.component.ts": ["styles"],
@@ -23,5 +21,5 @@
   "src/app/features/reader/word-inspector.component.ts": ["styles"],
   "src/app/features/reader/word-preview.component.ts": ["styles"],
   "src/app/features/reading-level/level-choice-page.component.ts": ["styles"],
-  "src/app/features/reading-level/reading-level-page.component.ts": ["details", "styles"]
+  "src/app/features/reading-level/reading-level-page.component.ts": ["styles"]
 }

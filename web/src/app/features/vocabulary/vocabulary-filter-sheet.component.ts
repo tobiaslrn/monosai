@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { DialogComponent } from '../../shared-ui/dialog/dialog';
+import { DialogGroupComponent } from '../../shared-ui/dialog-group/dialog-group.component';
 import { RangeFieldComponent } from '../../shared-ui/range-field/range-field.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { SelectComponent, type SelectOption } from '../../shared-ui/select/select.component';
@@ -33,13 +34,14 @@ export interface VocabularyFilterSheetData {
     FormsModule,
     ButtonDirective,
     DialogComponent,
+    DialogGroupComponent,
     RangeFieldComponent,
     SelectComponent,
     SettingsRowComponent,
   ],
   template: `
     <mn-dialog heading="Filters" headingId="vocabulary-filter-heading" closeLabel="Close filters">
-      <div class="mn-settings-group mn-settings-bleed">
+      <mn-dialog-group label="Filters">
         <mn-settings-row label="Source" labelId="mn-filter-1-label">
           <mn-select
             labelledBy="mn-filter-1-label"
@@ -71,7 +73,7 @@ export interface VocabularyFilterSheetData {
           (valueChange)="setMinimum($event)"
           (highChange)="setMaximum($event)"
         />
-      </div>
+      </mn-dialog-group>
 
       <button mn-dialog-action="start" mnButton="ghost" type="button" (click)="reset()">
         Reset

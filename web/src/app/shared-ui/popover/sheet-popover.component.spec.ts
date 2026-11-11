@@ -8,12 +8,7 @@ import { SheetPopoverComponent } from './sheet-popover.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SheetPopoverComponent],
   template: `
-    <mn-sheet-popover
-      #sheet
-      heading="Test sheet"
-      anchorName="--test-anchor"
-      closeLabel="Close test sheet"
-    >
+    <mn-sheet-popover #sheet heading="Test sheet" closeLabel="Close test sheet">
       <p>Sheet content</p>
     </mn-sheet-popover>
   `,
@@ -109,15 +104,16 @@ describe('SheetPopoverComponent', () => {
     expect(sheet.querySelector('.handle')).toBeNull();
   });
 
-  it('anchors to its trigger on desktop but not once docked as a sheet', () => {
+  it('is a centred card on desktop and a docked sheet on a phone, and never anchored', () => {
     media.setWidth(1440);
-    expect(render().sheet.style.getPropertyValue('position-anchor')).toBe('--test-anchor');
+    const wide = render().sheet;
+    expect(wide.classList.contains('is-centred')).toBe(true);
+    expect(wide.style.getPropertyValue('position-anchor')).toBe('');
 
     TestBed.resetTestingModule();
     media.setWidth(412);
-
-    // A docked sheet spans the viewport, so keeping the anchor would inset it to
-    // the trigger's edge and leave a bare strip down the side.
-    expect(render().sheet.style.getPropertyValue('position-anchor')).toBe('');
+    const narrow = render().sheet;
+    expect(narrow.classList.contains('mn-overlay--docked')).toBe(true);
+    expect(narrow.classList.contains('is-centred')).toBe(false);
   });
 });

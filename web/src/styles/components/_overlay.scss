@@ -40,10 +40,6 @@
   width: min(var(--dialog-width), calc(100vw - 2 * var(--overlay-margin)));
 }
 
-.mn-overlay--panel {
-  width: min(var(--panel-width), calc(100vw - 2 * var(--overlay-margin)));
-}
-
 .mn-overlay--docked {
   width: 100%;
   max-width: none;

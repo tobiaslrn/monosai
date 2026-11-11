@@ -64,7 +64,7 @@ let nextSettingsRowId = 0;
   template: `
     <span class="mn-settings-row__label">
       <span class="mn-settings-row__title" [attr.id]="titleId()">{{ label() }}</span>
-      <span class="mn-settings-row__details" [id]="detailId">
+      <span class="mn-settings-row__details" [id]="detailId" [attr.role]="live() ? 'status' : null">
         @if (status(); as tone) {
           <span class="mn-settings-row__status" [attr.data-tone]="tone"
             ><mn-icon [name]="statusIcon()" [size]="16" />{{ statusText() }}</span
@@ -73,8 +73,8 @@ let nextSettingsRowId = 0;
             <span aria-hidden="true"> · </span>
           }
         }
-        @if (summary(); as text) {
-          {{ text }}
+        @if (summary() !== null) {
+          <ng-container>{{ summary() }}</ng-container>
         }
         @if (code(); as identifier) {
           @if (summary() !== null) {
@@ -97,7 +97,19 @@ let nextSettingsRowId = 0;
         <mn-icon class="mn-settings-chevron" name="chevron-right" />
       }
     </span>
-    @if (link() !== null && !disabled()) {
+    @if (href() !== null && !disabled()) {
+      <!-- eslint-disable-next-line @angular-eslint/template/elements-content -- it is named by the row's title and described by its summary -->
+      <a
+        class="mn-settings-press"
+        target="_blank"
+        rel="noopener noreferrer"
+        [href]="href()"
+        [attr.aria-labelledby]="titleId()"
+        [attr.aria-describedby]="detailId"
+        [attr.data-testid]="testId()"
+        (click)="pressed.emit()"
+      ></a>
+    } @else if (link() !== null && !disabled()) {
       <!-- eslint-disable-next-line @angular-eslint/template/elements-content -- it is named by the row's title and described by its summary -->
       <a
         class="mn-settings-press"
@@ -145,6 +157,10 @@ export class SettingsRowComponent {
   /** The part of that page the row leads to, and the query it is opened with. */
   readonly fragment = input<string | undefined>(undefined);
   readonly queryParams = input<Params | null>(null);
+  /** A page on another site the whole row opens, in a new tab; it also emits `pressed`. */
+  readonly href = input<string | null>(null);
+  /** What the summary says changes while the learner is in the row, so it is announced. */
+  readonly live = input(false);
   /** The value under the label: what the setting is now. */
   readonly summary = input<string | null>(null);
   /** An identifier that follows the summary, set in the monospace face: a model's id. */
@@ -169,7 +185,11 @@ export class SettingsRowComponent {
   readonly pressed = output<void>();
 
   protected readonly pressable = computed(
-    () => this.action() !== null || this.end() === 'nav' || this.link() !== null,
+    () =>
+      this.action() !== null ||
+      this.end() === 'nav' ||
+      this.link() !== null ||
+      this.href() !== null,
   );
   protected readonly statusIcon = computed(() => STATUS_ICON[this.status() ?? 'info']);
   protected readonly titleId = computed(

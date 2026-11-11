@@ -8,7 +8,9 @@ import {
   TEXT_SCALE_STEP,
   type ReaderPreferences,
 } from '../../domain/settings/settings';
-import { NoticeComponent } from '../../shared-ui/notice/notice.component';
+import { DialogGroupComponent } from '../../shared-ui/dialog-group/dialog-group.component';
+import { RangeFieldComponent } from '../../shared-ui/range-field/range-field.component';
+import { StatusLineComponent } from '../../shared-ui/status-line/status-line.component';
 import { SwitchRowComponent } from '../../shared-ui/switch-row/switch-row.component';
 
 type AidToggle = 'furigana' | 'tokenSpacing' | 'sentencePerLine' | 'warningMarkers';
@@ -37,24 +39,25 @@ const AIDS: readonly AidOption[] = [
 @Component({
   selector: 'mn-reader-aids',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NoticeComponent, RouterLink, SwitchRowComponent],
+  imports: [
+    DialogGroupComponent,
+    RangeFieldComponent,
+    RouterLink,
+    StatusLineComponent,
+    SwitchRowComponent,
+  ],
   template: `
-    <section class="appearance" role="group" aria-label="Reading appearance">
-      <h3 class="mn-group-title">Reading appearance</h3>
-      <div class="scale">
-        <label for="mn-text-scale">Text size</label>
-        <input
-          id="mn-text-scale"
-          type="range"
-          [min]="minScale"
-          [max]="maxScale"
-          [step]="step"
-          [value]="scale()"
-          [attr.aria-valuetext]="scaleLabel()"
-          (input)="setScale($event)"
-        />
-        <span class="scale-value" aria-hidden="true">{{ scaleLabel() }}</span>
-      </div>
+    <mn-dialog-group heading="Reading appearance">
+      <mn-range-field
+        label="Text size"
+        testId="text-scale"
+        [min]="minScale"
+        [max]="maxScale"
+        [step]="step"
+        [value]="scale()"
+        [valueLabel]="scaleLabel()"
+        (valueChange)="setScale($event)"
+      />
       @for (aid of aids; track aid.key) {
         <mn-switch-row
           [checked]="settings.readerPreferences()[aid.key]"
@@ -64,58 +67,21 @@ const AIDS: readonly AidOption[] = [
         </mn-switch-row>
       }
       @if (vocabularyNotice(); as notice) {
-        <mn-notice
+        <mn-status-line
           [tone]="vocabularyUnreadable() ? 'warning' : 'setup'"
           data-testid="reader-vocabulary-notice"
         >
-          <p>
-            {{ notice }}
-            <a routerLink="/reading-level" fragment="words">What you can read</a>
-          </p>
-        </mn-notice>
+          {{ notice }}
+          <a mn-status-line-action routerLink="/reading-level" fragment="words"
+            >What you can read</a
+          >
+        </mn-status-line>
       }
-    </section>
+    </mn-dialog-group>
   `,
   styles: `
     :host {
       display: block;
-    }
-
-    /* Plain rows under a plain heading, a hairline between each. */
-    .appearance {
-      display: flex;
-      flex-direction: column;
-    }
-
-    h3 {
-      margin: 0;
-    }
-
-    .scale {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: var(--stack-gap);
-      align-items: center;
-      min-height: var(--touch-target);
-      font-size: var(--text-sm);
-    }
-
-    .scale input {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .scale-value {
-      color: var(--text-secondary);
-      font-variant-numeric: tabular-nums;
-    }
-
-    mn-switch-row {
-      border-top: 1px solid var(--border-subtle);
-    }
-
-    mn-notice {
-      margin-top: var(--group-gap);
     }
   `,
 })
@@ -172,8 +138,7 @@ export class ReaderAidsComponent {
     void this.settings.setReaderPreference(key, enabled);
   }
 
-  protected setScale(event: Event): void {
-    const value = Number((event.target as HTMLInputElement).value);
+  protected setScale(value: number): void {
     void this.settings.setReaderPreference(
       'textScale' satisfies keyof ReaderPreferences,
       Number.isFinite(value) ? value : 1,

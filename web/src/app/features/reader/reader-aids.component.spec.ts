@@ -117,7 +117,8 @@ describe('ReaderAidsComponent', () => {
     activate(7);
     const element = await render();
 
-    expect(element.querySelector('[role="group"]')?.getAttribute('aria-label')).toBe(
+    const group = element.querySelector('[role="group"][aria-labelledby]');
+    expect(document.getElementById(group?.getAttribute('aria-labelledby') ?? '')?.textContent).toBe(
       'Reading appearance',
     );
   });

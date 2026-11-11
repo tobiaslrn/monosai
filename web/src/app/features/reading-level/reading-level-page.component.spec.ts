@@ -98,7 +98,8 @@ describe('ReadingLevelPageComponent', () => {
   }
 
   function disclosure(element: HTMLElement, id: string): HTMLDetailsElement {
-    const found = element.querySelector<HTMLDetailsElement>(`#${id}`);
+    // A disclosure carries the id on its host and folds in its own `details`.
+    const found = element.querySelector<HTMLDetailsElement>(`#${id} details, details#${id}`);
     if (found === null) {
       throw new Error(`missing disclosure ${id}`);
     }
@@ -261,7 +262,7 @@ describe('ReadingLevelPageComponent', () => {
     const { element } = await render();
 
     expect(disclosure(element, 'forms').open).toBe(false);
-    expect(text(element, '#forms .summary-value')).toBe('2 categories');
+    expect(text(element, '#forms .mn-settings-row__details')).toBe('2 categories');
   });
 
   it('scrolls a section fragment to the part of the page it named', async () => {
@@ -408,12 +409,11 @@ describe('ReadingLevelPageComponent', () => {
     expect(confirmation?.textContent).toContain('Basic forms');
     expect(confirmation?.textContent).toContain('out of date');
     expect(text(element, '[data-testid="grammar-standing"]')).toBe('Basic forms');
-    // The level a caption names rides beside the name, never inside it.
-    expect(
-      text(
-        element,
-        '[data-testid="reading-level-link"] [mn-list-row-trailing] .mn-status-pill',
-      ).replace(/\s+/g, ' '),
-    ).toBe('Basic forms · N5');
+    // The level a caption names rides beside the name, never inside it, and no pill holds it.
+    const row = element.querySelector('[data-testid="reading-level-link"]');
+    expect(row?.querySelector('.mn-status-pill')).toBeNull();
+    expect(row?.querySelector('[mn-list-row-meta]')?.textContent.replace(/\s+/g, ' ').trim()).toBe(
+      'Basic forms · N5',
+    );
   });
 });

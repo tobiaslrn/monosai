@@ -17,8 +17,10 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ReaderAidsComponent } from './reader-aids.component';
 import type { ReaderContentState } from './reader-content-state';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
-import { ButtonDirective } from '../../shared-ui/button/button';
-import { NoticeComponent } from '../../shared-ui/notice/notice.component';
+import { DialogGroupComponent } from '../../shared-ui/dialog-group/dialog-group.component';
+import { StackComponent } from '../../shared-ui/layout/layout';
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
+import { StatusLineComponent } from '../../shared-ui/status-line/status-line.component';
 import {
   OverlayTriggerDirective,
   SheetPopoverComponent,
@@ -30,12 +32,14 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
-    ButtonDirective,
+    DialogGroupComponent,
     IconComponent,
-    NoticeComponent,
     OverlayTriggerDirective,
     ReaderAidsComponent,
+    SettingsRowComponent,
     SheetPopoverComponent,
+    StackComponent,
+    StatusLineComponent,
   ],
   host: { '(document:keydown.escape)': 'onEscape($event)' },
   template: `
@@ -60,107 +64,94 @@ import {
       (closed)="onToggle()"
       (dismissed)="close()"
     >
-      <mn-reader-aids />
-      <section class="content" aria-labelledby="mn-reader-content-title">
-        <h3 class="mn-group-title" id="mn-reader-content-title">Content for this story</h3>
-        <!--
-          One missing setup step blocks several layers at once — typically no
-          OpenRouter key. It is said once, with its one way forward, instead of
-          as the same sentence and the same button on every row.
-        -->
-        @if (sharedSetup(); as setup) {
-          <mn-notice tone="setup" data-testid="shared-setup">
-            <p>{{ setup.status }}</p>
-            <a mn-notice-action mnButton [routerLink]="setup.link" (click)="close()">{{
-              setup.label
-            }}</a>
-          </mn-notice>
-        }
-        <div class="content-rows">
+      <mn-stack [gap]="5">
+        <mn-reader-aids />
+        <mn-dialog-group heading="Content for this story">
           @for (row of rows(); track row.layer) {
-            <section
-              class="content-row"
+            <div
+              class="mn-settings-cluster"
+              role="group"
               tabindex="-1"
               [attr.aria-label]="row.name"
               [attr.data-layer]="row.layer"
             >
-              <div class="row-main">
-                <div class="row-copy">
-                  <strong>{{ row.name }}</strong>
-                  <span class="mn-status-pill" role="status">{{
-                    sharedSetup() !== null && row.setup ? 'Not set up' : row.status
-                  }}</span>
-                </div>
-                <div class="row-actions mn-actions">
-                  @switch (row.action) {
-                    @case ('settings') {
-                      @if (sharedSetup() === null || !row.setup) {
-                        <a class="mn-button" [routerLink]="row.settingsLink" (click)="close()">{{
-                          row.label
-                        }}</a>
-                      }
-                    }
-                    @case ('credit') {
-                      <a
-                        class="mn-button"
-                        href="https://openrouter.ai/settings/credits"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        (click)="followCredit(row.layer)"
-                        >{{ row.label }}</a
-                      >
-                    }
-                    @case ('prepare') {
-                      <button
-                        type="button"
-                        class="mn-button"
-                        [disabled]="row.disabled || pending() === row.layer"
-                        (click)="prepare.emit(row.layer)"
-                      >
-                        {{ pending() === row.layer ? 'Working…' : row.label }}
-                      </button>
-                    }
-                    @case ('cancel') {
-                      <button
-                        type="button"
-                        class="mn-button"
-                        [disabled]="pending() === row.layer"
-                        (click)="stopRequested.emit(row.layer)"
-                      >
-                        {{ pending() === row.layer ? 'Stopping…' : row.label }}
-                      </button>
-                    }
+              <mn-settings-row
+                [live]="true"
+                [label]="row.name"
+                [summary]="sharedSetup() !== null && row.setup ? 'Not set up' : row.status"
+              />
+              @switch (row.action) {
+                @case ('settings') {
+                  @if (sharedSetup() === null || !row.setup) {
+                    <mn-settings-row
+                      end="nav"
+                      [label]="row.label"
+                      [link]="row.settingsLink"
+                      (pressed)="close()"
+                    />
                   }
-                  @if (hasSavedLayer(row.layer)) {
-                    <button
-                      type="button"
-                      class="mn-icon-button clear"
-                      [attr.aria-label]="clearLabel(row.layer)"
-                      [title]="clearLabel(row.layer)"
-                      (click)="clearLayer(row.layer)"
-                    >
-                      <mn-icon name="delete" />
-                    </button>
-                  }
-                </div>
-              </div>
-              @if (row.error) {
-                <mn-notice tone="error" role="alert">
-                  <p>{{ row.error }}</p>
-                </mn-notice>
+                }
+                @case ('credit') {
+                  <mn-settings-row
+                    action="accent"
+                    glyph="external"
+                    [label]="row.label"
+                    href="https://openrouter.ai/settings/credits"
+                    (pressed)="followCredit(row.layer)"
+                  />
+                }
+                @case ('prepare') {
+                  <mn-settings-row
+                    action="accent"
+                    [label]="row.label"
+                    [disabled]="row.disabled"
+                    [busy]="pending() === row.layer"
+                    (pressed)="pending() === row.layer || prepare.emit(row.layer)"
+                  />
+                }
+                @case ('cancel') {
+                  <mn-settings-row
+                    action="accent"
+                    [label]="row.label"
+                    [busy]="pending() === row.layer"
+                    (pressed)="pending() === row.layer || stopRequested.emit(row.layer)"
+                  />
+                }
               }
-            </section>
+              @if (hasSavedLayer(row.layer)) {
+                <mn-settings-row
+                  action="danger"
+                  [label]="clearLabel(row.layer)"
+                  (pressed)="clearLayer(row.layer)"
+                />
+              }
+            </div>
           }
-        </div>
-        @if (error()) {
-          <mn-notice tone="error" role="alert">
-            <p>{{ error() }}</p>
-          </mn-notice>
-        }
-      </section>
+          <!--
+            One missing setup step blocks several layers at once — typically no
+            OpenRouter key. It is said once, with its one way forward, instead of
+            as the same sentence and the same link on every row.
+          -->
+          @if (sharedSetup(); as setup) {
+            <mn-status-line tone="setup" data-testid="shared-setup">
+              {{ setup.status }}
+              <a mn-status-line-action [routerLink]="setup.link" (click)="close()">{{
+                setup.label
+              }}</a>
+            </mn-status-line>
+          }
+          @for (row of rows(); track row.layer) {
+            @if (row.error) {
+              <mn-status-line tone="danger">{{ row.error }}</mn-status-line>
+            }
+          }
+          @if (error()) {
+            <mn-status-line tone="danger">{{ error() }}</mn-status-line>
+          }
+        </mn-dialog-group>
+      </mn-stack>
     </mn-sheet-popover>
   `,
-  styleUrl: './reader-menu.component.scss',
 })
 export class ReaderMenuComponent {
   readonly rows = input.required<readonly ReaderContentState[]>();
@@ -201,7 +192,7 @@ export class ReaderMenuComponent {
           const active = root.ownerDocument.activeElement;
           if (active !== null && active !== root.ownerDocument.body) return;
           const row = root.querySelector<HTMLElement>(`[data-layer="${layer}"]`);
-          (row?.querySelector<HTMLElement>('.row-actions a, .row-actions button') ?? row)?.focus();
+          (row?.querySelector<HTMLElement>('.mn-settings-press') ?? row)?.focus();
         },
         { injector: this.injector },
       );

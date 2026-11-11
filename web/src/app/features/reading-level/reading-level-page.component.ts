@@ -29,10 +29,12 @@ import {
   NavigationHistoryService,
   navigationOriginState,
 } from '../../core/routing/navigation-history.service';
+import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
 import { ExampleComponent } from '../../shared-ui/example/example.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
+import { SectionComponent } from '../../shared-ui/section/section.component';
 import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
 import { conventionalLevel } from '../grammar/preset-level';
 import { StructuralBaselineSectionComponent } from '../grammar/structural-baseline-section.component';
@@ -73,7 +75,9 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
   // than a part of the control that started it, so the page owns it.
   providers: [VocabularyRefreshStore, PackageImportStore, AnkiConnectionStore],
   imports: [
+    DisclosureComponent,
     ExampleComponent,
+    SectionComponent,
     IconComponent,
     ListRowComponent,
     PageHeaderComponent,
@@ -159,14 +163,13 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
                 <mn-icon name="reading-level" [size]="18" />
               </span>
               <span mn-list-row-title>Reading level</span>
-              <span mn-list-row-meta>{{ grammarDetail() }}</span>
+              <span mn-list-row-meta>
+                <span data-testid="grammar-standing">{{ grammarValue() }}</span>
+                @if (grammarLevel(); as level) {
+                  <span> · {{ level }}</span>
+                }
+              </span>
               <span mn-list-row-trailing>
-                <span class="mn-status-pill mn-status-pill--accent">
-                  <span data-testid="grammar-standing">{{ grammarValue() }}</span>
-                  @if (grammarLevel(); as level) {
-                    <span> · {{ level }}</span>
-                  }
-                </span>
                 <mn-icon name="chevron-right" />
               </span>
             </mn-list-row>
@@ -175,19 +178,11 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
             }
           </div>
 
-          <details id="forms" class="mn-card fold">
-            <summary>
-              <span class="mn-icon-badge fold-icon" aria-hidden="true">
-                <mn-icon name="file" [size]="18" />
-              </span>
-              <span class="summary-label">Always-known forms</span>
-              <span class="summary-value">{{ formsSummary() }}</span>
-              <mn-icon class="fold-chevron" name="chevron-right" />
-            </summary>
-            <div class="fold-body">
+          <mn-section label="Always-known forms" [rows]="true">
+            <mn-disclosure id="forms" heading="Always-known forms" [value]="formsSummary()">
               <mn-structural-baseline-section />
-            </div>
-          </details>
+            </mn-disclosure>
+          </mn-section>
         }
 
         @if (profile.lastError()) {
@@ -199,7 +194,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     </div>
   `,
   styles: `
-    @use '../../../styles/motion' as motion;
     /*
      * A deep link used to put a section heading flush at y=0, scrolling the page
      * title and the back link out of view — so a learner arriving from Generate
@@ -237,86 +231,6 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     .level-card > mn-example {
       margin-inline: calc(var(--surface-inset) + var(--badge-size) + var(--glyph-gap))
         var(--surface-inset);
-    }
-
-    /*
-     * Set once and left alone, so each is folded; a closed fold still names its
-     * current value opposite its label.
-     */
-    /*
-     * The summary carries its own padding, like a list row. The card's padding
-     * and gap around a closed fold's hidden body drew an empty band under it.
-     */
-    .fold {
-      container-type: inline-size;
-      gap: 0;
-      padding: 0;
-      overflow: clip;
-    }
-
-    .fold > summary {
-      display: flex;
-      gap: var(--space-3);
-      align-items: center;
-      min-height: var(--row-min-height);
-      padding: var(--row-inset-block) var(--surface-inset);
-      list-style: none;
-      cursor: pointer;
-      font-weight: var(--weight-medium);
-    }
-
-    .fold > summary::-webkit-details-marker {
-      display: none;
-    }
-
-    :host-context(html[data-pointer='mouse']) .fold > summary:hover,
-    .fold > summary:active {
-      background: var(--surface-sunken);
-    }
-
-    .fold-icon {
-      flex: none;
-    }
-
-    .fold > summary {
-      flex-wrap: wrap;
-    }
-
-    .summary-label {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .summary-value {
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-      text-align: end;
-    }
-
-    .fold-chevron {
-      flex: none;
-      color: var(--text-secondary);
-      @include motion.turn;
-    }
-
-    .fold[open] .fold-chevron {
-      transform: rotate(90deg);
-    }
-
-    .fold {
-      @include motion.expand;
-    }
-
-    .fold-body {
-      padding: var(--surface-inset);
-      border-top: 1px solid var(--border-subtle);
-    }
-
-    /* Gutters grow with the text, so a long word keeps the room it needs. */
-    @container (max-width: 16em) {
-      .fold-body {
-        padding-inline: var(--space-2);
-      }
     }
 
     .assets-failed {
@@ -430,10 +344,6 @@ export class ReadingLevelPageComponent implements OnChanges {
     return preset === null ? null : conventionalLevel(preset);
   });
 
-  protected readonly grammarDetail = computed(
-    () => this.profile.selectedPreset()?.descriptionEn ?? 'Reading levels are built in.',
-  );
-
   /** A closed disclosure states its current value rather than hiding it. */
   protected readonly formsSummary = computed(() => {
     const categories = new Set(this.language.structuralBaseline().map((entry) => entry.category));
@@ -526,6 +436,11 @@ export class ReadingLevelPageComponent implements OnChanges {
       if (node instanceof HTMLDetailsElement) {
         node.open = true;
       }
+    }
+    // A disclosure carries the fragment on its host, and folds in its own `details`.
+    const fold = target.localName === 'mn-disclosure' ? target.querySelector('details') : null;
+    if (fold !== null) {
+      fold.open = true;
     }
     target.scrollIntoView({ block: 'start' });
   }

@@ -358,12 +358,12 @@ the way to build:
 | Surfaces         | `mn-section` (a group label on the canvas, one card, and an optional status line under it), `mn-card` (one raised surface with an optional heading action); `mn-settings-section` and `mn-settings-row` for settings (one row with five trailing ends)                                                                                                                                                 |
 | Rows and lists   | `mn-list-row` and `mn-row` for a shelf, `mn-entry-list` with `mn-entry` for a table-like list, `mnVirtualList` for a long one, `mn-shelf-heading`, `mn-paging-status`                                                                                                                                                                                                                                  |
 | Actions          | `mnButton` on a native button or link (`primary`, `ghost`, `danger`, icon-only), `mn-action-bar` for a form's commit at the foot, `mn-menu` with `mnMenuTrigger` for an action menu                                                                                                                                                                                                                    |
-| Choices          | `mn-select` (one value from a short list, on `mn-dropdown`), `mn-segmented-control`, `mn-radio-list` (a radio list of settings rows), `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips                                                                                                                                              |
-| Fields           | `mn-field` (label, hint, and error around a control), `openFieldDialog` (one typed value in Settings, in a task dialog), `mn-secret-field` (a masked field with Show, in a dialog only), `mn-range-field`, `mn-search-field`, `mn-count` for a character count                                                                                                                                         |
+| Choices          | `mn-select` (one value from a short list, on `mn-dropdown`), `mn-segmented-control`, `mn-radio-list` (a radio list of settings rows), `mn-dialog-group` (a label over a group of rows in a dialog), `mn-radio-card-group` with `mn-radio-card`, `mn-switch-row`, `mn-checkbox`, `mn-chip-group` of pressed-toggle chips                                                                                                                                              |
+| Fields           | `mn-field` (label, hint, and error around a control), `openFieldDialog` (one typed value in Settings, in a task dialog), `mn-secret-field` (a masked field with Show, in a dialog only), `mn-range-field` (the one slider row, or a range with two thumbs), `mn-search-field`, `mn-count` for a character count                                                                                                                                         |
 | Detail and facts | `mn-disclosure` (a closed fold that states its value), `mn-facts` (label and value pairs), `mn-example` (a sample sentence and its gloss)                                                                                                                                                                                                                                                              |
 | Status           | `mn-status-line` (a group's one line under its card), `mn-checklist` with `mn-checklist-step` for first steps, `mn-notice` beside what it describes, `mn-banner` for the application's own news, `mn-blocker-list` with `mn-blocker` for what stops an action, `mn-stepper` for a long workflow's stages, `mn-wizard-steps` and `mn-wizard-step` for a form in steps, `mn-working` for a wait in words |
 | Whole screens    | `mn-outcome` (where a long task stands: running, done, or stopped), `mn-error-screen` and `mn-not-found-panel` on the one whole-page state                                                                                                                                                                                                                                                             |
-| Overlays         | `mn-menu` (a menu), `mn-dropdown` (the list a select drops), the searchable model picker (`openModelPicker`, on the task-dialog frame), `mn-sheet-popover` with `mnOverlayTrigger` (a popover-held task dialog, Story options), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                                 |
+| Overlays         | `mn-menu` (a menu), `mn-dropdown` (the list a select drops), the searchable model picker (`openModelPicker`, on the task-dialog frame), `mn-sheet-popover` with `mnOverlayTrigger` (a popover-held task dialog: Add words, Story options), `mn-dialog` with `openDialog` (a task dialog, a confirmation), `mn-confirm-dialog`, `mn-rename-dialog`                                                                 |
 | Home and prose   | `mn-hero`, `mn-standing`, `mn-wordmark`, `mn-prose` for Help                                                                                                                                                                                                                                                                                                                                           |
 | Glyphs           | `mn-icon`                                                                                                                                                                                                                                                                                                                                                                                              |
 
@@ -490,10 +490,8 @@ audio transport, close, back, and overflow. Everything else carries a visible
 label beside its icon: anything rare, anything destructive, and anything that
 spends money or sends a request.
 
-There are exactly three deliberate exceptions: the Library's utilities,
-described above; the trash icons on the
-Story options content rows, described under Saved-story controls; and the
-control that reads Anki again at the end of the vocabulary sources card. That
+There are exactly two deliberate exceptions: the Library's utilities,
+described above; and the control that reads Anki again at the end of the vocabulary sources card. That
 last one sits on the line that already says what it acts on — "Synced today" —
 exists only where a source Monosai keeps up to date is listed, and turns while
 it works. None of them grants other infrequent controls icon-only status.
@@ -881,20 +879,21 @@ opens with its safe answer focused. A text field is one border: focused, 2px in 
 never taller than what can be seen, so a field in it, and the picker's list,
 stay in view.
 
-Add words is the one task dialog held up by a native popover rather than a CDK
-dialog, because it must stay open while a file chooser is up. That is a
-mechanism, not a kind: on a wide screen it is a centred task dialog over a scrim
-like any other, its sub-steps take the back arrow in its header, and on a phone
-it is a docked sheet. Escape, the close, the handle, and a press on the scrim all
-put it away and return focus to Add source.
+Add words and Story options are the task dialogs held up by a native popover
+rather than a CDK dialog, because Add words must stay open while a file chooser
+is up and Story options is opened from the reader's header. That is a mechanism,
+not a kind: on a wide screen each is a centred task dialog over a scrim like any
+other, its sub-steps take the back arrow in its header, and on a phone it is a
+docked sheet. Escape, the close, the handle, and a press on the scrim all put it
+away and return focus to what opened it.
 
-The reader has two exceptions, both on the shared surface. A word's or a
-sentence's details stay **anchored to the word** on a wide screen, because the
-word is what they are about. **Story options** stays an anchored panel beside
-its trigger on a wide screen and does not dim the page, because its switches
-preview live on the text behind it; inside, it is flat — plain section headings
-and rows with hairlines between them, notices in the shared notice — never cards
-nested in the panel.
+The reader has one exception, on the shared surface: a word's or a sentence's
+details stay **anchored to the word** on a wide screen, because the word is what
+they are about. **Story options** is a task dialog like any other — a centred
+card on a wide screen, a docked sheet on a phone. Inside, it is flat: each group
+is a label on the rows' text edge (`mn-dialog-group`) over rows with hairlines
+between them, and what a group has to say about itself is one status line under
+its rows, never cards nested in the dialog.
 
 Every docked content sheet carries the same grab handle, whatever surface it is
 built on, because the handle is its gesture way out. Confirmations and notices
@@ -941,32 +940,27 @@ always drawn, so the header stays distinct from what begins beneath it. It
 carries no
 story progress marker: the reading surface and audio transport already expose
 the positions they can report accurately. Appearance, preparation, and
-maintenance share Story options rather than separate header buttons. The
-reader's panel is anchored on desktop and docked as a bottom sheet on small
-screens; it stays within the viewport, scrolls when necessary, and restores
-focus when dismissed. It follows the app-level overlay pattern above while
-retaining its reader anchor. Its mobile grab handle uses the same shared
-dismissal: a downward drag closes the sheet, and a plain press on the handle
-does the same for keyboard and touch users.
-Reading appearance uses compact switch rows (Furigana, Word spacing, Sentence per
-line, and Warning markers), and story content is one quiet grouped list with
-pill actions. Deleting the story itself is not here: it is on the library card,
-which is the one place it lives.
+maintenance share Story options rather than separate header buttons. It is a
+task dialog (see Overlays): a centred card on a wide screen and a docked sheet on
+small screens, it stays within the viewport, scrolls when necessary, and restores
+focus when dismissed. Its mobile grab handle uses the same shared dismissal: a
+downward drag closes the sheet, and a plain press on the handle does the same for
+keyboard and touch users.
+Reading appearance is the text-size slider row and the switch rows (Furigana, Word
+spacing, Sentence per line, and Warning markers), and story content is one list of
+rows. Deleting the story itself is not here: it is on the library card, which is
+the one place it lives.
 
-A content row keeps its copy on one side and its controls on the other, and the
-controls move as one block: on a narrow sheet they wrap together below the copy
-rather than splitting a pill from the control beside it. A row's destructive
-control is **the trash icon alone**, in the danger colour and bare at rest.
-
-This is the one place a destructive control has no visible label, and it is a
-deliberate exception to the rule above. Three of them run down one short list,
-identical in shape, each in a row that already names the layer it clears, and
-each opening a confirmation that says in full what is about to go — so the
-press is not the commitment, and the trash can is the most reliably read symbol
-there is. Every one carries the whole sentence as its accessible name and its
-tooltip. Repeating the layer in the label instead produced three long red
-phrases that wrapped on a phone. The exception does not extend to destructive
-controls that stand alone or act without confirmation.
+A content layer is the rows of one setting (`mn-settings-cluster`): its name with
+its state under it, in the row's own words and never in a pill; then, where there
+is something to do, one action row in the accent colour (Translate story, Add
+notes, Continue, Stop, Retry remaining), a row that leads to the Settings page that
+fixes it, or a link to the credit page; then, where something is saved, a danger
+row that opens a confirmation naming what goes (Clear translation…, Delete
+audio…). A row that waits on a setup says so in its line and leads to the right
+Settings page. When every layer waits on the same setup, it is said once, as the
+group's one status line with the way forward as its link, and the rows say only
+"Not set up".
 
 Reading appearance contains immediate device-wide preferences. Content for this
 story shows saved results and explicit verbs: Translate story, Add notes,
@@ -1216,7 +1210,7 @@ screen:
 | **enter**           | A message or block arrives where it will stay: a notice, a field's error, an outcome, the working line               |
 | **reveal, conceal** | A banner arrives at the top of the window and later leaves: its row opens and closes, so the page moves once         |
 | **dialog**          | A centred task dialog or confirmation fades in over the page, and fades back out when put away                       |
-| **grow**            | An anchored panel (Story options) fades in from the control that opened it, and back out, never resizing             |
+| **grow**            | A centred dialog held by a native popover (Add words, Story options) fades in, and back out, never resizing         |
 | **drop**            | A menu or a dropdown fades in from the trigger's side — down from above, up from below — and back out                |
 | **sheet**           | A docked sheet rises from its edge and goes back down it, continuing a drag from where the finger let go             |
 | **scrim**           | The page behind a modal surface dims as it arrives and clears as it leaves                                           |

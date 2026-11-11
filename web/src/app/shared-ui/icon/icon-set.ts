@@ -17,6 +17,7 @@ import {
   LucideDatabase,
   LucideDices,
   LucideEllipsisVertical,
+  LucideExternalLink,
   LucideEye,
   LucideEyeOff,
   LucidePencil,
@@ -114,6 +115,7 @@ export const ICON_SET = {
   random: LucideDices,
   show: LucideEye,
   hide: LucideEyeOff,
+  external: LucideExternalLink,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICON_SET;

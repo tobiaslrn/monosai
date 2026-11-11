@@ -39,8 +39,26 @@ async function brokenText(page: Page, zoom: number): Promise<string[]> {
     for (const details of document.querySelectorAll('details')) details.open = true;
   });
   await page.evaluate(() => document.fonts.ready);
-  // A fold opens its height and a step slides in: measure where they rest.
+  // A fold opens its height and a step slides in: measure where they rest. The height a
+  // native `details` opens is not listed among the document's animations, so the page's
+  // height has to hold still for a while as well.
   await expectMotionSettled(page);
+  await page.waitForFunction(
+    () =>
+      new Promise<boolean>((resolve) => {
+        const height = (): number => document.documentElement.scrollHeight;
+        let last = height();
+        let still = 0;
+        const frame = (): void => {
+          const now = height();
+          still = now === last ? still + 1 : 0;
+          last = now;
+          if (still >= 30) resolve(true);
+          else requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      }),
+  );
   await page.evaluate(
     () =>
       new Promise((resolve) => {

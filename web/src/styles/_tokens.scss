@@ -230,7 +230,6 @@
    *                     viewport's edge
    * dialog-width        a task dialog's or a confirmation's width on a wide
    *                     viewport
-   * panel-width         an anchored panel's width: Story options
    * picker-height       the searchable picker's fixed height on a wide viewport, so
    *                     filtering never makes it jump; on a phone it fills the
    *                     visible viewport instead
@@ -255,7 +254,6 @@
   --overlay-offset: var(--space-1);
   --overlay-margin: var(--space-4);
   --dialog-width: 30rem;
-  --panel-width: 25rem;
   --picker-height: 34rem;
   --player-width: 34rem;
   --dropdown-min-width: 15rem;

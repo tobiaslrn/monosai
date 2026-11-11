@@ -5,7 +5,7 @@ let nextSettingsSectionId = 0;
 /**
  * The shared section frame for the settings-like pages.
  *
- * A heading sits on the canvas and the related content sits in one card. The
+ * A group label sits on the canvas, inset to the text edge of the rows below it, and the related content sits in one card. The
  * optional action slot keeps a section action beside its heading without
  * making every caller recreate the same accessible section structure.
  */
@@ -19,7 +19,7 @@ let nextSettingsSectionId = 0;
       [attr.aria-labelledby]="headingId"
     >
       <header class="mn-settings-section__header">
-        <h2 [id]="headingId">{{ heading() }}</h2>
+        <h2 class="mn-group-title" [id]="headingId">{{ heading() }}</h2>
         <div class="mn-settings-section__action mn-trailing">
           <ng-content select="[mn-settings-section-action]" />
         </div>
