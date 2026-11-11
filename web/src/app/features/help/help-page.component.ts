@@ -46,7 +46,23 @@ import { HELP_TOPICS } from './help-topics';
           Monosai writes short Japanese stories out of the words you have already studied, so you
           can read a paragraph instead of looking one up every few seconds.
         </p>
+      </mn-prose>
 
+      <mn-section heading="Topics" [rows]="true">
+        @for (topic of topics; track topic.slug) {
+          <mn-row
+            [link]="['/help', topic.slug]"
+            [heading]="topic.title"
+            [icon]="topic.icon"
+            testId="help-topic"
+          >
+            <span mn-row-meta>{{ topic.summary }}</span>
+            <mn-icon name="chevron-right" />
+          </mn-row>
+        }
+      </mn-section>
+
+      <mn-prose>
         <section aria-labelledby="help-what">
           <h2 id="help-what">What Monosai does</h2>
           <p>
@@ -69,23 +85,7 @@ import { HELP_TOPICS } from './help-topics';
             wrote.
           </p>
         </section>
-      </mn-prose>
 
-      <mn-section heading="Topics" [rows]="true">
-        @for (topic of topics; track topic.slug) {
-          <mn-row
-            [link]="['/help', topic.slug]"
-            [heading]="topic.title"
-            [icon]="topic.icon"
-            testId="help-topic"
-          >
-            <span mn-row-meta>{{ topic.summary }}</span>
-            <mn-icon name="chevron-right" />
-          </mn-row>
-        }
-      </mn-section>
-
-      <mn-prose>
         <section aria-labelledby="help-more">
           <h2 id="help-more">When something fails</h2>
           <p>

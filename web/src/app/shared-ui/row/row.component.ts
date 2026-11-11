@@ -61,9 +61,7 @@ let nextRowId = 0;
     <ng-template #body>
       <span class="mn-row__leading">
         @if (icon(); as name) {
-          <span class="mn-icon-badge" aria-hidden="true"
-            ><mn-icon [name]="name" [size]="18"
-          /></span>
+          <span class="mn-icon-badge" aria-hidden="true"><mn-icon [name]="name" /></span>
         }
         <ng-content select="[mn-row-leading]" />
       </span>

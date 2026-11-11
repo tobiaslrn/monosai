@@ -159,7 +159,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
               [testId]="'reading-level-link'"
             >
               <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-                <mn-icon name="reading-level" [size]="18" />
+                <mn-icon name="reading-level" />
               </span>
               <span mn-list-row-title>Reading level</span>
               <span mn-list-row-meta>

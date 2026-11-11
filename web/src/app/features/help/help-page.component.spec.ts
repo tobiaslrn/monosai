@@ -19,12 +19,12 @@ describe('HelpPageComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('leads with what Monosai is for and where it stops being the answer', () => {
+  it('leads with the topics, then what Monosai is for and where it stops being the answer', () => {
     const element = render();
     expect([...element.querySelectorAll('h2')].map((heading) => heading.textContent)).toEqual([
+      'Topics',
       'What Monosai does',
       'What it is not',
-      'Topics',
       'When something fails',
     ]);
     const text = element.textContent.replace(/\s+/g, ' ');

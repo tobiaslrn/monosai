@@ -2,15 +2,12 @@
   "src/app/features/generate/story-direction.component.ts": ["R35"],
   "src/app/features/generate/story-form.component.ts": ["R35"],
   "src/app/features/help/help-article.component.ts": ["R35"],
-  "src/app/features/reading-level/reading-level-page.component.ts": ["R35"],
   "src/app/features/vocabulary/add-words.component.ts": ["R35"],
   "src/app/features/vocabulary/source-list.component.ts": ["R35"],
-  "src/app/features/vocabulary/vocabulary-card.component.ts": ["R35"],
   "src/app/shared-ui/banner/banner.component.ts": ["R35"],
   "src/app/shared-ui/blocker/blocker.component.ts": ["R35"],
   "src/app/shared-ui/checklist/checklist.component.ts": ["R35"],
   "src/app/shared-ui/notice/notice.component.ts": ["R35"],
   "src/app/shared-ui/outcome/outcome.component.ts": ["R35"],
-  "src/app/shared-ui/row/row.component.ts": ["R35"],
   "src/app/shared-ui/wizard-steps/wizard-steps.component.ts": ["R35"]
 }

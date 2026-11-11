@@ -23,7 +23,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
   template: `
     <mn-list-row [routerLink]="'/reading-level/vocabulary'" [testId]="'browse-vocabulary'">
       <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
-        <mn-icon name="vocabulary" [size]="18" />
+        <mn-icon name="vocabulary" />
       </span>
       <span mn-list-row-title>Your vocabulary</span>
       <span mn-list-row-meta data-testid="source-standing">
