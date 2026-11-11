@@ -38,9 +38,11 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
           <span>{{ overLimitMessage() }}</span>
         </p>
       } @else if (counterVisible()) {
-        <p id="mn-import-count" class="count">
+        <p id="mn-import-count" class="mn-hint">
           {{ formatCount(store.characterCount()) }} of {{ formatCount(limit) }} characters
         </p>
+      } @else {
+        <p id="mn-import-hint" class="mn-hint">Paste or type the Japanese you want to read.</p>
       }
       @if (store.advisories().length > 0) {
         <mn-notice id="mn-import-advisories" tone="warning" role="status">
@@ -82,12 +84,6 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
       line-height: 1.8;
       resize: vertical;
     }
-
-    .count {
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
   `,
 })
 export class TextInputStepComponent {
@@ -108,6 +104,8 @@ export class TextInputStepComponent {
     const ids: string[] = [];
     if (this.counterVisible() || this.isOverLimit()) {
       ids.push('mn-import-count');
+    } else {
+      ids.push('mn-import-hint');
     }
     if (this.store.advisories().length > 0) {
       ids.push('mn-import-advisories');

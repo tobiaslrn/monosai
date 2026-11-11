@@ -74,15 +74,16 @@ describe('TextInputStepComponent', () => {
     expect(element.querySelector('#mn-import-title')?.getAttribute('maxlength')).toBe('120');
   });
 
-  it('keeps the textarea labelled and hides its counter while far from the limit', () => {
+  it('keeps the textarea labelled, with a hint instead of a counter while far from the limit', () => {
     const element = render();
     const textarea = element.querySelector('textarea');
 
     expect(element.querySelector('label[for="mn-import-text"]')?.textContent).toContain(
       'Japanese text',
     );
-    // A hidden counter is also left out of the field's description.
+    // The hint is the field's instruction, so the placeholder is not the only one.
     expect(element.querySelector('#mn-import-count')).toBeNull();
-    expect(textarea?.hasAttribute('aria-describedby')).toBe(false);
+    expect(element.querySelector('#mn-import-hint')?.textContent).toContain('Paste or type');
+    expect(textarea?.getAttribute('aria-describedby')).toBe('mn-import-hint');
   });
 });
