@@ -108,136 +108,139 @@ import { ReadingTrackComponent } from './reading-track.component';
         the end of the line an empty one is simply where the line stops.
       -->
       <div class="controls">
-        <!--
+        <div class="main">
+          <!--
           Back replays the sentence being read before it steps to the one
           before it, because the reason to reach for it is that the sentence
           went past too fast. The name says so, since the icon cannot.
         -->
-        <button
-          type="button"
-          class="mn-icon-button slot"
-          aria-label="Restart this sentence, or go back to the one before"
-          title="Restart this sentence, or go back to the one before"
-          [disabled]="!store.canGoPrevious()"
-          (click)="previous()"
-        >
-          <mn-icon name="skip-back" [size]="20" />
-        </button>
+          <button
+            type="button"
+            class="mn-icon-button slot"
+            aria-label="Restart this sentence, or go back to the one before"
+            title="Restart this sentence, or go back to the one before"
+            [disabled]="!store.canGoPrevious()"
+            (click)="previous()"
+          >
+            <mn-icon name="skip-back" [size]="20" />
+          </button>
 
-        <!--
+          <!--
           The centre is whatever the primary verb is right now. A reading with
           no audio at all has nothing to play, so the button that would be a
           dead Play is the one that makes the audio instead.
         -->
-        @if (setupRequired()) {
-          <!--
+          @if (setupRequired()) {
+            <!--
             A reading whose audio needs a model has no Play to press, and a
             dead Play beside a gear says none of that. The primary control is
             the setup itself, in the place and the shape Play would have had.
             A link cannot be the button below, so this is the one swap.
           -->
-          <a
-            class="mn-icon-button mn-icon-button--primary primary--wide"
-            routerLink="/settings/voice"
-            aria-label="Set up audio model"
-            title="Set up audio model"
-          >
-            <mn-icon name="settings" [size]="20" />
-            <span>Set up audio</span>
-          </a>
-        } @else {
-          <!--
+            <a
+              class="mn-icon-button mn-icon-button--primary primary--wide"
+              routerLink="/settings/voice"
+              aria-label="Set up audio model"
+              title="Set up audio model"
+            >
+              <mn-icon name="settings" [size]="20" />
+              <span>Set up audio</span>
+            </a>
+          } @else {
+            <!--
             One button for generate, generating, play and pause, never one
             element swapped for another: the focus a press left on it, and the
             filled circle itself, survive the work the press started.
           -->
+            <button
+              type="button"
+              class="mn-icon-button mn-icon-button--primary"
+              [attr.aria-label]="centre().label"
+              [title]="centre().label"
+              [disabled]="centre().disabled"
+              [attr.aria-busy]="centre().busy ? 'true' : null"
+              (click)="pressCentre()"
+            >
+              <mn-icon [name]="centre().icon" [size]="24" />
+            </button>
+          }
+
           <button
             type="button"
-            class="mn-icon-button mn-icon-button--primary"
-            [attr.aria-label]="centre().label"
-            [title]="centre().label"
-            [disabled]="centre().disabled"
-            [attr.aria-busy]="centre().busy ? 'true' : null"
-            (click)="pressCentre()"
+            class="mn-icon-button slot"
+            aria-label="Next sentence with audio"
+            title="Next sentence with audio"
+            [disabled]="!store.canGoNext()"
+            (click)="next()"
           >
-            <mn-icon [name]="centre().icon" [size]="24" />
+            <mn-icon name="skip-forward" [size]="20" />
           </button>
-        }
 
-        <button
-          type="button"
-          class="mn-icon-button slot"
-          aria-label="Next sentence with audio"
-          title="Next sentence with audio"
-          [disabled]="!store.canGoNext()"
-          (click)="next()"
-        >
-          <mn-icon name="skip-forward" [size]="20" />
-        </button>
-
-        <!--
+          <!--
           The mode control, in the idiom every media player uses for one: the
           same glyph always, lit when it is on. It closes the line, past the
           transport, because it is a posture for the reading rather than a
           control of the session running now.
         -->
-        <button
-          type="button"
-          class="mn-icon-button slot mode"
-          [attr.aria-pressed]="store.stepMode()"
-          title="One sentence at a time"
-          aria-label="One sentence at a time"
-          (click)="cycleMode()"
-        >
-          <mn-icon name="step" [size]="20" />
-        </button>
+          <button
+            type="button"
+            class="mn-icon-button slot mode"
+            [attr.aria-pressed]="store.stepMode()"
+            title="Pause after each sentence"
+            aria-label="Pause after each sentence"
+            (click)="cycleMode()"
+          >
+            <mn-icon name="pause-after" [size]="20" />
+          </button>
 
-        <button
-          type="button"
-          class="mn-button mn-button--ghost slot speed"
-          [attr.aria-label]="speedAriaLabel()"
-          [title]="speedAriaLabel()"
-          (click)="cyclePlaybackRate()"
-        >
-          {{ speedLabel() }}
-        </button>
-
-        <!--
+          <button
+            type="button"
+            class="mn-button mn-button--ghost slot speed"
+            [attr.aria-label]="speedAriaLabel()"
+            [title]="speedAriaLabel()"
+            (click)="cyclePlaybackRate()"
+          >
+            {{ speedLabel() }}
+          </button>
+        </div>
+        <div class="extras">
+          <!--
           Start from where the learner is rather than from the top. Offered
           only when a sentence was open when the player was opened and that
           sentence has a clip, because "this sentence" needs somewhere to mean.
           Its slot is held open when it is not, so nothing beside it moves.
         -->
-        @if (canStartFromSelection()) {
-          <button
-            type="button"
-            class="mn-icon-button slot"
-            aria-label="Start from this sentence"
-            title="Start from this sentence"
-            (click)="playFromSelection()"
-          >
-            <mn-icon name="sentence-start" [size]="20" />
-          </button>
-        } @else {
-          <span class="slot empty-slot" aria-hidden="true"></span>
-        }
+          @if (canStartFromSelection()) {
+            <button
+              type="button"
+              class="mn-icon-button slot"
+              aria-label="Start from this sentence"
+              title="Start from this sentence"
+              (click)="playFromSelection()"
+            >
+              <mn-icon name="sentence-start" [size]="20" />
+            </button>
+          } @else {
+            <span class="slot empty-slot" aria-hidden="true"></span>
+          }
 
-        @if (aux(); as action) {
-          <button
-            type="button"
-            [class]="'mn-icon-button slot tone-' + action.tone"
-            [attr.aria-label]="action.label"
-            [title]="action.title"
-            (click)="pressAux(action)"
-          >
-            @if (action.kind === 'cancel') {
-              <mn-generation-ring [fraction]="coverage() / 100" />
-            }
-            <mn-icon [name]="action.icon" [size]="action.kind === 'cancel' ? 14 : 20" />
-          </button>
-        } @else {
-          <span class="slot empty-slot" aria-hidden="true"></span>
-        }
+          @if (aux(); as action) {
+            <button
+              type="button"
+              [class]="'mn-icon-button slot tone-' + action.tone"
+              [attr.aria-label]="action.label"
+              [title]="action.title"
+              (click)="pressAux(action)"
+            >
+              @if (action.kind === 'cancel') {
+                <mn-generation-ring [fraction]="coverage() / 100" />
+              }
+              <mn-icon [name]="action.icon" [size]="action.kind === 'cancel' ? 14 : 20" />
+            </button>
+          } @else {
+            <span class="slot empty-slot" aria-hidden="true"></span>
+          }
+        </div>
       </div>
 
       <mn-reading-track />
@@ -267,6 +270,41 @@ import { ReadingTrackComponent } from './reading-track.component';
       gap: var(--inline-gap);
       align-items: center;
       justify-content: space-between;
+    }
+
+    /* The two groups are one row on a phone, and their own boxes once there is room. */
+    .main,
+    .extras {
+      display: contents;
+    }
+
+    /*
+     * With room to spare the player's own controls sit in the middle, equally
+     * spaced, and the contextual ones hang off the end of that group in room
+     * kept for them. The group never moves when one of them comes or goes.
+     */
+    @container (min-width: 28rem) {
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+      }
+
+      .main,
+      .extras {
+        display: flex;
+        gap: var(--space-4);
+        align-items: center;
+      }
+
+      .main {
+        grid-column: 2;
+      }
+
+      .extras {
+        grid-column: 3;
+        justify-content: flex-start;
+        padding-inline-start: var(--space-4);
+      }
     }
 
     /* Everything that is not the primary verb: no chrome until it is touched. */

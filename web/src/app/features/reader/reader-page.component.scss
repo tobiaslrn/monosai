@@ -195,7 +195,11 @@
   min-width: 0;
 }
 
-/* The player is drawn from the overlay roles, as every floating surface is. */
+/*
+ * The player is drawn from the overlay roles, as every floating surface is,
+ * and on a wide viewport it has the reading's own measure, so its edges are
+ * the text's.
+ */
 .audio-player-shell {
   position: fixed;
   z-index: 1002;
@@ -203,7 +207,7 @@
   bottom: calc(var(--overlay-margin) + env(safe-area-inset-bottom));
   left: 50%;
   box-sizing: border-box;
-  width: min(var(--player-width), calc(100vw - 2 * var(--overlay-margin)));
+  width: min(var(--reader-measure), calc(100vw - 2 * var(--overlay-margin)));
   padding: var(--overlay-inset);
   border: 1px solid var(--overlay-edge);
   border-radius: var(--radius-sheet);

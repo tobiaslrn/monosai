@@ -154,7 +154,7 @@ describe('ReadingPlayerComponent', () => {
   const BACK_LABEL = 'Restart this sentence, or go back to the one before';
   const NEXT_LABEL = 'Next sentence with audio';
   const WAITING_LABEL = 'Waiting for the next sentence';
-  const MODE_LABEL = 'One sentence at a time';
+  const MODE_LABEL = 'Pause after each sentence';
 
   function control(element: HTMLElement, label: string): HTMLButtonElement | null {
     return element.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);

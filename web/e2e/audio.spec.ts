@@ -47,7 +47,7 @@ const CONCURRENCY = 10;
 const BACK_LABEL = 'Restart this sentence, or go back to the one before';
 
 /** The study posture that makes the reading stop at every sentence seam. */
-const STEP_MODE_LABEL = 'One sentence at a time';
+const STEP_MODE_LABEL = 'Pause after each sentence';
 
 /**
  * How much of the reading has audio, read off the track.
@@ -807,7 +807,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     // Reopening lands back on the live session rather than on a fresh player.
     await openAudioPlayer(page);
-    await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
+    await audioPlayer(page).getByRole('button', { name: 'Pause', exact: true }).click();
 
     await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, paused');
     await expect(audioPlayer(page).getByRole('button', { name: 'Resume' })).toBeVisible();
@@ -821,7 +821,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
-    await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
+    await audioPlayer(page).getByRole('button', { name: 'Pause', exact: true }).click();
     await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, paused');
 
     await audioButton(page).click();
@@ -850,7 +850,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
     await expect(playerStatus(page)).toContainText('Sentence 1 of 4', { timeout: 15_000 });
-    await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
+    await audioPlayer(page).getByRole('button', { name: 'Pause', exact: true }).click();
 
     await audioPlayer(page).getByRole('button', { name: BACK_LABEL }).click();
 
@@ -971,11 +971,11 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
-    await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
+    await audioPlayer(page).getByRole('button', { name: 'Pause', exact: true }).click();
 
     await audioPlayer(page).getByRole('button', { name: 'Next sentence with audio' }).click();
     await expect(playerStatus(page)).toContainText('Sentence 2 of 4', { timeout: 15_000 });
-    await audioPlayer(page).getByRole('button', { name: 'Pause' }).click();
+    await audioPlayer(page).getByRole('button', { name: 'Pause', exact: true }).click();
 
     // At the start of a sentence Back means the sentence before; a press once
     // one is under way restarts it instead, which the unit tests pin down.
@@ -1139,7 +1139,9 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect
       .poll(async () => (await playerStatus(page).textContent()) ?? '', { timeout: 30_000 })
       .toMatch(new RegExp(`Sentence \\d+ of ${String(LONG_SENTENCE_COUNT)}|Finished`));
-    await expect(audioPlayer(page).getByRole('button', { name: /Pause|Play again/ })).toBeVisible();
+    await expect(
+      audioPlayer(page).getByRole('button', { name: /^(Pause|Play again)$/ }),
+    ).toBeVisible();
   });
 
   test('deleting the reading stops playback', async ({ page }) => {

@@ -252,7 +252,6 @@
    * picker-height       the searchable picker's fixed height on a wide viewport, so
    *                     filtering never makes it jump; on a phone it fills the
    *                     visible viewport instead
-   * player-width        the reader's floating audio player on a wide viewport
    * dropdown-min-width  the narrowest a dropdown is, so it is never cramped to a short
    *                     value's width, on every screen size
    * dropdown-max-width  the widest a dropdown grows with its content; it is never
@@ -274,7 +273,6 @@
   --overlay-margin: var(--space-4);
   --dialog-width: 30rem;
   --picker-height: 34rem;
-  --player-width: 34rem;
   --dropdown-min-width: 15rem;
   --dropdown-max-width: 25rem;
   --dropdown-max-height: 28rem;
