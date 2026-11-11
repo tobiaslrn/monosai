@@ -652,8 +652,8 @@ holds a destructive action: that is a row and a confirmation (see One destructiv
 pattern).
 
 **A closed disclosure states its current value.** The summary carries the label
-and, opposite it, what is currently selected — a mapped field, a count of what
-is inside. A fold that hides the answer to the question its label asks makes the
+and, under it as a setting's value is, what is currently selected — a mapped
+field, a count of what is inside. A fold that hides the answer to the question its label asks makes the
 screen worse than no fold at all, and forces the learner to open every one to
 read the page. Disclosures do not nest: a section that already sits behind one
 presents its contents plainly.
@@ -688,9 +688,10 @@ floating between them.
 
 Where a learner may steer something along several independent axes, each axis
 is one **disclosure row** in one card, and the rows share a native `name` so the
-browser keeps one open at a time. The closed row states its value opposite its
-label, as every disclosure does: "Any" in secondary text when nothing is chosen,
-the choice in the action colour when something is. Every row starts closed, so a
+browser keeps one open at a time. The closed row states its value under its
+label, as every disclosure does: "Any" when nothing is chosen, the choice when
+something is, in the same secondary text — the action colour means "press this",
+not "chosen". Every row starts closed, so a
 "surprise" that fills them all shows each value in its own summary.
 
 An open row is a wrap of **choice chips**: ordinary `mnButton` toggles in an `mn-chip-group`, with
@@ -796,8 +797,9 @@ not a skeleton: nothing is drawn that pretends to be content.
 
 An approximate value on an ordered scale — story length, the reader's text size —
 is a **slider row**: its value as text at the end of the label line, and the
-track under it. There is one look for every slider (R20): one track, ticks only
-for real stops, one thumb with a ring of the ground. A range is **one slider with
+track under it. There is one look for every slider (R20): one track, no ticks
+(a mark with no label is decoration; the value line says where the thumb is),
+one thumb with a ring of the ground. A range is **one slider with
 two thumbs**, never two sliders. Where the exact value matters, the value is a
 field in a dialog instead.
 

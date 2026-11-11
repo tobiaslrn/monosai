@@ -213,7 +213,7 @@ for (const { width, zoom } of SCREENS) {
         await prepareGeneration(page, { generation: {} });
         await openGenerate(page);
         await expect(page.getByTestId('wizard-next')).toBeVisible();
-        await expect(page.getByTestId('strictness-value')).toBeVisible();
+        await expect(page.getByTestId('strictness-select')).toBeVisible();
         await expectWhole(page, zoom);
       });
 
@@ -230,7 +230,7 @@ for (const { width, zoom } of SCREENS) {
     test('keeps Generate without a model whole @smoke @mobile', async ({ page }) => {
       await page.goto('./#/generate');
       await expect(page.getByRole('heading', { name: 'Write with AI', level: 1 })).toBeVisible();
-      await expect(page.getByTestId('strictness-value')).toBeVisible();
+      await expect(page.getByTestId('strictness-select')).toBeVisible();
       await expectWhole(page, zoom);
     });
 

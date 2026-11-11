@@ -40,16 +40,13 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
       <summary class="mn-settings-row mn-disclosure__summary" [attr.data-testid]="testId()">
         <span class="mn-settings-row__label">
           <span class="mn-settings-row__title">{{ heading() }}</span>
+          @if (value(); as shown) {
+            <span class="mn-settings-row__details" [attr.data-testid]="valueTestId()">{{
+              shown
+            }}</span>
+          }
         </span>
         <span class="mn-settings-row__end">
-          @if (value(); as shown) {
-            <span
-              class="mn-settings-value"
-              [class.mn-disclosure__value--set]="valueSet()"
-              [attr.data-testid]="valueTestId()"
-              >{{ shown }}</span
-            >
-          }
           <mn-icon class="mn-disclosure__chevron" name="chevron-right" [size]="18" />
         </span>
       </summary>
@@ -106,12 +103,6 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
       transform: rotate(90deg);
     }
 
-    /* A value the learner chose, rather than the default, reads as chosen. */
-    mn-disclosure .mn-disclosure__value--set {
-      color: var(--action-primary-text);
-      font-weight: var(--weight-semibold);
-    }
-
     mn-disclosure.mn-disclosure--quiet > .mn-disclosure__details > .mn-disclosure__summary {
       color: var(--text-secondary);
     }
@@ -150,7 +141,7 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
 })
 export class DisclosureComponent {
   readonly heading = input.required<string>();
-  /** What is set inside, stated on the closed row. */
+  /** What is set inside, stated on the closed row under its label, as a setting's value is. */
   readonly value = input<string | null>(null);
   readonly tone = input<DisclosureTone>('default');
   /** The body runs the full width under the row, for choices that need it all. */
@@ -159,8 +150,6 @@ export class DisclosureComponent {
   readonly testId = input<string | null>(null);
   /** For durable tests: on the stated value. */
   readonly valueTestId = input<string | null>(null);
-  /** The value is one the learner chose rather than the default. */
-  readonly valueSet = input(false);
   /** Disclosures sharing a name open one at a time. */
   readonly name = input<string | null>(null);
   readonly open = model(false);

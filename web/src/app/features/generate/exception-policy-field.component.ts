@@ -4,6 +4,7 @@ import {
   MAX_POLICY_LENGTH,
 } from '../../application/settings/exception-policy.store';
 import { formatCount, formatCountOf } from '../../domain/shared/locale';
+import { CardComponent } from '../../shared-ui/card/card.component';
 
 /**
  * The single global exception policy.
@@ -16,21 +17,25 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
 @Component({
   selector: 'mn-exception-policy-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CardComponent],
   template: `
-    <div class="mn-stack">
+    <mn-card>
       <div class="mn-field">
         <label for="mn-policy-text">Vocabulary exceptions (optional)</label>
         <textarea
           id="mn-policy-text"
           rows="3"
           data-testid="policy-input"
-          placeholder="Names or words the story may use outside your vocabulary"
           [attr.aria-describedby]="policyDescriptionIds()"
           [value]="policy.draft()"
           (input)="onInput($event)"
         ></textarea>
         @if (policyCounterVisible()) {
           <p id="mn-policy-count" class="mn-hint">{{ countLabel() }}</p>
+        } @else {
+          <p id="mn-policy-hint" class="mn-hint">
+            Names or words the story may use outside your vocabulary.
+          </p>
         }
       </div>
 
@@ -65,7 +70,7 @@ import { formatCount, formatCountOf } from '../../domain/shared/locale';
       @if (policy.failure(); as failure) {
         <p role="alert" class="mn-notice mn-notice--error">{{ failure.message }}</p>
       }
-    </div>
+    </mn-card>
   `,
 })
 export class ExceptionPolicyFieldComponent {
@@ -81,7 +86,7 @@ export class ExceptionPolicyFieldComponent {
   );
   protected readonly policyDescriptionIds = computed(() => {
     const ids: string[] = [];
-    if (this.policyCounterVisible()) ids.push('mn-policy-count');
+    ids.push(this.policyCounterVisible() ? 'mn-policy-count' : 'mn-policy-hint');
     if (this.policy.isTooLong()) ids.push('mn-policy-error');
     return ids.length > 0 ? ids.join(' ') : null;
   });

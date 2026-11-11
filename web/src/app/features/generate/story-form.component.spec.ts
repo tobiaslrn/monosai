@@ -177,19 +177,21 @@ describe('StoryFormComponent', () => {
 
     expect(element.querySelector('[data-testid="word-priority-select"]')).not.toBeNull();
     expect(element.querySelector('[data-testid="story-length"]')).not.toBeNull();
-    expect(element.querySelector('[data-testid="form-sources"]')?.textContent).toContain(
-      '200 reviewed words',
-    );
-    expect(element.querySelector('[data-testid="form-sources"]')?.textContent).toContain(
-      'Starter forms',
-    );
+    // The sources are rows that lead to the screen that changes them, value under the label.
+    const vocabulary = element.querySelector('[data-testid="form-vocabulary"]');
+    expect(vocabulary?.getAttribute('href')).toContain('/reading-level');
+    expect(vocabulary?.closest('mn-settings-row')?.textContent).toContain('200 reviewed words');
+    expect(
+      element.querySelector('[data-testid="form-grammar"]')?.closest('mn-settings-row')
+        ?.textContent,
+    ).toContain('Starter forms');
     // No focus-word list: showing a target list would turn reading into a checklist.
     expect(element.textContent.toLowerCase()).not.toContain('target words');
     expect(element.textContent.toLowerCase()).not.toContain('cost');
 
     atStep(fixture, 2);
     expect(element.querySelector('[data-testid="word-priority-select"]')).toBeNull();
-    expect(element.querySelector('[data-testid="form-sources"]')).toBeNull();
+    expect(element.querySelector('[data-testid="form-vocabulary"]')).toBeNull();
   });
 
   it('snaps to the selected named length and stores its sentence target', () => {
@@ -230,21 +232,26 @@ describe('StoryFormComponent', () => {
     );
   });
 
-  it('emits a changed mode and locks the select during generation', () => {
+  it('emits a changed mode and locks the radios during generation', () => {
     const { element, fixture, host } = render();
-    const select = element.querySelector<HTMLButtonElement>('[data-testid="word-priority-select"]');
-    if (select === null) {
-      throw new Error('word-priority select was not rendered');
-    }
-    expect(selectedValue(select)).toBe('uniform');
+    const group = element.querySelector('[data-testid="word-priority-select"]');
+    const radio = (value: string): HTMLInputElement =>
+      group?.querySelector<HTMLInputElement>(`input[data-value="${value}"]`) ??
+      (() => {
+        throw new Error(`no radio ${value}`);
+      })();
+    expect(radio('uniform').checked).toBe(true);
+    expect(
+      [...(group?.querySelectorAll('.mn-settings-row__title') ?? [])].map((t) => t.textContent),
+    ).toEqual(['Evenly', 'Recently learned', 'Difficult']);
 
-    chooseValue(select, 'recent');
+    radio('recent').click();
     fixture.detectChanges();
     expect(host.priorityMode()).toBe('recent');
 
     host.disabled.set(true);
     fixture.detectChanges();
-    expect(select.disabled).toBe(true);
+    expect(radio('recent').disabled).toBe(true);
   });
 
   it('offers the focus size only while Recently learned is selected', () => {
@@ -265,31 +272,26 @@ describe('StoryFormComponent', () => {
     expect(element.querySelector('[data-testid="focus-size-select"]')).toBeNull();
   });
 
-  it('states the strictness in its closed disclosure and emits changes', () => {
+  it('states the strictness under its label and emits changes', () => {
     const { element, fixture, host } = render();
-    const details = element.querySelector<HTMLDetailsElement>('.strictness details');
+    const select = element.querySelector<HTMLButtonElement>('[data-testid="strictness-select"]')!;
 
-    expect(details?.open).toBe(false);
-    expect(details?.querySelector('[data-testid="strictness-value"]')?.textContent).toContain(
-      'Standard',
-    );
-    details?.querySelector<HTMLInputElement>('input[value="relaxed"]')?.click();
+    expect(select.textContent).toContain('Standard');
+    chooseValue(select, 'relaxed');
     fixture.detectChanges();
 
     expect(host.strictness()).toBe('relaxed');
-    expect(details?.querySelector('[data-testid="strictness-value"]')?.textContent).toContain(
-      'Relaxed',
-    );
   });
 
-  it('shows what every strictness means inside its own card', () => {
+  it('says what every strictness means inside its own dropdown', () => {
     const { element } = render();
-    const cards = [...element.querySelectorAll('.strictness mn-radio-card')];
+    const select = element.querySelector<HTMLButtonElement>('[data-testid="strictness-select"]')!;
+    const list = document.getElementById(select.getAttribute('aria-controls') ?? '');
 
     expect(
-      cards.map((card) => [
-        card.querySelector('[mn-option-title]')?.textContent,
-        card.querySelector('[mn-option-description]')?.textContent,
+      [...(list?.querySelectorAll('[role="option"]') ?? [])].map((option) => [
+        option.querySelector('.mn-dropdown-row__label')?.textContent,
+        option.querySelector('.mn-dropdown-row__description')?.textContent,
       ]),
     ).toEqual([
       ['Relaxed', 'Keep the first draft.'],
@@ -303,9 +305,9 @@ describe('StoryFormComponent', () => {
     host.disabled.set(true);
     fixture.detectChanges();
 
-    const radios = element.querySelectorAll<HTMLInputElement>('.strictness input[type="radio"]');
-    expect(radios).toHaveLength(3);
-    expect([...radios].every((radio) => radio.disabled)).toBe(true);
+    expect(
+      element.querySelector<HTMLButtonElement>('[data-testid="strictness-select"]')?.disabled,
+    ).toBe(true);
   });
 
   it('starts every row closed, states every axis value, and keeps one row open at a time', () => {

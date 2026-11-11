@@ -76,7 +76,9 @@
  * card (`mn-section`) draws it for its children; rows in a padded surface draw
  * their own.
  */
-.mn-settings-group > .mn-settings-row + .mn-settings-row::before,
+.mn-settings-group
+  > :where(.mn-settings-row, .mn-radio-list, mn-range-field)
+  + :where(.mn-settings-row, .mn-radio-list, mn-range-field)::before,
 .mn-radio-list > .mn-settings-row + .mn-settings-row::before,
 .mn-settings-cluster > .mn-settings-row + .mn-settings-row::before,
 .mn-settings-group > .mn-settings-cluster::before {
@@ -317,6 +319,11 @@
 .mn-settings-block {
   display: block;
   min-width: 0;
+}
+
+/* The hairline above a group's child is drawn from the child's own top edge. */
+.mn-settings-group > :where(.mn-radio-list, mn-range-field) {
+  position: relative;
 }
 
 /*

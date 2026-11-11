@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { RouterLink, type NavigationExtras } from '@angular/router';
+import { RouterLink, type NavigationExtras, type Params } from '@angular/router';
 import { IconComponent } from '../icon/icon.component';
 import type { IconName } from '../icon/icon-set';
 
@@ -102,6 +102,8 @@ let nextSettingsRowId = 0;
       <a
         class="mn-settings-press"
         [routerLink]="link()"
+        [fragment]="fragment()"
+        [queryParams]="queryParams()"
         [state]="state()"
         [attr.aria-labelledby]="titleId()"
         [attr.aria-describedby]="detailId"
@@ -140,6 +142,9 @@ export class SettingsRowComponent {
   /** The page the whole row leads to. */
   readonly link = input<readonly unknown[] | string | null>(null);
   readonly state = input<NavigationExtras['state']>(undefined);
+  /** The part of that page the row leads to, and the query it is opened with. */
+  readonly fragment = input<string | undefined>(undefined);
+  readonly queryParams = input<Params | null>(null);
   /** The value under the label: what the setting is now. */
   readonly summary = input<string | null>(null);
   /** An identifier that follows the summary, set in the monospace face: a model's id. */

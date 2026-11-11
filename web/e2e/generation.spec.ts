@@ -104,19 +104,23 @@ test.describe('generate prerequisites', () => {
   test('remembers the Anki word-priority mode across a reload', async ({ page }) => {
     await openGenerate(page);
 
-    const select = page.getByTestId('word-priority-select');
-    await expect(select).toBeEnabled();
-    await expectChosen(select, 'Evenly');
-    await chooseOption(select, 'difficult');
+    const priority = page.getByTestId('word-priority-select');
+    await expect(priority.getByRole('radio', { name: 'Evenly' })).toBeChecked();
+    await priority.getByRole('radio', { name: 'Difficult' }).check();
     await expectSettingPersisted(page, 'app', 'ankiWordPriorityMode', 'difficult');
 
     await page.reload();
 
-    await expectChosen(page.getByTestId('word-priority-select'), 'Difficult');
+    await expect(
+      page.getByTestId('word-priority-select').getByRole('radio', { name: 'Difficult' }),
+    ).toBeChecked();
     // The focus size belongs to Recently learned alone.
     await expect(page.getByTestId('focus-size-select')).toHaveCount(0);
 
-    await chooseOption(page.getByTestId('word-priority-select'), 'recent');
+    await page
+      .getByTestId('word-priority-select')
+      .getByRole('radio', { name: 'Recently learned' })
+      .check();
     const focus = page.getByTestId('focus-size-select');
     await expectChosen(focus, 'Newest 50 words');
     await chooseOption(focus, '100');

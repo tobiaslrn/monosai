@@ -76,7 +76,6 @@ import { ClusterComponent, StackComponent } from '../../shared-ui/layout/layout'
             [attr.data-axis]="axis"
             [heading]="labels[axis]"
             [value]="summary(axis)"
-            [valueSet]="isSet(axis)"
             [open]="openAxis() === axis"
             (openChange)="onToggle(axis, $event)"
           >

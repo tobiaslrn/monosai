@@ -31,18 +31,18 @@ import type { ConfigurationReadiness } from '../../domain/ai/configuration-readi
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PreparationTargetsComponent } from '../../shared-ui/preparation-targets/preparation-targets.component';
-import { RadioCardComponent } from '../../shared-ui/radio-card/radio-card.component';
-import { RadioCardGroupComponent } from '../../shared-ui/radio-card/radio-card-group.component';
+import {
+  RadioListComponent,
+  type RadioListOption,
+} from '../../shared-ui/radio-list/radio-list.component';
 import { StoryDirectionComponent } from './story-direction.component';
 import { StoryPlotsComponent } from './story-plots.component';
 import { ActionBarComponent } from '../../shared-ui/action-bar/action-bar.component';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { CardComponent } from '../../shared-ui/card/card.component';
-import { DisclosureComponent } from '../../shared-ui/disclosure/disclosure.component';
-import { DividerComponent } from '../../shared-ui/divider/divider.component';
-import { FactsComponent, type Fact } from '../../shared-ui/facts/facts.component';
 import { StackComponent } from '../../shared-ui/layout/layout';
 import { NoticeComponent } from '../../shared-ui/notice/notice.component';
+import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
 import { RangeFieldComponent } from '../../shared-ui/range-field/range-field.component';
 import {
   SelectComponent,
@@ -68,13 +68,13 @@ const STRICTNESS_DESCRIPTIONS: Readonly<Record<VocabularyStrictness, string>> = 
   strict: 'Try twice to replace unfamiliar words.',
 };
 
-const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictness[]).map(
-  (value) => ({
-    value,
-    label: STRICTNESS_LABELS[value],
-    description: STRICTNESS_DESCRIPTIONS[value],
-  }),
-);
+const STRICTNESS_OPTIONS: readonly SelectOption<VocabularyStrictness>[] = (
+  Object.keys(STRICTNESS_LABELS) as VocabularyStrictness[]
+).map((value) => ({
+  value,
+  label: STRICTNESS_LABELS[value],
+  description: STRICTNESS_DESCRIPTIONS[value],
+}));
 
 /**
  * The story form, in three steps: the words a story may use, the direction it
@@ -93,8 +93,6 @@ const STRICTNESS_OPTIONS = (Object.keys(STRICTNESS_LABELS) as VocabularyStrictne
  * Generate says a network request is about to happen and does not estimate a
  * price, because a number that is wrong is worse than no number.
  */
-import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
-
 @Component({
   selector: 'mn-story-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -102,14 +100,10 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
     ActionBarComponent,
     ButtonDirective,
     CardComponent,
-    DisclosureComponent,
-    DividerComponent,
-    FactsComponent,
     IconComponent,
     NoticeComponent,
     PreparationTargetsComponent,
-    RadioCardComponent,
-    RadioCardGroupComponent,
+    RadioListComponent,
     RangeFieldComponent,
     SelectComponent,
     StackComponent,
@@ -141,20 +135,18 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
           @case (1) {
             <mn-card heading="Words" [level]="2" [focusable]="true">
               <div class="mn-settings-group mn-settings-bleed">
-                <mn-settings-row label="Anki word selection" labelId="mn-story-1-label">
-                  <mn-select
-                    labelledBy="mn-story-1-label"
-                    testId="word-priority-select"
-                    [options]="wordPriorityOptions"
-                    [value]="ankiWordPriorityMode()"
-                    [disabled]="disabled()"
-                    (valueChange)="onWordPriorityMode($event)"
-                  />
-                </mn-settings-row>
+                <mn-radio-list
+                  label="Word selection"
+                  testId="word-priority-select"
+                  [options]="wordPriorityOptions"
+                  [value]="ankiWordPriorityMode()"
+                  [disabled]="disabled()"
+                  (valueChange)="onWordPriorityMode($event)"
+                />
                 @if (ankiWordPriorityMode() === 'recent') {
-                  <mn-settings-row label="Focus" labelId="mn-story-2-label">
+                  <mn-settings-row label="Focus" labelId="mn-story-focus-label">
                     <mn-select
-                      labelledBy="mn-story-2-label"
+                      labelledBy="mn-story-focus-label"
                       testId="focus-size-select"
                       [options]="focusSizeOptions"
                       [value]="recentFocusSize()"
@@ -163,58 +155,61 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
                     />
                   </mn-settings-row>
                 }
-              </div>
-
-              <mn-range-field
-                label="Length"
-                testId="story-length"
-                [valueLabel]="lengthValueLabel()"
-                [max]="lengthOptions.length - 1"
-                [value]="selectedLengthIndex()"
-                [disabled]="disabled()"
-                [valueText]="lengthAriaValue()"
-                [describedBy]="lengthDescriptionIds()"
-                (valueChange)="onSentenceCount($event)"
-              >
-                @if (showLengthWarning()) {
-                  <mn-notice id="mn-length-warning" tone="warning" icon="warning" role="status">
-                    Longer stories may ignore your vocabulary and grammar settings.
-                  </mn-notice>
-                }
-              </mn-range-field>
-
-              <mn-divider />
-
-              <mn-disclosure
-                class="strictness"
-                [flush]="true"
-                heading="Vocabulary strictness"
-                valueTestId="strictness-value"
-                [value]="strictnessLabels[vocabularyStrictness()]"
-              >
-                <mn-radio-card-group
-                  label="Vocabulary strictness"
-                  [value]="vocabularyStrictness()"
+                <mn-range-field
+                  label="Length"
+                  testId="story-length"
+                  [valueLabel]="lengthValueLabel()"
+                  [max]="lengthOptions.length - 1"
+                  [value]="selectedLengthIndex()"
                   [disabled]="disabled()"
-                  (valueChange)="onVocabularyStrictness($event)"
+                  [valueText]="lengthAriaValue()"
+                  [describedBy]="lengthDescriptionIds()"
+                  (valueChange)="onSentenceCount($event)"
                 >
-                  @for (option of strictnessOptions; track option.value) {
-                    <mn-radio-card [value]="option.value" [inset]="true">
-                      <span mn-option-title>{{ option.label }}</span>
-                      <span mn-option-description>{{ option.description }}</span>
-                    </mn-radio-card>
+                  @if (showLengthWarning()) {
+                    <mn-notice id="mn-length-warning" tone="warning" icon="warning" role="status">
+                      Longer stories may ignore your vocabulary and grammar settings.
+                    </mn-notice>
                   }
-                </mn-radio-card-group>
-              </mn-disclosure>
+                </mn-range-field>
+                <mn-settings-row label="Vocabulary strictness" labelId="mn-story-strictness-label">
+                  <mn-select
+                    labelledBy="mn-story-strictness-label"
+                    testId="strictness-select"
+                    [options]="strictnessOptions"
+                    [value]="vocabularyStrictness()"
+                    [disabled]="disabled()"
+                    (valueChange)="onVocabularyStrictness($event)"
+                  />
+                </mn-settings-row>
+                <mn-settings-row
+                  label="Vocabulary"
+                  end="nav"
+                  link="/reading-level"
+                  fragment="words"
+                  testId="form-vocabulary"
+                  [summary]="snapshotSummary()"
+                  [queryParams]="sourceQuery"
+                  [state]="generateOriginState"
+                />
+                <mn-settings-row
+                  label="Grammar"
+                  end="nav"
+                  link="/reading-level"
+                  fragment="grammar"
+                  testId="form-grammar"
+                  [summary]="presetName()"
+                  [queryParams]="sourceQuery"
+                  [state]="generateOriginState"
+                />
+              </div>
 
               @if (defaultFeedback()) {
                 <p class="mn-hint" role="status">{{ defaultFeedback() }}</p>
               }
-
-              <ng-content select="[story-defaults]" />
-
-              <mn-facts data-testid="form-sources" [facts]="sources()" />
             </mn-card>
+
+            <ng-content select="[story-defaults]" />
           }
           @case (2) {
             <mn-story-direction [disabled]="disabled()" />
@@ -291,29 +286,8 @@ export class StoryFormComponent {
   readonly snapshotSummary = input.required<string>();
   readonly presetName = input.required<string>();
 
-  /** What the story is drawn from, each leading to the screen that changes it. */
-  protected readonly sources = computed((): readonly Fact[] => [
-    {
-      label: 'Words',
-      value: this.snapshotSummary(),
-      link: {
-        route: '/reading-level',
-        fragment: 'words',
-        queryParams: { from: 'generate' },
-        state: this.generateOriginState,
-      },
-    },
-    {
-      label: 'Grammar',
-      value: this.presetName(),
-      link: {
-        route: '/reading-level',
-        fragment: 'grammar',
-        queryParams: { from: 'generate' },
-        state: this.generateOriginState,
-      },
-    },
-  ]);
+  /** Where the vocabulary and grammar rows lead back from. */
+  protected readonly sourceQuery = { from: 'generate' };
   readonly ankiWordPriorityMode = input<AnkiWordPriorityMode>('uniform');
   readonly recentFocusSize = input<RecentFocusSize>(DEFAULT_RECENT_FOCUS_SIZE);
   readonly vocabularyStrictness = input<VocabularyStrictness>('standard');
@@ -329,9 +303,8 @@ export class StoryFormComponent {
   readonly preparationTargetsChanged = output<readonly PreparationLayer[]>();
 
   protected readonly stepNames = STEP_NAMES;
-  protected readonly strictnessLabels = STRICTNESS_LABELS;
   protected readonly strictnessOptions = STRICTNESS_OPTIONS;
-  protected readonly wordPriorityOptions: readonly SelectOption<AnkiWordPriorityMode>[] = [
+  protected readonly wordPriorityOptions: readonly RadioListOption<AnkiWordPriorityMode>[] = [
     {
       value: 'uniform',
       label: 'Evenly',
@@ -424,8 +397,8 @@ export class StoryFormComponent {
     }
   }
 
-  protected onVocabularyStrictness(value: VocabularyStrictness | undefined): void {
-    if (value !== undefined) {
+  protected onVocabularyStrictness(value: SelectValue): void {
+    if (value === 'relaxed' || value === 'standard' || value === 'strict') {
       this.vocabularyStrictnessChanged.emit(value);
     }
   }
