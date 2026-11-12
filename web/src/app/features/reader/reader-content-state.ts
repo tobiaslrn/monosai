@@ -78,7 +78,7 @@ function layerState(
     );
   }
   completed = Math.min(completed, reading.sentenceCount);
-  const completionNoun = layer === 'grammar' ? 'sentences analyzed' : 'sentences saved';
+  const completionNoun = layer === 'grammar' ? 'sentences analysed' : 'sentences saved';
   const completedDescription = `${formatCount(completed)} of ${formatCount(reading.sentenceCount)} ${completionNoun}`;
   const base = {
     layer,

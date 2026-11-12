@@ -153,7 +153,7 @@ describe('reader content state', () => {
       ),
     ).toMatchObject({
       label: 'Continue',
-      status: '2 of 4 sentences analyzed',
+      status: '2 of 4 sentences analysed',
     });
   });
 

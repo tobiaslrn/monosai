@@ -98,7 +98,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     // request rather than looking like zero completed work while the first
     // batch is in flight.
     await expect(grammarRow.getByRole('status')).toHaveText('Analysing…', { timeout: 5_000 });
-    await expect(grammarRow).not.toContainText(/0 of \d+ sentences analyzed/);
+    await expect(grammarRow).not.toContainText(/0 of \d+ sentences analysed/);
     await page.keyboard.press('Escape');
     await expect(panel).not.toBeVisible();
     await expect(trigger).toBeFocused();
@@ -107,7 +107,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
       .toBeGreaterThan(0);
     // Either report says the analysis is stored: a full set is Ready, and a
     // partial one counts what it has.
-    const analyzed = /^(Ready|\d+ of \d+ sentences analyzed)$/;
+    const analyzed = /^(Ready|\d+ of \d+ sentences analysed)$/;
     await trigger.click();
     await expect(panel.locator('[data-layer="grammar"] [role="status"]')).toHaveText(analyzed);
     await page.reload();

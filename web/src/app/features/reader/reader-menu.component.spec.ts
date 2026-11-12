@@ -223,7 +223,7 @@ describe('Story options', () => {
       ...ROW,
       layer: 'grammar',
       name: 'Grammar notes',
-      status: '0 of 3 sentences analyzed · Stopped',
+      status: '0 of 3 sentences analysed · Stopped',
       action: 'credit',
       label: 'OpenRouter credit',
       error: 'Out of credit.',
