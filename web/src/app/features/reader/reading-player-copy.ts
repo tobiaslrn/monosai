@@ -63,13 +63,13 @@ export function stoppedRunLine(
       return '';
     case 'cancelled':
       return progress.counts.requested === 0
-        ? 'Stopped.'
+        ? 'Stopped'
         : `${readyLine(availableCount, sentenceCount)} ${attemptLine(progress.counts)}`;
     case 'failed': {
       // A job that failed before it resolved what to send has no position to
       // report; claiming one produced "sentence 1 of 0".
       if (progress.counts.requested === 0) {
-        return 'Audio could not be prepared.';
+        return 'Audio could not be prepared';
       }
       const exhausted = progress.canRetry ? '' : exhaustedLine(progress.error);
       return `${readyLine(availableCount, sentenceCount)} ${attemptLine(progress.counts)}${exhausted}`;

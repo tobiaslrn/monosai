@@ -110,7 +110,7 @@ class FakeSetupProgressStore {
     id: 'vocabulary' as const,
     label: 'Your words',
     satisfied: false,
-    detail: 'Add words from Anki, a file or a pasted list.',
+    detail: 'Add words from Anki, a file or a pasted list',
     route: '/reading-level',
     actionLabel: 'Add words',
   });
@@ -118,7 +118,7 @@ class FakeSetupProgressStore {
     id: 'text-model' as const,
     label: 'Text model',
     satisfied: false,
-    detail: 'Add an OpenRouter key.',
+    detail: 'Add an OpenRouter key',
     route: '/settings',
     actionLabel: 'Open Settings',
   });
@@ -259,7 +259,7 @@ describe('LibraryPageComponent', () => {
     setup.words.update((check) => ({
       ...check,
       satisfied: true,
-      detail: '120 words are available.',
+      detail: '120 words available',
     }));
     const fixture = await render();
     const states = [...element(fixture).querySelectorAll('mn-checklist-step')].map((step) =>

@@ -73,10 +73,10 @@ describe('PreparationTargetsComponent', () => {
   });
 
   it.each([
-    ['incomplete' as const, 'Set up a voice.'],
-    ['untested' as const, 'Test your voice.'],
-    ['stale' as const, 'Test your voice again.'],
-    ['failed' as const, 'Fix and test your voice.'],
+    ['incomplete' as const, 'Set up a voice'],
+    ['untested' as const, 'Test your voice'],
+    ['stale' as const, 'Test your voice again'],
+    ['failed' as const, 'Fix and test your voice'],
   ])('names the %s voice configuration as the reason audio is unavailable', (readiness, reason) => {
     const page = render(['english'], readiness);
     const audio = switchFor(page, 'audio');

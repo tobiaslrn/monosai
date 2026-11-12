@@ -111,9 +111,9 @@ export class TextListSourceComponent {
   protected readonly requirements = computed(() => {
     const needsName = this.label().trim().length === 0;
     const needsWord = this.preview().entries.length === 0;
-    if (needsName && needsWord) return 'Needs a name and a word.';
-    if (needsName) return 'Needs a name.';
-    return 'Needs a word.';
+    if (needsName && needsWord) return 'Needs a name and a word';
+    if (needsName) return 'Needs a name';
+    return 'Needs a word';
   });
   protected readonly previewLabel = computed(() => textListPreviewLabel(this.preview()));
   protected readonly formatCountOf = formatCountOf;

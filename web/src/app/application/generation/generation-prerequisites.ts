@@ -39,17 +39,17 @@ export interface PrerequisiteInput {
 function textModelDetail(input: PrerequisiteInput): string {
   switch (input.textModelReadiness) {
     case 'ready':
-      return input.structuredOutput === null ? 'Test the text model again.' : 'Text model ready';
+      return input.structuredOutput === null ? 'Test the text model again' : 'Text model ready';
     case 'no-credential':
-      return 'Add an OpenRouter key.';
+      return 'Add an OpenRouter key';
     case 'incomplete':
-      return 'Choose a text model.';
+      return 'Choose a text model';
     case 'untested':
-      return 'Test the text model.';
+      return 'Test the text model';
     case 'stale':
-      return 'Test the text model again.';
+      return 'Test the text model again';
     case 'failed':
-      return input.textModelFailure ?? 'The last test failed.';
+      return input.textModelFailure ?? 'The last test failed';
   }
 }
 
@@ -57,7 +57,7 @@ function vocabularyDetail(snapshot: VocabularySnapshot | null, hasSources: boole
   if (snapshot === null) {
     return hasSources
       ? 'Your words have not been read yet. Refresh a word source.'
-      : 'Add words from Anki, a file or a pasted list.';
+      : 'Add words from Anki, a file or a pasted list';
   }
   if (snapshot.uniqueEntryCount < GENERATION_SNAPSHOT_MINIMUM) {
     return `Stories need at least ${formatCountOf(GENERATION_SNAPSHOT_MINIMUM, 'word')}. You have ${formatCountOf(
@@ -65,8 +65,7 @@ function vocabularyDetail(snapshot: VocabularySnapshot | null, hasSources: boole
       'word',
     )}.`;
   }
-  const verb = snapshot.uniqueEntryCount === 1 ? 'is' : 'are';
-  return `${formatCountOf(snapshot.uniqueEntryCount, 'word')} ${verb} available.`;
+  return `${formatCountOf(snapshot.uniqueEntryCount, 'word')} available`;
 }
 
 /**

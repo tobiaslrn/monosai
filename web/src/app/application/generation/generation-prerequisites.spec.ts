@@ -60,10 +60,10 @@ function checkFor(
 describe('prerequisiteChecks', () => {
   it('names missing keys, models, unread sources, and saved failure reasons precisely', () => {
     expect(checkFor('text-model', { textModelReadiness: 'no-credential' }).detail).toBe(
-      'Add an OpenRouter key.',
+      'Add an OpenRouter key',
     );
     expect(checkFor('text-model', { textModelReadiness: 'incomplete' }).detail).toBe(
-      'Choose a text model.',
+      'Choose a text model',
     );
     expect(
       checkFor('text-model', {
@@ -77,12 +77,10 @@ describe('prerequisiteChecks', () => {
     expect(checkFor('vocabulary', { snapshot: null, hasSources: true }).detail).toContain(
       'have not been read',
     );
-    expect(checkFor('vocabulary', { snapshot: snapshot(73) }).detail).toBe(
-      '73 words are available.',
-    );
+    expect(checkFor('vocabulary', { snapshot: snapshot(73) }).detail).toBe('73 words available');
     expect(checkFor('vocabulary', { snapshot: snapshot(1) }).detail).toContain('have 1 word.');
     expect(checkFor('vocabulary', { snapshot: snapshot(1000) }).detail).toContain(
-      '1,000 words are available.',
+      '1,000 words available',
     );
   });
 

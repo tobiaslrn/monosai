@@ -15,8 +15,8 @@ read past them every time.
 
 - Every string must earn its place: if nothing changes for the learner when it is gone, it goes
   (R48). One extra sentence is kept only for real risk (R51).
-- The first run keeps its headline and the first-steps card, with no subline and no privacy
-  foot. Pasting text is a plain secondary action. Help opens on its topic shelf.
+- The first run keeps its headline and the first-steps card, with no subline, no privacy
+  foot and no foot band at all. Pasting text is a plain secondary action. Help opens on its topic shelf.
 - Errors are a title and one action. Length budgets and form rules are R50 to R55 in
   `docs/design/rules.md`; spelling is British.
 

@@ -72,7 +72,7 @@ export class VocabularyCardComponent {
   /** Said only when the count alone would mislead. */
   protected readonly detail = computed(() => {
     if (this.history.lastFailure() !== null) {
-      return 'Words could not be read.';
+      return 'Words could not be read';
     }
     if (
       this.history.loaded() &&

@@ -324,8 +324,8 @@ export class LibraryPageComponent {
     });
     void this.store.load();
     this.setup.load();
-    // The first steps carry the guide in their own foot, so the page-top
-    // offer of it would be the same thing twice.
+    // The bar already carries Help, so the page-top offer of it would be the
+    // same thing twice beside the first steps.
     effect(() => {
       if (this.showsFirstSteps()) {
         this.intro?.absorb();

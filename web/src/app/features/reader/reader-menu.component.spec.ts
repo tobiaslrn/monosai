@@ -24,7 +24,7 @@ function waitingOnKey(layer: ReaderContentState['layer']): ReaderContentState {
     ...ROW,
     layer,
     name: layer,
-    status: 'Add an OpenRouter key.',
+    status: 'Add an OpenRouter key',
     action: layer === 'audio' ? null : 'settings',
     label: layer === 'audio' ? '' : 'Open Settings',
     setup: true,
@@ -79,7 +79,7 @@ describe('Story options', () => {
     ]);
 
     const notice = element.querySelector('[data-testid="shared-setup"]');
-    expect(notice?.textContent).toContain('Add an OpenRouter key.');
+    expect(notice?.textContent).toContain('Add an OpenRouter key');
     expect(notice?.querySelector('a')?.getAttribute('href')).toBe('/settings');
     expect(element.querySelectorAll('a[href="/settings"]')).toHaveLength(1);
     // The rows say the state in their own line, with no pill beside it.
@@ -96,7 +96,7 @@ describe('Story options', () => {
 
     expect(element.querySelector('[data-testid="shared-setup"]')).toBeNull();
     expect(element.querySelector('[data-layer] .mn-settings-row__details')?.textContent).toContain(
-      'Add an OpenRouter key.',
+      'Add an OpenRouter key',
     );
   });
 

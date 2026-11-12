@@ -257,7 +257,7 @@ export class VoicePageComponent {
         const failure = this.tts.testFailure();
         return {
           tone: 'danger',
-          text: failure === null ? 'Test failed.' : `Test failed. ${failure.message}`,
+          text: failure === null ? 'Test failed' : `Test failed. ${failure.message}`,
         };
       }
       case 'no-credential':

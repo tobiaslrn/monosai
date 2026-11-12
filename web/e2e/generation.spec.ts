@@ -496,7 +496,7 @@ test.describe('generating a story', () => {
     expect(atSave['translations']).toBe(0);
     expect(atSave['grammarAnalyses']).toBe(0);
     await expect(page.getByTestId('saved-preparation')).toContainText(
-      'Preparing English and grammar notes.',
+      'Preparing English and grammar notes',
     );
 
     await page.getByTestId('open-story').click();

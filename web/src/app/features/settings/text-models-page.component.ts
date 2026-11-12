@@ -257,7 +257,7 @@ export class TextModelsPageComponent {
       this.text.routeReadiness(task),
       this.text.action() === 'testing',
       this.text.routeFailure(task),
-      'Ready.',
+      'Ready',
     );
   }
 
@@ -424,7 +424,7 @@ export class TextModelsPageComponent {
       case 'failed':
         return {
           tone: 'danger',
-          text: failure === null ? 'Test failed.' : `Test failed. ${failure.message}`,
+          text: failure === null ? 'Test failed' : `Test failed. ${failure.message}`,
           action: 'Test again',
         };
       case 'no-credential':

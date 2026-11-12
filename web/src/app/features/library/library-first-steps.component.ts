@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SetupProgressStore } from '../../application/generation/setup-progress.store';
-import { HelpIntroService } from '../../core/layout/help-intro.service';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { formatCountOf } from '../../domain/shared/locale';
 import { GENERATION_SNAPSHOT_MINIMUM } from '../../domain/vocabulary/snapshot';
@@ -75,23 +74,11 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
         <mn-icon name="add" />
         <span>Paste Japanese text</span>
       </a>
-
-      <a
-        mn-checklist-foot
-        mnButton="ghost"
-        [edge]="'start'"
-        routerLink="/help"
-        [state]="libraryOriginState"
-        (click)="intro?.finish('dismiss')"
-        >Help</a
-      >
     </mn-checklist>
   `,
 })
 export class LibraryFirstStepsComponent {
   private readonly setup = inject(SetupProgressStore);
-  /** Reading the guide from here counts as having been offered it. */
-  protected readonly intro = inject(HelpIntroService, { optional: true });
   protected readonly libraryOriginState = navigationOriginState('/library');
 
   private readonly wordsDone = computed(() => this.setup.words().satisfied);

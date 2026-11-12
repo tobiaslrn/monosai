@@ -20,7 +20,7 @@ let nextChecklistId = 0;
 
 /**
  * A short list of first steps in one card: a heading, numbered step rows, an
- * optional quieter way round them, and a foot.
+ * optional quieter way round them.
  *
  *   <mn-checklist heading="Get started">
  *     <mn-checklist-step [number]="1" heading="Add your words" state="done" link="/words">
@@ -32,7 +32,6 @@ let nextChecklistId = 0;
  *       After steps 1 and 2
  *     </mn-checklist-step>
  *     <a mn-checklist-aside mnButton="ghost" routerLink="/add">Or paste text</a>
- *     <a mn-checklist-foot mnButton="ghost" routerLink="/help">Help</a>
  *   </mn-checklist>
  *
  * The state is shown, not narrated: a finished step wears a tick and quiet
@@ -53,7 +52,6 @@ let nextChecklistId = 0;
       <ng-content select="mn-checklist-step" />
     </ol>
     <div class="mn-checklist__aside"><ng-content select="[mn-checklist-aside]" /></div>
-    <div class="mn-checklist__foot"><ng-content select="[mn-checklist-foot]" /></div>
   `,
   styles: `
     @use '../../../styles/motion' as motion;
@@ -100,25 +98,7 @@ let nextChecklistId = 0;
       text-wrap: balance;
     }
 
-    /*
-     * Side by side where both fit. Where they do not, they stack on one edge:
-     * the guide link already carries a touch target's height of its own, so
-     * the rows add no gap on top of it.
-     */
-    mn-checklist > .mn-checklist__foot {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0 var(--stack-gap);
-      align-items: center;
-      justify-content: space-between;
-      padding: var(--row-inset-block) var(--surface-inset);
-      border-top: 1px solid var(--border-subtle);
-      background: var(--surface-sunken-faint);
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    mn-checklist > :is(.mn-checklist__aside, .mn-checklist__foot):empty {
+    mn-checklist > .mn-checklist__aside:empty {
       display: none;
     }
   `,

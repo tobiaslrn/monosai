@@ -14,10 +14,10 @@ test.describe('first-use Help', () => {
     await alpha.getByRole('button', { name: 'Continue' }).click();
     await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    // The steps carry the guide themselves, so the page-top offer of it is not shown too.
+    // The bar carries Help, so the page-top offer of it is not shown beside the steps.
     const steps = page.getByRole('region', { name: 'Get started' });
     await expect(steps).toBeVisible();
-    await expect(steps.getByRole('link', { name: 'Help' })).toBeVisible();
+    await expect(steps.getByRole('link', { name: 'Help' })).toHaveCount(0);
     await expect(page.getByRole('complementary', { name: 'Help' })).toHaveCount(0);
     await expectNoSeriousAccessibilityViolations(page);
     // What the steps say is missing is what Generate blocks on.
@@ -56,21 +56,6 @@ test.describe('first-use Help', () => {
     await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
     await page.reload();
     await expect(dialog).toHaveCount(0);
-  });
-
-  test('reading the guide from the first steps counts as the offer @smoke', async ({ page }) => {
-    await page.goto('./#/library');
-    await page
-      .getByRole('alertdialog', { name: 'Monosai is in alpha' })
-      .getByRole('button', { name: 'Continue' })
-      .click();
-    await page
-      .getByRole('region', { name: 'Get started' })
-      .getByRole('link', { name: 'Help' })
-      .click();
-    await expect(page.getByRole('heading', { name: 'Help', level: 1 })).toBeVisible();
-    await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
-    await expect(page.getByRole('complementary', { name: 'Help' })).toHaveCount(0);
   });
 
   test('opens the full guide and persists the choice @smoke', async ({ page }) => {

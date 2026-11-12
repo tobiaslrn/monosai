@@ -504,7 +504,7 @@ export class GeneratePageComponent implements OnChanges {
       return kind === 'queued' || kind === 'preparing' || kind === 'running';
     });
     const named = working.map((target) => PREPARATION_LABELS[target]);
-    return named.length === 0 ? null : `Preparing ${formatList(named)}.`;
+    return named.length === 0 ? null : `Preparing ${formatList(named)}`;
   });
 
   /**

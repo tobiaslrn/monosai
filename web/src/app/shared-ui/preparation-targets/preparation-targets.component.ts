@@ -15,15 +15,15 @@ export function audioPreparationUnavailableReason(
 ): string {
   switch (readiness) {
     case 'no-credential':
-      return 'Add an OpenRouter key.';
+      return 'Add an OpenRouter key';
     case 'incomplete':
-      return 'Set up a voice.';
+      return 'Set up a voice';
     case 'untested':
-      return 'Test your voice.';
+      return 'Test your voice';
     case 'stale':
-      return 'Test your voice again.';
+      return 'Test your voice again';
     case 'failed':
-      return 'Fix and test your voice.';
+      return 'Fix and test your voice';
   }
 }
 

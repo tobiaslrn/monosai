@@ -222,7 +222,7 @@ describe('VoicePageComponent', () => {
     await tts.test();
     detect();
 
-    expect(readiness(element)).toContain('Test failed.');
+    expect(readiness(element)).toContain('Test failed');
   });
 
   /**

@@ -533,7 +533,7 @@ export class SourcePageComponent {
 
   protected async setAutomaticSync(id: VocabularySourceId, automatic: boolean): Promise<void> {
     await this.store.setAutomaticSync(id, automatic);
-    this.localAnnouncement.set(automatic ? '' : 'Not refreshed automatically.');
+    this.localAnnouncement.set(automatic ? '' : 'Not refreshed automatically');
   }
 
   protected async syncNow(source: AnkiVocabularySource): Promise<void> {
@@ -616,7 +616,7 @@ export class SourcePageComponent {
     await this.refresh.refreshAndCommit();
     if (this.refresh.state().kind === 'complete') {
       this.changeError.set(null);
-      this.localAnnouncement.set('Updated.');
+      this.localAnnouncement.set('Updated');
       await this.reload();
     }
   }

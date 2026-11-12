@@ -702,7 +702,7 @@ describe('ReadingPlayerComponent', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
 
-      expect(said(element)).toContain('Audio could not be prepared.');
+      expect(said(element)).toContain('Audio could not be prepared');
       expect(said(element)).not.toContain('of 0');
     });
 

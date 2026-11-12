@@ -67,7 +67,7 @@ describe('stoppedRunLine', () => {
     const counts = { total: 13, requested: 0, completed: 0, failed: 0 };
 
     expect(stoppedRunLine({ kind: 'cancelled', readingId: READING, counts }, 0, 13)).toBe(
-      'Stopped.',
+      'Stopped',
     );
   });
 
@@ -88,7 +88,7 @@ describe('stoppedRunLine', () => {
       canRetry: true,
     };
 
-    expect(stoppedRunLine(progress, 0, 13)).toBe('Audio could not be prepared.');
+    expect(stoppedRunLine(progress, 0, 13)).toBe('Audio could not be prepared');
   });
 
   it('explains why a retry is no longer offered', () => {

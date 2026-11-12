@@ -745,7 +745,7 @@ describe('GeneratePageComponent', () => {
     const page = fixture.nativeElement as HTMLElement;
     const line = (): string | undefined =>
       page.querySelector('[data-testid="saved-preparation"]')?.textContent.trim();
-    expect(line()).toBe('Preparing English and grammar notes.');
+    expect(line()).toBe('Preparing English and grammar notes');
 
     laneProgress.set({ kind: 'idle' });
     fixture.detectChanges();

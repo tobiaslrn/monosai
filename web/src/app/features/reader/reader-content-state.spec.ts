@@ -159,7 +159,7 @@ describe('reader content state', () => {
 
   it('reports voice configuration without repeating the transport link', () => {
     expect(readerContentState(READING, 'audio', IDLE, 'untested', true)).toMatchObject({
-      status: 'Test your voice.',
+      status: 'Test your voice',
       action: null,
       label: '',
     });

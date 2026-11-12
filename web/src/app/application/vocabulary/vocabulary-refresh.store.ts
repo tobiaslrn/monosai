@@ -379,7 +379,7 @@ export class VocabularyRefreshStore {
       return;
     }
     this.stateSignal.set(IDLE);
-    this.announce('Discarded.');
+    this.announce('Discarded');
   }
 
   cancel(): void {

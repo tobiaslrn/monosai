@@ -294,7 +294,7 @@ describe('StoryFormComponent', () => {
         option.querySelector('.mn-dropdown-row__description')?.textContent,
       ]),
     ).toEqual([
-      ['Relaxed', 'Keep the first draft.'],
+      ['Relaxed', 'Keep the first draft'],
       ['Standard', 'Replace new words once'],
       ['Strict', 'Replace new words twice'],
     ]);

@@ -63,7 +63,7 @@ const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
 };
 
 const STRICTNESS_DESCRIPTIONS: Readonly<Record<VocabularyStrictness, string>> = {
-  relaxed: 'Keep the first draft.',
+  relaxed: 'Keep the first draft',
   standard: 'Replace new words once',
   strict: 'Replace new words twice',
 };

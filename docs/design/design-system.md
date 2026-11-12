@@ -1393,9 +1393,9 @@ Four exceptions:
   cannot be done yet is dashed, is not a link, and says what it needs in a few
   words as its state rather than as advice. The steps are read from the same checks that
   block Generate, so the two never disagree. Pasting text needs no setup and sits
-  beside the steps as a plain quiet secondary action; the card's foot holds only the
-  Help link, so the page-top offer of Help is not shown beside it. No reassurance or
-  privacy line goes on the card. While the card is there,
+  beside the steps as a plain quiet secondary action. The card has no foot: the bar
+  already carries Help, so the page-top offer of Help is not shown beside the card either.
+  No reassurance or privacy line goes on the card. While the card is there,
   the shelf's two ways in are not: two ways in with no order is what the card
   replaced. It ends, like any empty state, the moment there is a story, or
   once a story could be written, when the two ways in are the primary action again.
