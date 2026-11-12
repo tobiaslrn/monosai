@@ -29,16 +29,16 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
   template: `
     <form (submit)="save($event)" data-testid="text-source-editor">
       <mn-card>
-        <mn-field label="List name (required)">
+        <mn-field label="List name">
           <input
             type="text"
             maxlength="80"
             [value]="label()"
             (input)="setLabel($event)"
-            placeholder="For example, Genki vocabulary"
+            placeholder="Genki vocabulary"
           />
         </mn-field>
-        <mn-field label="Vocabulary (required)">
+        <mn-field label="Words">
           <textarea
             rows="7"
             [value]="content()"
@@ -111,9 +111,9 @@ export class TextListSourceComponent {
   protected readonly requirements = computed(() => {
     const needsName = this.label().trim().length === 0;
     const needsWord = this.preview().entries.length === 0;
-    if (needsName && needsWord) return 'Add a list name and at least one word to continue.';
-    if (needsName) return 'Add a list name to continue.';
-    return 'Add at least one word to continue.';
+    if (needsName && needsWord) return 'Needs a name and a word.';
+    if (needsName) return 'Needs a name.';
+    return 'Needs a word.';
   });
   protected readonly previewLabel = computed(() => textListPreviewLabel(this.preview()));
   protected readonly formatCountOf = formatCountOf;
@@ -144,7 +144,7 @@ export class TextListSourceComponent {
             content: parsed.normalizedContent,
           });
     if (stored === null) {
-      this.editorError.set('The source could not be saved. Your current vocabulary is unchanged.');
+      this.editorError.set('Could not save. Your words are unchanged.');
       this.saving.set(false);
       return;
     }

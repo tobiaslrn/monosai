@@ -126,17 +126,17 @@ interface VirtualVocabularyEntry {
 
       @switch (store.state()) {
         @case ('loading') {
-          <p class="mn-hint" role="status">Loading vocabulary…</p>
+          <p class="mn-hint" role="status">Loading…</p>
         }
         @case ('unavailable') {
           <mn-notice tone="error" role="alert">
-            <p>Vocabulary is unavailable.</p>
+            <p>Could not load words.</p>
             <button mn-notice-action mnButton type="button" (click)="reload()">Try again</button>
           </mn-notice>
         }
         @case ('failed') {
           <mn-notice tone="error" role="alert">
-            <p>Vocabulary could not be loaded.</p>
+            <p>Could not load words.</p>
             <button mn-notice-action mnButton type="button" (click)="reload()">Try again</button>
           </mn-notice>
         }

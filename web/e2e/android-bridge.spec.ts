@@ -20,7 +20,7 @@ test('connects, persists and refreshes the Android provider @smoke @mobile', asy
   await openVocabulary(page);
   await connectAnki(page);
   await expect(page.getByRole('region', { name: 'Review Anki source' })).toContainText('ねこ');
-  await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm words', exact: true }).click();
   await expect(page.getByTestId('words-standing')).toHaveText('1 word');
 
   const row = page.getByTestId('source-row').filter({ hasText: 'Core Japanese' });
@@ -59,8 +59,8 @@ test('says what to install when the bridge is not running @smoke @mobile', async
     const failure = page.getByTestId('anki-connect-failed');
     await expect(failure).toBeVisible({ timeout: 30_000 });
     await expect(failure).toContainText('bridge is not running');
-    await expect(failure.getByRole('link', { name: /Download the app/ })).toBeVisible();
-    await expect(failure.getByRole('link', { name: /see the source/ })).toBeVisible();
+    await expect(failure.getByRole('link', { name: /Get the bridge/ })).toBeVisible();
+    await expect(failure.getByRole('link', { name: /View the source/ })).toBeVisible();
     await expect(failure).toContainText('anki/bridge-not-running');
     // No port on Android: the bridge fixes its own, so offering one is a dead end.
     await expect(page.getByTestId('anki-connect-port')).toHaveCount(0);

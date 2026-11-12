@@ -49,7 +49,7 @@ async function addTextList(page: Page, name: string, content: string): Promise<v
 
 async function addLiveAnki(page: Page, confirm = true): Promise<void> {
   await connectAnki(page);
-  if (confirm) await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
+  if (confirm) await page.getByRole('button', { name: 'Confirm words', exact: true }).click();
 }
 
 function ankiAnswers(expressions: readonly string[], meanings = expressions.map(() => 'meaning')) {
@@ -233,13 +233,11 @@ test.describe('vocabulary', () => {
     });
 
     await addLiveAnki(page, false);
-    await expect(
-      page.getByRole('button', { name: 'Confirm vocabulary', exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm words', exact: true })).toBeVisible();
     expect((await readSnapshots(page))[0]!.uniqueEntryCount).toBe(3);
     await expect(page.getByTestId('source-row')).toHaveCount(1);
     await expect(page.getByRole('region', { name: 'Review Anki source' })).toContainText('食べる');
-    await page.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
+    await page.getByRole('button', { name: 'Confirm words', exact: true }).click();
     await expect(page.getByTestId('words-standing')).toHaveText('4 words', {
       timeout: 60_000,
     });
@@ -293,7 +291,7 @@ test.describe('vocabulary', () => {
     const draft = page.getByRole('region', { name: 'Review Anki source' });
     await chooseOption(draft.getByRole('combobox', { name: 'Meaning field' }), 'Meaning');
     await draft.getByRole('button', { name: 'Preview vocabulary', exact: true }).click();
-    await draft.getByRole('button', { name: 'Confirm vocabulary', exact: true }).click();
+    await draft.getByRole('button', { name: 'Confirm words', exact: true }).click();
     await expect(page.getByTestId('words-standing')).toHaveText('3 words', {
       timeout: 60_000,
     });
@@ -436,7 +434,7 @@ test.describe('vocabulary', () => {
 
     await openSource(page, 'Course words');
     await page.getByTestId('remove-source').click();
-    await page.getByRole('button', { name: 'Remove permanently' }).click();
+    await page.getByRole('button', { name: 'Remove' }).click();
     await expect(page.getByTestId('no-sources')).toBeVisible({ timeout: 60_000 });
     await expectNoSeriousAccessibilityViolations(page);
   });
@@ -563,7 +561,7 @@ test.describe('vocabulary', () => {
 
     await openSource(page, 'Course words');
     await page.getByTestId('remove-source').click();
-    await page.getByRole('button', { name: 'Remove permanently' }).click();
+    await page.getByRole('button', { name: 'Remove' }).click();
     // The last source is gone, so this is the standing of a fresh install
     // rather than a source that happens to contribute nothing.
     await expect(page.getByTestId('words-standing')).toHaveText('No words yet', {
@@ -574,7 +572,7 @@ test.describe('vocabulary', () => {
     await page.getByRole('button', { name: 'Story options', exact: true }).click();
     const notice = page.getByTestId('reader-vocabulary-notice');
     await expect(notice).toBeVisible({ timeout: 60_000 });
-    await expect(notice).toContainText('marked as new');
+    await expect(notice).toContainText('marked new');
     await expect(notice.getByRole('link', { name: 'What you can read' })).toBeVisible();
   });
 
@@ -586,7 +584,7 @@ test.describe('vocabulary', () => {
     await expect(alert).toContainText('does not record which cards were reviewed', {
       timeout: 30_000,
     });
-    await expect(alert).toContainText('current vocabulary and other sources are unchanged');
+    await expect(alert).toContainText('Your words are unchanged');
     await expect(alert.getByRole('link', { name: /how to export/ })).toBeVisible();
     await expectNoSeriousAccessibilityViolations(page);
   });

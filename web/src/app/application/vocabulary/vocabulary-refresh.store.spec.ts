@@ -302,7 +302,7 @@ describe('VocabularyRefreshStore', () => {
       expect(state.error.code).toBe('quota');
       expect(beds.vocabulary.activeSnapshotId).toBe(previous);
       expect(beds.vocabulary.snapshots).toHaveLength(0);
-      expect(store.announcement()).toContain('previous one is unchanged');
+      expect(store.announcement()).toContain('Nothing changed');
     });
 
     it('discards a prepared snapshot without writing it', async () => {

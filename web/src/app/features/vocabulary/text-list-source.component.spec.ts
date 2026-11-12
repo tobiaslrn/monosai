@@ -102,7 +102,7 @@ describe('TextListSourceComponent', () => {
     element.querySelector('form')?.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(element.querySelector('[role="alert"]')?.textContent).toContain('could not be saved');
+    expect(element.querySelector('[role="alert"]')?.textContent).toContain('Could not save');
 
     fixture.componentInstance.source.set(SECOND);
     fixture.detectChanges();

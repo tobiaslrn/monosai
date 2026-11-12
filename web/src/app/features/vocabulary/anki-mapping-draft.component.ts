@@ -22,17 +22,14 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
   template: `
     @if (store.sampling()) {
       <mn-stack align="start">
-        <p role="status">Checking which fields contain Japanese…</p>
+        <p role="status">Checking fields…</p>
         <button mnButton type="button" (click)="store.cancel()">Cancel</button>
       </mn-stack>
     }
     @if (store.selecting()) {
       <mn-card role="region" heading="Review Anki source">
         @if (!store.suggested()) {
-          <p class="mn-hint">
-            Monosai could not tell which field holds the Japanese. Choose the deck, note type, and
-            expression field.
-          </p>
+          <p class="mn-hint">Choose the deck, note type and expression field.</p>
         }
         <div class="mn-settings-group mn-settings-bleed">
           <mn-settings-row label="Deck" labelId="mn-anki-map-1-label">
@@ -81,7 +78,6 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
             <p class="mn-hint" role="status">{{ warning }}</p>
           }
           <p lang="ja">{{ store.sampleWords().join(' · ') || 'No reviewed words found.' }}</p>
-          <p class="mn-hint">Your vocabulary stays unchanged until you confirm.</p>
         }
         <mn-cluster justify="end">
           <button
@@ -94,7 +90,7 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
           </button>
           @if (store.preview()) {
             <button type="button" mnButton="primary" (click)="store.confirm()">
-              Confirm vocabulary
+              Confirm words
             </button>
           } @else {
             <button

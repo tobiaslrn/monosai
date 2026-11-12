@@ -306,7 +306,7 @@ export class PackageImportStore {
     this.operation += 1;
     this.releaseProvider();
     this.stateSignal.set({ kind: 'cancelled' });
-    this.announce('Import cancelled. Your vocabulary is unchanged.');
+    this.announce('Cancelled. Your words are unchanged.');
   }
 
   /** Clears a finished import so the panel stops showing it. */
@@ -519,7 +519,7 @@ export class PackageImportStore {
     this.controller = null;
     this.releaseProvider();
     this.stateSignal.set({ kind: 'cancelled' });
-    this.announce('Import cancelled. Your vocabulary is unchanged.');
+    this.announce('Cancelled. Your words are unchanged.');
   }
 
   private releaseProvider(): void {

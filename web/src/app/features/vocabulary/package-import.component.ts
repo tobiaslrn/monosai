@@ -60,7 +60,7 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
         }
         @case ('cancelled') {
           <mn-card data-testid="package-import-cancelled">
-            <p>Import cancelled. Your vocabulary is unchanged.</p>
+            <p>Cancelled. Your words are unchanged.</p>
             <mn-cluster>
               <button type="button" mnButton (click)="store.dismiss()">Dismiss</button>
             </mn-cluster>
@@ -71,13 +71,14 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
             <mn-notice tone="error">
               <p>{{ current.error.message }}</p>
               <p>
-                Your current vocabulary and other sources are unchanged.
+                Your words are unchanged.
                 @if (!current.canRetry) {
-                  Export the deck from Anki or AnkiDroid with scheduling information included, then
-                  add it again —
-                  <a [href]="links.ankiExporting" target="_blank" rel="noopener noreferrer"
+                  Export again with scheduling information (<a
+                    [href]="links.ankiExporting"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     >how to export</a
-                  >.
+                  >).
                 }
               </p>
             </mn-notice>
@@ -99,10 +100,7 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
         @case ('selecting') {
           <mn-card data-testid="package-import-selection">
             <h3 #selectionHeading tabindex="-1">Choose what to import</h3>
-            <p class="mn-hint">
-              Monosai could not tell what this package should become, so nothing has been imported
-              yet.
-            </p>
+            <p class="mn-hint">Choose what to import.</p>
 
             <div class="mn-settings-group mn-settings-bleed">
               @if (current.plan.deckOptions.length > 1) {
@@ -174,7 +172,7 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
                 (click)="store.confirm()"
                 data-testid="package-import-confirm"
               >
-                Import vocabulary
+                Import
               </button>
               <button type="button" mnButton (click)="store.cancel()">Cancel</button>
             </mn-cluster>
@@ -206,13 +204,13 @@ export class PackageImportComponent {
     const state = this.state();
     switch (state.kind) {
       case 'inspecting':
-        return 'Reading the Anki package…';
+        return 'Reading package…';
       case 'importing':
         return state.examined > 0
-          ? `Importing ${String(state.examined)} reviewed notes…`
-          : 'Importing reviewed notes…';
+          ? `Importing ${String(state.examined)} notes…`
+          : 'Importing notes…';
       case 'committing':
-        return 'Saving your vocabulary…';
+        return 'Saving…';
       default:
         return '';
     }

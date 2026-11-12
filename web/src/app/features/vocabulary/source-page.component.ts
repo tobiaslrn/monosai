@@ -124,7 +124,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
               [disabled]="busy()"
               (checkedChange)="setAutomaticSync(source.id, $event)"
             >
-              Keep it up to date
+              Refresh automatically
             </mn-switch-row>
             <mn-settings-row
               action="accent"
@@ -424,7 +424,7 @@ export class SourcePageComponent {
     if (source.kind === 'text-list') {
       return '';
     }
-    return `Reading the ${source.expressionFieldName} field of ${source.noteTypeName}; meaning ${source.meaningFieldName ?? 'not mapped'}`;
+    return `${source.expressionFieldName} field of ${source.noteTypeName} · meaning ${source.meaningFieldName ?? 'not mapped'}`;
   }
 
   /** Whether the mapping controls have a live catalog to offer values from. */
@@ -527,19 +527,13 @@ export class SourcePageComponent {
   protected async setIncluded(id: VocabularySourceId, included: boolean): Promise<void> {
     await this.store.setIncluded(id, included);
     await this.rebuildAfterSourceChange(
-      included
-        ? 'These words are counted again.'
-        : 'These words are no longer counted. The source stays, and its words come back when you count it again.',
+      included ? 'These words are counted again.' : 'Words not counted. The source stays.',
     );
   }
 
   protected async setAutomaticSync(id: VocabularySourceId, automatic: boolean): Promise<void> {
     await this.store.setAutomaticSync(id, automatic);
-    this.localAnnouncement.set(
-      automatic
-        ? 'Monosai will read this source on its own.'
-        : 'Monosai will not read this source on its own. Its words stay in your vocabulary.',
-    );
+    this.localAnnouncement.set(automatic ? '' : 'Not refreshed automatically.');
   }
 
   protected async syncNow(source: AnkiVocabularySource): Promise<void> {
@@ -598,10 +592,10 @@ export class SourcePageComponent {
     });
     const confirmed = await openConfirmDialog(this.dialog, {
       title: plan.title,
-      message: 'This cannot be undone. It permanently removes:',
+      message: 'This cannot be undone. It removes:',
       details: plan.removes,
       footnote: `${startSentence(formatList(plan.preserves))} are not affected. To keep the source but leave its words out, turn off "Count these words" instead.`,
-      confirmLabel: 'Remove permanently',
+      confirmLabel: 'Remove',
       cancelLabel: 'Keep it',
       tone: 'danger',
     });
@@ -622,7 +616,7 @@ export class SourcePageComponent {
     await this.refresh.refreshAndCommit();
     if (this.refresh.state().kind === 'complete') {
       this.changeError.set(null);
-      this.localAnnouncement.set('Updated what this source reads.');
+      this.localAnnouncement.set('Updated.');
       await this.reload();
     }
   }

@@ -5,28 +5,24 @@ import { ANKI_LINKS } from './anki-links';
 /**
  * What the learner is told about one failure.
  *
- * Every failure has to say what failed, what did not fail, whether anything was
- * saved, a primary next action, and a way out. Splitting those into fields
- * rather than one sentence is what stops a variant from quietly losing one of
- * them.
+ * Every failure is a title, one next action, and the one safety line.
+ * Splitting those into fields rather than one sentence is what stops a variant
+ * from quietly losing one of them.
  */
 export interface AnkiErrorCopy {
   readonly heading: string;
-  readonly whatFailed: string;
   /** Always reassuring: no failure here can touch stored vocabulary. */
   readonly whatDidNot: string;
   readonly primaryAction: string;
-  readonly escape: string;
 }
 
 /** True for every variant: nothing is written until a refresh is confirmed. */
-export const NOTHING_SAVED = 'Your vocabulary is unchanged.';
+export const NOTHING_SAVED = 'Your words are unchanged.';
 
-const USE_PACKAGE = 'Export a package from Anki and import it here instead.';
 const TRY_AGAIN = 'Try again.';
 
 /**
- * English for all every Anki failure.
+ * English for every Anki failure.
  *
  * The specification requires the UI to preserve every distinction the error
  * model makes, so this is exhaustive by type: adding a variant to
@@ -39,195 +35,137 @@ const TRY_AGAIN = 'Try again.';
 export const ANKI_ERROR_COPY: Record<AnkiErrorCode, AnkiErrorCopy> = {
   'ankidroid-not-installed': {
     heading: 'AnkiDroid was not found',
-    whatFailed: 'The bridge could not find AnkiDroid on this device.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Get AnkiDroid 2.24 or newer, open your collection, then connect again.',
-    escape: USE_PACKAGE,
+    primaryAction: 'Install AnkiDroid 2.24 or newer and open it.',
   },
   'ankidroid-permission-denied': {
     heading: 'The bridge needs access to AnkiDroid',
-    whatFailed: 'AnkiDroid has not granted the bridge access to your collection.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Open Monosai Bridge and grant AnkiDroid access, then connect again.',
-    escape: USE_PACKAGE,
+    primaryAction: 'Grant access in Monosai Bridge.',
   },
   'not-running': {
     heading: 'Anki is not answering',
-    whatFailed: 'Monosai could not reach AnkiConnect on this computer.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction:
-      'Install and enable the AnkiConnect add-on in Anki, keep Anki open on this computer, then connect again.',
-    escape: USE_PACKAGE,
+    primaryAction: 'Open Anki with the AnkiConnect add-on.',
   },
   'bridge-not-running': {
     heading: 'The Anki bridge is not answering',
-    whatFailed: 'Monosai could not reach an AnkiConnect-compatible bridge on this device.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Start the bridge outside Monosai, then test the connection again.',
-    escape: USE_PACKAGE,
+    primaryAction: 'Start the bridge.',
   },
   'bridge-too-old': {
     heading: 'This bridge is too old',
-    whatFailed:
-      'Monosai Bridge answered, but it is older than this version of Monosai can read a collection from.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Update Monosai Bridge on this device, then connect again.',
-    escape: USE_PACKAGE,
+    primaryAction: 'Update Monosai Bridge.',
   },
   'addon-missing-or-unreachable': {
     heading: 'AnkiConnect was not found',
-    whatFailed: 'Anki answered, but the AnkiConnect add-on did not.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Check that AnkiConnect is installed and enabled in Anki.',
-    escape: USE_PACKAGE,
+    primaryAction: 'Install and enable AnkiConnect in Anki.',
   },
   'permission-denied': {
     heading: 'Anki refused the connection',
-    whatFailed: 'AnkiConnect did not grant Monosai permission to read your collection.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Allow Monosai in the AnkiConnect settings, then test the connection again.',
-    escape: USE_PACKAGE,
+    primaryAction: 'Allow Monosai in the AnkiConnect settings.',
   },
   'api-key-required': {
     heading: 'AnkiConnect needs an API key',
-    whatFailed: 'AnkiConnect requires an API key, which Monosai does not support.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: USE_PACKAGE,
-    escape: 'Or turn the API key off in the AnkiConnect settings and connect again.',
+    primaryAction: 'Import an Anki export file instead.',
   },
   'origin-not-allowed': {
     heading: 'Anki refused this address',
-    whatFailed:
-      'AnkiConnect answers on this device but does not accept requests from the address this page is served from.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction:
-      "Add this page's address to the allowed origins in AnkiConnect or Monosai Bridge, then connect again.",
-    escape: USE_PACKAGE,
+    primaryAction: 'Allow this address in AnkiConnect or Monosai Bridge.',
   },
   timeout: {
     heading: 'Anki did not answer in time',
-    whatFailed: 'The request took too long and was stopped.',
     whatDidNot: NOTHING_SAVED,
     primaryAction: TRY_AGAIN,
-    escape: USE_PACKAGE,
   },
   'unsupported-api': {
     heading: 'This Anki connection is not supported',
-    whatFailed: 'The endpoint answered in a way Monosai does not understand.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Update Anki and AnkiConnect, then test the connection again.',
-    escape: USE_PACKAGE,
+    primaryAction: 'Update Anki and AnkiConnect.',
   },
   'unsupported-action': {
     heading: 'This connection is missing something Monosai needs',
-    whatFailed: 'The endpoint does not support one of the read operations required.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Update Anki and AnkiConnect, then test the connection again.',
-    escape: USE_PACKAGE,
+    primaryAction: 'Update Anki and AnkiConnect.',
   },
   'malformed-response': {
     heading: 'Anki sent something unreadable',
-    whatFailed: 'The answer did not match what Monosai expected.',
     whatDidNot: NOTHING_SAVED,
     primaryAction: TRY_AGAIN,
-    escape: USE_PACKAGE,
   },
   'deck-discovery-failed': {
     heading: 'Your decks could not be listed',
-    whatFailed: 'The connection worked, but the deck list could not be read.',
     whatDidNot: NOTHING_SAVED,
     primaryAction: TRY_AGAIN,
-    escape: USE_PACKAGE,
   },
   'note-type-discovery-failed': {
     heading: 'Your note types could not be listed',
-    whatFailed: 'The connection worked, but the note type list could not be read.',
     whatDidNot: NOTHING_SAVED,
     primaryAction: TRY_AGAIN,
-    escape: USE_PACKAGE,
   },
   'field-discovery-failed': {
     heading: 'The fields of that note type could not be listed',
-    whatFailed: 'The connection worked, but the field list could not be read.',
     whatDidNot: NOTHING_SAVED,
     primaryAction: 'Pick a different note type, or try again.',
-    escape: USE_PACKAGE,
   },
   'review-evidence-unsupported': {
     heading: 'This source cannot show what you have reviewed',
-    whatFailed:
-      'Monosai could not confirm which cards have been studied, and will not treat unreviewed cards as vocabulary you know.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: USE_PACKAGE,
-    escape: '',
+    primaryAction: 'Import an Anki export file instead.',
   },
   'query-failed': {
-    heading: 'The vocabulary search failed',
-    whatFailed: 'Anki could not answer the search for reviewed cards.',
+    heading: 'The word search failed',
     whatDidNot: NOTHING_SAVED,
     primaryAction: TRY_AGAIN,
-    escape: 'Check that your sources still match the decks and note types in Anki.',
   },
   'package-unreadable': {
     heading: 'That file could not be read',
-    whatFailed: 'The file is not a readable Anki package.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Export a fresh package from Anki and try that file.',
-    escape: 'A local Anki connection is the other way to read your vocabulary.',
+    primaryAction: 'Export a fresh package from Anki.',
   },
   'package-schema-unsupported': {
     heading: 'That package format is not supported',
-    whatFailed: 'The collection inside the package is in a format Monosai cannot open.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Export the package again from a current version of Anki.',
-    escape: 'A local Anki connection is the other way to read your vocabulary.',
+    primaryAction: 'Export again from a current version of Anki.',
   },
   'package-review-data-missing': {
     heading: 'That package has no review history',
-    whatFailed:
-      'The package does not record which cards were reviewed, so Monosai cannot tell which vocabulary you already know.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Export the package again with scheduling information included.',
-    escape: 'A local Anki connection is the other way to read your vocabulary.',
+    primaryAction: 'Export again with scheduling information.',
   },
   'package-resource-limit': {
     heading: 'That package is too large to process',
-    whatFailed: 'The package is bigger or more deeply compressed than Monosai will open.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Export a package containing only the decks you study from.',
-    escape: 'A local Anki connection is the other way to read your vocabulary.',
+    primaryAction: 'Export only the decks you study from.',
   },
   cancelled: {
     heading: 'Refresh cancelled',
-    whatFailed: 'The refresh was stopped before it finished.',
     whatDidNot: NOTHING_SAVED,
-    primaryAction: 'Start the refresh again when you are ready.',
-    escape: '',
+    primaryAction: 'Refresh again.',
   },
   unknown: {
     heading: 'Something went wrong',
-    whatFailed: 'The vocabulary source could not be read.',
     whatDidNot: NOTHING_SAVED,
     primaryAction: TRY_AGAIN,
-    escape: USE_PACKAGE,
   },
 };
 
 /** Storage and language failures reach this screen too, so they need words as well. */
 export const REFRESH_STORAGE_FAILURE: AnkiErrorCopy = {
   heading: 'The current vocabulary could not be updated',
-  whatFailed: 'Monosai could not replace the current vocabulary.',
   whatDidNot: NOTHING_SAVED,
   primaryAction: 'Free up space on this device, then refresh again.',
-  escape: '',
 };
 
 export const REFRESH_LANGUAGE_FAILURE: AnkiErrorCopy = {
   heading: 'Japanese language support is unavailable',
-  whatFailed: 'Monosai could not prepare the tokenizer needed to read your vocabulary.',
   whatDidNot: NOTHING_SAVED,
   primaryAction: 'Check your connection and try again.',
-  escape: '',
 };
 
 export function copyForFailure(error: {
@@ -275,9 +213,8 @@ export interface ConnectFailureCopy {
 
 /** Beside the "reads, never writes" claim, which is worth little unchecked. */
 const BRIDGE_IS_READ_ONLY: FailureParagraph = {
-  before: 'It reads your collection and never writes to it — ',
-  link: { href: ANKI_LINKS.bridgeSource, text: 'see the source' },
-  after: '.',
+  before: 'It only reads your collection. ',
+  link: { href: ANKI_LINKS.bridgeSource, text: 'View the source' },
 };
 
 export function connectFailureCopy(
@@ -287,12 +224,11 @@ export function connectFailureCopy(
 ): ConnectFailureCopy {
   if (platform === 'android' && error.code === 'bridge-not-running') {
     return {
-      headline: 'The bridge is not running.',
+      headline: 'The bridge is not running',
       paragraphs: [
         {
-          before: 'Open the Monosai bridge and press Start. Do not have it? ',
-          link: { href: ANKI_LINKS.bridgeReleases, text: 'Download the app' },
-          after: '.',
+          before: 'Open Monosai Bridge and press Start. ',
+          link: { href: ANKI_LINKS.bridgeReleases, text: 'Get the bridge' },
         },
         BRIDGE_IS_READ_ONLY,
       ],
@@ -301,12 +237,11 @@ export function connectFailureCopy(
   }
   if (platform === 'android' && error.code === 'bridge-too-old') {
     return {
-      headline: 'Your bridge is older than this app.',
+      headline: 'The bridge is out of date',
       paragraphs: [
         {
-          before: 'Update Monosai Bridge, then try again. ',
+          before: 'Update Monosai Bridge. ',
           link: { href: ANKI_LINKS.bridgeReleases, text: 'Get the latest version' },
-          after: '.',
         },
         BRIDGE_IS_READ_ONLY,
       ],
@@ -315,32 +250,26 @@ export function connectFailureCopy(
   }
   if (platform === 'android' && error.code === 'ankidroid-not-installed') {
     return {
-      headline: 'AnkiDroid was not found on this device.',
-      paragraphs: [
-        { before: 'Install AnkiDroid 2.24 or newer, open your collection, then try again.' },
-        BRIDGE_IS_READ_ONLY,
-      ],
+      headline: 'AnkiDroid was not found',
+      paragraphs: [{ before: 'Install AnkiDroid 2.24 or newer and open it.' }, BRIDGE_IS_READ_ONLY],
       offersPort: false,
     };
   }
   if (platform === 'android' && error.code === 'ankidroid-permission-denied') {
     return {
-      headline: 'The bridge cannot read AnkiDroid yet.',
-      paragraphs: [
-        { before: 'Open the Monosai bridge, grant it access to AnkiDroid, then try again.' },
-        BRIDGE_IS_READ_ONLY,
-      ],
+      headline: 'The bridge cannot read AnkiDroid',
+      paragraphs: [{ before: 'Grant access in Monosai Bridge.' }, BRIDGE_IS_READ_ONLY],
       offersPort: false,
     };
   }
   if (platform === 'desktop' && error.code === 'not-running') {
     return {
-      headline: 'Anki is not answering.',
+      headline: 'Anki is not answering',
       paragraphs: [
         {
-          before: 'Open Anki. If it is already open, it needs the ',
+          before: 'Open Anki with the ',
           link: { href: ANKI_LINKS.ankiConnectAddon, text: 'AnkiConnect add-on' },
-          after: ' — install it, then restart Anki.',
+          after: '.',
         },
       ],
       offersPort: true,
@@ -348,12 +277,12 @@ export function connectFailureCopy(
   }
   if (platform === 'desktop' && error.code === 'addon-missing-or-unreachable') {
     return {
-      headline: 'Anki answered, but AnkiConnect did not.',
+      headline: 'AnkiConnect did not answer',
       paragraphs: [
         {
-          before: 'Check that the ',
+          before: 'Install and enable the ',
           link: { href: ANKI_LINKS.ankiConnectAddon, text: 'AnkiConnect add-on' },
-          after: ' is installed and enabled, then restart Anki.',
+          after: ', then restart Anki.',
         },
       ],
       offersPort: true,
@@ -363,7 +292,7 @@ export function connectFailureCopy(
   // thing to do about it.
   const copy = copyForFailure(error);
   return {
-    headline: copy.whatFailed,
+    headline: copy.heading,
     paragraphs: [{ before: copy.primaryAction }],
     offersPort: platform === 'desktop',
   };

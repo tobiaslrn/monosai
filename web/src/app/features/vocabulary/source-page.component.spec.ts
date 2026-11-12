@@ -126,7 +126,7 @@ describe('SourcePageComponent', () => {
   it('keeps freshness apart from counting, and only where it can be answered', async () => {
     const live = await render(anki.id);
     const automatic = switchAt(live.element, 'automatic-sync');
-    expect(labelOf(automatic)).toContain('Keep it up to date');
+    expect(labelOf(automatic)).toContain('Refresh automatically');
     expect(live.element.querySelector('[data-testid="sync-now"]')).not.toBeNull();
 
     // A pasted list has nothing to fetch again, so it shows no disabled version
@@ -175,7 +175,7 @@ describe('SourcePageComponent', () => {
 
     expect(details.open).toBe(false);
     expect(details.querySelector('summary')?.textContent).toContain(
-      `Reading the ${anki.expressionFieldName} field of ${anki.noteTypeName}`,
+      `${anki.expressionFieldName} field of ${anki.noteTypeName}`,
     );
   });
 
@@ -187,7 +187,7 @@ describe('SourcePageComponent', () => {
 
     expect(element.querySelector('mn-disclosure details')).toBeNull();
     expect(element.textContent).toContain(
-      `Reading the ${file.expressionFieldName} field of ${file.noteTypeName}`,
+      `${file.expressionFieldName} field of ${file.noteTypeName}`,
     );
   });
 
@@ -215,7 +215,7 @@ describe('SourcePageComponent', () => {
 
     required(element, '[data-testid="remove-source"]').click();
     await settle(fixture);
-    clickDialogButton('Remove permanently');
+    clickDialogButton('Remove');
     await settle(fixture);
 
     expect(TestBed.inject(SourceMappingStore).sources()).toHaveLength(1);

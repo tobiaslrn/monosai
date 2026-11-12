@@ -152,7 +152,7 @@ type AddMode = 'closed' | 'choices' | 'anki';
               [action]="true"
               [disabled]="true"
             >
-              <span mn-row-meta>iOS cannot be read directly — export a file instead</span>
+              <span mn-row-meta>Not available on iOS</span>
             </mn-row>
           } @else {
             <mn-row
@@ -196,9 +196,6 @@ type AddMode = 'closed' | 'choices' | 'anki';
             >
           </p>
         }
-        <mn-notice icon="info"
-          >Your sources stay separate. Duplicate words are counted once.</mn-notice
-        >
       }
       @if (mode() === 'anki' && failure() !== null) {
         <button
@@ -238,15 +235,10 @@ export class AddWordsComponent {
   protected readonly unchanged = NOTHING_SAVED;
 
   /** The one sentence naming what has to be installed for the Anki row to work. */
-  protected readonly ankiSubtitle =
-    this.platform === 'android'
-      ? 'Through the Monosai bridge app'
-      : 'Through the AnkiConnect add-on';
+  protected readonly ankiSubtitle = this.platform === 'android' ? 'Monosai Bridge' : 'AnkiConnect';
 
   protected readonly fileSubtitle =
-    this.platform === 'android'
-      ? 'Choose or share an Anki export file'
-      : 'Choose an Anki export file';
+    this.platform === 'android' ? 'Anki export file' : 'Anki export file';
 
   protected readonly packageBusy = this.packageImport.isActive;
   protected readonly mode = signal<AddMode>('closed');
@@ -281,7 +273,7 @@ export class AddWordsComponent {
   });
 
   protected readonly connectingLabel = computed(() =>
-    this.platform === 'android' ? 'Asking the bridge…' : 'Asking Anki…',
+    this.platform === 'android' ? 'Connecting…' : 'Connecting…',
   );
 
   /**

@@ -220,7 +220,7 @@ describe('VocabularyBrowsePageComponent', () => {
     await TestBed.inject(VocabularyBrowseStore).load();
     await settle(fixture);
 
-    expect(element.textContent).toContain('Vocabulary could not be loaded.');
+    expect(element.textContent).toContain('Could not load words.');
     expect(element.textContent).not.toContain('Saved vocabulary is unchanged.');
     expect(count()).toBe('0 words');
     expect(element.textContent).not.toContain('3 words');
@@ -326,7 +326,7 @@ describe('VocabularyBrowsePageComponent', () => {
 
     const { fixture, element } = await render();
 
-    expect(element.textContent).toContain('Vocabulary is unavailable.');
+    expect(element.textContent).toContain('Could not load words.');
     shouldFail = false;
     element.querySelector<HTMLButtonElement>('mn-notice button')?.click();
     await settle(fixture);

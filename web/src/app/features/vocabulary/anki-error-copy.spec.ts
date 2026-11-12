@@ -23,10 +23,8 @@ describe('ANKI_ERROR_COPY', () => {
     for (const code of ALL_ANKI_ERROR_CODES) {
       const copy = ANKI_ERROR_COPY[code];
       expect(copy.heading.length, code).toBeGreaterThan(0);
-      expect(copy.whatFailed.length, code).toBeGreaterThan(0);
       expect(copy.whatDidNot.length, code).toBeGreaterThan(0);
       expect(copy.primaryAction.length, code).toBeGreaterThan(0);
-      expect(copy.escape, code).toBeDefined();
     }
   });
 
@@ -37,25 +35,24 @@ describe('ANKI_ERROR_COPY', () => {
   });
 
   it('gives each variant its own wording rather than one generic message', () => {
-    const headings = ALL_ANKI_ERROR_CODES.map((code) => ANKI_ERROR_COPY[code].whatFailed);
+    const headings = ALL_ANKI_ERROR_CODES.map((code) => ANKI_ERROR_COPY[code].heading);
     // A few variants legitimately share an action, but none may share the
-    // sentence describing what actually failed.
+    // title saying what actually failed.
     expect(new Set(headings).size).toBe(headings.length);
   });
 
   it('never claims Monosai can install or configure Anki', () => {
     for (const code of ALL_ANKI_ERROR_CODES) {
       const copy = ANKI_ERROR_COPY[code];
-      const text = `${copy.whatFailed} ${copy.primaryAction} ${copy.escape}`.toLowerCase();
+      const text = `${copy.heading} ${copy.primaryAction}`.toLowerCase();
       expect(text, code).not.toContain('monosai will install');
       expect(text, code).not.toContain('monosai can start');
-      expect(text, code).not.toContain('install ankidroid');
     }
   });
 
   it('offers the package path when a local connection cannot work', () => {
     expect(ANKI_ERROR_COPY['review-evidence-unsupported'].primaryAction.toLowerCase()).toContain(
-      'package',
+      'export file',
     );
   });
 
@@ -63,7 +60,7 @@ describe('ANKI_ERROR_COPY', () => {
     const copy = connectFailureCopy('desktop', ankiError('api-key-required', 'x'), 8765);
 
     expect(copy.headline).toContain('API key');
-    expect(copy.paragraphs[0]!.before.toLowerCase()).toContain('package');
+    expect(copy.paragraphs[0]!.before.toLowerCase()).toContain('export file');
   });
 
   it('does not offer the package path to a failed package import', () => {
@@ -106,7 +103,7 @@ describe('connectFailureCopy', () => {
   it('leads with recovery and offers the port as an advanced detail on desktop', () => {
     const copy = connectFailureCopy('desktop', ankiError('not-running', 'x'), 9999);
 
-    expect(copy.headline).toBe('Anki is not answering.');
+    expect(copy.headline).toBe('Anki is not answering');
     expect(copy.paragraphs[0]!.link?.href).toBe(ANKI_LINKS.ankiConnectAddon);
     expect(copy.offersPort).toBe(true);
   });
@@ -148,7 +145,7 @@ describe('connectFailureCopy', () => {
   it('still says something specific for a failure with no panel of its own', () => {
     const copy = connectFailureCopy('desktop', ankiError('origin-not-allowed', 'x'), 8765);
 
-    expect(copy.headline).toBe(ANKI_ERROR_COPY['origin-not-allowed'].whatFailed);
+    expect(copy.headline).toBe(ANKI_ERROR_COPY['origin-not-allowed'].heading);
     expect(copy.paragraphs[0]!.before).toBe(ANKI_ERROR_COPY['origin-not-allowed'].primaryAction);
   });
 });

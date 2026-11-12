@@ -362,7 +362,7 @@ export class VocabularyRefreshStore {
     const committed = await this.sync.commit(current.summary.prepared);
     if (!committed.ok) {
       this.stateSignal.set({ kind: 'failed', error: committed.error });
-      this.announce('The current vocabulary could not be updated. Your previous one is unchanged.');
+      this.announce('Could not update your words. Nothing changed.');
       return;
     }
 
@@ -379,7 +379,7 @@ export class VocabularyRefreshStore {
       return;
     }
     this.stateSignal.set(IDLE);
-    this.announce('Discarded. Your previous vocabulary is unchanged.');
+    this.announce('Discarded.');
   }
 
   cancel(): void {

@@ -74,7 +74,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
       } @empty {
         <li>
           <mn-row testId="no-sources">
-            <span mn-row-meta>No sources yet. Add one to use your words.</span>
+            <span mn-row-meta>No sources yet</span>
           </mn-row>
         </li>
       }

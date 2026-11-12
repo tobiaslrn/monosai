@@ -72,14 +72,14 @@ export class VocabularyCardComponent {
   /** Said only when the count alone would mislead. */
   protected readonly detail = computed(() => {
     if (this.history.lastFailure() !== null) {
-      return 'Your saved words could not be read.';
+      return 'Words could not be read.';
     }
     if (
       this.history.loaded() &&
       this.history.active() === null &&
       this.mappings.sources().length > 0
     ) {
-      return 'Nothing has been read yet';
+      return 'Not read yet';
     }
     return null;
   });
