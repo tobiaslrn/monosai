@@ -136,9 +136,11 @@ describe('AppUpdateBannerComponent', () => {
       expect(view.element.textContent).not.toContain('Finishing current work');
       expect(reloadButton(view.element).disabled).toBe(false);
       reloadButton(view.element).click();
-      await view.fixture.whenStable();
 
-      expect(view.dialogOpen).toHaveBeenCalledTimes(1);
+      // The dialog code loads on demand, so the question appears a moment after the press.
+      await vi.waitFor(() => {
+        expect(view.dialogOpen).toHaveBeenCalledTimes(1);
+      });
       expect(JSON.stringify(view.dialogOpen.mock.calls)).toContain('An import draft is unsaved');
       expect(view.reload).not.toHaveBeenCalled();
     });
@@ -149,9 +151,10 @@ describe('AppUpdateBannerComponent', () => {
       lose(view);
 
       reloadButton(view.element).click();
-      await view.fixture.whenStable();
 
-      expect(view.reload).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => {
+        expect(view.reload).toHaveBeenCalledTimes(1);
+      });
     });
 
     it('stays after an update is announced', () => {
