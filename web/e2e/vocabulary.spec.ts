@@ -434,7 +434,7 @@ test.describe('vocabulary', () => {
 
     await openSource(page, 'Course words');
     await page.getByTestId('remove-source').click();
-    await page.getByRole('button', { name: 'Remove' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Remove' }).click();
     await expect(page.getByTestId('no-sources')).toBeVisible({ timeout: 60_000 });
     await expectNoSeriousAccessibilityViolations(page);
   });
@@ -561,7 +561,7 @@ test.describe('vocabulary', () => {
 
     await openSource(page, 'Course words');
     await page.getByTestId('remove-source').click();
-    await page.getByRole('button', { name: 'Remove' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Remove' }).click();
     // The last source is gone, so this is the standing of a fresh install
     // rather than a source that happens to contribute nothing.
     await expect(page.getByTestId('words-standing')).toHaveText('No words yet', {
