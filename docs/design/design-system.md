@@ -320,7 +320,7 @@ once: the row's label titles it, one labelled field (`mn-field`) holds the value
 with its hint under it, a problem is the field's one danger line in the hint's
 place (R33), and the primary Save sits at the end (R22). A token limit and a
 voice name with no list are both this, and a row's summary shows the value in
-the shared number formatter (R50).
+the shared number formatter (R54).
 
 **The key is a field dialog with a secret field.** The OpenRouter key row opens a
 task dialog: one sentence about billing and where the key lives with the link to
@@ -1337,14 +1337,9 @@ leaves it as it is.
 
 ### Voice
 
-Plain and short by default. State what is true and what to do. No exclamation,
-no reassurance where nothing was at risk, no personality in a label.
-
-There is one second register: **anything that touches the learner's own text,
-their money, or work that might be lost gets the extra sentence** saying what is
-safe. A local-first application failing to save is precisely where terseness
-reads as indifference. That sentence says what survived, in the concrete — not
-that an error occurred.
+Minimal by default: say what a learner needs in order to act, and nothing more (R48,
+R49). One extra sentence is allowed only where something real is at risk, and it says what is
+safe or what it costs (R51). Errors and confirmations follow R52.
 
 Sentence case everywhere: page titles, section headings, group titles, buttons,
 menu items, labels. Title case is not a rank and is not used to mark one, and
@@ -1354,8 +1349,8 @@ A fragment that needs ranking below the heading above it is a group title.
 ### The prose budget
 
 Standing explanatory text exists only where **money, network, or data loss is at
-stake**. A hint under a control that merely restates the control's own label, or
-describes what a section obviously contains, is removed rather than reworded.
+stake** (R51). A hint under a control that merely restates the control's own label, or
+describes what a section obviously contains, is removed rather than reworded (R48).
 
 Four exceptions:
 
@@ -1367,8 +1362,8 @@ Four exceptions:
   frame with Back to Help and ending in its neighbours, as one pagination (`mn-pager`):
   a Previous and a Next card with the same anatomy, an eyebrow over the title and the
   arrow on the outer side, side by side when they fit and stacked when they do not.
-  The hub opens with its lead sentence and the shelf of topics, since a learner opens
-  Help to find one, and the essays follow. The measure and the prose
+  The hub opens with the shelf of topics, since a learner opens
+  Help to find one, and the note follows. The prose stays as tight as R55 says. The measure and the prose
   elements live in `mn-prose`, so a topic page writes words and nothing else.
   Two options being compared are a card each, never a table: the figures are few,
   the prose beside them is long, and a table of that shape either scrolls
@@ -1376,34 +1371,34 @@ Four exceptions:
   row is the one shelf row whose secondary line may wrap past one line, because
   it says what a topic answers rather than what a thing contains.
   A quiet, non-modal first-use notice offers Help on a non-reader
-  surface without moving focus or covering the app: one sentence saying what
-  the guide is, the way to it, and a quiet dismissal, as the page's first block
+  surface without moving focus or covering the app: a few words
+  naming Help, the way to it, and a quiet dismissal, as the page's first block
   under its bar. Dismissal records the preference for this local installation;
   the guide remains among the Library's utilities. Reader deep links are never
   interrupted. See [ADR 0079](../decisions/0079-help-is-a-hub-of-topics.md).
 
-- **Empty states teach.** An empty surface has nothing but words to work with,
-  so any empty list explains what belongs there and how to fill it. The
-  exception ends the moment the surface has content.
+- **Empty states are quiet.** An empty surface has a plain title and its primary
+  action; its buttons teach, and a body sentence appears only when the way to
+  fill it is not obvious from them (R53). The exception ends the moment the
+  surface has content.
 - **The first run introduces the application.** An empty Library is what a
   stranger opening the public address sees, so its headline says what Monosai
-  is for before anything asks them to act; a standing of nothing — "No words
-  yet." — is not a headline. The way in is **one first-steps card**
+  is for in one line before anything asks them to act, with no subline; a standing
+  of nothing, "No words yet", is not a headline. The way in is **one first-steps card**
   (`mn-checklist`): numbered steps in order, each a row that leads to where it
-  is done, each showing where it stands — a finished step wears a tick and goes
+  is done, each showing where it stands. A finished step wears a tick and goes
   quiet, the next step is the screen's one primary action (its filled mark and
   soft ground say so; the whole row is the target and holds only its chevron, never
   a button or pill beside it), and a step that
-  cannot be done yet is dashed, is not a link, and says what it waits for as
-  its state rather than as advice. The steps are read from the same checks that
-  block Generate, so the two never disagree. A way round the steps that needs
-  no setup sits beside them, visibly secondary; the guide and the one promise a
-  stranger needs — nothing leaves the device — are the card's foot, so the
-  page-top offer of the guide is not shown beside it. While the card is there,
+  cannot be done yet is dashed, is not a link, and says what it needs in a few
+  words as its state rather than as advice. The steps are read from the same checks that
+  block Generate, so the two never disagree. Pasting text needs no setup and sits
+  beside the steps as a plain quiet secondary action; the card's foot holds only the
+  Help link, so the page-top offer of Help is not shown beside it. No reassurance or
+  privacy line goes on the card. While the card is there,
   the shelf's two ways in are not: two ways in with no order is what the card
-  replaced. It ends, like any empty state, the moment there is a story — or
-  once a story could be written, when the two ways in are the primary action again
-  and the empty shelf says what will fill it.
+  replaced. It ends, like any empty state, the moment there is a story, or
+  once a story could be written, when the two ways in are the primary action again.
 - **Release-stage disclosure.** A new alpha installation may require one short
   acknowledgment before use. This is a product disclosure rather than Help;
   it is persisted locally and is not shown again after acknowledgment.
@@ -1415,8 +1410,8 @@ Four exceptions:
   actions (Try again or Reload, and a copy of the data) share one row; deleting
   everything is the same danger row Settings has, set below in its own card and
   confirmed the same way. A whole-page state fills the column it is in.
-- **Failures explain.** A failure states what happened, what is unaffected, and
-  what to do next, however quiet the surrounding screen is.
+- **Failures are short.** A failure is a title and at most one action, plus one
+  safety sentence when data is untouched (R52).
 
 A format used in two places is used the same way in both. A counter, a count, a
 character limit, and a duration each have one form across the application.
@@ -1554,15 +1549,15 @@ is labelled with the verb, never with a bare "OK".
 A state that replaces a whole page — a failure, something not found, a surface
 with nothing on it — has **one anatomy**, in the page column at the top of the
 page on the card surface: a mark that carries the tone (the danger colour for a
-failure, the quiet sunken one for what is not a fault), a short title, one
-sentence on what happened, one on what is safe or what to do, and the actions
+failure, the quiet sunken one for what is not a fault), a short title, at most one
+sentence saying what to do or what is safe, and the actions
 with the primary first. Nothing about it changes between screens but its words.
 
-An empty surface offers its primary action and explains what would fill it. The
+An empty surface offers its primary action and, only when that is not obvious, says what would fill it. The
 mark and the title share the first line; the sentences and the actions start at
 the card's padding edge and run its full content width, so the card has one left
 edge below its heading, on every state. An
-error surface states what failed, what is unaffected, and the one action worth
+error surface states what failed and the one action worth
 taking — retry only where retrying could plausibly succeed unchanged. Where its
 sentence names a place to fix it — Settings — that place is one of its actions.
 

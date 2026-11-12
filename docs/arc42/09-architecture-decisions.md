@@ -150,3 +150,4 @@ shared its number until it was given the next free one.
 | [0088](../decisions/0088-four-overlay-kinds-on-one-surface.md)                           | Every overlay is a menu, a picker, a task dialog, or a confirmation            |
 | [0089](../decisions/0089-one-dropdown-on-every-screen.md)                                | A choice from a list is one anchored dropdown on every screen size             |
 | [0090](../decisions/0090-settings-overview-and-searchable-picker.md)                     | Settings is an overview with sub-pages, and a searched list is a picker dialog |
+| [0091](../decisions/0091-the-interface-is-minimal-by-default.md)                         | The interface is minimal by default: cut first, one risk sentence at most |

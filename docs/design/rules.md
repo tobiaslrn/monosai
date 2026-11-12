@@ -227,14 +227,70 @@ meaning.
 
 ## 10. Copy
 
-**R48.** Plain English, sentence case. Labels are nouns or short noun phrases; actions are verbs
-("Check for updates", "Delete saved audio").
+**R48. Cut first.** Every string must survive "what does the learner do differently if this is
+gone?". If nothing, delete it: delete rather than shorten. Start with less and add help text only
+when real use shows a need. If a screen needs explaining, change the screen. Say nothing twice on
+one screen, for example a heading echoed by a subline. A subline, hint or aside that restates its
+label, describes what a section obviously holds, reassures where nothing is at risk, sells the
+app, or explains privacy or setup is removed.
 
-**R49.** No internal jargon. Say what the learner sees: not "Uniform" or "persistent storage",
-but what it does. No exclamation marks, no reassurance where nothing was at risk.
+**R49. Front-load, then stop.** The first word carries the meaning: a verb for an action, a noun
+for a label. One idea per string. No "you can", "in order to", "please", "simply", "just", "now",
+"currently", "will". An error title states the fact ("Wrong key"), not "You entered the wrong
+key". Plain copy at about grade 7. "Sorry" only when the app itself broke badly, never in
+validation. No internal jargon ("Uniform", "persistent storage", "policy", "language assets").
 
-**R50.** A sub-page title matches the label of the row that opens it. Numbers and dates use the
-shared formatters.
+**R50. Length budgets** (words, hard ceilings; most strings sit well under):
+
+| Role | Budget |
+|---|---|
+| Page title | 1 to 3, matches the row that opens it |
+| Section or group heading | 1 to 3 |
+| Row label | 1 to 4 |
+| Row secondary line or value | 1 to 5, one line, no sentence |
+| Button or link | 1 to 3, strong verb first; link text makes sense out of context |
+| Hint under a field | 0 by default; at most 8 |
+| Empty state title | 2 to 5 |
+| Empty state body | 0 by default; at most one sentence of 12 words |
+| Error title | 2 to 6 |
+| Error body | one action sentence, at most 12 words |
+| Dialog title | a question, 3 to 7 |
+| Dialog body | one sentence, plus the risk sentence if there is one |
+| Toast or status | 1 to 5, no full sentence needed |
+| Help prose | paragraphs of 1 to 3 sentences (R55) |
+
+**R51. One extra sentence only for real risk.** Lost data, money, an irreversible action, or
+recovery from a failure. Then it is one short sentence saying what is safe or what it costs, in
+the concrete: "Your text is still here." "OpenRouter bills your account per request." Never
+"Don't worry, nothing is lost". Never a risk sentence and a restated cause together.
+
+**R52. Errors and confirmations.** An error is a title (what is wrong, no blame) and at most one
+action; when data is untouched, one short safety sentence ("Nothing was saved."). A confirmation's
+title is the question ("Delete this story?"), its body names what goes ("This cannot be undone."
+once), its confirm button repeats the verb ("Delete"), its cancel is "Keep ..." or "Cancel". No
+"Really", no "Yes,". Do not confirm what can be undone. Do not toast what the screen already shows.
+
+**R53. Empty states and first run.** An empty list has a plain title ("No stories yet") and its
+action. A body appears only when the way to fill it is not obvious from the buttons present. The
+first run says what Monosai is in one line and gets out of the way: no subline, no reassurance
+foot, no "no setup needed" tag. A finished step wears a tick and no text; a waiting step says what
+it needs in 2 to 4 words.
+
+**R54. Form.** Sentence case everywhere. No full stop on a title, label, button, fragment hint or
+one-clause status; a full stop only where a string has two or more sentences or is a
+full-sentence error body. No em dashes in UI strings (use a full stop, or "·" in a metadata
+line), no exclamation marks, no "..." except "…" for work in progress. Spell words out: no "&".
+Optional fields say "(optional)"; required is the default and is not marked. A sub-page title
+matches the label of the row that opens it. Numbers and dates use the shared formatters.
+Spelling is British ("favourite", "recognised", "analysing"). Accessible names are the visible
+label or a short noun-led phrase ("Paste text", "Close"), never restating the role.
+
+**R55. Help is the one prose surface, and still tight.** Allowed: headings, short paragraphs,
+lists, links beside the action. Open an article with what the reader needs, or with no lead.
+One section per question, at most three sentences per paragraph, a list or numbered steps before
+a paragraph. No history, motivation or philosophy, nothing the UI already says, no figure or
+setting the UI shows. The hub opens with the Topics shelf; a topic summary on it is a noun phrase
+of at most five words.
 
 ## 11. Forbidden
 
@@ -270,5 +326,5 @@ Answer yes to every line before committing a visual change.
 - [ ] Type, icon sizes, spacing and radii are role tokens, with no literal values (R34-R39).
 - [ ] Press is colour only; motion comes from `_motion.scss` (R40, R44).
 - [ ] Each tone has one meaning; bridge colours match (R45, R47).
-- [ ] Copy is plain, sentence case, free of jargon (R48, R49).
+- [ ] Every string passes R48 (cut first) and the R50 budget.
 - [ ] `npm test` passes, the exemption list did not grow (R6).
