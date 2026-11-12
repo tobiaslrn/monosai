@@ -180,10 +180,7 @@ const RESTORATION_SETTLED_FRAMES = 8;
 
         @if (isFirstRun()) {
           @if (!showsFirstSteps() && setup.known()) {
-            <mn-empty-state
-              data-testid="empty-shelf"
-              heading="No stories yet"
-            >
+            <mn-empty-state data-testid="empty-shelf" heading="No stories yet">
               <ng-container data-actions>
                 <ng-container [ngTemplateOutlet]="ways" />
               </ng-container>

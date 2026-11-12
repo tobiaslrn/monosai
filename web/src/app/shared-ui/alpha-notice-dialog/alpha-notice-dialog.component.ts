@@ -17,13 +17,11 @@ export interface AlphaNoticeDialogData {
   template: `
     <mn-dialog kind="confirm" heading="Monosai is in alpha" headingId="mn-alpha-title">
       <mn-app-mark mn-dialog-mark [alpha]="true" />
-      <p id="mn-alpha-message">
-        It is still being built, so you may encounter bugs, missing features, or changes.
-      </p>
+      <p id="mn-alpha-message">Expect bugs and changes.</p>
 
       @if (saveFailed()) {
         <mn-notice tone="error" role="alert">
-          <p>Could not save your acknowledgment. Try again.</p>
+          <p>Could not save. Try again.</p>
         </mn-notice>
       }
 

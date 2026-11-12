@@ -100,7 +100,7 @@ export type ModelPickerChoice =
         }
 
         @if (request.loading()) {
-          <p class="mn-dropdown__state state" role="status">Loading OpenRouter models…</p>
+          <p class="mn-dropdown__state state" role="status">Loading models…</p>
         } @else if (request.failure(); as failure) {
           <mn-notice tone="error" role="alert"
             ><p>{{ failure }}</p></mn-notice

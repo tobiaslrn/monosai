@@ -13,7 +13,7 @@ const DATA: ConfirmDialogData = {
   message: 'This cannot be undone. It removes:',
   details: ['Every generated audio clip, for every story on this device'],
   footnote: 'Readings and settings are not affected.',
-  confirmLabel: 'Delete saved audio',
+  confirmLabel: 'Delete audio',
   cancelLabel: 'Keep it',
   tone: 'danger',
 };
@@ -121,7 +121,7 @@ describe('openConfirmDialog', () => {
   it('resolves true only for the destructive button', async () => {
     const { answer, fixture } = await open();
 
-    button('Delete saved audio')?.click();
+    button('Delete audio')?.click();
     await settle(fixture);
 
     await expect(answer).resolves.toBe(true);
