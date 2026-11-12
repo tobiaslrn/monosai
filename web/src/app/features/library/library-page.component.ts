@@ -164,7 +164,7 @@ const RESTORATION_SETTLED_FRAMES = 8;
         @if (generationJobs().length > 0) {
           <section data-testid="date-group" aria-labelledby="library-group-generating">
             <mn-shelf-heading
-              heading="Story generations"
+              heading="Writing"
               headingId="library-group-generating"
               [first]="true"
             />
@@ -183,7 +183,6 @@ const RESTORATION_SETTLED_FRAMES = 8;
             <mn-empty-state
               data-testid="empty-shelf"
               heading="No stories yet"
-              description="Write one from your words, or paste a Japanese text you want to read."
             >
               <ng-container data-actions>
                 <ng-container [ngTemplateOutlet]="ways" />
@@ -222,7 +221,7 @@ const RESTORATION_SETTLED_FRAMES = 8;
             mnButton
             routerLink="/add"
             [state]="libraryOriginState"
-            aria-label="Paste a Japanese text"
+            aria-label="Paste text"
             data-testid="new-story-paste"
           >
             <mn-icon name="add" />
@@ -434,9 +433,9 @@ export class LibraryPageComponent {
     if (job.store.isBusy()) {
       const confirmed = await openConfirmDialog(this.dialog, {
         title: 'Stop writing this story?',
-        message: 'This cannot be undone. It permanently removes:',
+        message: 'This cannot be undone. It removes:',
         details: ['The story being written', 'The requests already spent on it'],
-        footnote: 'Your vocabulary, grammar profile, and other stories are not affected.',
+        footnote: 'Your words and other stories are not affected.',
         confirmLabel: 'Stop and remove',
         cancelLabel: 'Keep writing',
         tone: 'danger',
@@ -446,7 +445,7 @@ export class LibraryPageComponent {
       }
     }
     this.jobs.dismiss(job.id);
-    this.store.noteExternalChange('The generation was removed. Nothing was saved.');
+    this.store.noteExternalChange('Removed. Nothing was saved.');
   }
 
   /**
@@ -475,10 +474,10 @@ export class LibraryPageComponent {
     });
     const confirmed = await openConfirmDialog(this.dialog, {
       title: `Delete ${plan.title}?`,
-      message: 'This cannot be undone. It permanently removes:',
+      message: 'This cannot be undone. It removes:',
       details: plan.removes,
       footnote: `${startSentence(formatList(plan.preserves))} are not affected.`,
-      confirmLabel: 'Delete permanently',
+      confirmLabel: 'Delete',
       cancelLabel: 'Keep it',
       tone: 'danger',
     });

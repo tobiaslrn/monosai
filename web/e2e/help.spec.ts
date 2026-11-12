@@ -17,9 +17,9 @@ test.describe('first-use Help', () => {
     // The steps carry the guide themselves, so the page-top offer of it is not shown too.
     const steps = page.getByRole('region', { name: 'Get started' });
     await expect(steps).toBeVisible();
-    await expect(steps.getByRole('link', { name: 'Read the guide' })).toBeVisible();
+    await expect(steps.getByRole('link', { name: 'Help' })).toBeVisible();
     await expect(
-      page.getByRole('complementary', { name: 'A little help getting started' }),
+      page.getByRole('complementary', { name: 'Help' }),
     ).toHaveCount(0);
     await expectNoSeriousAccessibilityViolations(page);
     // What the steps say is missing is what Generate blocks on.
@@ -52,9 +52,9 @@ test.describe('first-use Help', () => {
 
     // Settings rather than the Library: an empty Library's first steps carry the guide themselves.
     await page.goto('./#/settings');
-    const dialog = page.getByRole('complementary', { name: 'A little help getting started' });
+    const dialog = page.getByRole('complementary', { name: 'Help' });
     await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Got it' }).click();
+    await dialog.getByRole('button', { name: 'Dismiss' }).click();
     await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
     await page.reload();
     await expect(dialog).toHaveCount(0);
@@ -68,12 +68,12 @@ test.describe('first-use Help', () => {
       .click();
     await page
       .getByRole('region', { name: 'Get started' })
-      .getByRole('link', { name: 'Read the guide' })
+      .getByRole('link', { name: 'Help' })
       .click();
     await expect(page.getByRole('heading', { name: 'Help', level: 1 })).toBeVisible();
     await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
     await expect(
-      page.getByRole('complementary', { name: 'A little help getting started' }),
+      page.getByRole('complementary', { name: 'Help' }),
     ).toHaveCount(0);
   });
 
@@ -83,7 +83,7 @@ test.describe('first-use Help', () => {
     await expect(alpha).toBeVisible();
     await alpha.getByRole('button', { name: 'Continue' }).click();
     await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
-    await page.getByRole('button', { name: 'Read the guide' }).click();
+    await page.getByRole('button', { name: 'Open Help' }).click();
     await expect(page).toHaveURL(/#\/help$/);
     await expect(page.getByRole('heading', { name: 'Help', level: 1 })).toBeVisible();
     await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
@@ -97,9 +97,9 @@ test.describe('Help and utility bar', () => {
     await expect(alpha).toBeVisible();
     await alpha.getByRole('button', { name: 'Continue' }).click();
     await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
-    const dialog = page.getByRole('complementary', { name: 'A little help getting started' });
+    const dialog = page.getByRole('complementary', { name: 'Help' });
     await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Got it' }).click();
+    await dialog.getByRole('button', { name: 'Dismiss' }).click();
     await expect(dialog).toHaveCount(0);
     await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
   });

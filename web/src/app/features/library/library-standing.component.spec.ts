@@ -133,12 +133,12 @@ describe('LibraryStandingComponent', () => {
     state.set({ kind: 'known', availability: 'empty', snapshot: snapshotOf(0) });
     expect(lines(render())).toMatchObject({
       headline: 'No words yet.',
-      detail: 'A source is connected but has no words in it yet.',
+      detail: 'The source has no words yet',
     });
 
     state.set({ kind: 'known', availability: 'none', snapshot: null });
     const fixture = render();
-    expect(lines(fixture).detail).toContain('Connect Anki to write stories');
+    expect(lines(fixture).detail).toBe('');
   });
 
   /** A read that failed is not "you have no words". */

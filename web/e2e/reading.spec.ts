@@ -153,17 +153,16 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
     await expect(page).toHaveURL(/#\/library/);
     await expect(page.getByTestId('library-standing')).toContainText(
-      'Japanese you can actually read.',
+      'Japanese you can actually read',
     );
     const steps = page.getByRole('region', { name: 'Get started' });
     await expect(steps.getByRole('heading', { name: 'Get started', level: 2 })).toBeVisible();
-    await expect(steps.getByText('Everything stays on this device.')).toBeVisible();
     const items = steps.getByRole('listitem');
     await expect(items).toHaveCount(3);
     await expect(items.nth(0)).toHaveAttribute('data-state', 'next');
     await expect(steps.getByRole('link', { name: 'Add your words' })).toBeVisible();
     await expect(
-      steps.getByRole('link', { name: 'Connect OpenRouter and choose a model' }),
+      steps.getByRole('link', { name: 'Connect OpenRouter' }),
     ).toBeVisible();
     // Writing waits on the first two steps: it is a state, not a link.
     await expect(items.nth(2)).toHaveAttribute('data-state', 'waiting');
@@ -182,9 +181,9 @@ test.describe('scenario 1 — paste, save, inspect', () => {
 
     const ways = page.getByRole('group', { name: 'New story' });
     await expect(ways.getByRole('link', { name: 'Write with AI' })).toBeVisible();
-    await expect(ways.getByRole('link', { name: 'Paste a Japanese text' })).toBeVisible();
+    await expect(ways.getByRole('link', { name: 'Paste text' })).toBeVisible();
 
-    await ways.getByRole('link', { name: 'Paste a Japanese text' }).click();
+    await ways.getByRole('link', { name: 'Paste text' }).click();
     await expect(page).toHaveURL(/#\/add/);
 
     await pasteAndContinue(page, SAMPLE_TEXT);
@@ -1413,7 +1412,7 @@ test.describe('scenario 2 — pasted text validation', () => {
 
     await page.getByRole('button', { name: 'Back to library' }).click();
     await expect(page.getByRole('alertdialog')).toContainText('Leave without saving?');
-    await page.getByRole('button', { name: 'Stay here' }).click();
+    await page.getByRole('button', { name: 'Cancel' }).click();
     await expect(page).toHaveURL(/#\/add$/);
   });
 
@@ -1481,7 +1480,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
     await page.goto('./#/library');
     await page.getByRole('button', { name: /^Actions for / }).click();
     await page.getByRole('menuitem', { name: 'Delete' }).click();
-    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete permanently' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
     await expect(page.locator('mn-reading-card')).toHaveCount(0);
 
     await page.goto(deletedUrl);
@@ -1669,7 +1668,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
       'Your words, your grammar profile, and your settings and saved key are not affected',
     );
 
-    await dialog.getByRole('button', { name: 'Delete permanently' }).click();
+    await dialog.getByRole('button', { name: 'Delete' }).click();
 
     await expect(page.getByRole('link', { name: /paste Japanese text/i })).toBeVisible();
     const counts = await countOwnedRows(page);
@@ -1697,7 +1696,7 @@ test.describe('scenario 14 — library, filtering, deletion', () => {
 
     await page.getByRole('button', { name: 'Actions for 第二章' }).click();
     await page.getByRole('menuitem', { name: 'Delete' }).click();
-    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete permanently' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
 
     await expect(page.locator('mn-reading-card')).toHaveCount(1);
     await expect(page.locator('mn-reading-card')).toContainText('第一章');

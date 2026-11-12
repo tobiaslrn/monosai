@@ -47,10 +47,7 @@ type StandingHeadline =
         for; there is no standing to state yet, and no page behind it.
       -->
       <mn-standing testId="library-standing">
-        <span>Japanese you can actually read.</span>
-        <span mn-standing-detail
-          >Monosai writes short stories from the words you already know.</span
-        >
+        <span>Japanese you can actually read</span>
       </mn-standing>
     } @else {
       <mn-standing
@@ -197,11 +194,8 @@ export class LibraryStandingComponent {
         return null;
       case 'known': {
         const snapshot = state.snapshot;
-        if (snapshot === null) {
-          return 'Connect Anki to write stories from your own words.';
-        }
-        if (snapshot.uniqueEntryCount === 0) {
-          return 'A source is connected but has no words in it yet.';
+        if (snapshot !== null && snapshot.uniqueEntryCount === 0) {
+          return 'The source has no words yet';
         }
         return null;
       }

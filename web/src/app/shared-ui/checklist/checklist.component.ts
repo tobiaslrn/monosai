@@ -32,7 +32,7 @@ let nextChecklistId = 0;
  *       After steps 1 and 2
  *     </mn-checklist-step>
  *     <a mn-checklist-aside mnButton="ghost" routerLink="/add">Or paste text</a>
- *     <span mn-checklist-foot>Everything stays on this device.</span>
+ *     <a mn-checklist-foot mnButton="ghost" routerLink="/help">Help</a>
  *   </mn-checklist>
  *
  * The state is shown, not narrated: a finished step wears a tick and quiet
@@ -315,11 +315,11 @@ export class ChecklistStepComponent {
   protected readonly stateWords = computed(() => {
     switch (this.state()) {
       case 'done':
-        return 'Done.';
+        return 'Done';
       case 'next':
-        return 'Next step.';
+        return 'Next';
       case 'waiting':
-        return 'Not yet.';
+        return 'Waiting';
       case 'todo':
         return null;
     }

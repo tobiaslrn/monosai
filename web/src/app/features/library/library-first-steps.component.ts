@@ -47,7 +47,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       </mn-checklist-step>
       <mn-checklist-step
         [number]="2"
-        heading="Connect OpenRouter and choose a model"
+        heading="Connect OpenRouter"
         link="/settings"
         testId="first-step-model"
         [navigationState]="libraryOriginState"
@@ -73,7 +73,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
         data-testid="first-step-paste"
       >
         <mn-icon name="add" />
-        <span>Or paste Japanese text — no setup needed</span>
+        <span>Paste Japanese text</span>
       </a>
 
       <a
@@ -83,9 +83,8 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
         routerLink="/help"
         [state]="libraryOriginState"
         (click)="intro?.finish('dismiss')"
-        >Read the guide</a
+        >Help</a
       >
-      <span mn-checklist-foot>Everything stays on this device.</span>
     </mn-checklist>
   `,
 })
@@ -113,16 +112,13 @@ export class LibraryFirstStepsComponent {
     // Starting from nothing, the step says where words come from and how many
     // a story needs; otherwise it says where the learner's words stand.
     return this.setup.startingFromNothing()
-      ? `From Anki, an Anki package, or a pasted list — at least ${formatCountOf(
-          GENERATION_SNAPSHOT_MINIMUM,
-          'word',
-        )}.`
+      ? `At least ${formatCountOf(GENERATION_SNAPSHOT_MINIMUM, 'word')}`
       : this.setup.words().detail;
   });
 
   protected readonly modelDetail = computed(() => {
     const check = this.setup.textModelCheck();
-    return check.satisfied ? 'Ready to write.' : check.detail;
+    return check.satisfied ? '' : check.detail;
   });
 
   /** What writing still waits for, said as its state rather than as advice. */
@@ -131,6 +127,6 @@ export class LibraryFirstStepsComponent {
       ...(this.wordsDone() ? [] : ['your words']),
       ...(this.modelDone() ? [] : ['a model']),
     ];
-    return missing.length === 0 ? 'Ready.' : `Waiting for ${missing.join(' and ')}.`;
+    return missing.length === 0 ? '' : `Needs ${missing.join(' and ')}`;
   });
 }

@@ -92,7 +92,7 @@ test.describe('startup recovery', () => {
     await expect(panel).not.toContainText('step:');
 
     const download = page.waitForEvent('download');
-    await panel.getByRole('button', { name: 'Save a copy of my data' }).click();
+    await panel.getByRole('button', { name: 'Save a copy' }).click();
     const text = await readFile(await (await download).path(), 'utf8');
     expect(text).not.toContain(API_KEY);
     const copy = JSON.parse(text) as { tables: Record<string, unknown[]> };
@@ -145,7 +145,7 @@ test.describe('startup recovery', () => {
     await expect(page.getByRole('button', { name: 'Delete all data' })).toBeVisible();
 
     const download = page.waitForEvent('download');
-    await panel.getByRole('button', { name: 'Save a copy of my data' }).click();
+    await panel.getByRole('button', { name: 'Save a copy' }).click();
     const copy = JSON.parse(await readFile(await (await download).path(), 'utf8')) as {
       tables: Record<string, unknown[]>;
     };
@@ -199,7 +199,7 @@ test.describe('startup recovery', () => {
     expect(await nativeState(page)).toEqual(seeded);
 
     const download = page.waitForEvent('download');
-    await panel.getByRole('button', { name: 'Save a copy of my data' }).click();
+    await panel.getByRole('button', { name: 'Save a copy' }).click();
     const copy = JSON.parse(await readFile(await (await download).path(), 'utf8')) as {
       tables: Record<string, unknown[]>;
     };

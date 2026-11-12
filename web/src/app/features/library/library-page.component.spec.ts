@@ -247,8 +247,8 @@ describe('LibraryPageComponent', () => {
     expect(steps?.querySelector('[data-testid="first-step-paste"]')?.getAttribute('href')).toBe(
       '/add',
     );
-    expect(steps?.textContent).toContain('an Anki package, or a pasted list');
-    expect(steps?.textContent).toContain('Everything stays on this device.');
+    expect(steps?.textContent).toContain('At least 50 words');
+    expect(steps?.textContent).not.toContain('Everything stays');
     // Writing waits on the first two steps, so it is not a link and Create is not offered.
     expect(steps?.querySelector('[data-testid="first-step-story"]')?.tagName).toBe('DIV');
     expect(newReadingButton(fixture)).toBeNull();
@@ -308,7 +308,7 @@ describe('LibraryPageComponent', () => {
     const links = [...(newReadingButton(fixture)?.querySelectorAll('a') ?? [])];
     expect(links.map((link) => link.textContent.trim())).toEqual(['Write with AI', 'Paste']);
     expect(links.map((link) => link.getAttribute('href'))).toEqual(['/generate', '/add']);
-    expect(links[1]?.getAttribute('aria-label')).toBe('Paste a Japanese text');
+    expect(links[1]?.getAttribute('aria-label')).toBe('Paste text');
     expect(links[0]?.classList.contains('mn-button--primary')).toBe(true);
     expect(links[1]?.classList.contains('mn-button--primary')).toBe(false);
     expect(element(fixture).querySelector('mn-menu[aria-label="New story"]')).toBeNull();
@@ -571,7 +571,7 @@ describe('LibraryPageComponent', () => {
 
     const confirm = [
       ...document.querySelectorAll<HTMLButtonElement>('mn-confirm-dialog button'),
-    ].find((button) => button.textContent.includes('Delete permanently'));
+    ].find((button) => button.textContent.includes('Delete'));
     confirm?.click();
     await settle(fixture);
 
@@ -676,7 +676,7 @@ describe('LibraryPageComponent', () => {
     expect(dialog?.textContent).toContain('The translation currently in progress');
 
     [...document.querySelectorAll<HTMLButtonElement>('mn-confirm-dialog button')]
-      .find((button) => button.textContent.includes('Delete permanently'))
+      .find((button) => button.textContent.includes('Delete'))
       ?.click();
     await settle(fixture);
 

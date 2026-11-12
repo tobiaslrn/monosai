@@ -50,7 +50,7 @@ const EXPORT_URL_LIFETIME_MS = 60_000;
         <mn-error-screen
           heading="Monosai could not start"
           [description]="failure().error.message"
-          [dataStatus]="resetFailed() ? null : 'Your saved stories have not been changed.'"
+          [dataStatus]="resetFailed() ? null : 'Your data is unchanged.'"
         >
           <ng-container data-actions>
             @if (failure().error.code === 'newer-version') {
@@ -80,7 +80,7 @@ const EXPORT_URL_LIFETIME_MS = 60_000;
                 [disabled]="storage.action() !== 'idle'"
                 (click)="saveCopy()"
               >
-                Save a copy of my data
+                Save a copy
               </button>
             }
           </ng-container>
@@ -91,7 +91,6 @@ const EXPORT_URL_LIFETIME_MS = 60_000;
               label="Delete all data"
               action="danger"
               testId="delete-all-data"
-              summary="Every story, word list, setting and clip on this device"
               [disabled]="storage.action() !== 'idle'"
               (pressed)="deleteAllData()"
             />
@@ -158,7 +157,7 @@ export class StartupFailureComponent {
   protected async deleteAllData(): Promise<void> {
     const confirmed = await openConfirmDialog(this.dialog, {
       title: 'Delete all Monosai data?',
-      message: 'This cannot be undone. It permanently removes from this browser:',
+      message: 'This cannot be undone. It removes:',
       details: [
         'Every story, with its translations, grammar results, and audio',
         'Your word lists and reading level',
@@ -166,7 +165,7 @@ export class StartupFailureComponent {
         'Files Monosai downloaded to work offline',
       ],
       footnote:
-        'Your Anki collection is not affected. Monosai cannot load a saved copy back, and it does not include your API key or audio.',
+        'Anki is not affected. Monosai cannot load a saved copy back, and it leaves out your key and audio.',
       confirmLabel: 'Delete everything',
       cancelLabel: 'Keep my data',
       tone: 'danger',

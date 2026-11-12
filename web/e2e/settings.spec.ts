@@ -119,9 +119,9 @@ test.describe('settings persistence', () => {
     await expect(alpha).toBeVisible();
     await alpha.getByRole('button', { name: 'Continue' }).click();
     await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
-    const intro = page.getByRole('complementary', { name: 'A little help getting started' });
+    const intro = page.getByRole('complementary', { name: 'Help' });
     await expect(intro).toBeVisible();
-    await intro.getByRole('button', { name: 'Got it' }).click();
+    await intro.getByRole('button', { name: 'Dismiss' }).click();
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
     await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.*/);
     await expect(page.getByRole('radio', { name: 'System' })).toBeChecked();

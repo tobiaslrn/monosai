@@ -36,18 +36,18 @@ import { ButtonDirective } from '../../shared-ui/button/button';
             <p>{{ status.message }}</p>
           }
           @case ('available') {
-            <p>A new version of Monosai is ready.</p>
+            <p>Update ready</p>
             @if (store.isBusy()) {
-              <p class="mn-hint">Waiting for current work to finish.</p>
+              <p class="mn-hint">Finishing current work…</p>
             }
           }
           @case ('activating') {
-            <p>A new version of Monosai is ready.</p>
+            <p>Update ready</p>
           }
           @case ('failed') {
             <p>{{ status.message }}</p>
             @if (store.isBusy()) {
-              <p class="mn-hint">Waiting for current work to finish.</p>
+              <p class="mn-hint">Finishing current work…</p>
             }
           }
         }
@@ -101,10 +101,10 @@ export class AppUpdateBannerComponent {
     if (work !== null) {
       const confirmed = await openConfirmDialog(this.dialog, {
         title: 'Reload and lose unsaved work?',
-        message: 'This tab can no longer save, so reloading discards:',
+        message: 'Reloading discards:',
         details: [work.charAt(0).toUpperCase() + work.slice(1)],
         confirmLabel: 'Reload',
-        cancelLabel: 'Stay here',
+        cancelLabel: 'Cancel',
         tone: 'danger',
       });
       if (!confirmed) {

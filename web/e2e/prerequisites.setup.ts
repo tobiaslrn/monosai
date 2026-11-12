@@ -27,7 +27,7 @@ test.beforeEach(async ({ page }) => {
     })
     .click();
   await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
-  await page.getByRole('button', { name: 'Got it' }).click();
+  await page.getByRole('button', { name: 'Dismiss' }).click();
   await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
 });
 

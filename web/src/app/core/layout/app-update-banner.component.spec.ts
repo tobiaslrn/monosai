@@ -70,7 +70,7 @@ describe('AppUpdateBannerComponent', () => {
     expect(banner?.getAttribute('aria-live')).toBe('polite');
     expect(element.querySelector('dialog, [role="dialog"]')).toBeNull();
     expect(document.activeElement).not.toBe(banner);
-    expect(banner?.textContent).toContain('is ready');
+    expect(banner?.textContent).toContain('Update ready');
   });
 
   it('disables the update action and explains why while busy work is in progress', () => {
@@ -84,7 +84,7 @@ describe('AppUpdateBannerComponent', () => {
     expect(disabledButton).not.toBeNull();
     expect(disabledButton?.textContent).toContain('Reload to update');
     expect(enabledButton).toBeNull();
-    expect(element.textContent).toContain('Waiting for current work to finish.');
+    expect(element.textContent).toContain('Finishing current work…');
   });
 
   it('offers a reload action for an unrecoverable state', () => {
@@ -133,7 +133,7 @@ describe('AppUpdateBannerComponent', () => {
       view.busy.track('import-draft', signal('an import draft is unsaved'));
       lose(view);
 
-      expect(view.element.textContent).not.toContain('Waiting for current work');
+      expect(view.element.textContent).not.toContain('Finishing current work');
       expect(reloadButton(view.element).disabled).toBe(false);
       reloadButton(view.element).click();
       await view.fixture.whenStable();

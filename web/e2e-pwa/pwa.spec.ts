@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
   await page.addLocatorHandler(
     page.getByRole('dialog', { name: 'A little help getting started' }),
     async () => {
-      await page.getByRole('button', { name: 'Got it' }).click();
+      await page.getByRole('button', { name: 'Dismiss' }).click();
     },
   );
 });

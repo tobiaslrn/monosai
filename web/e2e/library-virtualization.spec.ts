@@ -221,7 +221,7 @@ test('deleting a deep story keeps the shelf position and focuses the next row @s
   await expect(menuItem).toBeVisible();
   const before = await page.evaluate(() => window.scrollY);
   await menuItem.dispatchEvent('click');
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete permanently' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
   await expect(page.locator(':focus')).toHaveAttribute('aria-label', nextLabel);
   const after = await page.evaluate(() => window.scrollY);

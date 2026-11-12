@@ -24,7 +24,7 @@ test.describe('two tabs on one library', () => {
     const card = first.locator('mn-reading-card').filter({ hasText: 'Cross-tab reading' });
     await card.getByRole('button', { name: 'Actions for Cross-tab reading' }).click();
     await card.getByRole('menuitem', { name: 'Delete' }).click();
-    await first.getByRole('button', { name: 'Delete permanently' }).click();
+    await first.getByRole('button', { name: 'Delete' }).click();
     // The row, not the words: both tabs name the reading as they announce it.
     await expect(
       first.locator('mn-reading-card').filter({ hasText: 'Cross-tab reading' }),
@@ -47,7 +47,7 @@ test.describe('two tabs on one library', () => {
     const card = first.locator('mn-reading-card').filter({ hasText: 'Shelf reading' });
     await card.getByRole('button', { name: 'Actions for Shelf reading' }).click();
     await card.getByRole('menuitem', { name: 'Delete' }).click();
-    await first.getByRole('button', { name: 'Delete permanently' }).click();
+    await first.getByRole('button', { name: 'Delete' }).click();
 
     await expect(
       second.locator('mn-reading-card').filter({ hasText: 'Shelf reading' }),
@@ -160,13 +160,13 @@ test.describe('a tab that lost its database', () => {
 
     const notice = first.getByRole('alert').filter({ hasText: 'can no longer save' });
     await expect(notice).toBeVisible();
-    await expect(notice).not.toContainText('Waiting for current work');
+    await expect(notice).not.toContainText('Finishing current work');
     await expect(first.getByRole('textbox', { name: 'Japanese text' })).toHaveValue(SAMPLE_TEXT);
 
     await notice.getByRole('button', { name: 'Reload' }).click();
     const confirm = first.getByRole('alertdialog', { name: 'Reload and lose unsaved work?' });
     await expect(confirm).toContainText('An import draft is unsaved');
-    await confirm.getByRole('button', { name: 'Stay here' }).click();
+    await confirm.getByRole('button', { name: 'Cancel' }).click();
     await expect(confirm).toHaveCount(0);
     await expect(first.getByRole('textbox', { name: 'Japanese text' })).toHaveValue(SAMPLE_TEXT);
 

@@ -553,7 +553,7 @@ test.describe('scenario 12b — a job belongs to one reading', () => {
     await expect(page.locator('mn-confirm-dialog')).toContainText(
       'The translation currently in progress',
     );
-    await page.getByRole('button', { name: 'Delete permanently' }).click();
+    await page.getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByRole('link', { name: 'Long reading' })).toHaveCount(0);
 
     // And the bystander is still a bystander: no report, no alert, and no

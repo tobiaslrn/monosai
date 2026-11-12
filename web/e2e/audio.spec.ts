@@ -1158,7 +1158,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await page.goto('./#/library');
     await page.getByRole('button', { name: /^Actions for / }).click();
     await page.getByRole('menuitem', { name: 'Delete' }).click();
-    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete permanently' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
 
     await expect(page.locator('mn-reading-card')).toHaveCount(0);
     await expect(audioPlayer(page)).toHaveCount(0);

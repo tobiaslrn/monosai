@@ -169,7 +169,7 @@ function readingKey(id: string): string {
         <mn-paging-status [loading]="store.loadingMore()" loadingLabel="Loading more stories…">
           @if (store.loadMoreError(); as error) {
             <mn-notice tone="error" role="alert">
-              <p>More stories could not be loaded.</p>
+              <p>Could not load more stories</p>
               <p>{{ error.message }}</p>
               <button mn-notice-action mnButton type="button" (click)="retryLoadMore()">
                 Try again

@@ -59,11 +59,11 @@ import { PageNoticeSlot } from '../../shared-ui/page-header/page-notice-slot';
     <ng-template #introNotice>
       @if (!isReaderRoute()) {
         @if (intro.visible()) {
-          <aside aria-label="A little help getting started">
+          <aside aria-label="Help">
             <mn-notice icon="help">
-              <p>New here? The guide walks you from an empty library to your first story.</p>
+              <p>New here?</p>
               <button mn-notice-action mnButton type="button" (click)="intro.finish('guide')">
-                Read the guide
+                Open Help
               </button>
               <button
                 mn-notice-action
@@ -71,14 +71,14 @@ import { PageNoticeSlot } from '../../shared-ui/page-header/page-notice-slot';
                 type="button"
                 (click)="intro.finish('dismiss')"
               >
-                Got it
+                Dismiss
               </button>
             </mn-notice>
           </aside>
         }
         @if (intro.saveFailed()) {
           <mn-notice tone="error" icon="warning" role="alert">
-            <p>Could not save your Help preference.</p>
+            <p>Could not save</p>
             <button mn-notice-action mnButton type="button" (click)="intro.retrySave()">
               Try again
             </button>

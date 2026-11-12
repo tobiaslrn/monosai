@@ -10,7 +10,7 @@ class HostComponent {}
 
 const DATA: ConfirmDialogData = {
   title: 'Delete saved audio for every story?',
-  message: 'This cannot be undone. It permanently removes:',
+  message: 'This cannot be undone. It removes:',
   details: ['Every generated audio clip, for every story on this device'],
   footnote: 'Readings and settings are not affected.',
   confirmLabel: 'Delete saved audio',

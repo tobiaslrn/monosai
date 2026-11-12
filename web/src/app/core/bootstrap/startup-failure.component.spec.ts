@@ -96,13 +96,13 @@ describe('StartupFailureComponent', () => {
     const fixture = render(true);
 
     expect(element(fixture).textContent).toContain('The stored database could not be upgraded.');
-    expect(labels(fixture)).toEqual(['Try again', 'Save a copy of my data']);
+    expect(labels(fixture)).toEqual(['Try again', 'Save a copy']);
   });
 
   it('reloads into the newest build, rather than retrying in place, for a newer database', () => {
     const fixture = render(true, 'newer-version');
 
-    expect(labels(fixture)).toEqual(['Reload', 'Save a copy of my data']);
+    expect(labels(fixture)).toEqual(['Reload', 'Save a copy']);
     press(fixture, 'Reload');
     expect(updates.reloadIntoLatest).toHaveBeenCalledTimes(1);
   });
