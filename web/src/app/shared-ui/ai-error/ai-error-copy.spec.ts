@@ -19,11 +19,9 @@ describe('AI_ERROR_COPY', () => {
       const copy = AI_ERROR_COPY[code];
 
       expect(copy.heading.length).toBeGreaterThan(0);
-      expect(copy.whatFailed.length).toBeGreaterThan(0);
       expect(copy.whatDidNot.length).toBeGreaterThan(0);
       expect(copy.primaryAction.length).toBeGreaterThan(0);
       expect(copy.retryAction.length).toBeGreaterThan(0);
-      expect(copy.escape).toBeDefined();
     }
   });
 
@@ -48,15 +46,14 @@ describe('AI_ERROR_COPY', () => {
   it('does not describe a TTS capability failure as a structured-text failure', () => {
     const copy = aiErrorCopy(aiError('capability-unsupported', 'tts-test', 'x'));
 
-    expect(copy.primaryAction).toContain('audio model and voice');
-    expect(copy.retryAction).toContain('audio model and voice');
-    expect(copy.escape).not.toContain('structured replies');
+    expect(copy.primaryAction).toContain('voice ID');
+    expect(copy.retryAction).toContain('voice ID');
   });
 
   it('tells an exhausted account to add credit rather than re-save a working key', () => {
     const copy = AI_ERROR_COPY['credit-exhausted'];
 
-    for (const line of [copy.heading, copy.whatFailed, copy.primaryAction, copy.retryAction]) {
+    for (const line of [copy.heading, copy.primaryAction, copy.retryAction]) {
       expect(line.toLowerCase()).not.toContain('rejected');
     }
     expect(copy.primaryAction.toLowerCase()).toContain('add credit');
@@ -67,8 +64,8 @@ describe('AI_ERROR_COPY', () => {
   it('keeps a rejected key about the key, now that credit has its own variant', () => {
     const copy = AI_ERROR_COPY.authentication;
 
-    expect(copy.whatFailed.toLowerCase()).toContain('rejected');
-    expect(copy.whatFailed.toLowerCase()).not.toContain('credit');
+    expect(copy.heading.toLowerCase()).toContain('key');
+    expect(copy.heading.toLowerCase()).not.toContain('credit');
   });
 });
 
@@ -109,20 +106,14 @@ describe('aiFailureMessage', () => {
     }
   });
 
-  it('offers the settings panel its own control instead', () => {
-    const testActions = ALL_AI_ERROR_CODES.map((code) => AI_ERROR_COPY[code].primaryAction);
-
-    expect(testActions.some((action) => /\btest\b/i.test(action))).toBe(true);
-  });
-
   it('reads as one classification with two next steps', () => {
     const error = aiError('rate-limited', 'translation', 'x');
 
     expect(aiFailureMessage(error, 'reader')).toBe(
-      'OpenRouter is rate limiting this key while translating this sentence. Wait a moment, then try again.',
+      'Too many requests while translating this sentence. Wait a moment, then try again.',
     );
     expect(aiFailureMessage(error, 'settings-test')).toBe(
-      'OpenRouter is rate limiting this key while translating this sentence. Wait a moment, then run the test again.',
+      'Too many requests while translating this sentence. Wait a moment, then try again.',
     );
   });
 

@@ -112,7 +112,7 @@ describe('prerequisiteChecks', () => {
   it('fails the text model when no test recorded how it returns structured output', () => {
     expect(isTextModelReady(input({ structuredOutput: null }))).toBe(false);
     expect(checkFor('text-model', { structuredOutput: null }).detail).toContain(
-      'Run the model test once more',
+      'Test the text model again',
     );
   });
 

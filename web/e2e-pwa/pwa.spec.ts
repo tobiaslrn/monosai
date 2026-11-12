@@ -373,7 +373,7 @@ test.describe('speech code that cannot be loaded', () => {
       timeout: 30_000,
     });
     // Offline is the true cause, so the offline wording is the right one.
-    await expect(player).toContainText('This device is offline');
+    await expect(player).toContainText('Offline');
     await expect(player.getByRole('button', { name: 'Stop generating audio' })).toHaveCount(0);
     await expect(player.getByRole('button', { name: 'Try again' })).toBeVisible();
     expect(chunkFailures, 'the chunk was asked for and could not be had').toHaveLength(1);

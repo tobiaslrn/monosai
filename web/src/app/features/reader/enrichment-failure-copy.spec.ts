@@ -58,7 +58,7 @@ describe('describeEnrichmentFailure', () => {
     });
 
     expect(message).toBe(
-      'This OpenRouter account is out of credit while translating this sentence. Add credit on openrouter.ai, then try again.',
+      'Out of OpenRouter credit while translating this sentence. Add credit on openrouter.ai, then try again.',
     );
   });
 

@@ -428,7 +428,7 @@ describe('SentencePopoverComponent', () => {
     );
     const alert = rendered.querySelector('[role="alert"]')?.textContent ?? '';
 
-    expect(alert).toContain('out of credit');
+    expect(alert).toContain('Out of OpenRouter credit');
     expect(alert).toContain('Add credit on openrouter.ai');
     expect(alert.toLowerCase()).not.toContain('save it again');
     expect(translateButton(rendered)).toBeUndefined();

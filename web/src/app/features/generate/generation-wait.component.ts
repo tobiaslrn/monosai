@@ -20,32 +20,32 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
     case 'preparing':
       return {
         key: state.kind,
-        title: 'Preparing your vocabulary',
+        title: 'Preparing words',
         detail: '',
       };
     case 'writing':
       return {
         key: state.kind,
-        title: 'Generating your story',
+        title: 'Writing the story',
         detail: '',
       };
     case 'parsing':
       return {
         key: state.kind,
-        title: 'Reading the generated Japanese',
+        title: 'Reading the Japanese',
         detail: '',
       };
     case 'validating':
       return {
         key: state.kind,
-        title: 'Checking the vocabulary',
+        title: 'Checking words',
         detail: '',
       };
     case 'exception-review': {
       const count = state.candidateCount;
       return {
         key: `${state.kind}-${String(count)}`,
-        title: `Reviewing ${String(count)} unfamiliar ${count === 1 ? 'word' : 'words'}`,
+        title: `Checking ${String(count)} new ${count === 1 ? 'word' : 'words'}`,
         detail: '',
       };
     }
@@ -53,7 +53,7 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
       const count = state.unknownCount;
       const title =
         count > 0
-          ? `Replacing ${String(count)} unfamiliar ${count === 1 ? 'word' : 'words'}${state.structureIssueCount > 0 ? ' and fixing the structure' : ''}`
+          ? `Replacing ${String(count)} new ${count === 1 ? 'word' : 'words'}`
           : 'Fixing the story structure';
       return {
         key: `${state.kind}-${String(state.attempt)}`,
@@ -64,7 +64,7 @@ export function generationWaitCopy(state: GenerationState): WaitCopy {
     case 'finalizing':
       return {
         key: state.kind,
-        title: 'Saving your story',
+        title: 'Saving',
         detail: '',
       };
     case 'saved':

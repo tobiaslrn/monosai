@@ -25,14 +25,12 @@ export type AiFailureSurface = 'settings-test' | 'reader';
 /**
  * What the learner is told about one provider failure.
  *
- * Every failure has to say what failed, what did not fail, whether anything was
- * saved, a next action for each surface, and a way out. Splitting those into
- * fields rather than one sentence is what stops a variant from quietly losing
- * one of them.
+ * Every failure is a title, one safety line and one next action for each
+ * surface. Splitting those into fields rather than one sentence is what stops a
+ * variant from quietly losing one of them.
  */
 export interface AiErrorCopy {
   readonly heading: string;
-  readonly whatFailed: string;
   /** Always reassuring: a failed configuration test changes nothing stored. */
   readonly whatDidNot: string;
   /** Next step on the settings panel, where the control that repeats it is Test. */
@@ -44,20 +42,19 @@ export interface AiErrorCopy {
    * theirs differently.
    */
   readonly retryAction: string;
-  readonly escape: string;
 }
 
 /**
  * True for every variant: a test writes nothing until it passes, and no failure
  * here can reach readings, snapshots, or cached aids.
  */
-export const NOTHING_CHANGED = 'No saved data was changed.';
+export const NOTHING_CHANGED = 'Nothing was changed.';
 
-const TRY_TEST_AGAIN = 'Try the test again in a moment.';
+const TRY_AGAIN = 'Try again.';
 const TRY_AGAIN_SOON = 'Try again in a moment.';
 
 /**
- * English for all thirteen provider failures.
+ * English for every provider failure.
  *
  * Exhaustive by type: adding a variant to `AiErrorCode` will not compile until
  * it has been given words here. Nothing in this table quotes the provider —
@@ -65,110 +62,84 @@ const TRY_AGAIN_SOON = 'Try again in a moment.';
  */
 export const AI_ERROR_COPY: Record<AiErrorCode, AiErrorCopy> = {
   offline: {
-    heading: 'This device is offline',
-    whatFailed: 'Monosai could not reach OpenRouter because there is no connection.',
+    heading: 'Offline',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: 'Reconnect, then run the test again.',
+    primaryAction: 'Reconnect, then try again.',
     retryAction: 'Reconnect, then try again.',
-    escape: '',
   },
   timeout: {
-    heading: 'OpenRouter did not answer in time',
-    whatFailed: 'The request was given up on before a reply arrived.',
+    heading: 'OpenRouter did not answer',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: TRY_TEST_AGAIN,
-    retryAction: TRY_AGAIN_SOON,
-    escape: '',
+    primaryAction: TRY_AGAIN,
+    retryAction: TRY_AGAIN,
   },
   cancelled: {
     // Not "Test cancelled": the same variant is reported mid-reading, where
     // there is no test to have cancelled.
-    heading: 'Stopped before it finished',
-    whatFailed: 'The request was stopped before a reply arrived.',
+    heading: 'Stopped',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: 'Run the test again when you are ready.',
-    retryAction: 'Start it again when you are ready.',
-    escape: '',
+    primaryAction: TRY_AGAIN,
+    retryAction: TRY_AGAIN,
   },
   authentication: {
     heading: 'OpenRouter refused the key',
-    whatFailed: 'The saved key was rejected by OpenRouter.',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: 'Check the key on openrouter.ai, then save it again here.',
-    retryAction: 'Check the key on openrouter.ai, then save it again in Settings.',
-    escape: '',
+    primaryAction: 'Check the key on openrouter.ai and save it again.',
+    retryAction: 'Check the key on openrouter.ai and save it again in Settings.',
   },
   'credit-exhausted': {
-    heading: 'This OpenRouter account is out of credit',
-    whatFailed: 'The key works, but the account behind it has no credit left to spend.',
+    heading: 'Out of OpenRouter credit',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: 'Add credit on openrouter.ai, then run the test again.',
+    primaryAction: 'Add credit on openrouter.ai, then try again.',
     retryAction: 'Add credit on openrouter.ai, then try again.',
-    escape: 'Saving the key again cannot help.',
   },
   'model-not-found': {
-    heading: 'That model was not found',
-    whatFailed: 'OpenRouter does not offer a model with that exact ID.',
+    heading: 'Model not found',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: 'Copy the exact model ID from the OpenRouter models page and test again.',
-    retryAction: 'Correct the model ID in Settings, then try again.',
-    escape: 'Model IDs are case sensitive and usually look like vendor/model-name.',
+    primaryAction: 'Check the model ID in Settings.',
+    retryAction: 'Check the model ID in Settings.',
   },
   'capability-unsupported': {
-    heading: 'This model cannot do what Monosai needs',
-    whatFailed: 'The model refused part of the request Monosai has to make.',
+    heading: 'This model cannot be used',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: 'Choose a different model or voice and test again.',
-    retryAction: 'Choose a different model or voice in Settings, then try again.',
-    escape: '',
+    primaryAction: 'Choose a different model.',
+    retryAction: 'Choose a different model in Settings.',
   },
   'rate-limited': {
-    heading: 'OpenRouter is rate limiting this key',
-    whatFailed: 'Too many requests reached the provider in a short time.',
+    heading: 'Too many requests',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: 'Wait a moment, then run the test again.',
+    primaryAction: 'Wait a moment, then try again.',
     retryAction: 'Wait a moment, then try again.',
-    escape: '',
   },
   'provider-unavailable': {
     heading: 'OpenRouter could not be reached',
-    whatFailed: 'The provider did not answer, or answered with an error of its own.',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: TRY_TEST_AGAIN,
+    primaryAction: TRY_AGAIN_SOON,
     retryAction: TRY_AGAIN_SOON,
-    escape: '',
   },
   'malformed-response': {
     heading: 'The reply could not be used',
-    whatFailed: 'The model answered, but not in the exact shape Monosai requires.',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: 'Try a different model and test again.',
-    retryAction: 'Choose a different model in Settings, then try again.',
-    escape: '',
+    primaryAction: 'Try a different model.',
+    retryAction: 'Choose a different model in Settings.',
   },
   'context-budget-exceeded': {
-    heading: 'The request was too large for this model',
-    whatFailed: 'The model accepts less input than the request needed.',
+    heading: 'Request too large for this model',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: 'Choose a model with a larger context and test again.',
-    retryAction: 'Choose a model with a larger context in Settings, then try again.',
-    escape: '',
+    primaryAction: 'Choose a model with a larger context.',
+    retryAction: 'Choose a model with a larger context in Settings.',
   },
   'audio-invalid': {
-    heading: 'The audio could not be played',
-    whatFailed: 'The clip that came back was empty, in an unsupported format, or undecodable.',
+    heading: 'Audio could not be played',
     whatDidNot: NOTHING_CHANGED,
     primaryAction: 'Try a different audio model or voice.',
-    retryAction: 'Choose a different audio model or voice in Settings, then try again.',
-    escape: 'Audio is optional.',
+    retryAction: 'Choose a different audio model or voice in Settings.',
   },
   unknown: {
-    heading: 'Something unexpected went wrong',
-    whatFailed: 'The request failed in a way Monosai could not classify.',
+    heading: 'Something went wrong',
     whatDidNot: NOTHING_CHANGED,
-    primaryAction: TRY_TEST_AGAIN,
-    retryAction: TRY_AGAIN_SOON,
-    escape: '',
+    primaryAction: TRY_AGAIN,
+    retryAction: TRY_AGAIN,
   },
 };
 
@@ -203,9 +174,8 @@ export function aiErrorCopy(error: AiError): AiErrorCopy {
     return {
       ...AI_ERROR_COPY['context-budget-exceeded'],
       heading: 'The reply was cut off',
-      whatFailed: 'The model stopped mid-answer because it ran out of room to reply.',
-      primaryAction: 'Choose a model with more reply room and test again.',
-      retryAction: 'Try again — if it keeps happening, choose a different model in Settings.',
+      primaryAction: 'Try again, or choose a different model.',
+      retryAction: 'Try again, or choose a different model.',
     };
   }
   if (
@@ -214,9 +184,8 @@ export function aiErrorCopy(error: AiError): AiErrorCopy {
   ) {
     return {
       ...AI_ERROR_COPY['capability-unsupported'],
-      primaryAction: 'Check the exact audio model and voice IDs, then test again.',
-      retryAction: 'Check the audio model and voice IDs in Settings, then try again.',
-      escape: 'Voice names are case sensitive.',
+      primaryAction: 'Check the voice ID in Settings.',
+      retryAction: 'Check the voice ID in Settings.',
     };
   }
   return AI_ERROR_COPY[error.code];

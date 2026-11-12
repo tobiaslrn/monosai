@@ -39,31 +39,30 @@ export interface PrerequisiteInput {
 function textModelDetail(input: PrerequisiteInput): string {
   switch (input.textModelReadiness) {
     case 'ready':
-      return input.structuredOutput === null
-        ? 'Run the model test once more so Monosai knows how this model returns structured replies.'
-        : 'Your text model has passed its compatibility test.';
+      return input.structuredOutput === null ? 'Test the text model again.' : 'Text model ready';
     case 'no-credential':
       return 'Add an OpenRouter key.';
     case 'incomplete':
       return 'Choose a text model.';
     case 'untested':
-      return 'This model has not been tested yet.';
+      return 'Test the text model.';
     case 'stale':
-      return 'Your key or model changed since the last successful test.';
+      return 'Test the text model again.';
     case 'failed':
-      return input.textModelFailure ?? 'The last test of this model failed.';
+      return input.textModelFailure ?? 'The last test failed.';
   }
 }
 
 function vocabularyDetail(snapshot: VocabularySnapshot | null, hasSources: boolean): string {
   if (snapshot === null) {
     return hasSources
-      ? 'Your words have not been read yet. Sync them from your word sources.'
-      : 'Add words from Anki, an Anki package, or a pasted list.';
+      ? 'Your words have not been read yet. Refresh a word source.'
+      : 'Add words from Anki, a file or a pasted list.';
   }
   if (snapshot.uniqueEntryCount < GENERATION_SNAPSHOT_MINIMUM) {
-    return `You have ${formatCountOf(snapshot.uniqueEntryCount, 'word')}. Stories need at least ${String(
-      GENERATION_SNAPSHOT_MINIMUM,
+    return `Stories need at least ${formatCountOf(GENERATION_SNAPSHOT_MINIMUM, 'word')}. You have ${formatCountOf(
+      snapshot.uniqueEntryCount,
+      'word',
     )}.`;
   }
   const verb = snapshot.uniqueEntryCount === 1 ? 'is' : 'are';
@@ -88,7 +87,7 @@ export function prerequisiteChecks(input: PrerequisiteInput): readonly Prerequis
             id: 'network' as const,
             label: 'Connection',
             satisfied: false,
-            detail: 'You are offline. Connect to the internet to generate; your draft stays here.',
+            detail: 'Offline. Reconnect to generate.',
             route: '',
             actionLabel: '',
           },
@@ -111,7 +110,7 @@ export function prerequisiteChecks(input: PrerequisiteInput): readonly Prerequis
         input.snapshot !== null && input.snapshot.uniqueEntryCount >= GENERATION_SNAPSHOT_MINIMUM,
       detail: vocabularyDetail(input.snapshot, input.hasSources ?? false),
       route: '/reading-level',
-      actionLabel: 'Open word sources',
+      actionLabel: 'Add words',
     },
   ];
 }

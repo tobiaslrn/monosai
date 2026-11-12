@@ -196,7 +196,7 @@ export class StoryPlotsComponent {
     const what =
       failure.domain === 'ai'
         ? aiFailureMessage(failure, 'reader')
-        : 'Monosai could not read your vocabulary or your library. Try again.';
+        : 'Could not load your words. Try again.';
     return `${what} Your choices are kept.`;
   });
 

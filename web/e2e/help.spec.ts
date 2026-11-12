@@ -18,9 +18,7 @@ test.describe('first-use Help', () => {
     const steps = page.getByRole('region', { name: 'Get started' });
     await expect(steps).toBeVisible();
     await expect(steps.getByRole('link', { name: 'Help' })).toBeVisible();
-    await expect(
-      page.getByRole('complementary', { name: 'Help' }),
-    ).toHaveCount(0);
+    await expect(page.getByRole('complementary', { name: 'Help' })).toHaveCount(0);
     await expectNoSeriousAccessibilityViolations(page);
     // What the steps say is missing is what Generate blocks on.
     await page.goto('./#/generate');
@@ -31,7 +29,7 @@ test.describe('first-use Help', () => {
     await page.getByTestId('wizard-next').click();
     await expect(page.getByTestId('wizard-next')).toBeDisabled();
     await page.context().setOffline(true);
-    await expect(page.locator('[data-check="network"]')).toContainText('You are offline');
+    await expect(page.locator('[data-check="network"]')).toContainText('Offline');
     await expect(page.getByTestId('wizard-next')).toHaveAttribute(
       'aria-describedby',
       'mn-generate-disabled-reason',
@@ -72,9 +70,7 @@ test.describe('first-use Help', () => {
       .click();
     await expect(page.getByRole('heading', { name: 'Help', level: 1 })).toBeVisible();
     await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
-    await expect(
-      page.getByRole('complementary', { name: 'Help' }),
-    ).toHaveCount(0);
+    await expect(page.getByRole('complementary', { name: 'Help' })).toHaveCount(0);
   });
 
   test('opens the full guide and persists the choice @smoke', async ({ page }) => {

@@ -306,7 +306,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await context.setOffline(true);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expect(playerStatus(page)).toContainText('This device is offline', {
+    await expect(playerStatus(page)).toContainText('Offline', {
       timeout: 15_000,
     });
     await expect(

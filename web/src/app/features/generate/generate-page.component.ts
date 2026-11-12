@@ -197,7 +197,6 @@ function formatList(items: readonly string[]): string {
         </mn-outcome>
       } @else if (state().kind === 'cancelled') {
         <mn-outcome eyebrow="Nothing was saved" heading="Generation stopped">
-          <p class="mn-hint">Your direction and plots are still here.</p>
           <button mn-outcome-action mnButton="primary" type="button" (click)="retry()">
             Back to the form
           </button>
@@ -261,16 +260,9 @@ function formatList(items: readonly string[]): string {
       }
 
       @if (failureCopy(); as copy) {
-        <mn-error-screen
-          [heading]="copy.heading"
-          [description]="copy.whatFailed"
-          [dataStatus]="copy.whatDidNot"
-        >
+        <mn-error-screen [heading]="copy.heading" [dataStatus]="copy.whatDidNot">
           <mn-stack data-actions [gap]="2">
             <p>{{ copy.primaryAction }}</p>
-            @if (copy.escape) {
-              <p class="mn-hint">{{ copy.escape }}</p>
-            }
             <mn-cluster>
               @if (canRetrySave()) {
                 <button
@@ -374,9 +366,7 @@ export class GeneratePageComponent implements OnChanges {
   /** A job was addressed and there is no such run in this tab. */
   protected readonly missingJob = computed(() => this.jobId() !== undefined && this.job() === null);
 
-  protected readonly missingJobExplanation = [
-    'It ended with its tab. A story that had already finished is in your library.',
-  ];
+  protected readonly missingJobExplanation = ['It ended when the tab closed.'];
 
   protected readonly state = computed<GenerationState>(() => this.job()?.store.state() ?? IDLE);
   protected readonly isBusy = computed(() => this.job()?.store.isBusy() ?? false);
@@ -406,7 +396,7 @@ export class GeneratePageComponent implements OnChanges {
     return prerequisiteChecks({
       hasSources: this.wordSources.sources().length > 0,
       online: this.network.isOnline(),
-      textModelFailure: failure === null ? null : aiErrorCopy(failure).whatFailed,
+      textModelFailure: failure === null ? null : aiErrorCopy(failure).heading,
       textModelReadiness: this.textModel.readiness(),
       structuredOutput: this.textModel.structuredOutput(),
       snapshot: this.snapshots.active(),
@@ -468,17 +458,17 @@ export class GeneratePageComponent implements OnChanges {
       return missing;
     }
     if (this.plots.isDrafting()) {
-      return 'The plots are still being written.';
+      return 'Writing plots…';
     }
     if (this.plots.selected() === null) {
       // The draft failed before any plot existed; Regenerate asks again.
-      return 'Regenerate the plots to continue.';
+      return 'Regenerate the plots';
     }
     switch (this.plots.selectedIssue()) {
       case 'empty':
-        return 'Write a plot to continue.';
+        return 'Write a plot';
       case 'too-long':
-        return 'Shorten the plot to continue.';
+        return 'Shorten the plot';
       default:
         return '';
     }
@@ -534,22 +524,18 @@ export class GeneratePageComponent implements OnChanges {
     }
     if (state.error.domain === 'storage' && state.error.code === 'migration-failed') {
       return {
-        heading: 'Your local data needs attention',
-        whatFailed: 'Monosai could not update the local database safely.',
-        whatDidNot: 'Nothing new was saved. Existing data was not partially changed.',
+        heading: 'Could not save',
+        whatDidNot: 'Nothing was saved. Your data is unchanged.',
         primaryAction:
           'Close other Monosai tabs and reload. If it still fails, use Full reset in Storage settings.',
-        escape: 'Full reset permanently deletes local stories, vocabulary, and settings.',
       };
     }
     return state.error.domain === 'ai'
       ? { ...aiErrorCopy(state.error), primaryAction: aiErrorAction(state.error, 'reader') }
       : {
-          heading: 'The story could not be finished',
-          whatFailed: state.error.message,
-          whatDidNot: 'Nothing was saved. Your library and vocabulary are unchanged.',
-          primaryAction: 'Try generating again.',
-          escape: '',
+          heading: 'Could not finish the story',
+          whatDidNot: 'Nothing was saved.',
+          primaryAction: 'Try again.',
         };
   });
 

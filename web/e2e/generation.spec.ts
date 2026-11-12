@@ -439,7 +439,7 @@ test.describe('generating a story', () => {
 
     await expect(page.getByTestId('cancel-generation')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('plot-option')).toHaveCount(0);
-    await expect(page.getByTestId('generation-copy')).toContainText('Generating your story');
+    await expect(page.getByTestId('generation-copy')).toContainText('Writing the story');
     await expect(page.locator('mn-generation-wait svg')).toHaveCount(0);
     const dots = page.locator('.loading-dots');
     await expect(dots).toHaveText('...');
@@ -545,7 +545,7 @@ test.describe('generating in the background', () => {
 
     await openGenerate(page);
     await writeStory(page);
-    await expect(page.getByTestId('generation-copy')).toContainText('Generating your story', {
+    await expect(page.getByTestId('generation-copy')).toContainText('Writing the story', {
       timeout: 60_000,
     });
 
@@ -558,12 +558,12 @@ test.describe('generating in the background', () => {
     const row = page.locator('mn-generation-job-card');
     await expect(row).toContainText(FIRST_PLOT);
     await expect(row).toContainText('Writing…');
-    await expect(row).toContainText('Generating your story');
+    await expect(row).toContainText('Writing the story');
 
     // The row leads back to the run it started, not to a fresh form.
     await row.getByRole('link').click();
     await expect(page.getByTestId('generation-screen')).toBeVisible();
-    await expect(page.getByTestId('generation-copy')).toContainText('Generating your story');
+    await expect(page.getByTestId('generation-copy')).toContainText('Writing the story');
 
     // A stopped run keeps its row, so a failure the learner was away for is
     // still there to deal with.

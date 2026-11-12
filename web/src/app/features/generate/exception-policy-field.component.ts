@@ -21,7 +21,7 @@ import { CardComponent } from '../../shared-ui/card/card.component';
   template: `
     <mn-card>
       <div class="mn-field">
-        <label for="mn-policy-text">Vocabulary exceptions (optional)</label>
+        <label for="mn-policy-text">Exceptions (optional)</label>
         <textarea
           id="mn-policy-text"
           rows="3"
@@ -33,9 +33,7 @@ import { CardComponent } from '../../shared-ui/card/card.component';
         @if (policyCounterVisible()) {
           <p id="mn-policy-count" class="mn-hint">{{ countLabel() }}</p>
         } @else {
-          <p id="mn-policy-hint" class="mn-hint">
-            Names or words the story may use outside your vocabulary.
-          </p>
+          <p id="mn-policy-hint" class="mn-hint">Names and words the story may use anyway</p>
         }
       </div>
 
@@ -65,7 +63,7 @@ import { CardComponent } from '../../shared-ui/card/card.component';
       }
 
       @if (saved() && !policy.hasUnsavedChanges()) {
-        <p class="mn-hint" role="status">Exceptions saved as a default.</p>
+        <p class="mn-hint" role="status">Saved</p>
       }
       @if (policy.failure(); as failure) {
         <p role="alert" class="mn-notice mn-notice--error">{{ failure.message }}</p>

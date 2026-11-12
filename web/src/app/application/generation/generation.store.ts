@@ -129,7 +129,7 @@ export class GenerationStore {
     this.repairSignal.set(0);
     this.reviewSignal.set(0);
     this.stateSignal.set({ kind: 'checking-prerequisites' });
-    this.announce('Checking what this story needs…');
+    this.announce('Checking setup…');
 
     const captured = await this.contexts.capture(
       modelPresetId,
@@ -156,7 +156,7 @@ export class GenerationStore {
     }
 
     this.stateSignal.set({ kind: 'preparing' });
-    this.announce('Preparing your reviewed vocabulary…');
+    this.announce('Preparing words…');
 
     const context = captured.value;
     const form = storyFormForSentenceCount(sentenceCount);
@@ -292,7 +292,7 @@ export class GenerationStore {
       const structureIssues = checkStoryStructure(candidate);
 
       this.stateSignal.set({ kind: 'validating' });
-      this.announce('Checking every word against your vocabulary…');
+      this.announce('Checking words…');
       const analyzed = await this.analysis.analyze(candidate, context, signal);
       if (!analyzed.ok) {
         this.finish(analyzed.error, signal);
@@ -467,21 +467,21 @@ export class GenerationStore {
   /** Saves an assembled draft, the shared tail of `finalize` and `retrySave`. */
   private async persist(draft: GeneratedStoryDraft): Promise<void> {
     this.stateSignal.set({ kind: 'finalizing' });
-    this.announce('Saving the story. This cannot be cancelled.');
+    this.announce('Saving. This cannot be cancelled.');
 
     const saved = await this.assembly.save(draft);
     this.controller = null;
     if (!saved.ok) {
       this.builtDraft = draft;
       this.stateSignal.set({ kind: 'failed', error: saved.error, during: 'finalizing' });
-      this.announce('The story could not be saved. Nothing was added to your library.');
+      this.announce('Could not save the story. Nothing was added.');
       return;
     }
 
     this.builtDraft = null;
     this.stateSignal.set({ kind: 'saved', reading: saved.value });
     this.logger.info('job.succeeded', { kind: 'generation' });
-    this.announce(`Saved “${saved.value.title}” to your library.`);
+    this.announce(`Saved “${saved.value.title}”.`);
     // Last, because the owner may end this run and destroy this store in reply.
     this.onSaved?.(saved.value);
   }
@@ -548,7 +548,7 @@ export class GenerationStore {
     this.controller = null;
     this.logger.info('job.cancelled', { kind: 'generation', phase: during });
     this.stateSignal.set({ kind: 'cancelled', during });
-    this.announce('Generation cancelled. Nothing was saved.');
+    this.announce('Cancelled. Nothing was saved.');
   }
 
   private announce(message: string): void {

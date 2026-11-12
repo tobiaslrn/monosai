@@ -6,14 +6,14 @@ describe('generationWaitCopy', () => {
   it('describes the main model request plainly', () => {
     expect(generationWaitCopy({ kind: 'writing' })).toEqual({
       key: 'writing',
-      title: 'Generating your story',
+      title: 'Writing the story',
       detail: '',
     });
   });
 
   it('uses the real unfamiliar-word count during review and repair', () => {
     expect(generationWaitCopy({ kind: 'exception-review', candidateCount: 5 }).title).toBe(
-      'Reviewing 5 unfamiliar words',
+      'Checking 5 new words',
     );
     expect(
       generationWaitCopy({
@@ -24,7 +24,7 @@ describe('generationWaitCopy', () => {
         structureIssueCount: 0,
       }),
     ).toMatchObject({
-      title: 'Replacing 5 unfamiliar words',
+      title: 'Replacing 5 new words',
       detail: 'Repair 1 of 2',
     });
   });
@@ -36,7 +36,7 @@ describe('generationWaitCopy', () => {
     // story is in the library, so saying otherwise here would be a promise the
     // save does not keep.
     expect(generationWaitCopy(state)).toMatchObject({
-      title: 'Saving your story',
+      title: 'Saving',
       detail: '',
     });
   });

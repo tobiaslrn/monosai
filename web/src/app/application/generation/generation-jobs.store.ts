@@ -224,7 +224,7 @@ export class GenerationJobsStore {
   private storySaved(id: JobId, reading: GeneratedStory): void {
     void this.preparation.reconcile(reading);
     void this.library.load();
-    this.library.noteExternalChange('Your generated story is ready and is in your library.');
+    this.library.noteExternalChange('Your story is ready.');
     if (this.watchedSignal() !== id) {
       this.dismiss(id);
     }

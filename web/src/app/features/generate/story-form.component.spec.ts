@@ -228,7 +228,7 @@ describe('StoryFormComponent', () => {
     expect(draft.sentenceCount()).toBe(800);
     expect(slider.getAttribute('aria-describedby')).toContain('mn-length-warning');
     expect(element.querySelector('#mn-length-warning')?.textContent).toContain(
-      'Longer stories may ignore your vocabulary and grammar settings',
+      'Long stories may stray from your words',
     );
   });
 
@@ -295,8 +295,8 @@ describe('StoryFormComponent', () => {
       ]),
     ).toEqual([
       ['Relaxed', 'Keep the first draft.'],
-      ['Standard', 'Try once to replace unfamiliar words.'],
-      ['Strict', 'Try twice to replace unfamiliar words.'],
+      ['Standard', 'Replace new words once'],
+      ['Strict', 'Replace new words twice'],
     ]);
   });
 

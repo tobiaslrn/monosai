@@ -136,7 +136,7 @@ import { ClusterComponent, StackComponent } from '../../shared-ui/layout/layout'
 
       <mn-stack [gap]="2">
         <mn-field
-          label="Special instructions (optional)"
+          label="Instructions (optional)"
           errorId="mn-instructions-limit"
           [error]="instructionsTooLong() ? instructionsLimitMessage() : null"
         >
@@ -144,7 +144,7 @@ import { ClusterComponent, StackComponent } from '../../shared-ui/layout/layout'
             id="mn-instructions"
             rows="2"
             data-testid="special-instructions"
-            placeholder="Tone, viewpoint, dialogue, or register"
+            placeholder="Tone, viewpoint, dialogue"
             [value]="draft.specialInstructions()"
             [attr.aria-describedby]="instructionsDescriptionIds()"
             [attr.aria-invalid]="instructionsTooLong()"

@@ -28,9 +28,7 @@ describe('GenerationJobCardComponent', () => {
     );
     expect(page.querySelector('[mn-list-row-trailing]')).toBeNull();
     expect(page.querySelector('[mn-list-row-meta]')?.textContent).toContain('Writing…');
-    expect(page.querySelector('[mn-list-row-meta]')?.textContent).toContain(
-      'Reviewing 2 unfamiliar words',
-    );
+    expect(page.querySelector('[mn-list-row-meta]')?.textContent).toContain('Checking 2 new words');
     expect(page.querySelector('a')?.getAttribute('href')).toBe(`/generate/${JOB_ID}`);
   });
 

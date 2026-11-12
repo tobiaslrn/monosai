@@ -110,9 +110,9 @@ class FakeSetupProgressStore {
     id: 'vocabulary' as const,
     label: 'Your words',
     satisfied: false,
-    detail: 'Add words from Anki, an Anki package, or a pasted list.',
+    detail: 'Add words from Anki, a file or a pasted list.',
     route: '/reading-level',
-    actionLabel: 'Open word sources',
+    actionLabel: 'Add words',
   });
   readonly textModelCheck = signal({
     id: 'text-model' as const,
@@ -747,7 +747,7 @@ describe('LibraryPageComponent', () => {
     const card = element(fixture).querySelector('mn-generation-job-card');
     expect(card?.textContent).toContain('A cat visits the market');
     expect(card?.textContent).toContain('Writing…');
-    expect(card?.textContent).toContain('Generating your story');
+    expect(card?.textContent).toContain('Writing the story');
     expect(card?.querySelector('a')?.getAttribute('href')).toBe('/generate/job-1');
     // Above the shelf, so starting one and leaving has a visible result.
     const rows = [...element(fixture).querySelectorAll('mn-generation-job-card, mn-reading-card')];

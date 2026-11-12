@@ -64,8 +64,8 @@ const STRICTNESS_LABELS: Readonly<Record<VocabularyStrictness, string>> = {
 
 const STRICTNESS_DESCRIPTIONS: Readonly<Record<VocabularyStrictness, string>> = {
   relaxed: 'Keep the first draft.',
-  standard: 'Try once to replace unfamiliar words.',
-  strict: 'Try twice to replace unfamiliar words.',
+  standard: 'Replace new words once',
+  strict: 'Replace new words twice',
 };
 
 const STRICTNESS_OPTIONS: readonly SelectOption<VocabularyStrictness>[] = (
@@ -168,7 +168,7 @@ const STRICTNESS_OPTIONS: readonly SelectOption<VocabularyStrictness>[] = (
                 >
                   @if (showLengthWarning()) {
                     <mn-notice id="mn-length-warning" tone="warning" icon="warning" role="status">
-                      Longer stories may ignore your vocabulary and grammar settings.
+                      Long stories may stray from your words.
                     </mn-notice>
                   }
                 </mn-range-field>
@@ -260,7 +260,7 @@ const STRICTNESS_OPTIONS: readonly SelectOption<VocabularyStrictness>[] = (
         }
         @if (draft.step() === 3 && atGenerationLimit()) {
           <p class="mn-hint" data-testid="generation-limit">
-            Generation limit reached. This one can start when one finishes.
+            Limit reached. This starts when another finishes.
           </p>
         }
       </mn-action-bar>
@@ -306,17 +306,17 @@ export class StoryFormComponent {
     {
       value: 'uniform',
       label: 'Evenly',
-      description: 'Every word has the same chance of being picked.',
+      description: 'All words equally',
     },
     {
       value: 'recent',
       label: 'Recently learned',
-      description: 'Puts your newest words first, then a sample of the rest.',
+      description: 'Newest words first',
     },
     {
       value: 'difficult',
       label: 'Difficult',
-      description: 'Leans towards words you have struggled with.',
+      description: 'Words you struggle with',
     },
   ];
   protected readonly focusSizeOptions: readonly SelectOption<RecentFocusSize>[] =

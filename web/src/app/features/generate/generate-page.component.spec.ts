@@ -151,7 +151,7 @@ describe('GeneratePageComponent', () => {
     expect(button?.getAttribute('aria-describedby')).toBe('mn-generate-disabled-reason');
     // The blockers lead the form in the document flow, never inside the sticky
     // action bar, where they rode up over the fields they explain.
-    expect(page.querySelector('mn-prerequisite-panel')?.textContent).toContain('You are offline');
+    expect(page.querySelector('mn-prerequisite-panel')?.textContent).toContain('Offline');
     expect(page.querySelector('[data-check="network"] strong')?.textContent).toContain(
       'Connection',
     );
@@ -163,7 +163,7 @@ describe('GeneratePageComponent', () => {
     const page = await render(JOB_ID);
 
     expect(page.querySelector('[data-testid="generation-screen"]')?.textContent).toContain(
-      'Generating your story',
+      'Writing the story',
     );
     expect(page.querySelector('[data-testid="leave-hint"]')?.textContent).toContain(
       'return to the library',
@@ -198,7 +198,6 @@ describe('GeneratePageComponent', () => {
 
     expect(run.cancelled).toHaveLength(1);
     expect(page.textContent).toContain('Nothing was saved');
-    expect(page.textContent).toContain('Your direction and plots are still here');
   });
 
   it('drops a finished run when the learner goes back to the form', async () => {
@@ -701,7 +700,7 @@ describe('GeneratePageComponent', () => {
     const page = await render();
 
     expect(page.querySelector('[data-testid="generation-limit"]')?.textContent).toContain(
-      'Generation limit reached',
+      'Limit reached',
     );
     expect(page.querySelector<HTMLButtonElement>('[data-testid="generate"]')?.disabled).toBe(true);
   });
