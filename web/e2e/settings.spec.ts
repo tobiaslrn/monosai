@@ -71,7 +71,7 @@ test.describe('settings persistence', () => {
 
     await page.getByTestId('delete-all-data').click();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByRole('alertdialog')).toContainText('Continue?');
+    await expect(page.getByRole('alertdialog')).toContainText('Last check');
 
     await page.getByRole('button', { name: 'Cancel' }).click();
     await expect(page.getByTestId('delete-all-data')).toBeVisible();
@@ -85,7 +85,7 @@ test.describe('settings persistence', () => {
     test.skip(!isMobile, 'sticky hover is a touch-only interaction');
 
     await page.goto('./#/settings');
-    const deleteAudio = page.getByRole('button', { name: 'Delete saved audio', exact: true });
+    const deleteAudio = page.getByTestId('delete-saved-audio');
     await deleteAudio.scrollIntoViewIfNeeded();
     await expect(deleteAudio).toBeVisible();
 

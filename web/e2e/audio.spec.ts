@@ -1238,7 +1238,7 @@ test.describe('audio settings and readiness', () => {
     expect(clips).toBe(SENTENCE_COUNT);
 
     await page.goto('./#/settings/voice');
-    await expect(audioStatus(page)).toContainText('Ready.');
+    await expect(audioStatus(page)).toContainText('Ready');
     await chooseOption(page.getByRole('combobox', { name: 'Voice' }), 'Kore');
 
     // Settings says what happened, in the words the audit found missing.
@@ -1274,7 +1274,7 @@ test.describe('audio settings and readiness', () => {
     // learner sitting in front of "Playing…" is actually waiting on.
     await stubOpenRouter(page, { audioDelayMs: 60_000 });
     await page.goto('./#/settings/voice');
-    await expect(audioStatus(page)).toContainText('Ready.');
+    await expect(audioStatus(page)).toContainText('Ready');
 
     // A configuration an earlier preview proved stays proven when a later one
     // is stopped, so the wait that can be abandoned is a changed one.

@@ -243,7 +243,7 @@ test.describe('the model tree', () => {
     await field.fill('99');
 
     await expect(field).toHaveAttribute('aria-invalid', 'true');
-    await expect(page.getByRole('alert')).toContainText('between 4,096 and 65,536');
+    await expect(page.getByRole('alert')).toContainText('Enter 4,096 to 65,536');
     await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
     await page.keyboard.press('Escape');
     await expect(field).toBeHidden();
