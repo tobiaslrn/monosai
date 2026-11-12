@@ -43,8 +43,8 @@ import { TextInputStepComponent } from './text-input-step.component';
         @if (store.languageFailure(); as failure) {
           <div class="mn-notice mn-notice--error" role="alert">
             <div>
-              <p><strong>Japanese analysis is not ready.</strong> {{ failure.message }}</p>
-              <p>Your text has not been changed and nothing was saved.</p>
+              <p><strong>Japanese analysis is not ready</strong> {{ failure.message }}</p>
+              <p>Your text is unchanged.</p>
             </div>
             <button type="button" class="mn-button" (click)="retry()">Try again</button>
           </div>
@@ -53,8 +53,8 @@ import { TextInputStepComponent } from './text-input-step.component';
         @if (store.storageFailure(); as failure) {
           <div class="mn-notice mn-notice--error" role="alert">
             <div>
-              <p><strong>The story could not be saved.</strong> {{ failure.message }}</p>
-              <p>Your text is still here, so you can try saving again.</p>
+              <p><strong>Could not save the story.</strong> {{ failure.message }}</p>
+              <p>Your text is still here.</p>
             </div>
           </div>
         }
@@ -62,8 +62,7 @@ import { TextInputStepComponent } from './text-input-step.component';
         @if (store.duplicates().length > 0) {
           <p class="mn-notice mn-notice--warning" role="alert">
             <span>
-              <strong>This text is already in your library.</strong>
-              Adding it again will save a separate copy.
+              <strong>Already in your library</strong>
             </span>
           </p>
         }
@@ -119,11 +118,11 @@ export class AddTextPageComponent {
       case 'idle':
         return null;
       case 'preparing-language':
-        return 'Preparing Japanese analysis…';
+        return 'Preparing…';
       case 'segmenting':
-        return 'Dividing the text into sentences…';
+        return 'Splitting sentences…';
       case 'analyzing':
-        return `Analysing sentences… ${String(busy.completed)} of ${String(busy.total)}`;
+        return `Analysing ${String(busy.completed)} of ${String(busy.total)}`;
       case 'saving':
         return 'Saving…';
     }
@@ -169,8 +168,8 @@ export class AddTextPageComponent {
     return openConfirmDialog(this.dialog, {
       title: 'Leave without saving?',
       message: 'Your text and title will be lost.',
-      confirmLabel: 'Leave and lose it',
-      cancelLabel: 'Stay here',
+      confirmLabel: 'Leave',
+      cancelLabel: 'Cancel',
       tone: 'danger',
     });
   }

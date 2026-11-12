@@ -145,12 +145,12 @@ export class ImportStore {
       }
       if (!duplicates.ok) {
         this.storageFailureSignal.set(duplicates.error);
-        this.announce('Existing stories could not be checked. Nothing was saved.');
+        this.announce('Could not check your library. Nothing was saved.');
         return null;
       }
       if (duplicates.value.length > 0) {
         this.duplicatesSignal.set(duplicates.value);
-        this.announce('This text is already in the library.');
+        this.announce('Already in your library.');
         return null;
       }
     }
@@ -205,7 +205,7 @@ export class ImportStore {
 
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
-      this.announce('The story could not be saved. Nothing was changed.');
+      this.announce('Could not save. Nothing changed.');
       return null;
     }
 
