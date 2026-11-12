@@ -11,9 +11,7 @@ test.describe('alpha disclosure', () => {
 
     const dialog = page.getByRole('alertdialog', { name: 'Monosai is in alpha' });
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText(
-      'It is still being built, so you may encounter bugs, missing features, or changes.',
-    );
+    await expect(dialog).toContainText('Expect bugs and changes.');
     await expect(dialog.getByRole('button', { name: 'Continue' })).toBeFocused();
 
     await dialog.getByRole('button', { name: 'Continue' }).click();

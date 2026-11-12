@@ -80,7 +80,7 @@ export interface UnknownWord {
       @if (copyStatus() === 'failed') {
         <section class="copy-fallback" aria-labelledby="mn-sentence-copy-fallback">
           <p class="mn-notice mn-notice--error" id="mn-sentence-copy-fallback" role="alert">
-            Copy failed. The sentence is unchanged — select it here, or try Copy again.
+            Could not copy. Select the text below.
           </p>
           <p class="copy-source" lang="ja">{{ sentenceText() }}</p>
         </section>
@@ -93,7 +93,7 @@ export interface UnknownWord {
       -->
       @if (unknownWords().length > 0) {
         <section class="vocabulary" aria-labelledby="mn-sentence-vocabulary">
-          <h3 class="mn-group-title" id="mn-sentence-vocabulary">Words you may not know</h3>
+          <h3 class="mn-group-title" id="mn-sentence-vocabulary">New words</h3>
           <ul class="words">
             @for (word of unknownWords(); track word.surface) {
               <li>
@@ -456,7 +456,7 @@ export class SentencePopoverComponent {
       return null;
     }
     if (aids.grammarAction.state === 'running') {
-      return { label: 'Analyzing…', busy: true };
+      return { label: 'Analysing…', busy: true };
     }
     if (!enrichmentCanRetry(aids.grammarAction.error)) return null;
     if (aids.grammarAction.state === 'failed') {
@@ -493,7 +493,7 @@ export class SentencePopoverComponent {
     const aids = this.aids();
     return [
       aids.translationAction.state === 'running' ? 'Translating…' : '',
-      aids.grammarAction.state === 'running' ? 'Analyzing…' : '',
+      aids.grammarAction.state === 'running' ? 'Analysing…' : '',
       aids.audioAction.state === 'running' ? 'Generating…' : '',
     ]
       .filter((part) => part !== '')
@@ -503,7 +503,7 @@ export class SentencePopoverComponent {
   /**
    * Whether the copy is still the latest thing to announce. It resets when
    * the set of running actions changes, so the live region reports the newest
-   * event rather than re-reading "Sentence copied." with every later change.
+   * event rather than re-reading "Copied" with every later change.
    */
   private readonly copyAnnounced = linkedSignal({
     source: this.runningAnnouncement,
@@ -512,9 +512,7 @@ export class SentencePopoverComponent {
 
   /** What the live region says: the latest event, a copy or the running actions. */
   protected readonly announcement = computed(() =>
-    this.copyAnnounced() && this.copyStatus() === 'copied'
-      ? 'Sentence copied.'
-      : this.runningAnnouncement(),
+    this.copyAnnounced() && this.copyStatus() === 'copied' ? 'Copied' : this.runningAnnouncement(),
   );
 
   protected readonly translationSetupNeeded = computed(() => {

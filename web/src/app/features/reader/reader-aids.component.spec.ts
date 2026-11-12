@@ -86,12 +86,12 @@ describe('ReaderAidsComponent', () => {
     activate(0);
 
     const message = notice(await render());
-    expect(message).toContain('no words in them');
-    expect(message).toContain('marked as new');
+    expect(message).toContain('No words in your sources');
+    expect(message).toContain('marked new');
   });
 
   it('explains that no vocabulary means nothing is marked', async () => {
-    expect(notice(await render())).toContain('no words yet');
+    expect(notice(await render())).toContain('No words yet');
   });
 
   it('offers the page where the vocabulary is fixed', async () => {
@@ -110,7 +110,7 @@ describe('ReaderAidsComponent', () => {
     const element = await render();
 
     expect(element.querySelector('button')).toBeNull();
-    expect(notice(element)).toContain('no words in them');
+    expect(notice(element)).toContain('No words in your sources');
   });
 
   it('groups the preferences under Reading appearance', async () => {

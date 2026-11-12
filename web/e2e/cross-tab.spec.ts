@@ -65,9 +65,7 @@ test.describe('a link that is not a reading', () => {
   test('says the address is not one Monosai issues, and claims no deletion', async ({ page }) => {
     await page.goto('./#/reader/not-a-uuid');
 
-    await expect(
-      page.getByRole('heading', { name: 'That link does not point to a reading' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Story not found' })).toBeVisible();
     await expect(page.getByText('no longer here')).toHaveCount(0);
     await expect(page.getByText('may have been deleted')).toHaveCount(0);
     await expectNoSeriousAccessibilityViolations(page);

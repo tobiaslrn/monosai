@@ -26,19 +26,19 @@ describe('playbackFailureMessage', () => {
 
   it('names the sentence playback stopped at', () => {
     expect(playbackFailureMessage({ kind: 'missing-clip', position: 3 })).toBe(
-      'Sentence 3 has no audio for the voice you are using now. Playback stopped there.',
+      'Sentence 3 has no audio for this voice. Stopped.',
     );
     expect(playbackFailureMessage({ kind: 'not-generated', position: 4 })).toBe(
-      'Sentence 4 has not been generated yet. Playback stopped there.',
+      'Sentence 4 has no audio yet. Stopped.',
     );
     expect(playbackFailureMessage({ kind: 'decode-failed', position: 5 })).toBe(
-      'The audio for sentence 5 could not be played. Playback stopped there.',
+      'Could not play sentence 5.',
     );
   });
 
   it('reports a storage failure in its own words', () => {
     expect(playbackFailureMessage({ kind: 'storage', message: 'Disk full' })).toBe(
-      'Reading the saved audio failed: Disk full',
+      'Could not read saved audio: Disk full',
     );
   });
 });
@@ -60,9 +60,7 @@ describe('stoppedRunLine', () => {
   it('counts the reading as the track does, and the attempt as an attempt', () => {
     const line = stoppedRunLine({ kind: 'cancelled', readingId: READING, counts: COUNTS }, 6, 13);
 
-    expect(line).toBe(
-      'Stopped with 6 of 13 sentences ready. This attempt covered 4 of the 9 sentences it set out to read.',
-    );
+    expect(line).toBe('Stopped. 6 of 13 sentences ready. 4 of 9 sentences done.');
   });
 
   it('says a cancellation before any work was asked for was simply a stop', () => {
@@ -77,7 +75,7 @@ describe('stoppedRunLine', () => {
     const counts = { total: 13, requested: 1, completed: 0, failed: 1 };
 
     expect(stoppedRunLine({ kind: 'cancelled', readingId: READING, counts }, 12, 13)).toContain(
-      'of the 1 sentence it set out',
+      '0 of 1 sentence done.',
     );
   });
 
@@ -179,7 +177,7 @@ describe('stoppedRunFailure', () => {
       canRetry: true,
     };
 
-    expect(stoppedRunFailure(progress)).toBe('Saving failed: No room.');
+    expect(stoppedRunFailure(progress)).toBe('Could not save: No room.');
   });
 
   it('says a provider failure in the words the reader uses everywhere', () => {

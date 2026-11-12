@@ -128,7 +128,7 @@ describe('WordInspectorStore', () => {
     await inspector.inspect(word({ category: 'not-in-snapshot' }));
 
     expect(inspector.presentation()?.structuralForm).toBeUndefined();
-    expect(inspector.presentation()?.label).toBe('Not in current vocabulary');
+    expect(inspector.presentation()?.label).toBe('New word');
   });
 
   it('reports no status at all when vocabulary is not configured', async () => {

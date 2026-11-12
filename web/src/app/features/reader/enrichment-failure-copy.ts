@@ -21,7 +21,7 @@ export function describeEnrichmentFailure(failure: EnrichmentFailure | null): st
     return null;
   }
   if (failure.source === 'storage') {
-    return `Saving failed: ${failure.error.message} The sentence itself is unchanged.`;
+    return `Could not save: ${failure.error.message} The sentence is unchanged.`;
   }
   return aiFailureMessage(failure.error, 'reader');
 }

@@ -193,9 +193,9 @@ export class ReaderContentActionsService {
     }
     const confirmed = await openConfirmDialog(this.dialog, {
       title: 'Delete audio for this story?',
-      message: 'This permanently deletes every generated audio clip for this reading.',
+      message: 'This deletes all audio for this story.',
       details: ['The story, translations, and grammar results stay saved.'],
-      footnote: 'You can generate the audio again from scratch.',
+      footnote: 'You can generate it again.',
       confirmLabel: 'Delete audio',
       cancelLabel: 'Cancel',
       tone: 'danger',
@@ -210,10 +210,10 @@ export class ReaderContentActionsService {
     const grammar = layer === 'grammar';
     const noun = grammar ? 'grammar notes' : 'translation';
     const confirmed = await openConfirmDialog(this.dialog, {
-      title: `Clear ${noun} for this reading?`,
-      message: `This permanently deletes the saved ${noun} for this reading.`,
+      title: `Clear ${noun}?`,
+      message: `This deletes the saved ${noun}.`,
       details: ['The Japanese text and its other reading aids stay saved.'],
-      footnote: `You can prepare ${grammar ? 'the notes' : 'a translation'} again from scratch.`,
+      footnote: `You can add ${grammar ? 'them' : 'it'} again.`,
       confirmLabel: grammar ? 'Clear grammar notes' : 'Clear translation',
       cancelLabel: 'Cancel',
       tone: 'danger',

@@ -44,7 +44,7 @@ const CONCURRENCY = 10;
  * The transport's Back control, which names both of the things it does: it
  * restarts the sentence being read, and steps back only at the start of one.
  */
-const BACK_LABEL = 'Restart this sentence, or go back to the one before';
+const BACK_LABEL = 'Restart or previous sentence';
 
 /** The study posture that makes the reading stop at every sentence seam. */
 const STEP_MODE_LABEL = 'Pause after each sentence';
@@ -444,7 +444,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
     await expect(playerStatus(page)).toContainText(
-      new RegExp(`Stopped with \\d+ of ${String(LONG_SENTENCE_COUNT)} sentences ready`),
+      new RegExp(`Stopped. \\d+ of ${String(LONG_SENTENCE_COUNT)} sentences ready`),
       {
         timeout: 60_000,
       },
@@ -522,7 +522,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // Seven of eight, which is the whole point: the five sentences after the
     // dead one were read rather than abandoned with it.
     await expect(playerStatus(page)).toContainText(
-      `Stopped with ${String(LONG_SENTENCE_COUNT - 1)} of ${String(LONG_SENTENCE_COUNT)} sentences ready`,
+      `Stopped. ${String(LONG_SENTENCE_COUNT - 1)} of ${String(LONG_SENTENCE_COUNT)} sentences ready`,
       { timeout: 60_000 },
     );
     expect(await storedClipCount(page)).toBe(LONG_SENTENCE_COUNT - 1);
@@ -688,7 +688,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     // had produced, and the card says how far that run got.
     await expect(playerStatus(page)).toContainText('Finished', { timeout: 60_000 });
     await expect(playerStatus(page)).toContainText(
-      new RegExp(`Stopped with \\d+ of ${String(LONG_SENTENCE_COUNT)} sentences ready`),
+      new RegExp(`Stopped. \\d+ of ${String(LONG_SENTENCE_COUNT)} sentences ready`),
     );
     await expect(audioPlayer(page).getByRole('button', { name: 'Play again' })).toBeVisible();
   });
@@ -757,7 +757,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect.poll(() => generatedPercent(page), { timeout: 60_000 }).toBeGreaterThan(0);
     await stopGenerating(page);
     await expect(playerStatus(page)).toContainText(
-      new RegExp(`Stopped with \\d+ of ${String(LONG_SENTENCE_COUNT)} sentences ready`),
+      new RegExp(`Stopped. \\d+ of ${String(LONG_SENTENCE_COUNT)} sentences ready`),
       {
         timeout: 60_000,
       },
@@ -1065,8 +1065,8 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(await storedClipCount(page), 'cancelling deletes nothing').toBe(SENTENCE_COUNT);
 
     await page.getByRole('button', { name: 'Delete saved audio' }).click();
-    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete saved audio' }).click();
-    await expect(page.getByText(/Saved audio deleted/)).toBeVisible();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete audio' }).click();
+    await expect(page.getByText(/Audio deleted/)).toBeVisible();
 
     expect(await storedClipCount(page)).toBe(0);
     expect(await countOwnedRows(page).then((rows) => rows['readings'] ?? 0)).toBe(1);
@@ -1245,7 +1245,7 @@ test.describe('audio settings and readiness', () => {
     await expectReadiness(ttsReadiness(page), 'stale');
     await expect(audioStatus(page)).toContainText('Settings changed.');
     await expect(page.getByTestId('audio-readiness')).toContainText(
-      'Existing audio uses different settings',
+      'Existing audio uses the old ones',
     );
 
     await page.goto(reader);
@@ -1287,7 +1287,7 @@ test.describe('audio settings and readiness', () => {
     await page.getByTestId('cancel-tts-test').click();
 
     await expect(audioStatus(page)).toContainText('Sample stopped');
-    await expect(page.getByTestId('audio-readiness')).toContainText('still untested');
+    await expect(page.getByTestId('audio-readiness')).toContainText('Not tested');
     // Stopping is not a failure, and nothing pretends the model answered.
     await expect(page.getByRole('alert')).toHaveCount(0);
     await expect(page.getByTestId('test-tts')).toBeEnabled();

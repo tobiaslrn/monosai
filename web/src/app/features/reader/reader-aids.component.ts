@@ -117,15 +117,15 @@ export class ReaderAidsComponent {
       case 'unknown':
         return null;
       case 'unavailable':
-        return `Your words could not be read, so word marking may be wrong here. ${state.message}`;
+        return `Words could not be read, so marks may be wrong. ${state.message}`;
       case 'known':
         switch (state.availability) {
           case 'ready':
             return null;
           case 'empty':
-            return 'Your word sources have no words in them, so every word here is marked as new.';
+            return 'No words in your sources, so every word is marked new.';
           case 'none':
-            return 'You have no words yet, so no word here is marked as new.';
+            return 'No words yet, so nothing is marked new.';
         }
     }
   });

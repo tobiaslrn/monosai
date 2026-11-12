@@ -117,8 +117,8 @@ import { ReadingTrackComponent } from './reading-track.component';
           <button
             type="button"
             class="mn-icon-button slot"
-            aria-label="Restart this sentence, or go back to the one before"
-            title="Restart this sentence, or go back to the one before"
+            aria-label="Restart or previous sentence"
+            title="Restart or previous sentence"
             [disabled]="!store.canGoPrevious()"
             (click)="previous()"
           >
@@ -140,8 +140,8 @@ import { ReadingTrackComponent } from './reading-track.component';
             <a
               class="mn-icon-button mn-icon-button--primary primary--wide"
               routerLink="/settings/voice"
-              aria-label="Set up audio model"
-              title="Set up audio model"
+              aria-label="Set up audio"
+              title="Set up audio"
             >
               <mn-icon name="settings" [size]="20" />
               <span>Set up audio</span>

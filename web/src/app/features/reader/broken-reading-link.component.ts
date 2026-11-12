@@ -21,10 +21,7 @@ import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.com
   template: `
     <div class="mn-page">
       <mn-page-header heading="Link not recognised" backTo="/library" backLabel="Back to library" />
-      <mn-not-found-panel
-        heading="That link does not point to a reading"
-        [explanation]="explanation"
-      />
+      <mn-not-found-panel heading="Story not found" [explanation]="explanation" />
     </div>
   `,
 })

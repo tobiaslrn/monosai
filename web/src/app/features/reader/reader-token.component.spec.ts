@@ -220,7 +220,7 @@ describe('ReaderTokenComponent', () => {
 
     const button = (fixture.nativeElement as HTMLElement).querySelector('button');
     expect(button?.classList.contains('is-warning-vocabulary')).toBe(true);
-    expect(button?.textContent).toContain('Not in current vocabulary');
+    expect(button?.textContent).toContain('New word');
   });
 
   it('leaves a word that is not a warning completely unmarked', () => {
@@ -265,7 +265,7 @@ describe('ReaderTokenComponent', () => {
 
     const button = (fixture.nativeElement as HTMLElement).querySelector('button');
     expect(button?.className).not.toContain('is-warning-vocabulary');
-    expect(button?.textContent).not.toContain('Unknown vocabulary');
+    expect(button?.textContent).not.toContain('Unmatched');
   });
 
   it('does not announce a status for punctuation', () => {

@@ -78,7 +78,7 @@ describe('describeEnrichmentFailure', () => {
       error: storageError('transaction-aborted', 'The write did not commit.'),
     });
 
-    expect(message).toContain('The sentence itself is unchanged.');
+    expect(message).toContain('The sentence is unchanged.');
   });
 });
 

@@ -297,7 +297,7 @@ describe('WordInspectorComponent', () => {
     const labels = [...element.querySelectorAll('button')].map((button) => button.textContent);
 
     expect(labels.join(' ')).not.toContain('nalyze');
-    expect(element.textContent).toContain('earlier grammar profile');
+    expect(element.textContent).toContain('earlier level');
   });
 
   it('does not repeat the sentence the reader is looking at', async () => {
@@ -375,7 +375,7 @@ describe('WordInspectorComponent', () => {
       })
     ).nativeElement as HTMLElement;
 
-    expect(element.querySelector('.warning')?.textContent).toContain('Unknown vocabulary');
+    expect(element.querySelector('.warning')?.textContent).toContain('Unmatched');
     expect(element.textContent).toContain('Add to word list');
   });
 

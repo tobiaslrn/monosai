@@ -127,9 +127,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
               <p class="mn-hint">No definition found.</p>
             }
             @case ('failed') {
-              <p class="mn-notice mn-notice--error" role="alert">
-                The dictionary is unavailable. The rest of this word's details are unaffected.
-              </p>
+              <p class="mn-notice mn-notice--error" role="alert">Dictionary unavailable.</p>
             }
             @case ('found') {
               <ol class="senses">
@@ -165,9 +163,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
             <h3 class="mn-group-title" id="mn-inspector-grammar">Grammar</h3>
 
             @if (grammar().stale) {
-              <p class="mn-hint">
-                Analyzed under an earlier grammar profile. It can be re-analyzed from the sentence.
-              </p>
+              <p class="mn-hint">Analysed at an earlier level. Re-run it from the sentence.</p>
             }
 
             <!--

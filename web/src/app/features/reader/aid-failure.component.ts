@@ -13,7 +13,7 @@ import { describeEnrichmentFailure, enrichmentNeedsSettings } from './enrichment
       <div class="mn-notice mn-notice--error" role="alert">
         <div>
           <p>{{ message }}</p>
-          <p>Your reading and saved aids are unchanged.</p>
+          <p>Your story is unchanged.</p>
         </div>
         @if (setupMessage() || needsSettings()) {
           <a class="mn-button" [routerLink]="settingsLink()">Open Settings</a>

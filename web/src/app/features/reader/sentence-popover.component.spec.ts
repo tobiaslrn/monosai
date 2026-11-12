@@ -196,7 +196,7 @@ describe('SentencePopoverComponent', () => {
 
     expect(writeText).toHaveBeenCalledWith('猫が寝た。');
     expect(rendered.textContent).toContain('Copied');
-    expect(rendered.querySelector('[role="status"]')?.textContent).toContain('Sentence copied.');
+    expect(rendered.querySelector('[role="status"]')?.textContent).toContain('Copied');
   });
 
   it('keeps copy failures local and offers ordinary selection as recovery', async () => {
@@ -215,7 +215,7 @@ describe('SentencePopoverComponent', () => {
     fixture.detectChanges();
 
     const alert = rendered.querySelector('[role="alert"]');
-    expect(alert?.textContent).toContain('select it here, or try Copy again');
+    expect(alert?.textContent).toContain('Select the text below');
     expect(alert?.textContent).not.toContain('private platform detail');
     // The way out is here rather than in the reader: the source is printed as
     // plain, selectable Japanese inside the card that failed to copy it.
@@ -279,8 +279,8 @@ describe('SentencePopoverComponent', () => {
       );
       fixture.detectChanges();
 
-      expect(trayLabels(rendered)).toEqual(['Copy', 'Translate', 'Analyzing…', 'Audio']);
-      const busy = trayButton(rendered, 'Analyzing…');
+      expect(trayLabels(rendered)).toEqual(['Copy', 'Translate', 'Analysing…', 'Audio']);
+      const busy = trayButton(rendered, 'Analysing…');
       expect(busy?.getAttribute('aria-busy')).toBe('true');
       busy?.click();
       expect(fixture.componentInstance.analyses).toBe(0);
@@ -325,7 +325,7 @@ describe('SentencePopoverComponent', () => {
       trayButton(rendered, 'Copy')?.click();
       await fixture.whenStable();
       fixture.detectChanges();
-      expect(rendered.querySelector('[role="status"]')?.textContent).toBe('Sentence copied.');
+      expect(rendered.querySelector('[role="status"]')?.textContent).toBe('Copied');
 
       fixture.componentInstance.aids.set(
         aidsWith({ translationAction: { state: 'running', error: null } }),
@@ -552,22 +552,22 @@ describe('SentencePopoverComponent', () => {
     // because something was underlined finds out what, without hunting for it.
     const fixture = TestBed.createComponent(HostComponent);
     fixture.componentInstance.unknownWords.set([
-      { surface: '猫', label: 'Unknown vocabulary' },
-      { surface: '歩いた', label: 'Not in current vocabulary' },
+      { surface: '猫', label: 'Unmatched' },
+      { surface: '歩いた', label: 'New word' },
     ]);
     fixture.detectChanges();
     const rendered = fixture.nativeElement as HTMLElement;
 
-    expect(rendered.textContent).toContain('Words you may not know');
+    expect(rendered.textContent).toContain('New words');
     expect(rendered.querySelectorAll('.words li')).toHaveLength(2);
     expect(rendered.querySelector('.words .surface')?.getAttribute('lang')).toBe('ja');
-    expect(rendered.textContent).toContain('Not in current vocabulary');
+    expect(rendered.textContent).toContain('New word');
   });
 
   it('says nothing about vocabulary when every word is covered', () => {
     const rendered = host(render());
 
-    expect(rendered.textContent).not.toContain('Words you may not know');
+    expect(rendered.textContent).not.toContain('New words');
   });
 
   /**
@@ -602,7 +602,7 @@ describe('SentencePopoverComponent', () => {
       expect(rendered.querySelector('[role="alert"]')?.textContent).toContain(
         'No voice is configured.',
       );
-      expect(rendered.textContent).toContain('Your reading and saved aids are unchanged.');
+      expect(rendered.textContent).toContain('Your story is unchanged.');
       expect(rendered.querySelector('a[href="/settings/voice"]')?.textContent).toContain(
         'Open Settings',
       );

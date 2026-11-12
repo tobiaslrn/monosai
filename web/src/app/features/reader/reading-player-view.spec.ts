@@ -212,7 +212,7 @@ describe('auxAction', () => {
     const action = auxAction(facts({ progress: failed(true), ...PARTIAL }));
 
     expect(action).toMatchObject({ kind: 'retry', icon: 'retry', label: 'Try again' });
-    expect(action?.title).toContain('Stopped with 4 of 13 sentences ready.');
+    expect(action?.title).toContain('Stopped. 4 of 13 sentences ready.');
   });
 
   it('puts a retry that was shown not to work away instead of offering it', () => {
@@ -286,8 +286,8 @@ describe('announcement', () => {
       }),
     );
 
-    expect(spoken).toContain('Reading the saved audio failed: Disk full');
-    expect(spoken).toContain('Stopped with 4 of 13 sentences ready.');
+    expect(spoken).toContain('Could not read saved audio: Disk full');
+    expect(spoken).toContain('Stopped. 4 of 13 sentences ready.');
     expect(spoken).toContain('Some audio is from older settings.');
   });
 

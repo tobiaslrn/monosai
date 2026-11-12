@@ -34,7 +34,7 @@ describe('unknownWordsIn', () => {
       ]),
     );
 
-    expect(words).toEqual([{ surface: '猫', label: 'Not in current vocabulary' }]);
+    expect(words).toEqual([{ surface: '猫', label: 'New word' }]);
   });
 });
 

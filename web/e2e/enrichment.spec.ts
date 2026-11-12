@@ -97,7 +97,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     // The real lane/provider/persistence path must expose an outstanding
     // request rather than looking like zero completed work while the first
     // batch is in flight.
-    await expect(grammarRow.getByRole('status')).toHaveText('Analyzing…', { timeout: 5_000 });
+    await expect(grammarRow.getByRole('status')).toHaveText('Analysing…', { timeout: 5_000 });
     await expect(grammarRow).not.toContainText(/0 of \d+ sentences analyzed/);
     await page.keyboard.press('Escape');
     await expect(panel).not.toBeVisible();
@@ -349,7 +349,7 @@ test.describe('scenario 11 — per-sentence translation and grammar', () => {
     expect(callCount(calls), 'a stale aid is never refreshed on its own').toBe(afterFirstAnalysis);
 
     await openWord(page, '猫');
-    await expect(wordDetails(page)).toContainText('earlier grammar profile');
+    await expect(wordDetails(page)).toContainText('earlier level');
     await dismissPopover(page);
 
     await openSentence(page);

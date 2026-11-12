@@ -151,7 +151,7 @@ describe('ReadingPlayerComponent', () => {
   }
 
   /** Back names both of the things it does, because its icon can name neither. */
-  const BACK_LABEL = 'Restart this sentence, or go back to the one before';
+  const BACK_LABEL = 'Restart or previous sentence';
   const NEXT_LABEL = 'Next sentence with audio';
   const WAITING_LABEL = 'Waiting for the next sentence';
   const MODE_LABEL = 'Pause after each sentence';
@@ -216,7 +216,7 @@ describe('ReadingPlayerComponent', () => {
       fixture.componentInstance.modelConfigured.set(false);
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
-      const link = element.querySelector<HTMLAnchorElement>('a[aria-label="Set up audio model"]');
+      const link = element.querySelector<HTMLAnchorElement>('a[aria-label="Set up audio"]');
 
       expect(link?.getAttribute('href')).toBe('/settings/voice');
       expect(link?.classList.contains('mn-icon-button--primary')).toBe(true);
@@ -224,7 +224,7 @@ describe('ReadingPlayerComponent', () => {
       expect(control(element, 'Generate audio')).toBeNull();
       expect(control(element, 'Play')).toBeNull();
       // One screen offers the same link once: the aux slot no longer repeats it.
-      expect(element.querySelectorAll('a[aria-label="Set up audio model"]')).toHaveLength(1);
+      expect(element.querySelectorAll('a[aria-label="Set up audio"]')).toHaveLength(1);
     });
 
     /**
@@ -530,11 +530,11 @@ describe('ReadingPlayerComponent', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
 
-      expect(said(element)).toContain('Stopped with 4 of 13 sentences ready');
+      expect(said(element)).toContain('Stopped. 4 of 13 sentences ready');
       const retry = control(element, 'Try again');
       // The whole of what went wrong, for a pointer that rests on it: a card
       // that floats over the reading has no room for a paragraph.
-      expect(retry?.title).toContain('Stopped with 4 of 13 sentences ready');
+      expect(retry?.title).toContain('Stopped. 4 of 13 sentences ready');
       retry?.click();
 
       expect(fixture.componentInstance.emitted).toEqual(['retry']);
@@ -587,8 +587,8 @@ describe('ReadingPlayerComponent', () => {
       fixture.detectChanges();
       const element = fixture.nativeElement as HTMLElement;
 
-      expect(said(element)).toContain('Stopped with 2 of 6 sentences ready.');
-      expect(said(element)).toContain('This attempt covered 0 of the 4 sentences');
+      expect(said(element)).toContain('Stopped. 2 of 6 sentences ready.');
+      expect(said(element)).toContain('0 of 4 sentences done.');
       expect(scrubber(element)?.getAttribute('aria-valuetext')).toContain('2 of 6 with audio');
     });
 
@@ -680,7 +680,7 @@ describe('ReadingPlayerComponent', () => {
       });
       fixture.detectChanges();
 
-      expect(said(fixture.nativeElement as HTMLElement)).toContain('Saving failed: No room left.');
+      expect(said(fixture.nativeElement as HTMLElement)).toContain('Could not save: No room left.');
     });
 
     /**
@@ -718,7 +718,7 @@ describe('ReadingPlayerComponent', () => {
       fixture.detectChanges();
 
       expect(said(fixture.nativeElement as HTMLElement)).toContain(
-        'Stopped with 4 of 13 sentences ready',
+        'Stopped. 4 of 13 sentences ready',
       );
     });
   });
@@ -1121,7 +1121,7 @@ describe('ReadingPlayerComponent', () => {
       const element = render().nativeElement as HTMLElement;
 
       expect(element.querySelector('[role="alert"]')?.textContent).toContain(
-        'Sentence 4 has no audio for the voice you are using now',
+        'Sentence 4 has no audio for this voice',
       );
     });
 
@@ -1131,7 +1131,7 @@ describe('ReadingPlayerComponent', () => {
       const element = render().nativeElement as HTMLElement;
 
       expect(element.querySelector('[role="alert"]')?.textContent).toContain(
-        'The audio for sentence 5 could not be played',
+        'Could not play sentence 5',
       );
     });
 
@@ -1145,7 +1145,7 @@ describe('ReadingPlayerComponent', () => {
       const fixture = render();
       const dismiss = control(fixture.nativeElement as HTMLElement, 'Dismiss');
 
-      expect(dismiss?.title).toContain('The audio for sentence 5 could not be played');
+      expect(dismiss?.title).toContain('Could not play sentence 5');
 
       dismiss?.click();
 
@@ -1158,7 +1158,7 @@ describe('ReadingPlayerComponent', () => {
       const element = render().nativeElement as HTMLElement;
 
       expect(element.querySelector('[role="alert"]')?.textContent).toContain(
-        'Sentence 4 has not been generated yet',
+        'Sentence 4 has no audio yet',
       );
     });
 
@@ -1168,7 +1168,7 @@ describe('ReadingPlayerComponent', () => {
       const element = render().nativeElement as HTMLElement;
 
       expect(element.querySelector('[role="alert"]')?.textContent).toContain(
-        'Reading the saved audio failed: The database was unavailable.',
+        'Could not read saved audio: The database was unavailable.',
       );
     });
   });

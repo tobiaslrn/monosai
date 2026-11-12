@@ -161,9 +161,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(items).toHaveCount(3);
     await expect(items.nth(0)).toHaveAttribute('data-state', 'next');
     await expect(steps.getByRole('link', { name: 'Add your words' })).toBeVisible();
-    await expect(
-      steps.getByRole('link', { name: 'Connect OpenRouter' }),
-    ).toBeVisible();
+    await expect(steps.getByRole('link', { name: 'Connect OpenRouter' })).toBeVisible();
     // Writing waits on the first two steps: it is a state, not a link.
     await expect(items.nth(2)).toHaveAttribute('data-state', 'waiting');
     await expect(steps.getByRole('link', { name: /Write your first story/ })).toHaveCount(0);
@@ -210,7 +208,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await importReading(page, '猫が寝た。', 'Audio setup');
 
     await page.getByRole('button', { name: /^Audio$/ }).click();
-    await page.getByRole('link', { name: 'Set up audio model' }).click();
+    await page.getByRole('link', { name: 'Set up audio' }).click();
 
     await expect(page).toHaveURL(/#\/settings\/voice$/);
     await expect(page.getByRole('heading', { name: 'Voice', level: 1 })).toBeVisible();
@@ -926,7 +924,7 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await openSentence(page);
     await page.getByRole('button', { name: 'Copy', exact: true }).click();
 
-    const notice = page.getByRole('alert').filter({ hasText: 'Copy failed' });
+    const notice = page.getByRole('alert').filter({ hasText: 'Could not copy' });
     await expect(notice).toBeVisible();
     const covered = await page.evaluate(() => {
       const box = document.querySelector('mn-sentence-popover .copy-fallback');

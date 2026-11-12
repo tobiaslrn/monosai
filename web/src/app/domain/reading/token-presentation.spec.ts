@@ -62,7 +62,7 @@ describe('presentStatus', () => {
       const presentation = presentStatus(BASELINE_STATUS, unresolved);
 
       expect(presentation.structuralForm).toBeUndefined();
-      expect(presentation.explanation).toContain('sentence-building grammar');
+      expect(presentation.explanation).toContain('Sentence-building grammar');
     }
   });
 

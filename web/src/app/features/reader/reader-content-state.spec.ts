@@ -107,7 +107,7 @@ describe('reader content state', () => {
     ).toMatchObject({
       label: 'Retry remaining',
       disabled: true,
-      error: 'Saving failed: Storage unavailable',
+      error: 'Could not save: Storage unavailable',
     });
   });
 
@@ -342,7 +342,7 @@ describe('reader content state', () => {
         'ready',
         true,
       ),
-    ).toMatchObject({ status: 'Analyzing…', busy: true, action: 'cancel' });
+    ).toMatchObject({ status: 'Analysing…', busy: true, action: 'cancel' });
   });
 
   it('reports the grammar save phase before the first batch is counted', () => {

@@ -69,7 +69,7 @@ export class ReaderAudioStore {
    *
    * Resolved through the same service the job itself gates on rather than
    * through saved presets: a tested model and voice with no preset saved is an
-   * ordinary state, and it was being offered "Set up audio model" beside a
+   * ordinary state, and it was being offered "Set up audio" beside a
    * Generate button that worked perfectly.
    */
   readonly hasModel = computed(() => this.configuration.resolve('tts-synthesis').ok);

@@ -30,13 +30,13 @@ export function playbackFailureMessage(failure: PlaybackFailure | null): string 
   }
   switch (failure.kind) {
     case 'missing-clip':
-      return `Sentence ${String(failure.position)} has no audio for the voice you are using now. Playback stopped there.`;
+      return `Sentence ${String(failure.position)} has no audio for this voice. Stopped.`;
     case 'not-generated':
-      return `Sentence ${String(failure.position)} has not been generated yet. Playback stopped there.`;
+      return `Sentence ${String(failure.position)} has no audio yet. Stopped.`;
     case 'decode-failed':
-      return `The audio for sentence ${String(failure.position)} could not be played. Playback stopped there.`;
+      return `Could not play sentence ${String(failure.position)}.`;
     case 'storage':
-      return `Reading the saved audio failed: ${failure.message}`;
+      return `Could not read saved audio: ${failure.message}`;
   }
 }
 
@@ -103,13 +103,13 @@ function exhaustedLine(error: LayerError): string {
  * different things under one form of words.
  */
 function readyLine(availableCount: number, sentenceCount: number): string {
-  return `Stopped with ${String(availableCount)} of ${formatCountOf(sentenceCount, 'sentence')} ready.`;
+  return `Stopped. ${String(availableCount)} of ${formatCountOf(sentenceCount, 'sentence')} ready.`;
 }
 
 /** What this attempt did, said as an attempt rather than as the reading. */
 function attemptLine(counts: AudioJobCounts): string {
   const missing = counts.requested;
-  return `This attempt covered ${String(counts.completed)} of the ${String(missing)} ${missing === 1 ? 'sentence' : 'sentences'} it set out to read.`;
+  return `${String(counts.completed)} of ${String(missing)} ${missing === 1 ? 'sentence' : 'sentences'} done.`;
 }
 
 /** Why a run failed, in the words the rest of the reader uses; null when it did not. */
@@ -118,7 +118,7 @@ export function stoppedRunFailure(progress: AudioJobProgress): string | null {
     return null;
   }
   if (progress.error.source === 'storage') {
-    return `Saving failed: ${progress.error.error.message}`;
+    return `Could not save: ${progress.error.error.message}`;
   }
   // The reader surface, because the settings table's action names a test this
   // screen does not have. Try again is the control right beside this.

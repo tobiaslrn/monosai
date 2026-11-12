@@ -101,7 +101,7 @@ function layerState(
           progress.kind === 'running'
             ? layer === 'grammar' && completed === 0
               ? progress.phase === 'requesting'
-                ? 'Analyzing…'
+                ? 'Analysing…'
                 : progress.phase === 'saving'
                   ? 'Working…'
                   : completedDescription
@@ -144,7 +144,7 @@ function layerState(
         disabled: prepare && !online,
         error:
           progress.error.source === 'storage'
-            ? `Saving failed: ${progress.error.error.message}`
+            ? `Could not save: ${progress.error.error.message}`
             : aiFailureMessage(progress.error.error, 'reader'),
       };
     }
