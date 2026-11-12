@@ -132,6 +132,9 @@ describe('StartupFailureComponent', () => {
     const fixture = render(true);
 
     press(fixture, 'Delete all');
+    await vi.waitFor(() => {
+      expect(dialog.open).toHaveBeenCalledOnce();
+    });
     await fixture.whenStable();
 
     const data = (dialog.open.mock.calls[0]?.[1] as { readonly data: ConfirmDialogData }).data;

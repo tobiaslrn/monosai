@@ -3,16 +3,16 @@ import {
   ChangeDetectionStrategy,
   Component,
   inject,
+  Injector,
   input,
   output,
   signal,
 } from '@angular/core';
-import { Dialog } from '@angular/cdk/dialog';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { StorageStore } from '../../application/settings/storage.store';
 import { CLOCK } from '../../application/shared/repository-tokens';
 import type { Clock } from '../../domain/shared/clock';
-import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
+import { confirmLater } from '../../shared-ui/confirm-dialog/confirm-later';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { ErrorScreenComponent } from '../../shared-ui/error-screen/error-screen.component';
 import { PageComponent } from '../../shared-ui/layout/layout';
@@ -109,7 +109,7 @@ const EXPORT_URL_LIFETIME_MS = 60_000;
 })
 export class StartupFailureComponent {
   private readonly document = inject(DOCUMENT);
-  private readonly dialog = inject(Dialog);
+  private readonly injector = inject(Injector);
   private readonly clock = inject<Clock>(CLOCK);
   protected readonly storage = inject(StorageStore);
   private readonly updates = inject(AppUpdateStore);
@@ -155,7 +155,7 @@ export class StartupFailureComponent {
   }
 
   protected async deleteAllData(): Promise<void> {
-    const confirmed = await openConfirmDialog(this.dialog, {
+    const confirmed = await confirmLater(this.injector, {
       title: 'Delete all Monosai data?',
       message: 'This cannot be undone. It removes:',
       details: [

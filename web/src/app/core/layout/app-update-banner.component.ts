@@ -1,7 +1,6 @@
-import { Dialog } from '@angular/cdk/dialog';
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, Injector, input } from '@angular/core';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
-import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
+import { confirmLater } from '../../shared-ui/confirm-dialog/confirm-later';
 import { BannerComponent } from '../../shared-ui/banner/banner.component';
 import { ButtonDirective } from '../../shared-ui/button/button';
 
@@ -87,7 +86,7 @@ import { ButtonDirective } from '../../shared-ui/button/button';
 })
 export class AppUpdateBannerComponent {
   protected readonly store = inject(AppUpdateStore);
-  private readonly dialog = inject(Dialog);
+  private readonly injector = inject(Injector);
 
   /** The reader carries no application chrome, so it shows only a lost database. */
   readonly supersededOnly = input(false);
@@ -99,7 +98,7 @@ export class AppUpdateBannerComponent {
   protected async reloadSuperseded(): Promise<void> {
     const work = this.store.busyReason();
     if (work !== null) {
-      const confirmed = await openConfirmDialog(this.dialog, {
+      const confirmed = await confirmLater(this.injector, {
         title: 'Reload and lose unsaved work?',
         message: 'Reloading discards:',
         details: [work.charAt(0).toUpperCase() + work.slice(1)],
