@@ -1,7 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { formatCount } from '../../domain/shared/locale';
-import { GENERATION_SNAPSHOT_MINIMUM } from '../../domain/vocabulary/snapshot';
 import { ButtonDirective } from '../../shared-ui/button/button';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { PageComponent } from '../../shared-ui/layout/layout';
@@ -41,13 +39,6 @@ import { HELP_TOPICS } from './help-topics';
         </a>
       </mn-page-header>
 
-      <mn-prose>
-        <p mn-lead>
-          Monosai writes short Japanese stories out of the words you have already studied, so you
-          can read a paragraph instead of looking one up every few seconds.
-        </p>
-      </mn-prose>
-
       <mn-section heading="Topics" [rows]="true">
         @for (topic of topics; track topic.slug) {
           <mn-row
@@ -66,36 +57,26 @@ import { HELP_TOPICS } from './help-topics';
         <section aria-labelledby="help-what">
           <h2 id="help-what">What Monosai does</h2>
           <p>
-            Tell it which words you know, most easily by pointing it at the cards you have reviewed
-            in Anki. From {{ minimumWords }} words upwards it writes stories that stay inside them,
-            and underlines anything it could not avoid.
-          </p>
-          <p>
-            It also reads Japanese you bring yourself. Paste text from anywhere and Monosai adds
-            readings above the kanji, spacing between words, and a dictionary a tap away. That side
-            needs no account and no AI key.
+            Tell Monosai which words you know, usually from Anki. It writes stories inside them and
+            underlines anything it could not avoid. It also reads any Japanese you paste, with
+            readings and a dictionary. No account or key.
           </p>
         </section>
 
         <section aria-labelledby="help-scope">
           <h2 id="help-scope">What it is not</h2>
           <p>
-            Monosai is for the first few months, and it is meant to be outgrown. Once you can get
-            through a page of real Japanese with a dictionary and some patience, read things people
-            wrote.
+            Monosai is for the first few months. Once you can read a page of real Japanese with a
+            dictionary, read things people wrote.
           </p>
         </section>
 
         <section aria-labelledby="help-more">
           <h2 id="help-more">When something fails</h2>
           <p>
-            Failure screens show a short code, such as <code>ai/credit-exhausted</code>.
-            <a routerLink="/help/questions" fragment="q-failed">Common questions</a> covers the ones
-            you are most likely to meet and links the full list.
-          </p>
-          <p>
-            Monosai is in alpha and built by one person in the open, so bugs are expected. Reports
-            are welcome.
+            Failure screens show a code, such as <code>ai/credit-exhausted</code>.
+            <a routerLink="/help/questions" fragment="q-failed">Common questions</a> covers the
+            usual ones.
           </p>
         </section>
       </mn-prose>
@@ -103,7 +84,5 @@ import { HELP_TOPICS } from './help-topics';
   `,
 })
 export class HelpPageComponent {
-  /** Read from the rule, so the screens that state it cannot disagree. */
-  protected readonly minimumWords = formatCount(GENERATION_SNAPSHOT_MINIMUM);
   protected readonly topics = HELP_TOPICS;
 }

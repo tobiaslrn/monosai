@@ -46,13 +46,12 @@ describe('help topics', () => {
   describe.each(TOPIC_PAGES)('%s', (slug, component) => {
     const topic = HELP_TOPICS.find((candidate) => candidate.slug === slug);
 
-    it('wears the topic title, a way back to Help, and a lead', () => {
+    it('wears the topic title, a way back to Help, and sections', () => {
       const element = render(component);
       expect(element.querySelector('h1')?.textContent).toBe(topic?.title);
       expect(element.querySelector('a[aria-label="Back to Help"]')?.getAttribute('href')).toBe(
         '/help',
       );
-      expect(element.querySelector('p[mn-lead]')?.textContent.trim()).toBeTruthy();
       expect(element.querySelectorAll('h2').length).toBeGreaterThan(0);
     });
 
@@ -98,7 +97,7 @@ describe('help topic content', () => {
 
   it('explains why live Anki access on Android needs a second application', () => {
     const text = render(YourWordsPageComponent).textContent.replace(/\s+/g, ' ');
-    expect(text).toContain("cannot read another app's data");
+    expect(text).toContain('Monosai Bridge');
     expect(text).toContain('Play Protect');
     expect(text).toContain('read and write access');
     expect(text).toContain('webCorsOriginList');
@@ -107,7 +106,7 @@ describe('help topic content', () => {
   it('keeps an empty balance apart from a rejected key, which no re-save can fix', () => {
     const text = render(QuestionsPageComponent).textContent.replace(/\s+/g, ' ');
     expect(text).toContain('ai/credit-exhausted');
-    expect(text).toContain('Saving the key again will not help');
+    expect(text).toContain('out of credit');
     expect(text).toContain('ai/authentication');
   });
 
@@ -121,8 +120,8 @@ describe('help topic content', () => {
 
   it('says where the data is and what leaves the device', () => {
     const text = render(InstallPageComponent).textContent.replace(/\s+/g, ' ');
-    expect(text).toContain('no account and no server');
-    expect(text).toContain('collects no analytics');
+    expect(text).toContain('no account, sync, backup or export');
+    expect(text).toContain('No analytics');
   });
 
   /* Local-only storage with no export is exactly the loss the voice rules ask us to name. */
@@ -131,6 +130,6 @@ describe('help topic content', () => {
     const warning = [...element.querySelectorAll('.mn-notice--warning')]
       .map((notice) => notice.textContent.replace(/\s+/g, ' '))
       .join(' ');
-    expect(warning).toContain('no backup and no export');
+    expect(warning).toContain('Clearing browser data removes your stories');
   });
 });

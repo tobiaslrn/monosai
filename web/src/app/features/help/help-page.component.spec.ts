@@ -28,8 +28,8 @@ describe('HelpPageComponent', () => {
       'When something fails',
     ]);
     const text = element.textContent.replace(/\s+/g, ' ');
-    expect(text).toContain('words you have already');
-    expect(text).toContain('meant to be outgrown');
+    expect(text).toContain('which words you know');
+    expect(text).toContain('first few months');
     expect(text).toContain('read things people wrote');
   });
 

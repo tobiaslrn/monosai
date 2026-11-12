@@ -9,117 +9,55 @@ import { HelpArticleComponent } from '../help-article.component';
   imports: [RouterLink, NoticeComponent, HelpArticleComponent],
   template: `
     <mn-help-article slug="install">
-      <p mn-lead>
-        Monosai is a web page that can be installed like an app. There is no store listing and no
-        download, and the installed version is the same application as the one in the tab.
-      </p>
+      <p mn-lead>Monosai is a web page you can install like an app.</p>
 
       <section aria-labelledby="install-choice">
         <h2 id="install-choice">In a tab or installed</h2>
         <p>
-          Everything works in an ordinary browser tab, so you can try Monosai without installing
-          anything. Installing gives it its own window and icon, with no address bar. It does not
-          change what the app can do.
-        </p>
-        <p>
-          On Android the difference is worth having. Installed, Monosai behaves like a normal app on
-          the home screen and in the app switcher, and it can receive an Anki export shared from
-          AnkiDroid, which a tab cannot.
+          Everything works in a browser tab. Installing gives it its own window and, on Android,
+          lets it receive an Anki export shared from AnkiDroid.
         </p>
       </section>
 
       <section aria-labelledby="install-how">
         <h2 id="install-how">Installing</h2>
         <p>
-          In Chrome, an install icon appears in the address bar once the page qualifies, and the
-          browser menu has the same entry. An Install Monosai button also appears under About in
-          <a routerLink="/settings">Settings</a>, opening the same prompt. That button is only there
-          while Chrome is offering to install: it is hidden once Monosai is installed, and hidden
-          again if Chrome has decided not to offer the prompt on this visit.
-        </p>
-        <p>
-          Monosai is built and tested for Chrome on Windows and on Android 12 or newer. Other
-          browsers are untested rather than blocked. Safari on an iPhone may work; nothing has been
-          checked there.
+          In Chrome, use the install icon in the address bar, or Install Monosai under About in
+          <a routerLink="/settings">Settings</a>. Tested on Chrome for Windows and Android 12 or
+          newer; other browsers are untested.
         </p>
       </section>
 
       <section aria-labelledby="install-offline">
         <h2 id="install-offline">What works offline</h2>
         <p>
-          Open Monosai online once so the application and the Japanese language data are stored on
-          your device. After that, on a train or a plane, you can:
-        </p>
-        <ul>
-          <li>open your library and read any story in it, with readings, spacing, and markers;</li>
-          <li>look words up in the dictionary;</li>
-          <li>play audio and read translations that were prepared earlier;</li>
-          <li>paste new Japanese text and read it, since the analysis runs on your device;</li>
-          <li>open an Anki package file to update your words.</li>
-        </ul>
-        <p>
-          Anything that leaves the device needs a connection: generating a story, a new translation,
-          new grammar notes, new audio, and refreshing your words from a running Anki. Monosai tells
-          you when a connection is needed.
+          Open Monosai online once. After that you can read stories, look words up, play prepared
+          audio, paste text and open Anki packages. Generating, new translations, notes and audio,
+          and refreshing from a running Anki need a connection.
         </p>
       </section>
 
       <section aria-labelledby="install-data">
         <h2 id="install-data">Where your data lives</h2>
         <p>
-          On this device, in this browser. Your stories, words, settings, and audio are stored
-          locally, with no account and no server to sync with. Using Monosai on a second device
-          means setting it up there too.
+          Stories, words, settings and audio live in this browser. There is no account, sync, backup
+          or export.
         </p>
         <mn-notice tone="warning" icon="warning">
           <p>
-            There is no backup and no export. Clearing this browser's data removes your stories for
-            good. Settings, under Storage, can ask the browser to keep the data.
+            Clearing browser data removes your stories. Settings, under Storage, can ask the browser
+            to keep it.
           </p>
         </mn-notice>
         <p>
-          Your OpenRouter key is kept in this browser's storage and is sent to OpenRouter and
-          nowhere else. It never appears in a log, a diagnostic copy, or an error report.
+          Your OpenRouter key goes to OpenRouter and nowhere else. AI requests send the plot, your
+          words, recent story titles, and the sentence being translated or spoken. No analytics.
         </p>
-        <p>
-          What does leave your device is what a request needs: the direction and plot you chose, the
-          words you know, the titles and plots of your last few stories when new plots are drafted,
-          and the sentence being translated or spoken.
-        </p>
-        <mn-notice tone="info" icon="info">
-          <p>
-            If a text is private, do not ask for AI aids on it. Reading, lookup, and furigana all
-            run locally and send nothing.
-          </p>
-        </mn-notice>
-        <p>
-          Monosai collects no analytics. The diagnostics buffer in Settings is for you to copy into
-          a bug report, and it is not uploaded.
-        </p>
-      </section>
-
-      <section aria-labelledby="install-storage">
-        <h2 id="install-storage">Storage and starting over</h2>
-        <p>
-          Settings, under Storage, shows how much space Monosai uses and whether the browser has
-          promised to keep the data when the device runs low. You can ask for that promise there,
-          and delete saved audio separately when it grows.
-        </p>
-        <mn-notice tone="warning" icon="warning">
-          <p>
-            The same section can delete everything local: stories, words, settings, and cached
-            audio. It asks twice and it cannot be undone. Your Anki collection is not affected.
-          </p>
-        </mn-notice>
       </section>
 
       <section aria-labelledby="install-updates">
         <h2 id="install-updates">Updates</h2>
-        <p>
-          Monosai updates itself. When a new version has downloaded, a banner offers to reload into
-          it. The banner waits if an import or a generation is still running. Settings can also
-          check on demand.
-        </p>
+        <p>Monosai updates itself and offers a reload when ready.</p>
       </section>
     </mn-help-article>
   `,

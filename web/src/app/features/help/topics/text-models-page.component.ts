@@ -20,85 +20,42 @@ import { HelpArticleComponent } from '../help-article.component';
   template: `
     <mn-help-article slug="text-models">
       <p mn-lead>
-        The model you choose decides whether a story is worth reading and what it costs. The useful
-        range is narrow: the smallest models make mistakes a beginner cannot catch, and the largest
-        are an expensive way to write simple Japanese.
+        Pick a mid-size model. The smallest make mistakes beginners cannot catch; flagships cost a
+        lot to write simple Japanese.
       </p>
-
-      <section aria-labelledby="models-how">
-        <h2 id="models-how">What the model has to do</h2>
-        <p>
-          Generating a story sends the model the plot you picked, your grammar level, and the words
-          you know, and asks for the story back in a fixed structure rather than as chat. Monosai
-          then checks the result against your vocabulary, spends a repair budget on words that fall
-          outside it, and marks anything it could not fix.
-        </p>
-        <p>
-          So there are two jobs: write correct, simple Japanese, and stay inside a word list. The
-          second is the harder one, and it is where models differ.
-        </p>
-      </section>
 
       <section aria-labelledby="models-small">
         <h2 id="models-small">What small models get wrong</h2>
-        <p>
-          Below roughly the mid-size tier, quality drops in ways that are bad for a beginner
-          specifically, because you are not yet able to notice them:
-        </p>
         <ul>
-          <li>Words that do not exist, assembled out of plausible kanji.</li>
-          <li>Wrong particles, broken conjugation, and sentences nobody would say.</li>
-          <li>Ignoring your vocabulary list, so the story comes back full of underlined words.</li>
-          <li>
-            Failing to answer in the structure Monosai requires, which shows up as
-            <code>ai/malformed-response</code> or <code>ai/capability-unsupported</code>. A model
-            that chats well can still fail this.
-          </li>
+          <li>Invented words</li>
+          <li>Wrong particles and conjugation</li>
+          <li>Ignoring your word list</li>
+          <li>Failing the required structure (<code>ai/malformed-response</code>)</li>
         </ul>
-        <p>
-          A free model is a false economy here. The mid-size models below already cost so little per
-          story that saving on top of them buys you nothing.
-        </p>
+        <p>Free models are a false economy.</p>
       </section>
 
       <section aria-labelledby="models-large">
         <h2 id="models-large">Why not a flagship model</h2>
         <p>
-          The flagship models write excellent Japanese and are the wrong tool for this. Your whole
-          word list goes into every request, so input is never small, and the strongest models can
-          turn one story into tens of cents. At a story a day that adds up.
-        </p>
-        <p>
-          They are also slower, and a few hundred words of deliberately simple Japanese does not
-          reward the extra capability.
+          Flagships write excellent Japanese, but your whole word list goes in every request, so a
+          story can cost tens of cents, and they are slower.
         </p>
       </section>
 
       <section aria-labelledby="models-reasoning">
         <h2 id="models-reasoning">Reasoning effort</h2>
         <p>
-          Where a model supports it, Settings offers a Reasoning setting. Turning it up makes the
-          model think before it writes, at the price of time and tokens you also pay for.
-        </p>
-        <mn-notice tone="warning" icon="warning">
-          <p>
-            On high effort a story can take minutes, and the reasoning can eat enough of the reply
-            budget that the story is cut off. That arrives as
-            <code>ai/context-budget-exceeded</code>.
-          </p>
-        </mn-notice>
-        <p>
-          Leave it on Automatic or low. Raise it only if a particular model keeps drifting outside
-          your words.
+          Leave Reasoning on Automatic or low. High effort can take minutes and cut the story off
+          (<code>ai/context-budget-exceeded</code>).
         </p>
       </section>
 
       <section aria-labelledby="models-pick">
         <h2 id="models-pick">What to use today</h2>
         <p>
-          Start from one of these two. In <a routerLink="/settings/text-models">Settings</a>, open
-          the Model row under Text model and search for the name. Choosing a model runs the test by
-          itself.
+          In <a routerLink="/settings/text-models">Settings</a>, open the Model row under Text model
+          and search for the name.
         </p>
         <mn-stack [gap]="4">
           <mn-card heading="GLM 5.3 Flash">
@@ -109,10 +66,7 @@ import { HelpArticleComponent } from '../help-article.component';
                 { label: 'A story', value: 'A fraction of a cent' },
               ]"
             />
-            <p>
-              Roughly a tenth of the price of the other and close enough in quality to be the
-              everyday choice.
-            </p>
+            <p>The everyday choice. About a tenth of the price.</p>
           </mn-card>
           <mn-card heading="Gemini 3.8 Flash">
             <p><code>google/gemini-3.8-flash</code></p>
@@ -122,57 +76,25 @@ import { HelpArticleComponent } from '../help-article.component';
                 { label: 'A story', value: 'A few cents' },
               ]"
             />
-            <p>
-              The best Japanese of anything tried here, and reliable at staying inside a word list.
-              Pick it when you want the best a story can get.
-            </p>
+            <p>The best Japanese and the most reliable at staying inside your words.</p>
           </mn-card>
         </mn-stack>
-        <p>
-          Avoid the very small open models, anything under a few billion parameters, and models sold
-          on speed alone: those are the ones that invent vocabulary. Skip the flagship reasoning
-          models too, which do this job no better and cost many times as much.
-        </p>
         <p mn-checked>Prices and names checked on Sep 17, 2026.</p>
-      </section>
-
-      <section aria-labelledby="models-style">
-        <h2 id="models-style">Models differ in style</h2>
-        <p>
-          The same plot and the same word list give noticeably different stories from model to
-          model: sentence length, how much dialogue appears, how willing a model is to repeat a word
-          you know rather than reach for one you do not.
-        </p>
-        <p>
-          Generate the same plot on two or three models when you start, then stay with whichever you
-          enjoy reading. Settings keeps several as favourites so you can switch.
-        </p>
       </section>
 
       <section aria-labelledby="models-cost">
         <h2 id="models-cost">What it costs</h2>
         <p>
-          You pay OpenRouter directly. It bills your account for every request, including tests and
-          retries, and its dashboard shows your remaining credit while its activity page lists each
-          request with its cost.
-        </p>
-        <p>
-          Check the activity page after your first few stories, so you know what your own settings
-          cost. Buying credit in small amounts is a reasonable safety net: Monosai sends nothing you
-          have not asked for, but a badly chosen model is a cost you find out about afterwards.
+          OpenRouter bills every request, including tests and retries. Check its activity page after
+          your first few stories.
         </p>
       </section>
 
       <section aria-labelledby="models-openrouter">
         <h2 id="models-openrouter">Why OpenRouter only</h2>
         <p>
-          One account reaches nearly every model worth trying, with a single key and a single bill.
-          You can switch model in a dropdown and compare the results.
-        </p>
-        <p>
-          A local model, or another provider's endpoint, is not supported today. Generating Japanese
-          locally at a quality worth reading needs hardware most people do not have, and every extra
-          endpoint is another set of quirks to test against. It may come later.
+          OpenRouter reaches nearly every model with one key. Local models and other providers are
+          not supported.
         </p>
       </section>
     </mn-help-article>
