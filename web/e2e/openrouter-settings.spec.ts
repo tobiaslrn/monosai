@@ -93,7 +93,7 @@ test.describe('the model tree', () => {
 
     await connect.click();
     await page.getByTestId('save-key').click();
-    await expect(page.getByRole('alert')).toContainText('Enter your OpenRouter key.');
+    await expect(page.getByRole('alert')).toContainText('Enter a key.');
     await expect(page.getByRole('button', { name: 'Delete key' })).toHaveCount(0);
     await page.getByTestId('api-key-input').fill(KEY);
     await expect(page.getByRole('alert')).toHaveCount(0);
@@ -127,7 +127,7 @@ test.describe('the model tree', () => {
     const connect = page.getByTestId('connect-openrouter');
     await expect(connect).toHaveAccessibleDescription(/Key refused/);
     await connect.click();
-    await expect(page.getByRole('alert')).toContainText('OpenRouter refused the saved key');
+    await expect(page.getByRole('alert')).toContainText('OpenRouter refused this key');
     await page.getByTestId('api-key-input').fill('a');
     await expect(page.getByRole('alert')).toHaveCount(0);
   });

@@ -55,6 +55,7 @@ import { SectionComponent } from '../../shared-ui/section/section.component';
         action="accent"
         glyph="copy"
         testId="copy-diagnostics"
+        [live]="true"
         [summary]="copySummary()"
         (pressed)="copyDiagnostics()"
       />
@@ -84,11 +85,11 @@ export class AboutSectionComponent {
   protected readonly copySummary = computed(() => {
     switch (this.copyStatus()) {
       case 'copied':
-        return 'Copied.';
+        return 'Copied';
       case 'failed':
-        return 'Could not copy on this browser.';
+        return 'Could not copy';
       case 'idle':
-        return 'Never includes your key or text';
+        return 'Leaves out your key and text';
     }
   });
 
@@ -118,13 +119,13 @@ export class AboutSectionComponent {
   protected updateStatusLabel(status: ReturnType<AppUpdateStore['status']>): string {
     switch (status.kind) {
       case 'unsupported':
-        return 'Updates unavailable.';
+        return 'Unavailable';
       case 'idle':
         return '';
       case 'current':
-        return 'You’re up to date.';
+        return 'Up to date';
       case 'available':
-        return 'Update available.';
+        return 'Update available';
       case 'activating':
         return 'Updating…';
       case 'failed':

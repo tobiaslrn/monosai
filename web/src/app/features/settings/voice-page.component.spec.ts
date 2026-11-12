@@ -163,8 +163,8 @@ describe('VoicePageComponent', () => {
     await tts.save();
     detect();
 
-    expect(readiness(element)).toContain('Not tested.');
-    expect(note(element)).toContain('once the sample has played through');
+    expect(readiness(element)).toContain('Not tested');
+    expect(note(element)).toContain('Play the sample');
   });
 
   it('says it is playing while the preview runs, and offers a way to stop it', async () => {
@@ -193,7 +193,7 @@ describe('VoicePageComponent', () => {
     detect();
 
     expect(readiness(element)).toContain('Sample stopped');
-    expect(note(element)).toContain('still untested');
+    expect(note(element)).toContain('Not tested');
     expect(element.querySelector('[data-testid="test-tts"]')).not.toBeNull();
   });
 
@@ -205,7 +205,7 @@ describe('VoicePageComponent', () => {
     await tts.test();
     detect();
 
-    expect(readiness(element)).toContain('Ready.');
+    expect(readiness(element)).toContain('Ready');
     expect(checkedRadio(styleControl(element))).toBe('clear');
     expect(checkedRadio(paceControl(element))).toBe('natural');
   });
@@ -240,7 +240,7 @@ describe('VoicePageComponent', () => {
     detect();
 
     expect(readiness(element)).toContain('Settings changed.');
-    expect(note(element)).toContain('Existing audio uses different settings');
+    expect(note(element)).toContain('Existing audio uses the old ones');
   });
 
   it('commits a speaking style through its radio list', async () => {
@@ -358,7 +358,7 @@ describe('VoicePageComponent', () => {
       // The first supported voice, so the model is usable without a second choice.
       expect(tts.settings().voiceId).toBe(FAKE_OPENROUTER.voice);
       expect(settings.tts.modelId).toBe(FAKE_OPENROUTER.ttsModel);
-      expect(readiness(element)).toContain('Not tested.');
+      expect(readiness(element)).toContain('Not tested');
     });
 
     it('saves a voice chosen from the model list', async () => {
@@ -377,7 +377,7 @@ describe('VoicePageComponent', () => {
       expect(settings.tts.voiceId).toBe('kaede');
       // A changed voice does not delete the clips it can no longer reach.
       expect(readiness(element)).toContain('Settings changed.');
-      expect(note(element)).toContain('Existing audio uses different settings');
+      expect(note(element)).toContain('Existing audio uses the old ones');
     });
 
     it('takes a typed voice when the catalogue does not know the model', async () => {
@@ -436,7 +436,7 @@ describe('VoicePageComponent', () => {
 
       // The catalogue declares instructions for this model, so the preview attempts them.
       expect(attempted?.instructions).toBe(true);
-      expect(readiness(element)).toContain('Ready.');
+      expect(readiness(element)).toContain('Ready');
     });
 
     it('plays the sample clip once the element can play it', async () => {
@@ -572,7 +572,7 @@ describe('VoicePageComponent', () => {
       await Promise.resolve();
 
       // A browser that refuses autoplay leaves the panel exactly as it was.
-      expect(readiness(element)).toContain('Ready.');
+      expect(readiness(element)).toContain('Ready');
     });
   });
 });

@@ -307,7 +307,7 @@ describe('TextModelsPageComponent', () => {
     field.value = '65537';
     field.dispatchEvent(new Event('input'));
     fixture.detectChanges();
-    expect(dialog.textContent).toContain('between 4,096 and 65,536');
+    expect(dialog.textContent).toContain('Enter 4,096 to 65,536');
     expect(save.disabled).toBe(true);
     expect(settings.textModel.storyTokenBudget).toBe(16_384);
 

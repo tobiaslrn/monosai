@@ -51,7 +51,7 @@ interface CategoryGroup {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (groups().length === 0) {
-      <p class="mn-hint">Language assets are still loading.</p>
+      <p class="mn-hint">Loading…</p>
     } @else {
       <p class="mn-hint" data-testid="structural-baseline-count">
         {{ formCountLabel() }} in {{ categoryCountLabel() }}.

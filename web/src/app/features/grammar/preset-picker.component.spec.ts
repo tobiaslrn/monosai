@@ -105,6 +105,6 @@ describe('PresetPickerComponent', () => {
     const { element } = await render();
 
     expect(radios(element)).toHaveLength(0);
-    expect(element.textContent).toContain('Language assets are still loading.');
+    expect(element.textContent).toContain('Loading levels…');
   });
 });

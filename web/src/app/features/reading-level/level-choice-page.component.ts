@@ -30,9 +30,8 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
       @if (language.status() === 'failed') {
         <mn-error-screen
           class="assets-failed"
-          heading="Language assets are unavailable"
-          description="Reading levels could not be loaded."
-          dataStatus="Your saved level is unchanged."
+          heading="Levels could not be loaded"
+          dataStatus="Your level is unchanged."
         >
           <ng-container data-actions>
             <button type="button" class="mn-button mn-button--primary" (click)="retryLanguage()">
@@ -45,7 +44,7 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
 
         @if (profile.lastError()) {
           <p class="mn-notice mn-notice--error" role="alert">
-            Your level could not be saved. The level you had is unchanged.
+            Could not save. Your level is unchanged.
           </p>
         }
 

@@ -414,11 +414,11 @@ export class TextModelsPageComponent {
       case 'ready':
         return { tone: 'success', text: readyLine, action: null };
       case 'untested':
-        return { tone: 'warning', text: 'Not tested.', action: 'Test now' };
+        return { tone: 'warning', text: 'Not tested', action: 'Test now' };
       case 'stale':
         return {
           tone: 'warning',
-          text: 'Settings changed since the last test.',
+          text: 'Changed since the last test',
           action: 'Test again',
         };
       case 'failed':

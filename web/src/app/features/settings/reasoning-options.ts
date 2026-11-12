@@ -2,9 +2,9 @@ import type { SelectOption } from '../../shared-ui/select/select.component';
 
 /** What each level of thinking trades, in a line; a level the app does not know says nothing. */
 const EFFORT_DESCRIPTIONS: Readonly<Record<string, string>> = {
-  minimal: 'Almost no extra thinking',
+  minimal: 'Fastest, cheapest',
   low: 'Faster, cheaper',
-  medium: 'A balance of speed and care',
+  medium: 'Balanced',
   high: 'Slower, more careful',
   xhigh: 'Slowest, most careful',
 };
@@ -12,7 +12,7 @@ const EFFORT_DESCRIPTIONS: Readonly<Record<string, string>> = {
 /** Automatic first, then each effort the model accepts, each with its trade-off. */
 export function reasoningOptions(efforts: readonly string[]): readonly SelectOption<string>[] {
   return [
-    { value: '', label: 'Automatic', description: 'The model decides how much to think.' },
+    { value: '', label: 'Automatic', description: 'Model decides' },
     ...efforts.map((effort) => ({
       value: effort,
       label: effort.charAt(0).toLocaleUpperCase() + effort.slice(1),

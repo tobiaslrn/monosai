@@ -16,7 +16,7 @@ export function tokenLimitSummary(value: number, max: number): string {
 export function tokenLimitProblem(entry: string, max: number): string | null {
   return isValidStoryTokenBudget(parseTokenLimit(entry), max)
     ? null
-    : `Use a whole number between ${formatCount(MIN_STORY_TOKEN_BUDGET)} and ${formatCount(max)}.`;
+    : `Enter ${formatCount(MIN_STORY_TOKEN_BUDGET)} to ${formatCount(max)}.`;
 }
 
 /** The hint under the field: the most the model allows. */

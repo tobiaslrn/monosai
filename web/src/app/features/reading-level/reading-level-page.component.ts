@@ -47,7 +47,7 @@ import { VocabularyCardComponent } from '../vocabulary/vocabulary-card.component
 import { generationShortfallLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
 /** Appended to every confirmation; changing the profile is what makes analyses stale. */
-const STALE_NOTICE = 'Existing grammar analyses are now out of date.';
+const STALE_NOTICE = 'Existing grammar notes are out of date.';
 
 /**
  * The fragments callers may deep link to.
@@ -144,10 +144,8 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
 
         @if (language.status() === 'failed') {
           <div class="mn-card assets-failed" role="alert">
-            <h3>Language assets are unavailable</h3>
-            <p class="mn-hint">
-              Reading levels could not be loaded. Your saved profile is unchanged.
-            </p>
+            <h3>Levels could not be loaded</h3>
+            <p class="mn-hint">Your level is unchanged.</p>
             <button type="button" class="mn-button" (click)="retryLanguage()">Try again</button>
           </div>
         } @else {
@@ -186,7 +184,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
 
         @if (profile.lastError()) {
           <p class="mn-notice mn-notice--error" role="alert">
-            Your change could not be saved. Your saved level is unchanged.
+            Could not save. Your level is unchanged.
           </p>
         }
       </mn-settings-section>
@@ -359,7 +357,7 @@ export class ReadingLevelPageComponent implements OnChanges {
     const change = this.profile.lastChange();
     return change === null
       ? ''
-      : `Reading level set to ${this.presetName(change.presetId)}. ${STALE_NOTICE}`;
+      : `Level set to ${this.presetName(change.presetId)}. ${STALE_NOTICE}`;
   });
 
   constructor() {

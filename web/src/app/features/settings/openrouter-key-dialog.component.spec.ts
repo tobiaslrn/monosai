@@ -108,12 +108,12 @@ describe('openOpenRouterKeyDialog', () => {
 
     save().click();
     fixture.detectChanges();
-    expect(line()).toContain('Enter your OpenRouter key.');
+    expect(line()).toContain('Enter a key.');
 
     type(fixture, '   ');
     save().click();
     fixture.detectChanges();
-    expect(line()).toContain('Enter your OpenRouter key.');
+    expect(line()).toContain('Enter a key.');
     expect(TestBed.inject(CredentialStore).isConfigured()).toBe(false);
 
     type(fixture, 'sk-or-new');
@@ -145,7 +145,7 @@ describe('openOpenRouterKeyDialog', () => {
     refused = true;
     const { fixture } = await open(true);
 
-    expect(line()).toContain('OpenRouter refused the saved key');
+    expect(line()).toContain('OpenRouter refused this key');
 
     type(fixture, 's');
     expect(line()).toBeUndefined();

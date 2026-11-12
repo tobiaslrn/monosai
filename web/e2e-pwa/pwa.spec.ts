@@ -224,9 +224,7 @@ test.describe('diagnostics', () => {
     const diagnostics = page.getByRole('region', { name: 'About' });
     await expect(diagnostics.getByRole('button', { name: 'Copy diagnostics' })).toBeVisible();
     await diagnostics.getByRole('button', { name: 'Copy diagnostics' }).click();
-    await expect(diagnostics.getByRole('status')).toHaveText(
-      /Diagnostics (copied|could not be copied on this browser)\./,
-    );
+    await expect(diagnostics.getByRole('status')).toHaveText(/^(Copied|Could not copy)$/);
 
     const pageText = await page.locator('body').innerText();
     for (const sensitiveValue of sensitiveValues) {
@@ -524,6 +522,6 @@ test.describe('a tab that lost its database, under a live worker', () => {
     // eslint-disable-next-line no-restricted-syntax -- an absence only shows over elapsed time
     await page.waitForTimeout(3000);
     await expect(notice).toBeVisible();
-    await expect(page.getByText('You’re up to date.')).toHaveCount(0);
+    await expect(page.getByText('Up to date')).toHaveCount(0);
   });
 });

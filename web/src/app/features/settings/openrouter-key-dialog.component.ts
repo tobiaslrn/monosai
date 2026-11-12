@@ -40,8 +40,7 @@ export type OpenRouterKeyOutcome = 'saved' | 'delete';
     <form (submit)="save($event)">
       <mn-dialog heading="OpenRouter key" headingId="mn-key-dialog-title">
         <p class="mn-hint">
-          OpenRouter is the one service Monosai sends text to. It bills your account per request;
-          the key stays on this device.
+          OpenRouter bills your account per request.
           <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer"
             >Get a key on openrouter.ai</a
           >
@@ -52,9 +51,7 @@ export type OpenRouterKeyOutcome = 'saved' | 'delete';
           label="API key"
           placeholder="sk-or-…"
           testId="api-key-input"
-          [hint]="
-            credential.isConfigured() ? 'A key is saved. Paste a new one to replace it.' : null
-          "
+          [hint]="credential.isConfigured() ? 'Key saved. Paste a new one to replace it.' : null"
           [error]="problem()"
           [value]="entry()"
           (valueChange)="onInput($event)"
@@ -97,10 +94,10 @@ export class OpenRouterKeyDialogComponent {
 
   protected readonly problem = computed(() => {
     if (this.blank()) {
-      return 'Enter your OpenRouter key.';
+      return 'Enter a key.';
     }
     return this.data.refused() && this.entry() === ''
-      ? 'OpenRouter refused the saved key. Paste a new one to replace it.'
+      ? 'OpenRouter refused this key. Paste a new one.'
       : null;
   });
 

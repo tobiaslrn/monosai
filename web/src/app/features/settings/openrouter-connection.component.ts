@@ -63,7 +63,7 @@ export class OpenRouterConnectionComponent {
   private async removeKey(): Promise<void> {
     const confirmed = await openConfirmDialog(this.dialog, {
       title: 'Delete OpenRouter key?',
-      message: 'AI requests will stop until you connect again.',
+      message: 'AI features stop until you add a key.',
       details: ['Your model choices and saved content stay on this device.'],
       confirmLabel: 'Delete key',
       cancelLabel: 'Keep key',

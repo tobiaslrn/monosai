@@ -115,7 +115,7 @@ test.describe('offline language assets', () => {
 
     await page.goto('./#/reading-level');
 
-    const failure = page.getByRole('heading', { name: 'Language assets are unavailable' });
+    const failure = page.getByRole('heading', { name: 'Levels could not be loaded' });
     await expect(failure).toBeVisible({ timeout: 120_000 });
 
     // The feature-level recovery remains actionable even though Settings no
@@ -139,9 +139,9 @@ test.describe('offline language assets', () => {
     });
 
     await page.goto('./#/reading-level');
-    await expect(
-      page.getByRole('heading', { name: 'Language assets are unavailable' }),
-    ).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByRole('heading', { name: 'Levels could not be loaded' })).toBeVisible({
+      timeout: 120_000,
+    });
 
     corrupt = false;
     await page.getByRole('button', { name: 'Try again' }).click();

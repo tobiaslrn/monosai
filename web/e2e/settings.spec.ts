@@ -113,7 +113,7 @@ test.describe('settings persistence', () => {
 
     await page.getByTestId('delete-all-data').click();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await page.getByRole('button', { name: 'Yes, delete everything' }).click();
+    await page.getByRole('button', { name: 'Delete everything' }).click();
 
     const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha' });
     await expect(alpha).toBeVisible();

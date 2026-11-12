@@ -140,7 +140,7 @@ describe('StorageSectionComponent', () => {
 
     const dialog = document.querySelector('[role="alertdialog"]');
     expect(dialog?.textContent).toContain('every story on this device');
-    expect(dialog?.textContent).toContain('Stories, translations, grammar results');
+    expect(dialog?.textContent).toContain('Stories and notes are not affected');
     expect(storage.calls).toEqual([]);
     expect(playback.calls).toEqual([]);
   });
@@ -178,7 +178,7 @@ describe('StorageSectionComponent', () => {
     dialogButton('Continue')?.click();
     await settle(fixture);
     expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain(
-      'Really delete everything?',
+      'Delete everything?',
     );
     dialogButton('Cancel')?.click();
     await settle(fixture);
@@ -188,7 +188,7 @@ describe('StorageSectionComponent', () => {
     await settle(fixture);
     dialogButton('Continue')?.click();
     await settle(fixture);
-    dialogButton('Yes, delete everything')?.click();
+    dialogButton('Delete everything')?.click();
     await settle(fixture);
     expect(storage.calls).toContain('resetAllData');
     element.remove();
@@ -202,14 +202,12 @@ describe('StorageSectionComponent', () => {
   it('stops playback and then clears, once confirmed', async () => {
     const fixture = await pressDeleteAudio();
 
-    dialogButton('Delete saved audio')?.click();
+    dialogButton('Delete audio')?.click();
     await settle(fixture);
 
     expect(playback.calls).toEqual(['audioCacheCleared']);
     expect(storage.calls).toEqual(['clearAudioCache']);
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-      'Saved audio deleted, and playback stopped',
-    );
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Audio deleted');
   });
 
   /**
@@ -247,27 +245,23 @@ describe('StorageSectionComponent', () => {
     it('shows an unprotected status after the browser declines', () => {
       const label = labelFor('refused');
 
-      expect(label).toBe('Not protected. The browser may clear data when space runs low.');
+      expect(label).toBe('Not protected. The browser may clear data.');
     });
 
     it('says protection is unavailable', () => {
-      expect(labelFor('unsupported')).toBe('Protection unavailable');
+      expect(labelFor('unsupported')).toBe('Unavailable');
     });
 
     it('shows an unprotected status when the request fails', () => {
-      expect(labelFor('request-failed')).toBe(
-        'Not protected. The browser may clear data when space runs low.',
-      );
+      expect(labelFor('request-failed')).toBe('Not protected. The browser may clear data.');
     });
 
     it('shows an unprotected status before protection is requested', () => {
-      expect(labelFor('not-asked')).toBe(
-        'Not protected. The browser may clear data when space runs low.',
-      );
+      expect(labelFor('not-asked')).toBe('Not protected. The browser may clear data.');
     });
 
     it('keeps an unknown status explicit', () => {
-      expect(labelFor('unknown')).toBe('Protection status unknown');
+      expect(labelFor('unknown')).toBe('Unknown');
     });
 
     it('leaves the request retryable, and asks when pressed', async () => {

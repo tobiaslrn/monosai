@@ -213,10 +213,10 @@ describe('ReadingLevelPageComponent', () => {
       ?.click();
     await vi.waitFor(async () => {
       await settle(fixture);
-      expect(element.textContent).toContain('Confirm vocabulary');
+      expect(element.textContent).toContain('Confirm words');
     });
     [...element.querySelectorAll<HTMLButtonElement>('mn-anki-mapping-draft button')]
-      .find((button) => button.textContent.includes('Confirm vocabulary'))
+      .find((button) => button.textContent.includes('Confirm words'))
       ?.click();
 
     await vi.waitFor(async () => {
@@ -332,7 +332,7 @@ describe('ReadingLevelPageComponent', () => {
 
     const failed = element.querySelector('.assets-failed');
     expect(failed?.getAttribute('role')).toBe('alert');
-    expect(failed?.textContent).toContain('profile is unchanged');
+    expect(failed?.textContent).toContain('level is unchanged');
     expect(element.querySelector('mn-preset-picker')).toBeNull();
     expect(failed?.querySelector('button')?.textContent.trim()).toBe('Try again');
   });

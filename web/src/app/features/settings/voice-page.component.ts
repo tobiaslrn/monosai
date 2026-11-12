@@ -206,14 +206,14 @@ export class VoicePageComponent {
     })),
   );
   protected readonly styleOptions: readonly RadioListOption[] = [
-    { value: 'natural', label: 'Natural', description: 'Everyday articulation' },
-    { value: 'clear', label: 'Clear', description: 'Precise sounds, still connected' },
-    { value: 'very-clear', label: 'Very clear', description: 'Extra-precise sounds' },
+    { value: 'natural', label: 'Natural', description: 'Everyday' },
+    { value: 'clear', label: 'Clear', description: 'Precise' },
+    { value: 'very-clear', label: 'Very clear', description: 'Extra precise' },
   ];
   protected readonly paceOptions: readonly RadioListOption[] = [
-    { value: 'natural', label: 'Natural', description: 'A native speaker’s ordinary rate' },
-    { value: 'slow', label: 'Slow', description: 'Slower, for an intermediate learner' },
-    { value: 'very-slow', label: 'Very slow', description: 'Much slower, for a beginner' },
+    { value: 'natural', label: 'Natural', description: 'Native speed' },
+    { value: 'slow', label: 'Slow', description: 'Slower' },
+    { value: 'very-slow', label: 'Very slow', description: 'Much slower' },
   ];
   /** What the catalog says the configured model accepts, empty when unknown. */
   private readonly speechParameters = computed(
@@ -237,24 +237,21 @@ export class VoicePageComponent {
       case 'testing':
         return { tone: 'info', text: 'Playing the sample…' };
       case 'ready':
-        return {
-          tone: 'success',
-          text: 'Ready. This model, voice, style and pace passed their sample.',
-        };
+        return { tone: 'success', text: 'Ready' };
       case 'untested':
         return {
           tone: 'warning',
-          text: 'Not tested. Audio can be generated once the sample has played through.',
+          text: 'Not tested. Play the sample to enable audio.',
         };
       case 'cancelled':
         return {
           tone: 'warning',
-          text: 'Sample stopped. This configuration is still untested.',
+          text: 'Sample stopped. Not tested.',
         };
       case 'stale':
         return {
           tone: 'warning',
-          text: 'Settings changed. Existing audio uses different settings. Generate it again or restore the previous settings.',
+          text: 'Settings changed. Existing audio uses the old ones.',
         };
       case 'failed': {
         const failure = this.tts.testFailure();

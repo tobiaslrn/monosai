@@ -1,11 +1,4 @@
-import {
-  DOCUMENT,
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { DOCUMENT, ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
 import { AudioCompressionStore } from '../../application/settings/audio-compression.store';
@@ -17,7 +10,7 @@ import { StatusLineComponent } from '../../shared-ui/status-line/status-line.com
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null) {
-    return 'Not reported by this browser';
+    return 'Unknown';
   }
   const units = ['B', 'kB', 'MB', 'GB'];
   let value = bytes;
@@ -79,7 +72,6 @@ function formatBytes(bytes: number | null): string {
         label="Delete all data"
         action="danger"
         testId="delete-all-data"
-        summary="Every story, word list, setting and clip on this device"
         [disabled]="storage.action() !== 'idle'"
         (pressed)="deleteAllData()"
       />
@@ -96,8 +88,6 @@ export class StorageSectionComponent {
   private readonly playback = inject(AudioPlaybackStore);
   protected readonly storage = inject(StorageStore);
   protected readonly compression = inject(AudioCompressionStore);
-  /** Whether the clear that just ran also had to stop something playing. */
-  protected readonly stoppedPlayback = signal(false);
 
   /** The compact status for the browser's current storage-protection answer. */
   protected readonly persistenceLabel = computed(() => {
@@ -105,7 +95,7 @@ export class StorageSectionComponent {
       case 'granted':
         return 'Protected';
       case 'unsupported':
-        return 'Protection unavailable';
+        return 'Unavailable';
       case 'refused':
         return 'Not protected';
       case 'request-failed':
@@ -113,7 +103,7 @@ export class StorageSectionComponent {
       case 'not-asked':
         return 'Not protected';
       case 'unknown':
-        return 'Protection status unknown';
+        return 'Unknown';
     }
   });
 
@@ -121,7 +111,7 @@ export class StorageSectionComponent {
   protected readonly protectionSummary = computed(() =>
     this.storage.action() === 'requesting-persistence'
       ? 'Protecting…'
-      : 'Not protected. The browser may clear data when space runs low.',
+      : 'Not protected. The browser may clear data.',
   );
 
   protected readonly usageLabel = computed(() => formatBytes(this.storage.status().usageBytes));
@@ -161,11 +151,7 @@ export class StorageSectionComponent {
   });
 
   protected readonly savedAudioLabel = computed(
-    () =>
-      this.compressionLabel() ??
-      (this.storage.audioCleared()
-        ? `Saved audio deleted${this.stoppedPlayback() ? ', and playback stopped' : ''}.`
-        : 'Audio clips stored with your stories'),
+    () => this.compressionLabel() ?? (this.storage.audioCleared() ? 'Audio deleted' : null),
   );
 
   protected stopCompressing(): void {
@@ -199,20 +185,19 @@ export class StorageSectionComponent {
   protected async clearAudio(): Promise<void> {
     const confirmed = await openConfirmDialog(this.dialog, {
       title: 'Delete saved audio for every story?',
-      message: 'This cannot be undone. It permanently removes:',
+      message: 'This cannot be undone. It removes:',
       details: [
         'Every generated audio clip, for every story on this device',
         'Anything playing right now, which stops',
       ],
-      footnote: 'Stories, translations, grammar results, and settings are not affected.',
-      confirmLabel: 'Delete saved audio',
+      footnote: 'Stories and notes are not affected.',
+      confirmLabel: 'Delete audio',
       cancelLabel: 'Keep it',
       tone: 'danger',
     });
     if (!confirmed) {
       return;
     }
-    this.stoppedPlayback.set(this.playback.isActive());
     this.playback.audioCacheCleared();
     await this.storage.clearAudioCache();
   }
@@ -224,13 +209,12 @@ export class StorageSectionComponent {
   protected async deleteAllData(): Promise<void> {
     const first = await openConfirmDialog(this.dialog, {
       title: 'Delete all Monosai data?',
-      message: 'A full reset permanently deletes everything Monosai has stored in this browser:',
+      message: 'This cannot be undone. It removes everything Monosai stores in this browser:',
       details: [
         'Every story, word list and snapshot',
         'Every saved setting',
         'Every cached aid and audio clip',
       ],
-      footnote: 'It cannot be undone.',
       confirmLabel: 'Continue',
       cancelLabel: 'Keep my data',
       tone: 'danger',
@@ -239,9 +223,9 @@ export class StorageSectionComponent {
       return;
     }
     const second = await openConfirmDialog(this.dialog, {
-      title: 'Really delete everything?',
-      message: 'This deletes everything Monosai has stored in this browser. Continue?',
-      confirmLabel: 'Yes, delete everything',
+      title: 'Delete everything?',
+      message: 'Last check. This cannot be undone.',
+      confirmLabel: 'Delete everything',
       cancelLabel: 'Cancel',
       tone: 'danger',
     });

@@ -42,7 +42,7 @@ import { RadioCardGroupComponent } from '../../shared-ui/radio-card/radio-card-g
           />
         </mn-radio-card>
       } @empty {
-        <p class="mn-hint">Language assets are still loading.</p>
+        <p class="mn-hint">Loading levels…</p>
       }
     </mn-radio-card-group>
   `,
