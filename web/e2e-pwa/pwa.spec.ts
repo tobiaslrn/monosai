@@ -367,7 +367,7 @@ test.describe('speech code that cannot be loaded', () => {
 
     // The run is over: it says so, nothing is still being generated, and the
     // learner is offered another go.
-    await expect(player.locator('[role="status"]')).toContainText('Stopped with 0 of 3 sentences', {
+    await expect(player.locator('[role="status"]')).toContainText('Stopped. 0 of 3 sentences', {
       timeout: 30_000,
     });
     // Offline is the true cause, so the offline wording is the right one.
