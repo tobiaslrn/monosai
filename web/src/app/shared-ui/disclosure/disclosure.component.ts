@@ -112,8 +112,16 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
       gap: var(--stack-gap);
       min-width: 0;
       padding: var(--group-gap) var(--surface-inset) var(--stack-gap);
-      overflow-wrap: anywhere;
+      /* A word breaks only when it cannot fit the line at all, never to make room. */
+      overflow-wrap: break-word;
       border-top: 1px solid var(--border-subtle);
+    }
+
+    /* Gutters grow with the text, so a long word keeps the room it needs. */
+    @container (max-width: 16em) {
+      mn-disclosure > .mn-disclosure__details > .mn-disclosure__body {
+        padding-inline: var(--space-2);
+      }
     }
 
     mn-disclosure > .mn-disclosure__details > .mn-disclosure__body--flush {
