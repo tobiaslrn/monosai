@@ -10,136 +10,139 @@ import { HelpArticleComponent } from '../help-article.component';
   imports: [RouterLink, HelpArticleComponent],
   template: `
     <mn-help-article slug="questions">
+      <p mn-lead>Short answers to what learners ask most, with links to the full explanation.</p>
+
       <section aria-labelledby="q-cost">
         <h2 id="q-cost">Does Monosai cost anything?</h2>
         <p>
-          Monosai is free. Stories, translations, notes and audio use your own OpenRouter account.
-          Check your balance after your first few stories.
-          <a routerLink="/help/text-models">Choosing a text model</a> has figures.
+          Monosai is free. Stories, translations, grammar notes and audio use your own OpenRouter
+          credit, usually a fraction of a cent to a few cents per story.
+          <a routerLink="/help/write">Write a story</a> lists what each request is for.
         </p>
       </section>
 
-      <section aria-labelledby="q-wait">
-        <h2 id="q-wait">Do I have to wait while a story is written?</h2>
-        <p>No. Generation keeps running when you leave. Most models take under a minute.</p>
-      </section>
-
-      <section aria-labelledby="q-private">
-        <h2 id="q-private">Is my data private?</h2>
+      <section aria-labelledby="q-without-ai">
+        <h2 id="q-without-ai">Can I use Monosai without AI?</h2>
         <p>
-          Stories, words and settings stay on this device. Requests to OpenRouter carry only what
-          they need. No analytics. <a routerLink="/help/install">Installing and offline</a> has the
-          detail.
+          Yes. You can paste any Japanese text and read it with furigana and a dictionary, free and
+          without a key. Only writing stories, translations, grammar notes and audio need
+          OpenRouter.
         </p>
       </section>
 
       <section aria-labelledby="q-anki">
         <h2 id="q-anki">Do I have to use Anki?</h2>
         <p>
-          No, but it is easiest. Otherwise paste a list.
-          <a routerLink="/help/your-words">Your words</a> has the options.
+          No. Anki is the easiest way to keep your words up to date, but you can type or paste a
+          list of words instead. <a routerLink="/help/your-words">Add your words</a> explains both.
+        </p>
+      </section>
+
+      <section aria-labelledby="q-iphone">
+        <h2 id="q-iphone">Does Monosai work on iPhone and iPad?</h2>
+        <p>
+          Monosai runs in Safari on iPhone and iPad, but it isn't tested there yet. To add your
+          words, export a package from AnkiMobile and import it, or use a word list. Monosai Bridge
+          is for Android only.
         </p>
       </section>
 
       <section aria-labelledby="q-safe">
-        <h2 id="q-safe">Can Monosai damage my Anki collection?</h2>
-        <p>No. Monosai only reads.</p>
+        <h2 id="q-safe">Can Monosai change my Anki collection?</h2>
+        <p>No. Monosai only reads from Anki, and so does Monosai Bridge.</p>
       </section>
 
-      <section aria-labelledby="q-provider">
-        <h2 id="q-provider">Can I use a local model, or another provider's key?</h2>
-        <p>Not today. OpenRouter only.</p>
-      </section>
-
-      <section aria-labelledby="q-reading">
-        <h2 id="q-reading">Why does the audio say a word oddly?</h2>
+      <section aria-labelledby="q-private">
+        <h2 id="q-private">Is my data private?</h2>
         <p>
-          Cheap speech models read each word alone, so some kanji are wrong. Tap the word for the
-          right reading. <a routerLink="/help/voice">Voice and audio</a> has the detail.
+          Your stories, words and settings stay in this browser, and Monosai collects no analytics.
+          AI requests go to OpenRouter and contain only what each task needs.
+          <a routerLink="/help/privacy">Privacy and your data</a> lists exactly what is sent.
         </p>
       </section>
 
-      <section aria-labelledby="q-unknown">
-        <h2 id="q-unknown">Why does a story contain words I do not know?</h2>
+      <section aria-labelledby="q-devices">
+        <h2 id="q-devices">Can I use my stories on another device?</h2>
         <p>
-          Monosai repairs what it can and underlines the rest. A few is normal; many means the model
-          is too small or your list too short. Vocabulary strictness and Vocabulary exceptions on
-          Generate help.
-        </p>
-      </section>
-
-      <section aria-labelledby="q-short">
-        <h2 id="q-short">Why is my story so short and plain?</h2>
-        <p>
-          Usually too few known words. Below a few hundred there is little to build on. Review more
-          and refresh.
+          No. There's no account or sync, so each browser keeps its own stories and settings. Your
+          Anki words can be added on each device.
         </p>
       </section>
 
       <section aria-labelledby="q-minimum">
         <h2 id="q-minimum">How many words do I need?</h2>
-        <p>Generation needs {{ minimumWords }}. Pasted text needs none.</p>
+        <p>
+          At least {{ minimumWords }} to write a story, and more for harder levels, as
+          <a routerLink="/help/reading-level">Set your reading level</a> shows. Pasted text needs
+          none.
+        </p>
+      </section>
+
+      <section aria-labelledby="q-short">
+        <h2 id="q-short">Why are my stories short and plain?</h2>
+        <p>
+          Usually because you know few words yet. With fewer than a few hundred, there's little to
+          build a story from. Keep reviewing in Anki, and your stories grow with you.
+        </p>
+      </section>
+
+      <section aria-labelledby="q-unknown">
+        <h2 id="q-unknown">Why does a story contain words I don't know?</h2>
+        <p>
+          Monosai replaces the unknown words it can and underlines the rest. A few are normal.
+          <a routerLink="/help/write">Write a story</a> explains what helps when there are many.
+        </p>
+      </section>
+
+      <section aria-labelledby="q-wait">
+        <h2 id="q-wait">Do I have to wait while a story is written?</h2>
+        <p>
+          No. You can read or browse elsewhere in Monosai, and the story appears in your library
+          when it's ready. Keep the tab open, though: closing or reloading it stops the story.
+        </p>
       </section>
 
       <section aria-labelledby="q-edit">
-        <h2 id="q-edit">Can I edit a story after saving it?</h2>
-        <p>You can rename or delete a story, not edit its text.</p>
+        <h2 id="q-edit">Can I edit a story after it's saved?</h2>
+        <p>You can rename or delete a story, but you can't change its text.</p>
+      </section>
+
+      <section aria-labelledby="q-audio">
+        <h2 id="q-audio">Why does the audio say a word oddly?</h2>
+        <p>
+          Cheaper speech models read each word on its own and sometimes pick the wrong reading. Tap
+          or click the word to check it. <a routerLink="/help/voice">Set up audio</a> explains the
+          difference between models.
+        </p>
+      </section>
+
+      <section aria-labelledby="q-provider">
+        <h2 id="q-provider">Can I use a local model or another provider?</h2>
+        <p>
+          No. Monosai works only with OpenRouter, which reaches almost every model with one key.
+        </p>
       </section>
 
       <section aria-labelledby="q-language">
-        <h2 id="q-language">Can I use it for another language?</h2>
-        <p>No. Everything is built for Japanese.</p>
-      </section>
-
-      <section aria-labelledby="q-failed">
-        <h2 id="q-failed">What does an error code mean?</h2>
-        <ul>
-          <li>
-            <code>ai/credit-exhausted</code>: the OpenRouter account is out of credit. Top it up.
-          </li>
-          <li>
-            <code>ai/authentication</code>: the key was rejected. Check it at openrouter.ai and save
-            it again.
-          </li>
-          <li><code>ai/rate-limited</code>: too many requests. Wait and try again.</li>
-          <li>
-            <code>ai/malformed-response</code> or <code>ai/capability-unsupported</code>: the model
-            cannot answer in the structure Monosai needs. Choose another model.
-          </li>
-          <li><code>anki/not-running</code>: Anki is not open on this computer. Open it.</li>
-          <li>
-            <code>anki/origin-not-allowed</code>: AnkiConnect has not been told to answer this page.
-            <a routerLink="/help/your-words">Your words</a> has the config line.
-          </li>
-          <li><code>ai/offline</code>: no connection. Reading and your library still work.</li>
-          <li>
-            <code>language/assets-unavailable</code>: the Japanese data could not be downloaded.
-            Check your connection and retry.
-          </li>
-        </ul>
-        <p>
-          <a routerLink="/help/error-codes">Error codes</a> lists every code, with its cause and
-          fix.
-        </p>
+        <h2 id="q-language">Can I use Monosai for another language?</h2>
+        <p>No. Everything in Monosai is built for Japanese.</p>
       </section>
 
       <section aria-labelledby="q-report">
         <h2 id="q-report">How do I report a bug?</h2>
         <p>
-          Open a
-          <a
-            href="https://github.com/tobiaslrn/monosai/issues"
-            target="_blank"
-            rel="noopener noreferrer"
-            >GitHub issue</a
-          >
-          with Copy diagnostics from Settings, About. It contains no key, prompt or text.
+          Open a GitHub issue with the diagnostics from Settings, as
+          <a routerLink="/help/troubleshooting" fragment="trouble-report">Fix a problem</a>
+          describes. The diagnostics never contain your key or your text.
         </p>
       </section>
 
       <section aria-labelledby="q-outgrow">
-        <h2 id="q-outgrow">When should I stop using Monosai?</h2>
-        <p>When you can read things written for people.</p>
+        <h2 id="q-outgrow">When should I move on from Monosai?</h2>
+        <p>
+          Once you can read a page written for native speakers with a dictionary, move on to books,
+          manga and articles. Monosai is built for the months before that.
+        </p>
       </section>
     </mn-help-article>
   `,

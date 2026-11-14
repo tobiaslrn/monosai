@@ -1,7 +1,8 @@
 # 0079 — Help is a hub of topics
 
 Date: 2026-09-17
-Status: Accepted; amends [ADR 0051](0051-non-reader-utilities-and-first-use-help.md)
+Status: Accepted; amends [ADR 0051](0051-non-reader-utilities-and-first-use-help.md). The topic list
+and the error codes topic are amended by [0092](0092-help-is-written-as-a-guide.md)
 
 ## Context
 

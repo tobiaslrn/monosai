@@ -239,25 +239,28 @@ for a label. One idea per string. No "you can", "in order to", "please", "simply
 "currently", "will". An error title states the fact ("Wrong key"), not "You entered the wrong
 key". Plain copy at about grade 7. "Sorry" only when the app itself broke badly, never in
 validation. No internal jargon ("Uniform", "persistent storage", "policy", "language assets").
+R49 and R50 govern interface strings. Help prose follows R55.
 
 **R50. Length budgets** (words, hard ceilings; most strings sit well under):
 
-| Role | Budget |
-|---|---|
-| Page title | 1 to 3, matches the row that opens it |
-| Section or group heading | 1 to 3 |
-| Row label | 1 to 4 |
-| Row secondary line or value | 1 to 5, one line, no sentence |
-| Button or link | 1 to 3, strong verb first; link text makes sense out of context |
-| Hint under a field | 0 by default; at most 8 |
-| Empty state title | 2 to 5 |
-| Empty state body | 0 by default; at most one sentence of 12 words |
-| Error title | 2 to 6 |
-| Error body | one action sentence, at most 12 words |
-| Dialog title | a question, 3 to 7 |
-| Dialog body | one sentence, plus the risk sentence if there is one |
-| Toast or status | 1 to 5, no full sentence needed |
-| Help prose | paragraphs of 1 to 3 sentences (R55) |
+| Role                        | Budget                                                          |
+| --------------------------- | --------------------------------------------------------------- |
+| Page title                  | 1 to 3, matches the row that opens it                           |
+| Section or group heading    | 1 to 3                                                          |
+| Row label                   | 1 to 4                                                          |
+| Row secondary line or value | 1 to 5, one line, no sentence                                   |
+| Button or link              | 1 to 3, strong verb first; link text makes sense out of context |
+| Hint under a field          | 0 by default; at most 8                                         |
+| Empty state title           | 2 to 5                                                          |
+| Empty state body            | 0 by default; at most one sentence of 12 words                  |
+| Error title                 | 2 to 6                                                          |
+| Error body                  | one action sentence, at most 12 words                           |
+| Dialog title                | a question, 3 to 7                                              |
+| Dialog body                 | one sentence, plus the risk sentence if there is one            |
+| Toast or status             | 1 to 5, no full sentence needed                                 |
+| Help topic title            | 1 to 5, a task ("Add your words") or a noun phrase (R55)        |
+| Help section heading        | 2 to 8, parallel within a page (R55)                            |
+| Help prose                  | paragraphs of 1 to 4 whole sentences (R55)                      |
 
 **R51. One extra sentence only for real risk.** Lost data, money, an irreversible action, or
 recovery from a failure. Then it is one short sentence saying what is safe or what it costs, in
@@ -285,12 +288,18 @@ matches the label of the row that opens it. Numbers and dates use the shared for
 Spelling is British ("favourite", "recognised", "analysing"). Accessible names are the visible
 label or a short noun-led phrase ("Paste text", "Close"), never restating the role.
 
-**R55. Help is the one prose surface, and still tight.** Allowed: headings, short paragraphs,
-lists, links beside the action. Open an article with what the reader needs, or with no lead.
-One section per question, at most three sentences per paragraph, a list or numbered steps before
-a paragraph. No history, motivation or philosophy, nothing the UI already says, no figure or
-setting the UI shows. The hub opens with the Topics shelf; a topic summary on it is a noun phrase
-of at most five words.
+**R55. Help is the one prose surface: write a guide, not a screen.** Help follows
+[the help writing guide](help-writing.md). Whole sentences with their articles and a subject;
+no colon-led fragments in running text. Address the reader as "you" and use common
+contractions. "You can" states a real option and "will" a later consequence; neither is
+padding there. Every topic opens with one lead sentence. Topic titles are a task ("Add your
+words") or a noun phrase, never "-ing" first; headings within a page are parallel; questions
+only on Common questions. A control is named in bold exactly as the screen spells it, and a
+path uses ">" (**Settings** > **Storage**). A term is defined on first use and then never
+varied. A task is numbered steps, one imperative action each. A notice holds a risk or a
+caveat, never a step. A fact lives on one page and the others link to it. A failure is looked
+up by the heading the screen shows. No history, motivation or philosophy. The hub opens with
+the Topics shelf; a topic summary on it is a noun phrase of at most five words.
 
 ## 11. Forbidden
 

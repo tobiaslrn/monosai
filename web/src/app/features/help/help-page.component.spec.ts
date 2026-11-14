@@ -24,13 +24,13 @@ describe('HelpPageComponent', () => {
     expect([...element.querySelectorAll('h2')].map((heading) => heading.textContent)).toEqual([
       'Topics',
       'What Monosai does',
-      'What it is not',
-      'When something fails',
+      "Who it's for",
+      'When something goes wrong',
     ]);
     const text = element.textContent.replace(/\s+/g, ' ');
-    expect(text).toContain('which words you know');
-    expect(text).toContain('first few months');
-    expect(text).toContain('read things people wrote');
+    expect(text).toContain('words you already know');
+    expect(text).toContain('first months of reading');
+    expect(text).toContain('Fix a problem');
   });
 
   it('offers every topic as a row that leads to its page', () => {

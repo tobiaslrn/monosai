@@ -8,14 +8,17 @@ import type { IconName } from '../../shared-ui/icon/icon-set';
  * rather than a row that leads nowhere.
  */
 export type HelpTopicSlug =
-  | 'first-steps'
+  | 'get-started'
   | 'your-words'
+  | 'reading-level'
+  | 'write'
   | 'reading'
   | 'text-models'
   | 'voice'
   | 'install'
+  | 'privacy'
   | 'questions'
-  | 'error-codes';
+  | 'troubleshooting';
 
 /**
  * One topic in the guide.
@@ -34,51 +37,69 @@ export interface HelpTopic {
 
 export const HELP_TOPICS: readonly HelpTopic[] = [
   {
-    slug: 'first-steps',
-    title: 'First steps',
-    summary: 'Your first story',
+    slug: 'get-started',
+    title: 'Get started',
+    summary: 'What you need, first story',
     icon: 'prepare',
   },
   {
     slug: 'your-words',
-    title: 'Your words',
-    summary: 'Anki, files, pasted lists',
+    title: 'Add your words',
+    summary: 'Anki, AnkiDroid, iPhone, lists',
     icon: 'anki-source',
   },
   {
+    slug: 'reading-level',
+    title: 'Set your reading level',
+    summary: 'Grammar levels and JLPT',
+    icon: 'reading-level',
+  },
+  {
+    slug: 'write',
+    title: 'Write a story',
+    summary: 'Words, direction, plot, cost',
+    icon: 'generate',
+  },
+  {
     slug: 'reading',
-    title: 'Reading a story',
-    summary: 'Lookup, furigana, audio',
+    title: 'Read a story',
+    summary: 'Lookup, furigana, translation, audio',
     icon: 'vocabulary',
   },
   {
     slug: 'text-models',
-    title: 'Choosing a text model',
-    summary: 'What to pick',
-    icon: 'generate',
+    title: 'Choose a text model',
+    summary: 'Models, prices, reasoning',
+    icon: 'aids',
   },
   {
     slug: 'voice',
-    title: 'Voice and audio',
-    summary: 'Speech models and cost',
+    title: 'Set up audio',
+    summary: 'Speech models, voices, cost',
     icon: 'audio',
   },
   {
     slug: 'install',
-    title: 'Installing and offline',
-    summary: 'Install, offline, your data',
+    title: 'Install and use offline',
+    summary: 'Install, offline, updates',
     icon: 'settings',
+  },
+  {
+    slug: 'privacy',
+    title: 'Privacy and your data',
+    summary: 'Your key, storage, deleting',
+    icon: 'hide',
   },
   {
     slug: 'questions',
     title: 'Common questions',
-    summary: 'Cost, privacy, failures',
-    icon: 'info',
+    summary: 'Short answers',
+    icon: 'help',
   },
   {
-    slug: 'error-codes',
-    title: 'Error codes',
-    summary: 'What each code means',
+    slug: 'troubleshooting',
+    title: 'Fix a problem',
+    summary: 'Error messages and fixes',
     icon: 'warning',
   },
 ] as const;

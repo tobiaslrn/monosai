@@ -92,9 +92,9 @@ test.describe('Help and utility bar', () => {
     await expect(github).toHaveAttribute('target', '_blank');
     await expect(github).toHaveAttribute('title', 'GitHub (opens in a new tab)');
     await page.getByTestId('help-topic').first().click();
-    await expect(page).toHaveURL(/#\/help\/first-steps$/);
-    await expect(page.getByRole('heading', { name: 'First steps', level: 1 })).toBeVisible();
-    await page.getByRole('link', { name: 'Add text' }).click();
+    await expect(page).toHaveURL(/#\/help\/get-started$/);
+    await expect(page.getByRole('heading', { name: 'Get started', level: 1 })).toBeVisible();
+    await page.getByRole('link', { name: 'Paste', exact: true }).click();
     await expect(page).toHaveURL(/#\/add$/);
 
     await page.goto('./#/library');
@@ -112,7 +112,7 @@ test.describe('Help and utility bar', () => {
   test('reads the guide from one topic to the next and back to the hub @smoke @mobile', async ({
     page,
   }) => {
-    await page.getByRole('link', { name: 'Choosing a text model' }).click();
+    await page.getByRole('link', { name: 'Choose a text model' }).click();
     await expect(page).toHaveURL(/#\/help\/text-models$/);
     // The advice that decides what a learner spends, named exactly enough to copy.
     await expect(page.getByText('google/gemini-3.8-flash')).toBeVisible();
@@ -120,12 +120,12 @@ test.describe('Help and utility bar', () => {
 
     await page.getByTestId('help-next').click();
     await expect(page).toHaveURL(/#\/help\/voice$/);
-    await expect(page.getByRole('heading', { name: 'Voice and audio', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Set up audio', level: 1 })).toBeVisible();
     await expect(page.getByText('hexgrad/kokoro-82m')).toBeVisible();
 
     await page.getByRole('link', { name: 'All topics' }).click();
     await expect(page).toHaveURL(/#\/help$/);
-    await expect(page.getByTestId('help-topic')).toHaveCount(8);
+    await expect(page.getByTestId('help-topic')).toHaveCount(11);
   });
 
   test('supports keyboard focus, accessibility, reload, and a 320px viewport @mobile @smoke', async ({

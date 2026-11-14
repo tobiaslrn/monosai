@@ -322,7 +322,7 @@ describe('ReadingLevelPageComponent', () => {
     expect(alert?.querySelector('details')?.open).toBe(false);
     expect(alert?.textContent).toContain('AnkiConnect add-on');
     expect(alert?.textContent).toContain('anki/not-running');
-    expect(alert?.querySelector('a[href$="#/help/error-codes"]')).not.toBeNull();
+    expect(alert?.querySelector('a[href$="#/help/troubleshooting"]')).not.toBeNull();
   });
 
   it('keeps the language failure surface and its retry', async () => {

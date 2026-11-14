@@ -25,5 +25,5 @@ export const ANKI_LINKS = {
    * The guide's error-code topic, keyed by the `anki/*` codes the failure panels
    * print. A hash route relative to the page, so it opens in the same deployment.
    */
-  troubleshooting: './#/help/error-codes',
+  troubleshooting: './#/help/troubleshooting',
 } as const;

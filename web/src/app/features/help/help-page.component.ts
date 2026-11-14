@@ -57,26 +57,31 @@ import { HELP_TOPICS } from './help-topics';
         <section aria-labelledby="help-what">
           <h2 id="help-what">What Monosai does</h2>
           <p>
-            Tell Monosai which words you know, usually from Anki. It writes stories inside them and
-            underlines anything it could not avoid. It also reads any Japanese you paste, with
-            readings and a dictionary. No account or key.
+            Monosai writes short Japanese stories that use only the words you already know, so you
+            can read without stopping at every line. You tell it which words you know, usually from
+            your Anki reviews, and it underlines any word it couldn't avoid.
+          </p>
+          <p>
+            You can also paste any Japanese text and read it with readings and a dictionary. That
+            needs no account and no key.
           </p>
         </section>
 
-        <section aria-labelledby="help-scope">
-          <h2 id="help-scope">What it is not</h2>
+        <section aria-labelledby="help-who">
+          <h2 id="help-who">Who it's for</h2>
           <p>
-            Monosai is for the first few months. Once you can read a page of real Japanese with a
-            dictionary, read things people wrote.
+            Monosai is for your first months of reading, while most real Japanese is still full of
+            words you don't know. Once you can read a page written for native speakers with a
+            dictionary, move on to books, manga and articles.
           </p>
         </section>
 
-        <section aria-labelledby="help-more">
-          <h2 id="help-more">When something fails</h2>
+        <section aria-labelledby="help-fails">
+          <h2 id="help-fails">When something goes wrong</h2>
           <p>
-            Failure screens show a code, such as <code>ai/credit-exhausted</code>.
-            <a routerLink="/help/questions" fragment="q-failed">Common questions</a> covers the
-            usual ones.
+            Look up the message you see in
+            <a routerLink="/help/troubleshooting">Fix a problem</a>. It explains what each one means
+            and what to do next.
           </p>
         </section>
       </mn-prose>
