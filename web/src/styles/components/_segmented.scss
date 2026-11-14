@@ -19,6 +19,12 @@
   grid-auto-columns: minmax(0, 1fr);
   grid-auto-flow: column;
   gap: 0;
+  /*
+   * Never narrower than its options: a width set from outside that is smaller
+   * would push each option past its column and leave the thumb, which is one
+   * column wide, beside the chosen words instead of under them.
+   */
+  min-width: max-content;
   padding: var(--segmented-pad);
   border-radius: var(--radius-pill);
   background: var(--surface-sunken);
