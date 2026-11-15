@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import { FAKE_OPENROUTER } from '../../../testing/openrouter-server';
 import { openRouterHarness, type HarnessOptions } from '../../../testing/ai-fakes';
-import { TTS_TEST_PHRASE } from './tts-test.adapter';
+import { TTS_TEST_CONTEXT, TTS_TEST_PHRASE } from './tts-test.adapter';
 
 const CONFIG = {
   modelId: FAKE_OPENROUTER.ttsModel,
@@ -34,6 +34,10 @@ describe('OpenRouterTtsTester', () => {
     });
     expect(String(harness.server.requests[0]?.body['instructions'])).toContain(
       'especially precise sound definition without over-enunciating or separating words',
+    );
+    // The direction carries neighbouring sentences, as synthesis sends it.
+    expect(String(harness.server.requests[0]?.body['instructions'])).toContain(
+      TTS_TEST_CONTEXT.beforeJa,
     );
   });
 
@@ -74,9 +78,9 @@ describe('OpenRouterTtsTester', () => {
     expect(harness.server.requests[2]?.body['speed']).toBeUndefined();
   });
 
-  it('supports Gemini TTS with a prefixed style direction', async () => {
-    const geminiModel = 'google/gemini-3.1-flash-tts-preview';
-    const harness = run({ knownTtsModels: [geminiModel] });
+  it('directs Gemini TTS through the instructions field, in PCM once MP3 is refused', async () => {
+    const geminiModel = 'google/gemini-3.8-flash-lite-tts';
+    const harness = run({ knownTtsModels: [geminiModel], pcmOnlyRate: 24_000 });
     const result = await harness.tts.testConfiguration({
       ...CONFIG,
       modelId: geminiModel,
@@ -86,13 +90,76 @@ describe('OpenRouterTtsTester', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.mimeType).toBe('audio/webm');
-    expect(harness.server.callCount).toBe(1);
-    expect(harness.server.requests[0]?.body['instructions']).toBeUndefined();
-    expect(String(harness.server.requests[0]?.body['input'])).toContain(
-      'especially precise sound definition',
-    );
-    expect(String(harness.server.requests[0]?.body['input']).endsWith(TTS_TEST_PHRASE)).toBe(true);
     expect(result.value.speechInstructionsApplied).toBe(true);
+    // MP3 refused, then PCM with the direction, then PCM without it to compare.
+    expect(harness.server.requests.map((request) => request.body['response_format'])).toEqual([
+      'mp3',
+      'pcm',
+      'pcm',
+    ]);
+    const accepted = harness.server.requests[1]!.body;
+    expect(accepted['input']).toBe(TTS_TEST_PHRASE);
+    expect(String(accepted['instructions'])).toContain('especially precise sound definition');
+  });
+
+  it('retries without a direction that was read aloud', async () => {
+    const harness = run({ clipSeconds: [40, 1.5] });
+    const result = await harness.tts.testConfiguration(CONFIG);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.speechInstructionsApplied).toBe(false);
+    expect(harness.server.callCount).toBe(2);
+    expect(harness.server.requests[0]?.body['instructions']).toBeDefined();
+    expect(harness.server.requests[1]?.body['instructions']).toBeUndefined();
+    expect(harness.server.requests[1]?.body['speed']).toBe(1);
+  });
+
+  it('fails a model whose clip stays far longer than the phrase', async () => {
+    const harness = run({ clipSeconds: [40, 40] });
+    const result = await harness.tts.testConfiguration(CONFIG);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('audio-invalid');
+    expect(result.error.detail?.issueCode).toBe('unexpected-length');
+    expect(harness.server.callCount).toBe(2);
+  });
+
+  it('drops a direction whose context was read aloud, though it fits the length bound', async () => {
+    const harness = run({ clipSeconds: [5.6, 1.4] });
+    const result = await harness.tts.testConfiguration(CONFIG);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.speechInstructionsApplied).toBe(false);
+    expect(harness.server.callCount).toBe(2);
+    expect(harness.server.requests[1]?.body['instructions']).toBeUndefined();
+  });
+
+  it('keeps a direction that only slows the reading', async () => {
+    const harness = run({ clipSeconds: [3, 1.5] });
+    const result = await harness.tts.testConfiguration(CONFIG);
+
+    expect(result.ok && result.value.speechInstructionsApplied).toBe(true);
+    expect(harness.server.callCount).toBe(2);
+  });
+
+  it('does not retry a long clip that carried no direction', async () => {
+    const attempt = declaredSpeechCapabilities(FAKE_OPENROUTER.ttsModel, ['voice']);
+    const harness = run({ clipSeconds: [40] });
+    const result = await harness.tts.testConfiguration({ ...CONFIG, attempt });
+
+    expect(result.ok).toBe(false);
+    expect(harness.server.callCount).toBe(1);
+  });
+
+  it('tests a model with no voice by leaving the voice out', async () => {
+    const harness = run({ knownVoices: [''] });
+    const result = await harness.tts.testConfiguration({ ...CONFIG, voiceId: '' });
+
+    expect(result.ok).toBe(true);
+    expect('voice' in harness.server.requests[0]!.body).toBe(false);
   });
 
   it('rejects an unknown voice as a capability failure', async () => {

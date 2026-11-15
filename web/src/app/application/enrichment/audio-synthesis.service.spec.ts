@@ -358,7 +358,7 @@ describe('AudioConfigurationService', () => {
     if (config.ok) {
       return;
     }
-    expect(config.error.message).toContain('No text-to-speech model and voice are set up.');
+    expect(config.error.message).toContain('No text-to-speech model is set up.');
   });
 
   it('reports the refusal against the task that asked', () => {

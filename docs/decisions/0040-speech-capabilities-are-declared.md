@@ -2,6 +2,7 @@
 
 Date: 2026-08-28
 Status: Accepted, partly superseded by [ADR 0073](0073-pace-at-playback-style-in-prompt.md)
+and [ADR 0095](0095-one-speech-request-for-every-model.md)
 
 Extends [ADR 0018](0018-openrouter-request-boundary.md) in how a speech
 capability is decided. The refusal fallback that ADR established is kept exactly

@@ -43,9 +43,48 @@ function providerMessage(envelope: ProviderErrorEnvelope | null): string {
   return envelope?.error.message?.toLowerCase() ?? '';
 }
 
-export function capabilityFrom(envelope: ProviderErrorEnvelope | null): string {
+/**
+ * What a speech refusal names, read before the general keywords.
+ *
+ * In a speech request `response_format` is the audio container, not structured
+ * output, and refusals mention more than the part they refuse: "HeyGen Voice
+ * only supports response_format …" refuses the format, not the voice, and
+ * "speed is not supported for response_format pcm" refuses the speed. So an
+ * exact `param` decides first, then the two optional parts by name, and only
+ * then the format.
+ */
+const SPEECH_PARAMETERS: Readonly<Record<string, string>> = {
+  response_format: 'audio-format',
+  format: 'audio-format',
+  instructions: 'instructions',
+  speed: 'speed',
+  voice: 'voice',
+};
+
+const SPEECH_TASKS: readonly AiTask[] = ['tts-test', 'tts-synthesis'];
+
+function speechCapabilityFrom(param: string, message: string): string | undefined {
+  const named = SPEECH_PARAMETERS[param];
+  if (named !== undefined) return named;
+  if (message.includes('instructions')) return 'instructions';
+  if (message.includes('speed')) return 'speed';
+  if (
+    message.includes('response_format') ||
+    message.includes('response format') ||
+    (/\bformat\b/u.test(message) && /\b(?:mp3|pcm)\b/u.test(message))
+  ) {
+    return 'audio-format';
+  }
+  return undefined;
+}
+
+export function capabilityFrom(envelope: ProviderErrorEnvelope | null, task?: AiTask): string {
   const message = providerMessage(envelope);
   const param = envelope?.error.param?.toLowerCase() ?? '';
+  if (task !== undefined && SPEECH_TASKS.includes(task)) {
+    const speech = speechCapabilityFrom(param, message);
+    if (speech !== undefined) return speech;
+  }
   const haystack = `${param} ${message}`;
   return (
     CAPABILITY_KEYWORDS.find((entry) => haystack.includes(entry.match))?.capability ?? 'request'
@@ -160,7 +199,7 @@ export function mapHttpStatus(
         detail: detailOf(context, { status }),
       });
     }
-    const capability = capabilityFrom(envelope);
+    const capability = capabilityFrom(envelope, task);
     return aiError(
       'capability-unsupported',
       task,

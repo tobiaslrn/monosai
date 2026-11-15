@@ -136,7 +136,7 @@ export const ttsSettingsSchema = z.object({
         id: nonEmptyString,
         name: nonEmptyString,
         modelId: nonEmptyString,
-        voiceId: nonEmptyString,
+        voiceId: z.string(),
         speechStyle: z.enum(['natural', 'clear', 'very-clear']).default('clear'),
         speechPace: z.enum(['natural', 'slow', 'very-slow']).default('natural'),
         speechInstructions: z.enum(['supported', 'unsupported']).default('unsupported'),

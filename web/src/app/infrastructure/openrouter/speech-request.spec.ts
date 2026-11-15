@@ -52,35 +52,32 @@ describe('buildSpeechRequestBody', () => {
     expect(body['input']).toBe(SENTENCE);
   });
 
-  it('gives Gemini a prefixed style direction, native PCM, and no speed', () => {
+  it('gives Gemini the same top-level direction and never folds it into the input', () => {
     const body = buildSpeechRequestBody({
       ...BASE,
-      modelId: 'google/gemini-3.1-flash-tts-preview',
+      modelId: 'google/gemini-3.8-flash-lite-tts',
+      responseFormat: 'pcm',
       speechStyle: 'very-clear',
-      speechPace: 'very-slow',
       instruction: { beforeJa: '雨が強くなりました。' },
     });
 
+    // A direction inside the spoken input is read aloud by the models that do
+    // not recognise it as one; the input is only ever the sentence.
+    expect(body['input']).toBe(SENTENCE);
     expect(body['response_format']).toBe('pcm');
+    expect(String(body['instructions'])).toContain('especially precise sound definition');
     expect(body['speed']).toBeUndefined();
-    expect(body['instructions']).toBeUndefined();
-    const input = String(body['input']);
-    expect(input).toContain('especially precise sound definition');
-    expect(input).toContain('never insert silence between words or morae');
-    // The sentence is last, and the compact prefix quotes no neighbour that
-    // could be read aloud with it.
-    expect(input.endsWith(SENTENCE)).toBe(true);
-    expect(input).not.toContain('雨');
   });
 
-  it('leaves the Gemini prompt exactly the sentence when no direction is sent', () => {
+  it('omits the voice when none is chosen, for models that pick their own', () => {
     const body = buildSpeechRequestBody({
       ...BASE,
-      modelId: 'google/gemini-3.1-flash-tts-preview',
+      voiceId: '  ',
+      modelId: 'fish-audio/s2-pro',
       instruction: undefined,
     });
 
+    expect('voice' in body).toBe(false);
     expect(body['input']).toBe(SENTENCE);
-    expect(body['response_format']).toBe('pcm');
   });
 });

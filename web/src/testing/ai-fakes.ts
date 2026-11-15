@@ -3,6 +3,7 @@ import { OpenRouterEnricher } from '../app/infrastructure/openrouter/enrichment.
 import { OpenRouterClient } from '../app/infrastructure/openrouter/openrouter-client';
 import { OpenRouterTextProvider } from '../app/infrastructure/openrouter/openrouter-text-provider';
 import { OpenRouterTextToSpeechProvider } from '../app/infrastructure/openrouter/openrouter-tts.provider';
+import { SpeechRefusals } from '../app/infrastructure/openrouter/speech-attempts';
 import { OpenRouterTtsSynthesizer } from '../app/infrastructure/openrouter/tts-synthesis.adapter';
 import { OpenRouterStoryGenerator } from '../app/infrastructure/openrouter/story-generation.adapter';
 import { OpenRouterTextModelTester } from '../app/infrastructure/openrouter/text-model-test.adapter';
@@ -122,9 +123,28 @@ export function failingCredentials(code: 'unavailable' | 'corrupt-record'): Cred
   };
 }
 
-/** Decoder that answers without a browser audio stack. */
-export function fakeAudioDecoder(decodable = true): AudioDecoder {
-  return { canDecode: () => Promise.resolve(decodable) };
+/**
+ * Decoder that answers without a browser audio stack.
+ *
+ * Every decodable clip reports `durationSeconds`, which defaults to the length
+ * of a plain reading of the TTS test phrase.
+ */
+export function fakeAudioDecoder(decodable = true, durationSeconds = 1.5): AudioDecoder {
+  return { decode: () => Promise.resolve(decodable ? { durationSeconds } : null) };
+}
+
+function sequencedAudioDecoder(
+  decodable: boolean,
+  clipSeconds: readonly number[] = [],
+): AudioDecoder {
+  let decoded = 0;
+  return {
+    decode: () => {
+      const durationSeconds = clipSeconds[Math.min(decoded, clipSeconds.length - 1)] ?? 1.5;
+      decoded += 1;
+      return Promise.resolve(decodable ? { durationSeconds } : null);
+    },
+  };
 }
 
 /** What a fake encoder should do: compress, refuse for want of a codec, or fail. */
@@ -172,6 +192,11 @@ export interface HarnessOptions extends FakeOpenRouterOptions {
   readonly credentials?: CredentialRepository;
   readonly online?: boolean;
   readonly decodable?: boolean;
+  /**
+   * How long each decoded clip plays, in decode order; the last entry repeats.
+   * Lets a test stand in for a model that reads its direction aloud.
+   */
+  readonly clipSeconds?: readonly number[];
   readonly encoder?: FakeEncoderBehaviour;
   readonly timeoutMs?: number;
   readonly sessionIdFactory?: () => string;
@@ -210,11 +235,12 @@ export function openRouterHarness(options: HarnessOptions = {}): OpenRouterHarne
       () => Promise.resolve(new OpenRouterEnricher(client)),
     ),
     tts: (() => {
-      const decoder = fakeAudioDecoder(options.decodable ?? true);
+      const decoder = sequencedAudioDecoder(options.decodable ?? true, options.clipSeconds);
       const encoder = fakeSpeechEncoder(options.encoder ?? 'encodes');
+      const refusals = new SpeechRefusals();
       return new OpenRouterTextToSpeechProvider(
-        new OpenRouterTtsTester(client, decoder, encoder),
-        () => Promise.resolve(new OpenRouterTtsSynthesizer(client, decoder, encoder)),
+        new OpenRouterTtsTester(client, decoder, encoder, refusals),
+        () => Promise.resolve(new OpenRouterTtsSynthesizer(client, decoder, encoder, refusals)),
         () => true,
       );
     })(),

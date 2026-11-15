@@ -1,26 +1,24 @@
 import type { AiError } from '../../domain/ai/ai-error';
 import type { AudioPayload, TtsRequest } from '../../domain/ai/text-to-speech-provider';
-import { isGeminiTtsModel, resolveTtsVoice } from '../../domain/ai/tts-configuration';
-import { err, ok, type Result } from '../../domain/shared/result';
-import type { AudioDecoder } from './audio-decode';
-import { verifyAudio, type AudioContext } from './audio-verification';
-import type { AudioResponse, OpenRouterClient } from './openrouter-client';
-import { AUDIO_REQUEST_TIMEOUT_MS, AUDIO_SPEECH_PATH } from './openrouter-endpoints';
+import { resolveTtsVoice } from '../../domain/ai/tts-configuration';
+import { ok, type Result } from '../../domain/shared/result';
 import type { SpeechEncoder } from '../../domain/audio/speech-encoder';
-import { normalizeGeminiAudio } from './gemini-audio';
-import { buildSpeechRequestBody } from './speech-request';
+import type { AudioDecoder } from './audio-decode';
+import type { OpenRouterClient } from './openrouter-client';
+import { SpeechRefusals } from './speech-attempts';
+import { speechClip, type SpeechClipPorts } from './speech-clip';
 
 const TASK = 'tts-synthesis';
 
 /**
  * Synthesizes one sentence.
  *
- * The same request shape, the same capability fallback, and the same
- * verification as the configuration test, because a clip produced here has to
- * be exactly what that test proved the provider can produce. Both bodies come
- * out of `buildSpeechRequestBody`, so the two can no longer drift (ADR 0018).
+ * The same request, refusal fallback, and verification as the configuration
+ * test, because a clip produced here has to be exactly what that test proved
+ * the provider can produce. Both go through `speechClip`, so the two cannot
+ * drift (ADR 0018).
  *
- * Which channels are asked for comes from what the test measured and the
+ * Whether the direction is sent comes from what the test measured and the
  * settings stored, never from the model catalog: synthesis has to work with no
  * network beyond the provider itself.
  *
@@ -28,105 +26,42 @@ const TASK = 'tts-synthesis';
  * not repeated here.
  */
 export class OpenRouterTtsSynthesizer {
+  private readonly ports: SpeechClipPorts;
+
   constructor(
-    private readonly client: OpenRouterClient,
-    private readonly decoder: AudioDecoder,
-    private readonly encoder: SpeechEncoder,
-  ) {}
-
-  async synthesize(input: TtsRequest, signal: AbortSignal): Promise<Result<AudioPayload, AiError>> {
-    const resolved = { ...input, voiceId: resolveTtsVoice(input.modelId, input.voiceId) };
-    let instructed = resolved.speechInstructions === 'supported';
-    let speed = !isGeminiTtsModel(resolved.modelId) && !instructed;
-
-    // A provider that advertised instructions or speed but rejects either
-    // channel degrades to the next available request shape, never failure.
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const response = await this.request(resolved, instructed, speed, signal);
-      if (response.ok) {
-        return this.verify(response.value, resolved, instructed);
-      }
-      const refused = response.error.detail?.capability;
-      if (response.error.code !== 'capability-unsupported') {
-        return err(response.error);
-      }
-      if (refused === 'instructions' && instructed) {
-        instructed = false;
-        speed = !isGeminiTtsModel(resolved.modelId);
-        continue;
-      }
-      if (refused === 'speed' && speed) {
-        speed = false;
-        continue;
-      }
-      return err(response.error);
-    }
-    throw new Error('Unreachable TTS capability fallback state.');
+    client: OpenRouterClient,
+    decoder: AudioDecoder,
+    encoder: SpeechEncoder,
+    refusals: SpeechRefusals = new SpeechRefusals(),
+  ) {
+    this.ports = { client, decoder, encoder, refusals };
   }
 
-  private request(
-    input: TtsRequest,
-    instructed: boolean,
-    speed: boolean,
-    signal: AbortSignal,
-  ): Promise<Result<AudioResponse, AiError>> {
-    return this.client.postAudio({
-      path: AUDIO_SPEECH_PATH,
+  async synthesize(input: TtsRequest, signal: AbortSignal): Promise<Result<AudioPayload, AiError>> {
+    const clip = await speechClip(this.ports, {
       task: TASK,
       modelId: input.modelId,
-      voiceId: input.voiceId,
-      timeoutMs: AUDIO_REQUEST_TIMEOUT_MS,
-      signal,
-      body: buildSpeechRequestBody({
-        modelId: input.modelId,
-        voiceId: input.voiceId,
-        text: input.text,
-        responseFormat: input.responseFormat,
-        speechStyle: input.speechStyle,
-        speechPace: input.speechPace,
-        speed,
-        instruction: instructed
+      voiceId: resolveTtsVoice(input.modelId, input.voiceId),
+      text: input.text,
+      speechStyle: input.speechStyle,
+      speechPace: input.speechPace,
+      instruction:
+        input.speechInstructions === 'supported'
           ? {
               ...(input.beforeJa === undefined ? {} : { beforeJa: input.beforeJa }),
               ...(input.afterJa === undefined ? {} : { afterJa: input.afterJa }),
               style: input.speechStyle,
             }
           : undefined,
-      }),
+      signal,
     });
-  }
-
-  private async verify(
-    response: AudioResponse,
-    input: TtsRequest,
-    /**
-     * The direction was carried, not necessarily obeyed: for Gemini it sat in
-     * the prompt, elsewhere the field was not refused. Both are statements
-     * about the request.
-     */
-    speechInstructionsApplied: boolean,
-  ): Promise<Result<AudioPayload, AiError>> {
-    const context: AudioContext = {
-      task: TASK,
-      modelId: input.modelId,
-      voiceId: input.voiceId,
-    };
-    const normalized = isGeminiTtsModel(input.modelId)
-      ? await normalizeGeminiAudio(response, this.encoder, context)
-      : ok(response);
-    if (!normalized.ok) {
-      return normalized;
-    }
-    const verified = await verifyAudio(normalized.value, this.decoder, {
-      ...context,
-      origin: normalized.value.mimeType === 'audio/webm' ? 'encoder' : 'provider',
-    });
-    return verified.ok
+    return clip.ok
       ? ok({
-          bytes: verified.value.bytes,
-          mimeType: verified.value.mimeType,
-          speechInstructionsApplied,
+          bytes: clip.value.verified.bytes,
+          mimeType: clip.value.verified.mimeType,
+          // The direction was carried, not necessarily obeyed.
+          speechInstructionsApplied: clip.value.instructed,
         })
-      : verified;
+      : clip;
   }
 }

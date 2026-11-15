@@ -66,14 +66,15 @@ describe('TtsStore', () => {
     return store;
   }
 
-  it('is not configured until both a model and a voice are saved', async () => {
+  it('is not configured until a model is saved, with or without a voice', async () => {
     const store = await ready();
-
-    store.setDraft({ modelId: FAKE_OPENROUTER.ttsModel });
-    await store.save();
     expect(store.readiness()).toBe('incomplete');
 
     store.setDraft({ voiceId: FAKE_OPENROUTER.voice });
+    await store.save();
+    expect(store.readiness()).toBe('incomplete');
+
+    store.setDraft({ modelId: FAKE_OPENROUTER.ttsModel, voiceId: '' });
     await store.save();
     expect(store.readiness()).toBe('untested');
   });
@@ -541,16 +542,29 @@ describe('TtsStore edge paths', () => {
     expect(store.storageFailure()?.code).toBe('quota');
   });
 
-  it('makes no request while the voice is still missing', async () => {
+  it('makes no request while the model is still missing', async () => {
     await TestBed.inject(CredentialStore).load();
     const store = TestBed.inject(TtsStore);
     await store.load();
 
-    store.setDraft({ modelId: FAKE_OPENROUTER.ttsModel });
+    store.setDraft({ voiceId: FAKE_OPENROUTER.voice });
     await store.test();
 
     expect(provider.calls).toBe(0);
     expect(store.action()).toBe('idle');
+  });
+
+  it('tests a model with no voice, for models that choose their own', async () => {
+    await TestBed.inject(CredentialStore).load();
+    const store = TestBed.inject(TtsStore);
+    await store.load();
+
+    store.setDraft({ modelId: FAKE_OPENROUTER.ttsModel, voiceId: '' });
+    await store.save();
+    await store.test();
+
+    expect(provider.calls).toBe(1);
+    expect(store.readiness()).toBe('ready');
   });
 
   it('supersedes an attempt that has not spent a request yet', async () => {

@@ -409,9 +409,12 @@ rows, preserving pitch and reporting the actual rate to the media session. It
 seals a continuous resource at a pace boundary and continues with the next
 playable run, so one media element never changes rate partway through a resource.
 The rate button changes this preference immediately; changing it never starts an
-AI request. The TTS request carries the selected named pace through one of three
-channels: a description in the instruction for capable models, top-level
-best-effort `speed` for other models, or no numeric field for Gemini. Speaking
+AI request. The TTS request carries the selected named pace through one of two
+channels: a description in the `instructions` field, or top-level best-effort
+`speed` when the model refused the direction or read it aloud. The format, the
+direction and `speed` each step down once on a refusal that names them, and a
+clip far longer than its sentence is asked for again without the direction
+([ADR 0095](../decisions/0095-one-speech-request-for-every-model.md)). Speaking
 style remains a prompted choice when that channel exists, and both named choices
 belong in the audio configuration fingerprint.
 

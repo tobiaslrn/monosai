@@ -74,10 +74,8 @@ export class ReaderAudioStore {
    */
   readonly hasModel = computed(() => this.configuration.resolve('tts-synthesis').ok);
 
-  /** Whether the voice settings name both halves a request needs. */
-  readonly voiceChosen = computed(
-    () => this.tts.settings().modelId !== '' && this.tts.settings().voiceId !== '',
-  );
+  /** Whether a speech model is chosen; a voice is optional for models that pick their own. */
+  readonly voiceChosen = computed(() => this.tts.settings().modelId !== '');
 
   /**
    * The audio button says its state out loud, because its icon never changes.

@@ -188,7 +188,7 @@ export class AudioCompressionStore {
     // Proved playable before it replaces audio the learner already paid for.
     // This pass rewrites a whole library unattended, so a clip that cannot be
     // decoded has to stop at the one clip rather than become the library.
-    if (!(await this.decoder.canDecode(encoded.value.bytes, encoded.value.mimeType))) {
+    if ((await this.decoder.decode(encoded.value.bytes, encoded.value.mimeType)) === null) {
       return 'compressed-none';
     }
 

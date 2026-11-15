@@ -25,8 +25,8 @@ export function declaredSpeechCapabilities(
   const declared = supportedParameters.map((parameter) => parameter.trim().toLowerCase());
   const unknown = declared.length === 0;
 
-  // Gemini takes its direction through the prompt, not a parameter, so no
-  // catalog entry can ever declare it.
+  // OpenRouter accepts `instructions` for Gemini without its catalog entry
+  // declaring it, so a non-empty list that omits it must not rule Gemini out.
   const instructions = unknown || declared.includes('instructions') || isGeminiTtsModel(modelId);
 
   return { instructions, styleControl: instructions ? 'prompted' : 'none' };

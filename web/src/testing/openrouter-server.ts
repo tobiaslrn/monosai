@@ -71,6 +71,11 @@ export interface FakeOpenRouterOptions {
   readonly supportsInstructions?: boolean;
   /** When false, a request carrying speech `speed` is refused with a 400. */
   readonly supportsSpeed?: boolean;
+  /**
+   * Speech answers only in PCM, at this rate, refusing any other format the
+   * way OpenRouter does for Gemini and HeyGen.
+   */
+  readonly pcmOnlyRate?: number;
   readonly content?: ChatContentKind;
   /** Content for every chat request after the first, so recovery can differ. */
   readonly recoveryContent?: ChatContentKind;
@@ -493,6 +498,19 @@ export class FakeOpenRouterServer {
     }
     if (body['speed'] !== undefined && this.options.supportsSpeed === false) {
       return this.providerError(400, 'This model does not support speed', {}, 'speed');
+    }
+    const pcmOnlyRate = this.options.pcmOnlyRate;
+    if (pcmOnlyRate !== undefined) {
+      if (body['response_format'] !== 'pcm') {
+        return this.providerError(
+          400,
+          `This voice model only supports response_format "pcm". Got "${String(body['response_format'])}".`,
+        );
+      }
+      return new Response(mp3Bytes(2048), {
+        status: 200,
+        headers: { 'Content-Type': `audio/pcm;rate=${String(pcmOnlyRate)};channels=1` },
+      });
     }
 
     switch (this.options.audio ?? 'valid') {

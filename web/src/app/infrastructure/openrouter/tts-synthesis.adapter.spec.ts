@@ -93,31 +93,39 @@ describe('OpenRouterTtsSynthesizer', () => {
     expect(body['instructions']).toContain('Never add, repeat, translate');
   });
 
-  it('synthesizes Gemini TTS with a prompted style and no speed option', async () => {
-    const modelId = 'google/gemini-3.1-flash-tts-preview';
-    const harness = run({ knownTtsModels: [modelId] });
-    const result = await harness.tts.synthesize(
+  it('steps down to PCM when a model refuses MP3, and remembers it', async () => {
+    const modelId = 'google/gemini-3.8-flash-lite-tts';
+    const harness = run({ knownTtsModels: [modelId], pcmOnlyRate: 24_000 });
+    const first = await harness.tts.synthesize(
       { ...REQUEST, modelId, speechStyle: 'very-clear' },
       new AbortController().signal,
     );
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.mimeType).toBe('audio/webm');
-    expect(result.value.speechInstructionsApplied).toBe(true);
-    expect(harness.server.callCount).toBe(1);
-    expect(harness.server.requests[0]?.body['speed']).toBeUndefined();
-    expect(harness.server.requests[0]?.body['response_format']).toBe('pcm');
-    expect(String(harness.server.requests[0]?.body['input'])).toContain(
-      'especially precise sound definition without over-enunciating or separating words',
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.value.mimeType).toBe('audio/webm');
+    expect(first.value.speechInstructionsApplied).toBe(true);
+    expect(harness.server.requests.map((request) => request.body['response_format'])).toEqual([
+      'mp3',
+      'pcm',
+    ]);
+    const accepted = harness.server.requests[1]!.body;
+    expect(accepted['input']).toBe(SENTENCE);
+    expect(String(accepted['instructions'])).toContain('especially precise sound definition');
+    expect(accepted['speed']).toBeUndefined();
+
+    const second = await harness.tts.synthesize(
+      { ...REQUEST, modelId },
+      new AbortController().signal,
     );
-    expect(String(harness.server.requests[0]?.body['input']).endsWith(SENTENCE)).toBe(true);
+    expect(second.ok).toBe(true);
+    expect(harness.server.callCount).toBe(3);
+    expect(harness.server.requests[2]?.body['response_format']).toBe('pcm');
   });
 
-  it('compresses Gemini speech, and keeps it as WAV without an encoder', async () => {
-    const modelId = 'google/gemini-3.1-flash-tts-preview';
-    const compressed = await run({ knownTtsModels: [modelId] }).tts.synthesize(
-      { ...REQUEST, modelId },
+  it('compresses PCM speech at any rate, and keeps it as WAV without an encoder', async () => {
+    const compressed = await run({ pcmOnlyRate: 44_100 }).tts.synthesize(
+      REQUEST,
       new AbortController().signal,
     );
     expect(compressed.ok).toBe(true);
@@ -125,19 +133,20 @@ describe('OpenRouterTtsSynthesizer', () => {
     expect(compressed.value.mimeType).toBe('audio/webm');
     expect(compressed.value.bytes.byteLength).toBeLessThan(2048);
 
-    const uncompressed = await run({
-      knownTtsModels: [modelId],
-      encoder: 'unsupported',
-    }).tts.synthesize({ ...REQUEST, modelId }, new AbortController().signal);
+    const uncompressed = await run({ pcmOnlyRate: 44_100, encoder: 'unsupported' }).tts.synthesize(
+      REQUEST,
+      new AbortController().signal,
+    );
     expect(uncompressed.ok).toBe(true);
     if (!uncompressed.ok) return;
     expect(uncompressed.value.mimeType).toBe('audio/wav');
+    // The WAV header carries the rate the reply declared, not an assumed one.
+    expect(new DataView(uncompressed.value.bytes).getUint32(24, true)).toBe(44_100);
   });
 
-  it('refuses Gemini audio when encoding fails', async () => {
-    const modelId = 'google/gemini-3.1-flash-tts-preview';
-    const result = await run({ knownTtsModels: [modelId], encoder: 'fails' }).tts.synthesize(
-      { ...REQUEST, modelId },
+  it('refuses PCM audio when encoding fails', async () => {
+    const result = await run({ pcmOnlyRate: 24_000, encoder: 'fails' }).tts.synthesize(
+      REQUEST,
       new AbortController().signal,
     );
 
@@ -145,6 +154,40 @@ describe('OpenRouterTtsSynthesizer', () => {
     if (result.ok) return;
     expect(result.error.code).toBe('audio-invalid');
     expect(result.error.detail?.issueCode).toBe('encode-failed');
+  });
+
+  it('asks again without a direction that was read aloud', async () => {
+    const harness = run({ clipSeconds: [48, 3] });
+    const result = await harness.tts.synthesize(REQUEST, new AbortController().signal);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.speechInstructionsApplied).toBe(false);
+    expect(harness.server.callCount).toBe(2);
+    expect(harness.server.requests[1]?.body['instructions']).toBeUndefined();
+    expect(harness.server.requests[1]?.body['input']).toBe(SENTENCE);
+  });
+
+  it('refuses a clip that stays far longer than its sentence could take to read', async () => {
+    const harness = run({ clipSeconds: [48] });
+    const result = await harness.tts.synthesize(REQUEST, new AbortController().signal);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('audio-invalid');
+    expect(result.error.detail?.issueCode).toBe('unexpected-length');
+    expect(harness.server.callCount).toBe(2);
+  });
+
+  it('synthesizes with no voice for a model that picks its own', async () => {
+    const harness = run({ knownVoices: [''] });
+    const result = await harness.tts.synthesize(
+      { ...REQUEST, voiceId: '' },
+      new AbortController().signal,
+    );
+
+    expect(result.ok).toBe(true);
+    expect('voice' in harness.server.requests[0]!.body).toBe(false);
   });
 
   it('rejects the same malformed and undecodable audio as the test adapter', async () => {

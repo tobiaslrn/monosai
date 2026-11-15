@@ -97,7 +97,8 @@ export const audioAssetMetadataSchema = z.object({
   readingId: readingIdSchema,
   sourceContentHash: nonEmptyString,
   modelId: nonEmptyString,
-  voiceId: nonEmptyString,
+  // Empty when the model chose its own voice.
+  voiceId: z.string(),
   optionsFingerprint: nonEmptyString,
   pace: z.literal('playback').exactOptional(),
   mimeType: z.enum(['audio/mpeg', 'audio/pcm', 'audio/wav', 'audio/webm']),

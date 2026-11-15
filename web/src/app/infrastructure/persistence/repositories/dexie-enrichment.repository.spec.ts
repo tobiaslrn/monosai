@@ -342,6 +342,16 @@ describe('DexieEnrichmentRepository', () => {
     expect(loaded.value.blob.size).toBe(4);
   });
 
+  it('reads back a clip from a model that chose its own voice', async () => {
+    await repository.storeAudio({ ...audio(0), voiceId: '' }, currentAudioKeys());
+
+    const loaded = await repository.getAudioByCacheKey('audio-0');
+    const summaries = await repository.listAudioSummariesForCacheKeys(['audio-0']);
+
+    expect(loaded.ok && loaded.value?.voiceId).toBe('');
+    expect(summaries.ok && summaries.value.length).toBe(1);
+  });
+
   it('summarizes audio completion against the current per-sentence cache keys', async () => {
     await repository.storeAudio(audio(0), currentAudioKeys());
 

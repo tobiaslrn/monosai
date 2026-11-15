@@ -131,9 +131,11 @@ coverage ([ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md)).
 It reads the device-wide reader playback rate from settings, applies it only to
 new rows marked `pace: 'playback'`, and splits a continuous resource when a
 legacy baked-time row begins. TTS settings carry a named pace; the provider
-adapter describes it for instruction-capable models, sends best-effort `speed`
-otherwise, and never sends `speed` to Gemini ([ADR 0073](../decisions/0073-pace-at-playback-style-in-prompt.md),
-[ADR 0075](../decisions/0075-named-pace-per-voice-model.md)).
+adapter describes it in the `instructions` field and sends best-effort `speed` only
+when no direction is sent ([ADR 0073](../decisions/0073-pace-at-playback-style-in-prompt.md),
+[ADR 0075](../decisions/0075-named-pace-per-voice-model.md)). Every model gets the same
+request, which the provider's refusals step down: MP3 to PCM, then without the direction,
+then without `speed` ([ADR 0095](../decisions/0095-one-speech-request-for-every-model.md)).
 The prompt keeps articulation and rate orthogonal: clearer speech never asks
 for extra pauses, and every pace preserves connected Japanese without inserted
 silence between words or morae.

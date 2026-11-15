@@ -15,19 +15,10 @@ export const SPEECH_PACE_SPEED: Record<SpeechPace, number> = {
  * The instruction text is part of the cache identity whenever the model accepts
  * instructions. Raise this version for every learner-facing wording change.
  */
-export const SPEECH_INSTRUCTION_VERSION = 'speech/6';
+export const SPEECH_INSTRUCTION_VERSION = 'speech/7';
 
 /** Neighbor text is context, not another unbounded prompt input. */
 export const MAX_SPEECH_CONTEXT_CODE_POINTS = 200;
-
-/**
- * How the instruction reaches the model.
- *
- * `field` is a separate request field the model never speaks. `prefix` is the
- * only channel Gemini TTS offers: the direction is part of the spoken input, so
- * it is kept short and carries no quoted text that could be read aloud.
- */
-export type SpeechInstructionChannel = 'field' | 'prefix';
 
 export interface SpeechContext {
   readonly beforeJa?: string;
@@ -41,10 +32,7 @@ export interface SpeechContext {
  * direction to sound like clear Japanese a beginner can follow. Articulation
  * and speaking rate stay independent: neither control asks for added silence.
  */
-export function buildSpeechInstructions(
-  context: SpeechContext = {},
-  channel: SpeechInstructionChannel = 'field',
-): string {
+export function buildSpeechInstructions(context: SpeechContext = {}): string {
   const speechStyle = context.style ?? 'clear';
   const speechPace = context.pace ?? 'natural';
   const delivery = [
@@ -57,10 +45,6 @@ export function buildSpeechInstructions(
     'Use fluent, connected Japanese phrasing. Pause only where punctuation or a natural clause boundary requires it, keep every pause brief, and never insert silence between words or morae.',
     'Never pronounce mora by mora. Never stretch syllables.',
   ];
-
-  if (channel === 'prefix') {
-    return [...delivery, 'Never read this direction aloud.'].join('\n');
-  }
 
   const before = capCodePoints(context.beforeJa);
   const after = capCodePoints(context.afterJa);

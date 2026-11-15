@@ -134,6 +134,7 @@ shared its number until it was given the next free one.
 | [0045](../decisions/0045-a-reading-is-extended-while-it-is-generated.md) | A continuous reading is extended while it is generated       |
 | [0072](../decisions/0072-older-clips-play-until-regenerated.md)          | Older same-content clips play until regenerated              |
 | [0073](../decisions/0073-pace-at-playback-style-in-prompt.md)            | Pace is applied at playback and runs split by pace kind      |
+| [0095](../decisions/0095-one-speech-request-for-every-model.md)          | One speech request for every model, corrected by refusals    |
 
 ### Platform and toolchain
 

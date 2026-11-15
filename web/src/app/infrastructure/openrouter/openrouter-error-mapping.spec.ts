@@ -121,6 +121,38 @@ describe('capabilityFrom', () => {
     expect(capabilityFrom(envelope('json_schema is not supported'))).toBe('structured-output');
   });
 
+  it('reads a refused response format as the audio format, only for speech', () => {
+    const refusal = envelope('This voice model only supports response_format "pcm". Got "mp3".');
+    expect(capabilityFrom(refusal, 'tts-test')).toBe('audio-format');
+    expect(capabilityFrom(refusal, 'tts-synthesis')).toBe('audio-format');
+    expect(capabilityFrom(refusal, 'text-model-test')).toBe('structured-output');
+    expect(
+      capabilityFrom(envelope('HeyGen Voice only supports response_format "pcm".'), 'tts-test'),
+    ).toBe('audio-format');
+    expect(capabilityFrom(envelope("Unsupported audio format 'mp3'"), 'tts-test')).toBe(
+      'audio-format',
+    );
+    expect(capabilityFrom(envelope('Not supported', 'format'), 'tts-synthesis')).toBe(
+      'audio-format',
+    );
+  });
+
+  it('reads a speech refusal by the part it refuses, not by the format it mentions', () => {
+    expect(
+      capabilityFrom(envelope('speed is not supported when response_format is pcm'), 'tts-test'),
+    ).toBe('speed');
+    expect(
+      capabilityFrom(
+        envelope('instructions are not supported for response_format pcm'),
+        'tts-test',
+      ),
+    ).toBe('instructions');
+    expect(
+      capabilityFrom(envelope('Unsupported for response_format pcm', 'speed'), 'tts-synthesis'),
+    ).toBe('speed');
+    expect(capabilityFrom(envelope('Unknown voice for this model'), 'tts-test')).toBe('voice');
+  });
+
   it('falls back to the request itself when nothing is recognizable', () => {
     expect(capabilityFrom(envelope('something went wrong'))).toBe('request');
     expect(capabilityFrom(null)).toBe('request');

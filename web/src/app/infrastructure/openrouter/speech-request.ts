@@ -5,24 +5,23 @@ import {
   type SpeechPace,
   type SpeechStyle,
 } from '../../domain/ai/speech-instructions';
-import { isGeminiTtsModel } from '../../domain/ai/tts-configuration';
 
 /**
- * Separates the direction from the sentence Gemini is meant to speak.
+ * The containers OpenRouter's speech endpoint can be asked for.
  *
- * Gemini TTS has no instructions field: the direction rides in `input`, so the
- * text has to be introduced clearly enough that the model speaks it and not the
- * lines above it.
+ * MP3 is preferred because it is small on the wire and stored as it arrives.
+ * PCM is what the models that refuse MP3 return instead; it is compressed on
+ * the way in (see `provider-audio.ts`).
  */
-const GEMINI_TEXT_SEPARATOR = '\n\nSpeak this text and nothing else:\n';
+export type SpeechResponseFormat = 'mp3' | 'pcm';
 
 export interface SpeechRequestInput {
   readonly modelId: string;
+  /** Empty when the model has no voice catalog and picks its own. */
   readonly voiceId: string;
   /** The exact saved Japanese. Never a normalized or re-segmented variant. */
   readonly text: string;
-  /** The container asked for, when the family lets it be chosen. */
-  readonly responseFormat: 'mp3';
+  readonly responseFormat: SpeechResponseFormat;
   readonly speechStyle: SpeechStyle;
   readonly speechPace: SpeechPace;
   /** Delivery direction to carry, or `undefined` when none is being sent. */
@@ -39,32 +38,30 @@ export interface SpeechRequestInput {
  * so the two adapters differ only in what they put in, never in how it is laid
  * out.
  *
- * Two families, one function: Gemini takes its direction through the prompt and
- * returns raw PCM, while everything OpenAI-compatible takes `instructions` as
- * a top-level field.
+ * One shape for every model family. The spoken `input` is only ever the text:
+ * direction goes in OpenRouter's `instructions` field, which every family
+ * either honours or ignores. A direction folded into `input` is read aloud by
+ * any model that does not recognise it as one.
  */
 export function buildSpeechRequestBody(input: SpeechRequestInput): Record<string, unknown> {
-  const gemini = isGeminiTtsModel(input.modelId);
   const instructed = input.instruction !== undefined;
-  const includeSpeed = input.speed ?? (!gemini && !instructed);
-  const instruction =
-    input.instruction === undefined
-      ? undefined
-      : { ...input.instruction, pace: input.speechPace, style: input.speechStyle };
+  const includeSpeed = input.speed ?? !instructed;
+  const voice = input.voiceId.trim();
 
   return {
     model: input.modelId,
-    voice: input.voiceId,
-    input:
-      gemini && instructed
-        ? `${buildSpeechInstructions(instruction, 'prefix')}${GEMINI_TEXT_SEPARATOR}${input.text}`
-        : input.text,
-    response_format: gemini ? 'pcm' : input.responseFormat,
-    ...(instructed && !gemini
-      ? { instructions: buildSpeechInstructions(instruction, 'field') }
-      : {}),
-    ...(!gemini && !instructed && includeSpeed
-      ? { speed: SPEECH_PACE_SPEED[input.speechPace] }
-      : {}),
+    ...(voice === '' ? {} : { voice }),
+    input: input.text,
+    response_format: input.responseFormat,
+    ...(input.instruction === undefined
+      ? {}
+      : {
+          instructions: buildSpeechInstructions({
+            ...input.instruction,
+            pace: input.speechPace,
+            style: input.speechStyle,
+          }),
+        }),
+    ...(!instructed && includeSpeed ? { speed: SPEECH_PACE_SPEED[input.speechPace] } : {}),
   };
 }

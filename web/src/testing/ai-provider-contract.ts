@@ -309,18 +309,23 @@ export function runTtsProviderContract(create: TtsProviderFactory): void {
     expect(result.value.byteLength).toBeGreaterThan(0);
   });
 
-  it('rejects a blank model and a blank voice without spending a request', async () => {
+  it('rejects a blank model without spending a request', async () => {
     const context = create();
 
     expectFailure(
       await context.provider.testConfiguration({ ...config, modelId: ' ' }),
       'model-not-found',
     );
-    expectFailure(
-      await context.provider.testConfiguration({ ...config, voiceId: ' ' }),
-      'capability-unsupported',
-    );
     expect(context.requestCount()).toBe(0);
+  });
+
+  it('leaves a blank voice to the model, and types its refusal as the voice', async () => {
+    const context = create();
+
+    const result = await context.provider.testConfiguration({ ...config, voiceId: ' ' });
+
+    expectFailure(result, 'capability-unsupported');
+    expect(context.requestCount()).toBe(1);
   });
 
   it('reports a rejected key as authentication', async () => {

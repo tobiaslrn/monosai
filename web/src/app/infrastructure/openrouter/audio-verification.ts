@@ -39,6 +39,8 @@ export interface VerifiedAudio {
   readonly mimeType: AudioMimeType;
   /** The exact type header, normalized: `audio/mpeg; charset=…` is still MP3. */
   readonly declaredMimeType: string;
+  /** How long the clip plays, as the browser decoded it. */
+  readonly durationSeconds: number;
 }
 
 export interface AudioContext {
@@ -53,6 +55,63 @@ export interface AudioContext {
    * learner to change a model that is working.
    */
   readonly origin?: 'provider' | 'encoder';
+}
+
+/**
+ * The longest a clip may run for the text it was asked to read.
+ *
+ * Generous on purpose: a slow, clear reading of a short sentence with silence
+ * at both ends stays well inside it. What it catches is a model that speaks
+ * something besides the text — a delivery direction read aloud runs to most of
+ * a minute however short the sentence — or that drones on garbled, as an
+ * English-only model does on Japanese. Such a clip is the wrong audio, and
+ * storing it would play it in every reading of that sentence.
+ */
+export function longestPlausibleSpeechSeconds(text: string): number {
+  return 6 + 0.6 * Array.from(text).length;
+}
+
+/**
+ * Whether a clip made with the direction spoke more than the clip made without it.
+ *
+ * Calibrated on live clips of the test phrase: correct readings ran 1.2–3.1 s
+ * with or without the direction, while a model that read the context sentences
+ * aloud ran 5.6 s and one that read part of the direction ran 3.9 s, against
+ * about 1.4 s plain. Twice the plain length leaves room for a direction that
+ * genuinely slows the reading; the second covers silence at the ends.
+ */
+export function spokeBeyondText(instructedSeconds: number, plainSeconds: number): boolean {
+  return instructedSeconds > 2 * plainSeconds + 1;
+}
+
+/**
+ * Refuses a clip that runs far longer than its text could take to read.
+ *
+ * Shared by the configuration test and synthesis for the same reason as
+ * `verifyAudio`: the test may only pass a clip synthesis would keep.
+ */
+export function checkSpokenLength(
+  verified: VerifiedAudio,
+  text: string,
+  context: AudioContext,
+): Result<VerifiedAudio, AiError> {
+  if (verified.durationSeconds <= longestPlausibleSpeechSeconds(text)) {
+    return ok(verified);
+  }
+  return err(
+    aiError(
+      'audio-invalid',
+      context.task,
+      'The returned clip is far longer than the text it was asked to read.',
+      {
+        detail: {
+          modelId: context.modelId,
+          voiceId: context.voiceId,
+          issueCode: 'unexpected-length',
+        },
+      },
+    ),
+  );
 }
 
 /** Strips parameters from a content type, so `audio/mpeg; rate=…` still matches. */
@@ -85,7 +144,8 @@ export async function verifyAudio(
       }),
     );
   }
-  if (!(await decoder.canDecode(response.bytes, declaredMimeType))) {
+  const decoded = await decoder.decode(response.bytes, declaredMimeType);
+  if (decoded === null) {
     const fromEncoder = context.origin === 'encoder';
     return err(
       aiError(
@@ -108,5 +168,6 @@ export async function verifyAudio(
     bytes: response.bytes,
     mimeType: storedMimeType(declaredMimeType),
     declaredMimeType,
+    durationSeconds: decoded.durationSeconds,
   });
 }

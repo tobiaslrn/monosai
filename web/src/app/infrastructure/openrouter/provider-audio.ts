@@ -2,16 +2,18 @@ import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { SpeechEncoder } from '../../domain/audio/speech-encoder';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { AudioContext } from './audio-verification';
-import { CHANNELS, GEMINI_SAMPLE_RATE, geminiPcmToWav } from './pcm-audio';
+import { isPcmMimeType, pcmFormatOf, pcmToWav } from './pcm-audio';
 import type { AudioResponse } from './openrouter-client';
 
 /**
- * Turning what Gemini returns into what Monosai stores.
+ * Turning what a speech provider returns into what Monosai stores.
  *
- * Gemini is the one speech family that answers with raw PCM, and stored as it
- * arrives it costs about 2.8 MB a minute — roughly fifteen times the compressed
- * clip. Compressing it is therefore part of accepting the response, not a later
- * tidy-up: what is written to the cache is what the reader will play.
+ * Decided by the reply, not the model: whichever family answers with raw PCM —
+ * Gemini, HeyGen, or the next one OpenRouter adds — is compressed, at the rate
+ * its reply declares, and everything already in a container passes through to
+ * verification. Raw PCM stored as it arrives costs about 2.8 MB a minute,
+ * roughly fifteen times the compressed clip, so compressing it is part of
+ * accepting the response, not a later tidy-up.
  *
  * This sits in one function that both the configuration test and sentence
  * synthesis call, for the reason ADR 0018 gives for the request body. A test
@@ -19,16 +21,18 @@ import type { AudioResponse } from './openrouter-client';
  * test runs first, a browser whose encoder is broken says so in Settings, with
  * the sample, rather than part-way through a reading.
  */
-export async function normalizeGeminiAudio(
+export async function normalizeProviderAudio(
   response: AudioResponse,
   encoder: SpeechEncoder,
   context: AudioContext,
   signal?: AbortSignal,
 ): Promise<Result<AudioResponse, AiError>> {
-  if (!response.mimeType.toLowerCase().startsWith('audio/pcm')) {
+  if (!isPcmMimeType(response.mimeType)) {
     return ok(response);
   }
-  if (response.bytes.byteLength === 0 || response.bytes.byteLength % 2 !== 0) {
+  const format = pcmFormatOf(response.mimeType);
+  const frameBytes = 2 * format.channels;
+  if (response.bytes.byteLength === 0 || response.bytes.byteLength % frameBytes !== 0) {
     return err(
       aiError('audio-invalid', context.task, 'The provider returned audio Monosai cannot store.', {
         detail: {
@@ -43,8 +47,8 @@ export async function normalizeGeminiAudio(
   const encoded = await encoder.encode(
     {
       samples: new Int16Array(response.bytes),
-      sampleRate: GEMINI_SAMPLE_RATE,
-      channels: CHANNELS,
+      sampleRate: format.sampleRate,
+      channels: format.channels,
     },
     signal,
   );
@@ -60,7 +64,7 @@ export async function normalizeGeminiAudio(
     // costs far more room, but a learner on such a browser still gets audio,
     // and the maintenance pass will compress it if they ever open a browser
     // that can.
-    return ok(geminiPcmToWav(response));
+    return ok(pcmToWav(response));
   }
   return err(
     aiError(

@@ -133,7 +133,8 @@ export class TtsStore {
   readonly readiness = computed<ConfigurationReadiness>(() => {
     const settings = this.settingsSignal();
     return readinessOf({
-      complete: settings.modelId !== '' && settings.voiceId !== '',
+      // A voice is optional: some models list none and choose their own.
+      complete: settings.modelId !== '',
       hasCredential: this.credential.isConfigured(),
       savedFingerprint: settings.lastTestFingerprint,
       currentFingerprint: this.fingerprintFor(settings),
@@ -421,12 +422,7 @@ export class TtsStore {
 
     const persisted = await this.persistDraft();
     const settings = this.settingsSignal();
-    if (
-      !persisted ||
-      settings.modelId === '' ||
-      settings.voiceId === '' ||
-      this.controller !== controller
-    ) {
+    if (!persisted || settings.modelId === '' || this.controller !== controller) {
       if (this.controller === controller) {
         this.controller = null;
         this.actionSignal.set('idle');

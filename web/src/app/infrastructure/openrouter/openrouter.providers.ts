@@ -15,6 +15,7 @@ import { OpenRouterClient } from './openrouter-client';
 import { OpenRouterModelCatalog } from './model-catalog.adapter';
 import { OpenRouterTextProvider } from './openrouter-text-provider';
 import { OpenRouterTextToSpeechProvider } from './openrouter-tts.provider';
+import { SpeechRefusals } from './speech-attempts';
 import { OpenRouterTextModelTester } from './text-model-test.adapter';
 import { OpenRouterTtsTester } from './tts-test.adapter';
 
@@ -86,8 +87,11 @@ export function provideOpenRouter(): Provider[] {
         // static import of the encoder would pull the codec worker into the
         // initial bundle for every learner.
         const encoder = inject(SPEECH_ENCODER);
+        // One memory for both, so a format refusal the test met is not met
+        // again on the first sentence.
+        const refusals = new SpeechRefusals();
         return new OpenRouterTextToSpeechProvider(
-          new OpenRouterTtsTester(shared, decoder, encoder),
+          new OpenRouterTtsTester(shared, decoder, encoder, refusals),
           // Loaded on the first synthesis, so a learner who never turns on
           // speech never pays for it in the initial bundle.
           async () =>
@@ -95,6 +99,7 @@ export function provideOpenRouter(): Provider[] {
               shared,
               decoder,
               encoder,
+              refusals,
             ),
           () => view?.navigator.onLine ?? true,
         );

@@ -36,6 +36,41 @@ export interface WebCodecsAudio {
   readonly AudioData: typeof AudioData;
 }
 
+/** The only input rates Opus accepts. */
+const OPUS_SAMPLE_RATES: readonly number[] = [8_000, 12_000, 16_000, 24_000, 48_000];
+const OPUS_FULL_RATE = 48_000;
+
+/**
+ * Brings a clip to a rate Opus accepts.
+ *
+ * Providers answer at whatever rate their engine runs — 44.1 kHz is common —
+ * and the encoder refuses anything off its list. Linear interpolation per
+ * channel is enough for speech going into a 96 kbit/s codec, and upsampling to
+ * 48 kHz loses nothing the source had.
+ */
+export function resampleForOpus(input: SpeechSamples): SpeechSamples {
+  if (OPUS_SAMPLE_RATES.includes(input.sampleRate)) {
+    return input;
+  }
+  const { channels } = input;
+  const sourceFrames = input.samples.length / channels;
+  const targetFrames = Math.max(1, Math.round((sourceFrames * OPUS_FULL_RATE) / input.sampleRate));
+  const step = (sourceFrames - 1) / Math.max(1, targetFrames - 1);
+  const samples = new Int16Array(targetFrames * channels);
+  for (let frame = 0; frame < targetFrames; frame += 1) {
+    const position = frame * step;
+    const left = Math.floor(position);
+    const right = Math.min(left + 1, sourceFrames - 1);
+    const weight = position - left;
+    for (let channel = 0; channel < channels; channel += 1) {
+      const a = input.samples[left * channels + channel] ?? 0;
+      const b = input.samples[right * channels + channel] ?? 0;
+      samples[frame * channels + channel] = Math.round(a + (b - a) * weight);
+    }
+  }
+  return { samples, sampleRate: OPUS_FULL_RATE, channels };
+}
+
 /** Reads the encoder's `OpusHead`, whichever shape it reports the buffer in. */
 function toBytes(description: AllowSharedBufferSource): Uint8Array {
   if (description instanceof ArrayBuffer) {
@@ -55,21 +90,22 @@ function toBytes(description: AllowSharedBufferSource): Uint8Array {
  * the timestamps wrong.
  */
 export async function encodeOpusWebm(
-  input: SpeechSamples,
+  source: SpeechSamples,
   codecs: WebCodecsAudio | null,
   signal?: AbortSignal,
 ): Promise<Result<EncodedSpeech, SpeechEncodeError>> {
   if (codecs === null) {
     return err(speechEncodeError('unsupported', 'This browser cannot compress audio for storage.'));
   }
-  if (input.channels <= 0 || input.sampleRate <= 0) {
+  if (source.channels <= 0 || source.sampleRate <= 0) {
     return err(speechEncodeError('invalid-input', 'The clip declared no channels or rate.'));
   }
-  if (input.samples.length === 0 || input.samples.length % input.channels !== 0) {
+  if (source.samples.length === 0 || source.samples.length % source.channels !== 0) {
     return err(
       speechEncodeError('invalid-input', 'The clip does not hold whole frames for its channels.'),
     );
   }
+  const input = resampleForOpus(source);
   // Read through a call, never a narrowed property: the flag flips while the
   // encode is running, which is the only moment cancelling it matters.
   const cancelled = (): boolean => signal?.aborted === true;

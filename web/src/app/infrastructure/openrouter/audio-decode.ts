@@ -1,6 +1,6 @@
-import type { AudioDecoder } from '../../domain/audio/audio-decoder';
+import type { AudioDecoder, DecodedClip } from '../../domain/audio/audio-decoder';
 
-export type { AudioDecoder };
+export type { AudioDecoder, DecodedClip };
 
 type AudioContextConstructor = new (
   contextOptions?: AudioContextOptions,
@@ -14,19 +14,19 @@ type AudioContextConstructor = new (
  */
 export function createAudioDecoder(view: Window): AudioDecoder {
   return {
-    canDecode: async (bytes: ArrayBuffer): Promise<boolean> => {
+    decode: async (bytes: ArrayBuffer): Promise<DecodedClip | null> => {
       const candidate: unknown =
         Reflect.get(view, 'AudioContext') ?? Reflect.get(view, 'webkitAudioContext');
       if (typeof candidate !== 'function') {
-        return false;
+        return null;
       }
       const Constructor = candidate as AudioContextConstructor;
       const context = new Constructor();
       try {
-        await context.decodeAudioData(bytes.slice(0));
-        return true;
+        const buffer = await context.decodeAudioData(bytes.slice(0));
+        return { durationSeconds: buffer.duration };
       } catch {
-        return false;
+        return null;
       } finally {
         await context.close?.();
       }

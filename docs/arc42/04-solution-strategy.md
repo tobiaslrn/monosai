@@ -23,8 +23,9 @@ its effect. It does not repeat the reasoning: that lives in the linked record.
 | **Performance efficiency**                | The reader mounts a bounded paragraph window. Import analysis runs in batches with progress. Prompt assets and every route load lazily                                                                                                                | [ADR 0011](../decisions/0011-paragraph-window-bounds.md), [chapter 6](06-runtime-view.md)                                   |
 
 Speech follows the same local-first boundary. The provider receives a named pace:
-instruction-capable models get its description, while other models get a best-effort
-numeric speed and Gemini gets neither numeric speed nor a separate instruction field.
+instruction-capable models get its description in the `instructions` field, while other
+models get a best-effort numeric speed. Every model gets the same request, stepped down by
+what the provider refuses ([ADR 0095](../decisions/0095-one-speech-request-for-every-model.md)).
 The reader still applies its three local playback rates for fine tuning, so pace is
 consistent across sentence requests and local changes never cause regeneration. Existing rows remain playable under the content-hash rule described
 in [ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md) and

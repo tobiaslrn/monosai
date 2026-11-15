@@ -1,7 +1,7 @@
 # 0075 — Named pace per voice model, described in the prompt
 
 Date: 2026-09-13
-Status: Accepted
+Status: Accepted, partly superseded by [ADR 0095](0095-one-speech-request-for-every-model.md)
 
 Supersedes the pace-delivery and “never a number or the word slow” parts of
 [ADR 0073](0073-pace-at-playback-style-in-prompt.md). It keeps ADR 0073's

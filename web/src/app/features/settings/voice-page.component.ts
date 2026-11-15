@@ -16,6 +16,7 @@ import { RouterLink } from '@angular/router';
 import { CredentialStore } from '../../application/settings/credential.store';
 import { TtsStore } from '../../application/settings/tts.store';
 import type { ModelCapabilities } from '../../domain/ai/model-catalog';
+import { preferredSpeechVoice } from '../../domain/ai/tts-configuration';
 import { PageComponent } from '../../shared-ui/layout/layout';
 import { openFieldDialog } from '../../shared-ui/field-dialog/field-dialog.component';
 import { openModelPicker } from '../../shared-ui/model-picker/model-picker-dialog.component';
@@ -137,8 +138,7 @@ interface VoiceLine {
           [glyph]="tts.action() === 'testing' ? 'stop' : 'play'"
           [testId]="tts.action() === 'testing' ? 'cancel-tts-test' : 'test-tts'"
           [disabled]="
-            tts.action() !== 'testing' &&
-            (!credential.isConfigured() || tts.draft().modelId === '' || tts.draft().voiceId === '')
+            tts.action() !== 'testing' && (!credential.isConfigured() || tts.draft().modelId === '')
           "
           (pressed)="tts.action() === 'testing' ? tts.cancelTest() : testAudio()"
         />
@@ -200,12 +200,14 @@ export class VoicePageComponent {
       'Choose a model',
     ),
   );
-  protected readonly voiceOptions = computed<readonly SelectOption[]>(() =>
-    (this.selectedSpeechModel()?.supportedVoices ?? []).map((voice) => ({
+  /** A model that chose its own voice is shown as Default until a voice is picked. */
+  protected readonly voiceOptions = computed<readonly SelectOption[]>(() => [
+    ...(this.tts.draft().voiceId === '' ? [{ value: '', label: 'Default' }] : []),
+    ...(this.selectedSpeechModel()?.supportedVoices ?? []).map((voice) => ({
       value: voice,
       label: voice,
     })),
-  );
+  ]);
   protected readonly styleOptions: readonly RadioListOption[] = [
     { value: 'natural', label: 'Natural', description: 'Everyday' },
     { value: 'clear', label: 'Clear', description: 'Precise' },
@@ -309,7 +311,10 @@ export class VoicePageComponent {
     }
   }
   protected async selectSpeechModel(model: ModelCapabilities): Promise<void> {
-    this.tts.setDraft({ modelId: model.modelId, voiceId: model.supportedVoices[0] ?? '' });
+    this.tts.setDraft({
+      modelId: model.modelId,
+      voiceId: preferredSpeechVoice(model.supportedVoices),
+    });
     await this.tts.save();
   }
   /** A model with no list of voices takes the voice's name as typed. */

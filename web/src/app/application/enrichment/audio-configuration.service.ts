@@ -53,7 +53,7 @@ export class AudioConfigurationService {
           'capability-unsupported',
           task,
           readiness === 'incomplete'
-            ? 'No text-to-speech model and voice are set up.'
+            ? 'No text-to-speech model is set up.'
             : readiness === 'no-credential'
               ? 'Add an OpenRouter key.'
               : 'The saved text-to-speech configuration has not passed its test as it stands.',

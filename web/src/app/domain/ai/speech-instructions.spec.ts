@@ -9,7 +9,7 @@ describe('speech instructions', () => {
   it('is versioned and asks for exact target-only natural Japanese', () => {
     const instructions = buildSpeechInstructions();
 
-    expect(SPEECH_INSTRUCTION_VERSION).toBe('speech/6');
+    expect(SPEECH_INSTRUCTION_VERSION).toBe('speech/7');
     expect(instructions).toContain('Speak only the exact target text');
     expect(instructions).toContain('natural standard Japanese');
     expect(instructions).toContain('Never pronounce mora by mora');
@@ -31,16 +31,12 @@ describe('speech instructions', () => {
       'very-slow' as const,
       'Pace: use a distinctly slower speaking rate for a beginner following the written text',
     ],
-  ])('describes the %s pace consistently in field and prefix channels', (pace, description) => {
-    const field = buildSpeechInstructions({ pace });
-    const prefix = buildSpeechInstructions({ pace }, 'prefix');
+  ])('describes the %s pace in words, never as a number', (pace, description) => {
+    const instructions = buildSpeechInstructions({ pace });
 
-    expect(field).toContain(description);
-    expect(prefix).toContain(description);
-    expect(field).toContain('Keep this speaking rate steady throughout the sentence');
-    expect(prefix).toContain('Keep this speaking rate steady throughout the sentence');
-    expect(field).not.toMatch(/\d/u);
-    expect(prefix).not.toMatch(/\d/u);
+    expect(instructions).toContain(description);
+    expect(instructions).toContain('Keep this speaking rate steady throughout the sentence');
+    expect(instructions).not.toMatch(/\d/u);
   });
 
   it('asks for the delivery a beginner can follow', () => {
@@ -51,22 +47,6 @@ describe('speech instructions', () => {
     expect(instructions).toContain(
       'preserve connected phrasing, natural rhythm, and standard pitch accent',
     );
-  });
-
-  it('keeps the prefix form compact and free of quotable context', () => {
-    const prefix = buildSpeechInstructions(
-      { style: 'very-clear', beforeJa: '雨が強くなりました。', afterJa: '次の文。' },
-      'prefix',
-    );
-
-    // The prefix rides inside the spoken input, so every extra line is another
-    // chance for the model to read something out.
-    expect(prefix).toContain('without over-enunciating or separating words');
-    expect(prefix).toContain('keep every pause brief');
-    expect(prefix).toContain('Never read this direction aloud.');
-    expect(prefix).not.toContain('雨');
-    expect(prefix).not.toContain('context only');
-    expect(prefix.split('\n')).toHaveLength(9);
   });
 
   it('changes only the style wording when the learner chooses a different style', () => {
