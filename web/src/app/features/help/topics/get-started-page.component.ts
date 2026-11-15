@@ -111,8 +111,8 @@ import { HelpArticleComponent } from '../help-article.component';
           In the Library, select <strong>Write with AI</strong>. Choose your words, a direction and
           a plot, then select <strong>Generate story</strong>. Most models take under a minute.
           <a routerLink="/help/write">Write a story</a> explains each choice, and
-          <a routerLink="/help/reading-level">Reading level</a> explains how to choose the
-          grammar your stories use.
+          <a routerLink="/help/reading-level">Reading level</a> explains how to choose the grammar
+          your stories use.
         </p>
       </section>
     </mn-help-article>

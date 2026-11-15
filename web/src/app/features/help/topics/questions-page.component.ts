@@ -87,8 +87,8 @@ import { HelpArticleComponent } from '../help-article.component';
         <h2 id="q-minimum">How many words do I need?</h2>
         <p>
           You need at least {{ minimumWords }} known words to write a story, and more for harder
-          levels, as <a routerLink="/help/reading-level">Reading level</a> shows. Pasted
-          text needs none.
+          levels, as <a routerLink="/help/reading-level">Reading level</a> shows. Pasted text needs
+          none.
         </p>
       </section>
 
