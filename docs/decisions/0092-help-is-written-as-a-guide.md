@@ -35,7 +35,7 @@ A review of the guide as a first-time learner would read it also found gaps and 
   R48 to R54 and their budgets govern interface strings only, unchanged; the form rules of
   R54 apply to Help too.
 - **The guide has eleven topics**, in the order a first-time learner needs them: Get started,
-  Add your words, Set your reading level, Write a story, Read a story, Choose a text model,
+  Add your words, Reading level, Write a story, Read a story, Choose a text model,
   Set up audio, Install and use offline, Privacy and your data, Common questions, and Fix a
   problem. Privacy gets a topic of its own because "is my key safe?" is not an installation
   question.

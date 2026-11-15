@@ -50,7 +50,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
   },
   {
     slug: 'reading-level',
-    title: 'Set your reading level',
+    title: 'Reading level',
     summary: 'Grammar levels and JLPT',
     icon: 'reading-level',
   },

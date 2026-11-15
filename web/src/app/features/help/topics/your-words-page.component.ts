@@ -187,7 +187,7 @@ import { HelpArticleComponent } from '../help-article.component';
         </p>
         <p>
           Particles, counters and other building blocks of grammar always count as known, as
-          <a routerLink="/help/reading-level">Set your reading level</a> explains.
+          <a routerLink="/help/reading-level">Reading level</a> explains.
         </p>
       </section>
 
