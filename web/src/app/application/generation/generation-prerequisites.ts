@@ -128,7 +128,7 @@ export function allPrerequisitesMet(checks: readonly PrerequisiteCheck[]): boole
  * find out. The numbers rise across the ladder and are deliberately generous at
  * the easy end, so the warning stays rare.
  */
-const PRESET_VOCABULARY_EXPECTATION: Readonly<Record<GrammarPresetId, number>> = {
+export const PRESET_VOCABULARY_EXPECTATION: Readonly<Record<GrammarPresetId, number>> = {
   'mn-preset-starter': 50,
   'mn-preset-basic': 150,
   'mn-preset-everyday': 400,

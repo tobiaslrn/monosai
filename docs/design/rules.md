@@ -227,6 +227,9 @@ meaning.
 
 ## 10. Copy
 
+R48 to R54 govern interface strings. Help prose follows R55 and [the help writing
+guide](help-writing.md); the form rules of R54 apply to it too.
+
 **R48. Cut first.** Every string must survive "what does the learner do differently if this is
 gone?". If nothing, delete it: delete rather than shorten. Start with less and add help text only
 when real use shows a need. If a screen needs explaining, change the screen. Say nothing twice on
@@ -257,7 +260,9 @@ validation. No internal jargon ("Uniform", "persistent storage", "policy", "lang
 | Dialog title | a question, 3 to 7 |
 | Dialog body | one sentence, plus the risk sentence if there is one |
 | Toast or status | 1 to 5, no full sentence needed |
-| Help prose | paragraphs of 1 to 3 sentences (R55) |
+| Help topic title | 1 to 4, a task ("Add your words") or a noun phrase (R55) |
+| Help section heading | 2 to 8, a task, a noun phrase or a How/What/Why/If clause; a question on Common questions up to 10 (R55) |
+| Help prose | paragraphs of 1 to 4 whole sentences (R55) |
 
 **R51. One extra sentence only for real risk.** Lost data, money, an irreversible action, or
 recovery from a failure. Then it is one short sentence saying what is safe or what it costs, in
@@ -285,12 +290,20 @@ matches the label of the row that opens it. Numbers and dates use the shared for
 Spelling is British ("favourite", "recognised", "analysing"). Accessible names are the visible
 label or a short noun-led phrase ("Paste text", "Close"), never restating the role.
 
-**R55. Help is the one prose surface, and still tight.** Allowed: headings, short paragraphs,
-lists, links beside the action. Open an article with what the reader needs, or with no lead.
-One section per question, at most three sentences per paragraph, a list or numbered steps before
-a paragraph. No history, motivation or philosophy, nothing the UI already says, no figure or
-setting the UI shows. The hub opens with the Topics shelf; a topic summary on it is a noun phrase
-of at most five words.
+**R55. Help is the one prose surface: write a guide, not a screen.** Help follows [the help
+writing guide](help-writing.md). Every sentence is complete, an imperative or a subject and a
+verb, with its articles; no colon-led fragments in running text. Address the reader as "you" and
+use common contractions. "You can" states a real option and "will" a later consequence; neither
+is padding there. Every topic opens with a lead of one or two sentences. Topic titles are a task
+("Add your words") or a noun phrase; a section heading is a task, a noun phrase or a clause such
+as "How the levels compare", never "-ing" first, and a question only on Common questions. A
+control is named in bold exactly as the screen spells it; a path uses ">" between places you
+open and "under" for a section heading. A term is defined on first use and then never varied. A
+task is numbered steps, one imperative action each. A notice holds a risk or a caveat, never a
+step. A fact lives on one page and the others link to it. A failure is looked up by the heading
+the screen shows. No history, motivation or philosophy. The hub opens with a short lead on what
+Monosai does and where to start, then the Topics shelf; a topic summary on it lists up to five
+words a reader would look for.
 
 ## 11. Forbidden
 
@@ -326,5 +339,5 @@ Answer yes to every line before committing a visual change.
 - [ ] Type, icon sizes, spacing and radii are role tokens, with no literal values (R34-R39).
 - [ ] Press is colour only; motion comes from `_motion.scss` (R40, R44).
 - [ ] Each tone has one meaning; bridge colours match (R45, R47).
-- [ ] Every string passes R48 (cut first) and the R50 budget.
+- [ ] Every interface string passes R48 (cut first) and the R50 budget; Help passes R55.
 - [ ] `npm test` passes, the exemption list did not grow (R6).

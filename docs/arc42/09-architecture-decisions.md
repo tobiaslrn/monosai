@@ -115,6 +115,7 @@ shared its number until it was given the next free one.
 | [0069](../decisions/0069-one-top-bar-per-screen.md)                         | Every screen has one sticky top bar; utilities live on the Library                |
 | [0070](../decisions/0070-gemini-speech-is-stored-compressed.md)             | Speech that arrives as raw PCM is stored compressed, and old clips are re-encoded |
 | [0079](../decisions/0079-help-is-a-hub-of-topics.md)                        | Help is a hub of topic pages, and the guidance lives in the application           |
+| [0092](../decisions/0092-help-is-written-as-a-guide.md)                     | Help is written as a guide: its own writing guide, and failures looked up by what the screen says |
 
 ### Audio
 

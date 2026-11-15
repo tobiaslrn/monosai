@@ -39,6 +39,14 @@ import { HELP_TOPICS } from './help-topics';
         </a>
       </mn-page-header>
 
+      <mn-prose>
+        <p mn-lead>
+          Monosai writes short Japanese stories that use only the words you already know, so you can
+          read without stopping at every line. If you're new, start with
+          <a routerLink="/help/get-started">Get started</a>.
+        </p>
+      </mn-prose>
+
       <mn-section heading="Topics" [rows]="true">
         @for (topic of topics; track topic.slug) {
           <mn-row
@@ -52,34 +60,6 @@ import { HELP_TOPICS } from './help-topics';
           </mn-row>
         }
       </mn-section>
-
-      <mn-prose>
-        <section aria-labelledby="help-what">
-          <h2 id="help-what">What Monosai does</h2>
-          <p>
-            Tell Monosai which words you know, usually from Anki. It writes stories inside them and
-            underlines anything it could not avoid. It also reads any Japanese you paste, with
-            readings and a dictionary. No account or key.
-          </p>
-        </section>
-
-        <section aria-labelledby="help-scope">
-          <h2 id="help-scope">What it is not</h2>
-          <p>
-            Monosai is for the first few months. Once you can read a page of real Japanese with a
-            dictionary, read things people wrote.
-          </p>
-        </section>
-
-        <section aria-labelledby="help-more">
-          <h2 id="help-more">When something fails</h2>
-          <p>
-            Failure screens show a code, such as <code>ai/credit-exhausted</code>.
-            <a routerLink="/help/questions" fragment="q-failed">Common questions</a> covers the
-            usual ones.
-          </p>
-        </section>
-      </mn-prose>
     </mn-page>
   `,
 })

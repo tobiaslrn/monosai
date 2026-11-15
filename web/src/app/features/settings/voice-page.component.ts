@@ -1,4 +1,5 @@
 import { Dialog } from '@angular/cdk/dialog';
+import { aiErrorCopy } from '../../shared-ui/ai-error/ai-error-copy';
 import { DOCUMENT } from '@angular/common';
 import type { ElementRef } from '@angular/core';
 import {
@@ -257,7 +258,7 @@ export class VoicePageComponent {
         const failure = this.tts.testFailure();
         return {
           tone: 'danger',
-          text: failure === null ? 'Test failed' : `Test failed. ${failure.message}`,
+          text: failure === null ? 'Test failed' : `Test failed. ${aiErrorCopy(failure).heading}.`,
         };
       }
       case 'no-credential':

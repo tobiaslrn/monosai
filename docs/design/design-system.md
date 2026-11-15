@@ -1341,6 +1341,9 @@ Minimal by default: say what a learner needs in order to act, and nothing more (
 R49). One extra sentence is allowed only where something real is at risk, and it says what is
 safe or what it costs (R51). Errors and confirmations follow R52.
 
+Help is the exception in voice as well as in length: it is read, not scanned, so it is written
+in whole, friendly sentences addressed to "you" ([the help writing guide](help-writing.md), R55).
+
 Sentence case everywhere: page titles, section headings, group titles, buttons,
 menu items, labels. Title case is not a rank and is not used to mark one, and
 neither are capitals: there is no uppercase label anywhere in the application.
@@ -1357,13 +1360,17 @@ Four exceptions:
 - **Help is a prose surface, and it is a guide rather than a page.** Its job is
   explanation: static, local English guidance in one readable column, with
   section headings, short paragraphs, and links close to the actions they
-  explain. `/help` carries what the application is for, what it is not for, and a
+  explain. `/help` carries a short lead on what the application is for and a
   shelf of topics; each topic is its own route below it, wearing the shared page
   frame with Back to Help and ending in its neighbours, as one pagination (`mn-pager`):
   a Previous and a Next card with the same anatomy, an eyebrow over the title and the
   arrow on the outer side, side by side when they fit and stacked when they do not.
-  The hub opens with the shelf of topics, since a learner opens
-  Help to find one, and the note follows. The prose stays as tight as R55 says. The measure and the prose
+  The hub opens with a lead of one or two sentences, what Monosai does and where a
+  newcomer starts, so a stranger reads what the application is before choosing a topic;
+  the shelf follows straight after, in view on a phone. The prose is written as R55 and
+  [the help writing guide](help-writing.md) say: whole sentences addressed to "you", controls
+  in bold as the screen spells them, a lead on every topic, and a failure looked up
+  by the heading the screen shows. The measure and the prose
   elements live in `mn-prose`, so a topic page writes words and nothing else.
   Two options being compared are a card each, never a table: the figures are few,
   the prose beside them is long, and a table of that shape either scrolls
@@ -1375,7 +1382,8 @@ Four exceptions:
   naming Help, the way to it, and a quiet dismissal, as the page's first block
   under its bar. Dismissal records the preference for this local installation;
   the guide remains among the Library's utilities. Reader deep links are never
-  interrupted. See [ADR 0079](../decisions/0079-help-is-a-hub-of-topics.md).
+  interrupted. See [ADR 0079](../decisions/0079-help-is-a-hub-of-topics.md) and
+  [ADR 0092](../decisions/0092-help-is-written-as-a-guide.md).
 
 - **Empty states are quiet.** An empty surface has a plain title and its primary
   action; its buttons teach, and a body sentence appears only when the way to
@@ -1571,8 +1579,8 @@ section, no list of further reading, and nothing in a picker row that is working
 a link on a screen where nothing is wrong is a symptom. The exceptions are
 narrow and stated — a claim the reader is entitled to check, such as an app
 saying it only reads a collection, may carry the link that lets them check it.
-Where a failure prints a technical code, the code carries the link that looks it
-up. Every one of these opens in a new tab and says so.
+A failure is looked up in Help's Fix a problem by its heading; its code reaches a
+report through Copy diagnostics. Every one of these opens in a new tab and says so.
 
 ## 10. Accessibility floor
 

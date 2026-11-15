@@ -1,4 +1,5 @@
 import { Dialog } from '@angular/cdk/dialog';
+import { aiErrorCopy } from '../../shared-ui/ai-error/ai-error-copy';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CredentialStore } from '../../application/settings/credential.store';
@@ -424,7 +425,7 @@ export class TextModelsPageComponent {
       case 'failed':
         return {
           tone: 'danger',
-          text: failure === null ? 'Test failed' : `Test failed. ${failure.message}`,
+          text: failure === null ? 'Test failed' : `Test failed. ${aiErrorCopy(failure).heading}.`,
           action: 'Test again',
         };
       case 'no-credential':

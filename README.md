@@ -18,7 +18,7 @@ own OpenRouter key.
 
 ## Docs
 
-- [The guide](https://tobiaslrn.github.io/monosai/#/help): setup, troubleshooting, and error codes, inside the app
+- [The guide](https://tobiaslrn.github.io/monosai/#/help): setup, models and voices, and what to do when something fails, inside the app
 - [Architecture](docs/arc42/README.md)
 - [Design rules](docs/design/rules.md) and [design system](docs/design/design-system.md)
 

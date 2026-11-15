@@ -19,18 +19,18 @@ describe('HelpPageComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('leads with the topics, then what Monosai is for and where it stops being the answer', () => {
+  it('says in a short lead what Monosai is for and where to start, then offers the topics', () => {
     const element = render();
+    const lead = element.querySelector('p[mn-lead]');
+    expect(lead?.textContent).toContain('words you already know');
+    expect(lead?.querySelector('a')?.getAttribute('href')).toBe('/help/get-started');
     expect([...element.querySelectorAll('h2')].map((heading) => heading.textContent)).toEqual([
       'Topics',
-      'What Monosai does',
-      'What it is not',
-      'When something fails',
     ]);
-    const text = element.textContent.replace(/\s+/g, ' ');
-    expect(text).toContain('which words you know');
-    expect(text).toContain('first few months');
-    expect(text).toContain('read things people wrote');
+    const order = lead?.compareDocumentPosition(
+      element.querySelector('[data-testid="help-topic"]')!,
+    );
+    expect(order! & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('offers every topic as a row that leads to its page', () => {

@@ -527,7 +527,7 @@ export class GeneratePageComponent implements OnChanges {
         heading: 'Could not save',
         whatDidNot: 'Nothing was saved. Your data is unchanged.',
         primaryAction:
-          'Close other Monosai tabs and reload. If it still fails, use Full reset in Storage settings.',
+          'Close other Monosai tabs and reload. If it still fails, use Delete all data in Settings.',
       };
     }
     return state.error.domain === 'ai'

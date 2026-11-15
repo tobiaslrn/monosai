@@ -31,14 +31,20 @@ function readingLevelSection(fragment: 'words' | 'grammar'): RedirectFunction {
  * import, so a topic is still a chunk of its own that the hub does not load.
  */
 const HELP_TOPIC_PAGES: Record<HelpTopicSlug, () => Promise<Type<unknown>>> = {
-  'first-steps': () =>
-    import('../../features/help/topics/first-steps-page.component').then(
-      (m) => m.FirstStepsPageComponent,
+  'get-started': () =>
+    import('../../features/help/topics/get-started-page.component').then(
+      (m) => m.GetStartedPageComponent,
     ),
   'your-words': () =>
     import('../../features/help/topics/your-words-page.component').then(
       (m) => m.YourWordsPageComponent,
     ),
+  'reading-level': () =>
+    import('../../features/help/topics/reading-level-page.component').then(
+      (m) => m.ReadingLevelHelpPageComponent,
+    ),
+  write: () =>
+    import('../../features/help/topics/write-page.component').then((m) => m.WritePageComponent),
   reading: () =>
     import('../../features/help/topics/reading-page.component').then((m) => m.ReadingPageComponent),
   'text-models': () =>
@@ -49,13 +55,15 @@ const HELP_TOPIC_PAGES: Record<HelpTopicSlug, () => Promise<Type<unknown>>> = {
     import('../../features/help/topics/voice-page.component').then((m) => m.VoicePageComponent),
   install: () =>
     import('../../features/help/topics/install-page.component').then((m) => m.InstallPageComponent),
+  privacy: () =>
+    import('../../features/help/topics/privacy-page.component').then((m) => m.PrivacyPageComponent),
   questions: () =>
     import('../../features/help/topics/questions-page.component').then(
       (m) => m.QuestionsPageComponent,
     ),
-  'error-codes': () =>
-    import('../../features/help/topics/error-codes-page.component').then(
-      (m) => m.ErrorCodesPageComponent,
+  troubleshooting: () =>
+    import('../../features/help/topics/troubleshooting-page.component').then(
+      (m) => m.TroubleshootingPageComponent,
     ),
 };
 
@@ -78,6 +86,9 @@ export const APP_ROUTES: Routes = [
       import('../../features/help/help-page.component').then((m) => m.HelpPageComponent),
   },
   ...HELP_TOPIC_ROUTES,
+  // Retired topic addresses, kept so a link written before the guide was reorganised still lands.
+  { path: 'help/first-steps', redirectTo: 'help/get-started' },
+  { path: 'help/error-codes', redirectTo: 'help/troubleshooting' },
   {
     path: 'library',
     title: 'Library · Monosai',
