@@ -286,30 +286,28 @@ test.describe('offline reload', () => {
 });
 
 /**
- * A string only the speech synthesizer contains.
- *
- * An error message survives minification and, unlike a task name, an endpoint or
- * a MIME type, is not shared with the settings test or the encoder. If the
- * message is reworded this stops matching and the test says so.
- */
-const SPEECH_CHUNK_MARKER = 'Unreachable TTS capability fallback state.';
-
-/**
  * The file name of the lazy chunk that holds the speech synthesizer.
  *
- * Found by content in the served build, because the hash changes with every
- * build and CI hands this suite only the browser output.
+ * Found through the one place the app loads it: the dynamic import in the
+ * main bundle that is followed by the synthesizer's export. The hash changes
+ * with every build and CI hands this suite only the browser output, and the
+ * chunk holds too little of its own to be recognised by its content. An export
+ * name survives minification because other files read it, so if the class is
+ * renamed or the load moves this stops matching and the test says so.
  */
 function speechChunkName(): string {
   const directory = join(process.cwd(), 'dist', 'monosai', 'browser');
-  const holders = readdirSync(directory).filter(
-    (file) =>
-      file.startsWith('chunk-') &&
-      file.endsWith('.js') &&
-      readFileSync(join(directory, file), 'utf8').includes(SPEECH_CHUNK_MARKER),
+  const loads = readdirSync(directory)
+    .filter((file) => file.startsWith('main-') && file.endsWith('.js'))
+    .flatMap((file) => {
+      const source = readFileSync(join(directory, file), 'utf8');
+      const pattern = /import\([`'"]\.\/(chunk-[\w-]+\.js)[`'"]\)\)*\.OpenRouterTtsSynthesizer/g;
+      return [...source.matchAll(pattern)].map((match) => match[1]!);
+    });
+  expect(loads, 'the main bundle loads the speech synthesizer from exactly one chunk').toHaveLength(
+    1,
   );
-  expect(holders, 'exactly one chunk holds the speech synthesizer').toHaveLength(1);
-  return holders[0]!;
+  return loads[0]!;
 }
 
 test.describe('speech code that cannot be loaded', () => {
