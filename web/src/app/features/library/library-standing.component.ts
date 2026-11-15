@@ -30,10 +30,9 @@ type StandingHeadline =
  * self-explanatory — a story from *these* words — and it is the reason the
  * learner profile is worth a destination at all.
  *
- * The two facts it names are the two the page behind it holds, so each is
- * underlined where it is said: the sentence reads as a sentence, and the parts
- * of it that lead somewhere look like they do. It is centred on the
- * illustration beside it, holds its space before the read answers, and states
+ * It leads to the Words page, because the count it opens with is the fact a
+ * learner acts on; the level is reached from Settings and the story form. It
+ * is centred on the illustration beside it, holds its space before the read answers, and states
  * the sentence whole when it does.
  */
 @Component({
@@ -51,8 +50,7 @@ type StandingHeadline =
       </mn-standing>
     } @else {
       <mn-standing
-        link="/reading-level"
-        fragment="words"
+        link="/words"
         [state]="libraryOriginState"
         testId="library-standing"
         [compact]="compact()"

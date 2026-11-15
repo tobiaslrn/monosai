@@ -22,9 +22,7 @@ test.describe('application shell', () => {
    * The masthead carries no second link to it: a label repeating the sentence
    * beneath it in nearly the same words is what this replaced.
    */
-  test('reaches words and grammar from the Library standing line and back @smoke', async ({
-    page,
-  }) => {
+  test('reaches words from the Library standing line and back @smoke', async ({ page }) => {
     await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
     await page.goto('./#/library');
 
@@ -34,8 +32,8 @@ test.describe('application shell', () => {
 
     await standing.click();
 
-    await expect(page).toHaveURL(/#\/reading-level#words$/);
-    await expect(page.getByRole('heading', { name: 'Words and grammar', level: 1 })).toBeVisible();
+    await expect(page).toHaveURL(/#\/words$/);
+    await expect(page.getByRole('heading', { name: 'Words', level: 1 })).toBeVisible();
 
     await page.getByRole('button', { name: 'Back to library' }).click();
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
@@ -46,7 +44,7 @@ test.describe('application shell', () => {
    * connecting an external application is something people come here to look
    * for, and finding nothing would say it cannot be done.
    */
-  test('signposts words and grammar from Settings without describing it there', async ({
+  test('signposts words and grammar from Settings without describing them there', async ({
     page,
   }) => {
     await page.goto('./#/settings');
@@ -54,35 +52,48 @@ test.describe('application shell', () => {
     await expect(page.getByText('Your setup')).toHaveCount(0);
     await expect(page.getByRole('link', { name: /Vocabulary/ })).toHaveCount(0);
 
-    const row = page.locator('mn-settings-row', { hasText: 'Words and grammar' });
-    await expect(row).toContainText('No words yet');
-    await page.getByTestId('settings-reading-level').click();
+    await expect(
+      page.locator('mn-settings-row', { has: page.getByTestId('settings-words') }),
+    ).toContainText('No words yet');
+    await page.getByTestId('settings-words').click();
 
-    await expect(page.getByRole('heading', { name: 'Words and grammar', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Words', level: 1 })).toBeVisible();
+    await page.getByRole('button', { name: 'Back to settings' }).click();
+    await expect(page).toHaveURL(/#\/settings$/);
+
+    await expect(
+      page.locator('mn-settings-row', { has: page.getByTestId('settings-grammar') }),
+    ).toContainText('Starter forms');
+    await page.getByTestId('settings-grammar').click();
+
+    await expect(page.getByRole('heading', { name: 'Grammar', level: 1 })).toBeVisible();
     await page.getByRole('button', { name: 'Back to settings' }).click();
     await expect(page).toHaveURL(/#\/settings$/);
   });
 
   /**
-   * Vocabulary and Grammar were merged into one page. Their links live in
-   * bookmarks and in anything Android saved, so each still lands on the half of
-   * that page it meant, and still knows its way back.
+   * Words and grammar were one page, and before that two others. Their links
+   * live in bookmarks and in anything Android saved, so each still lands on the
+   * page it meant, and still knows its way back.
    */
-  test('redirects the two routes the reading-level page replaced', async ({ page }) => {
+  test('redirects the routes the two pages replaced', async ({ page }) => {
     await page.goto('./#/vocabulary');
 
-    await expect(page).toHaveURL(/#\/reading-level/);
-    await expect(page).toHaveURL(/#words$/);
-    await expect(page.getByRole('heading', { name: 'Words and grammar', level: 1 })).toBeVisible();
+    await expect(page).toHaveURL(/#\/words$/);
+    await expect(page.getByRole('heading', { name: 'Words', level: 1 })).toBeVisible();
     await page.getByRole('link', { name: 'Back to library' }).click();
     await expect(page).toHaveURL(/#\/library$/);
 
-    await page.goto('./#/grammar?from=generate');
+    await page.goto('./#/reading-level?from=generate#grammar');
 
-    await expect(page).toHaveURL(/#\/reading-level/);
-    await expect(page).toHaveURL(/#grammar$/);
+    await expect(page).toHaveURL(/#\/grammar\?from=generate$/);
+    await expect(page.getByRole('heading', { name: 'Grammar', level: 1 })).toBeVisible();
     await page.getByRole('link', { name: 'Back to story' }).click();
     await expect(page).toHaveURL(/#\/generate$/);
+
+    await page.goto('./#/reading-level/level');
+    await expect(page).toHaveURL(/#\/grammar\/level$/);
+    await expect(page.getByRole('heading', { name: 'Reading level', level: 1 })).toBeVisible();
   });
 
   test('shows build diagnostics without user content', async ({ page }) => {

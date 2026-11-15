@@ -6,7 +6,7 @@ import type { VocabularySourceKind } from '../../domain/vocabulary/vocabulary-so
 /**
  * How the learner's standing is said, wherever it is said.
  *
- * The Library states it in one line and the reading-level page states it as a
+ * The Library states it in one line and the Words page states it as a
  * fact above its own controls. Two screens describing the same snapshot is how
  * they start to disagree, so both read these functions and neither formats a
  * count or a day itself.

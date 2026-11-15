@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { VocabularyAvailabilityStore } from '../../application/vocabulary/vocabulary-availability.store';
 import { navigationOriginState } from '../../core/routing/navigation-history.service';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
@@ -8,10 +7,8 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
 /**
  * A signpost, not a setting.
  *
- * What the learner can read has its own page and its own way in from the
- * Library, which is where it belongs: filing it under a gear is what made it
- * invisible ([ADR 0049](../../../../../docs/decisions/0049-one-page-for-what-you-can-read.md)).
- * But connecting an external application is something people come to Settings
+ * The words have their own page and their own way in from the Library. But
+ * connecting an external application is something people come to Settings
  * looking for, so this points at that page from here rather than leaving anyone
  * who searched the obvious place concluding it does not exist.
  *
@@ -19,39 +16,27 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
  * data: the page it leads to owns that.
  */
 @Component({
-  selector: 'mn-reading-level-row',
+  selector: 'mn-words-row',
   host: { class: 'mn-settings-block' },
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SettingsRowComponent],
   template: `
     <mn-settings-row
-      label="Words and grammar"
+      label="Words"
       end="nav"
-      link="/reading-level"
-      testId="settings-reading-level"
+      link="/words"
+      testId="settings-words"
       [state]="settingsOriginState"
-      [summary]="state()"
+      [summary]="summary()"
     />
   `,
 })
-export class ReadingLevelRowComponent {
+export class WordsRowComponent {
   protected readonly settingsOriginState = navigationOriginState('/settings');
   private readonly vocabulary = inject(VocabularyAvailabilityStore);
-  private readonly grammar = inject(GrammarProfileStore);
 
-  /** The same two facts the Library states, in one line rather than two. */
-  protected readonly state = computed(() => {
-    const preset = this.grammar.selectedPreset()?.nameEn;
-    const parts = [this.wordsLabel(), preset];
-    return parts.filter((part) => part !== null && part !== undefined).join(' · ');
-  });
-
-  constructor() {
-    void this.vocabulary.refresh();
-    void this.grammar.load();
-  }
-
-  private wordsLabel(): string | null {
+  /** The same fact the Library states; nothing until the read answers. */
+  protected readonly summary = computed(() => {
     const state = this.vocabulary.state();
     switch (state.kind) {
       case 'unknown':
@@ -63,5 +48,9 @@ export class ReadingLevelRowComponent {
           ? 'No words yet'
           : vocabularyCountLabel(state.snapshot.uniqueEntryCount);
     }
+  });
+
+  constructor() {
+    void this.vocabulary.refresh();
   }
 }

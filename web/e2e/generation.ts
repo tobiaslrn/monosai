@@ -184,7 +184,7 @@ export async function configureTts(page: Page): Promise<void> {
 
 /** Builds a real snapshot from the scripted collection. */
 export async function buildSnapshot(page: Page): Promise<void> {
-  await page.goto('./#/reading-level');
+  await page.goto('./#/words');
   await page.getByTestId('add-words').click();
   await expect(page.getByRole('dialog', { name: 'Add words' })).toBeVisible();
   await page.getByTestId('choose-anki').click();
@@ -204,11 +204,11 @@ export async function prepareGeneration(page: Page, options: StubOptions): Promi
 
   // Storage state restores the durable model and vocabulary records, but
   // Playwright intentionally does not serialize Cache Storage or a live WASM
-  // worker. Visit the reading-level page to activate the verified language
+  // worker. Visit the grammar page to activate the verified language
   // runtime before generation captures its profile: the level's example only
   // appears once the bundle has loaded.
-  await page.goto('./#/reading-level');
-  await expect(page.locator('mn-reading-level-page mn-example')).toBeVisible({
+  await page.goto('./#/grammar');
+  await expect(page.locator('mn-grammar-page mn-example')).toBeVisible({
     timeout: 120_000,
   });
 }

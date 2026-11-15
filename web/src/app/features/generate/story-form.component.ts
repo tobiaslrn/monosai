@@ -185,8 +185,7 @@ const STRICTNESS_OPTIONS: readonly SelectOption<VocabularyStrictness>[] = (
                 <mn-settings-row
                   label="Vocabulary"
                   end="nav"
-                  link="/reading-level"
-                  fragment="words"
+                  link="/words"
                   testId="form-vocabulary"
                   [summary]="snapshotSummary()"
                   [queryParams]="sourceQuery"
@@ -195,8 +194,7 @@ const STRICTNESS_OPTIONS: readonly SelectOption<VocabularyStrictness>[] = (
                 <mn-settings-row
                   label="Grammar"
                   end="nav"
-                  link="/reading-level"
-                  fragment="grammar"
+                  link="/grammar"
                   testId="form-grammar"
                   [summary]="presetName()"
                   [queryParams]="sourceQuery"

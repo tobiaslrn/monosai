@@ -108,7 +108,7 @@ export function prerequisiteChecks(input: PrerequisiteInput): readonly Prerequis
       satisfied:
         input.snapshot !== null && input.snapshot.uniqueEntryCount >= GENERATION_SNAPSHOT_MINIMUM,
       detail: vocabularyDetail(input.snapshot, input.hasSources ?? false),
-      route: '/reading-level',
+      route: '/words',
       actionLabel: 'Add words',
     },
   ];

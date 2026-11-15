@@ -62,10 +62,7 @@ import { HelpArticleComponent } from '../help-article.component';
         </ol>
         <p>Then, in Monosai:</p>
         <ol>
-          <li>
-            Open <a routerLink="/reading-level" fragment="words">Words and grammar</a> and select
-            <strong>Add source</strong>.
-          </li>
+          <li>Open <a routerLink="/words">Words</a> and select <strong>Add source</strong>.</li>
           <li>Select <strong>Connect to Anki</strong>.</li>
           <li>
             Check the deck, note type and <strong>Expression field</strong> that Monosai suggests,
@@ -110,8 +107,7 @@ import { HelpArticleComponent } from '../help-article.component';
           <li>Select <strong>Start</strong>.</li>
           <li>
             In Monosai, open
-            <a routerLink="/reading-level" fragment="words">Words and grammar</a> and select
-            <strong>Add source</strong>.
+            <a routerLink="/words">Words</a> and select <strong>Add source</strong>.
           </li>
           <li>
             Select <strong>Connect to Anki</strong>, check the suggested deck and fields, then
@@ -142,8 +138,7 @@ import { HelpArticleComponent } from '../help-article.component';
           </li>
           <li>
             In Monosai, open
-            <a routerLink="/reading-level" fragment="words">Words and grammar</a> and select
-            <strong>Add source</strong>.
+            <a routerLink="/words">Words</a> and select <strong>Add source</strong>.
           </li>
           <li>
             Select <strong>Import from Anki</strong>, and choose the <code>.apkg</code> or
@@ -163,10 +158,7 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="words-list">
         <h2 id="words-list">Add a word list</h2>
         <ol>
-          <li>
-            Open <a routerLink="/reading-level" fragment="words">Words and grammar</a> and select
-            <strong>Add source</strong>.
-          </li>
+          <li>Open <a routerLink="/words">Words</a> and select <strong>Add source</strong>.</li>
           <li>Select <strong>Add a word list</strong>.</li>
           <li>In <strong>List name</strong>, give the list a name.</li>
           <li>
@@ -200,7 +192,7 @@ import { HelpArticleComponent } from '../help-article.component';
         </p>
         <p>
           To manage a source, open it in
-          <a routerLink="/reading-level" fragment="words">Words and grammar</a>:
+          <a routerLink="/words">Words</a>:
         </p>
         <ul>
           <li><strong>Refresh now</strong> reads Anki again straight away.</li>

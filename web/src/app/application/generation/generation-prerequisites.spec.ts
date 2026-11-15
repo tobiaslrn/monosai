@@ -119,7 +119,7 @@ describe('prerequisiteChecks', () => {
       '/settings/text-models',
     );
     expect(checkFor('text-model', { textModelReadiness: 'no-credential' }).route).toBe('/settings');
-    expect(checkFor('vocabulary', { snapshot: null }).route).toBe('/reading-level');
+    expect(checkFor('vocabulary', { snapshot: null }).route).toBe('/words');
   });
 
   it('fails the vocabulary check below the documented minimum and names the count', () => {

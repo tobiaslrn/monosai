@@ -112,8 +112,8 @@ describe('SourceListComponent', () => {
 
     expect(listed).toHaveLength(2);
     expect(listed.map((row) => row.getAttribute('href'))).toEqual([
-      `/reading-level/source/${TEXT_LIST.id}`,
-      `/reading-level/source/${anki.id}`,
+      `/words/source/${TEXT_LIST.id}`,
+      `/words/source/${anki.id}`,
     ]);
   });
 

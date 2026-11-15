@@ -101,7 +101,7 @@ describe('ReaderAidsComponent', () => {
     const link = element.querySelector<HTMLAnchorElement>(
       '[data-testid="reader-vocabulary-notice"] a',
     );
-    expect(link?.getAttribute('href')).toContain('/reading-level#words');
+    expect(link?.getAttribute('href')).toContain('/words');
   });
 
   /** Appearance is embedded, so a notice needs no extra header button. */

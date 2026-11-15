@@ -418,7 +418,7 @@ belong in the audio configuration fingerprint.
 
 ## 6.6 Browse vocabulary
 
-The Vocabulary card on the reading-level page is the entry point to the
+The Vocabulary card on the Words page is the entry point to the
 browser. The page reads the active snapshot, item rows, provenance, and source
 observations in one repository transaction. Search, source, difficulty, date,
 and sort are then applied locally by pure domain rules; opening the filter

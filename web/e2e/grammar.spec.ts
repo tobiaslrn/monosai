@@ -7,22 +7,22 @@ const EVERYDAY = 'Everyday forms';
 
 /** The ladder only exists once the bundled presets have been verified and loaded. */
 async function openLadder(page: Page): Promise<void> {
-  await page.goto('./#/reading-level/level');
+  await page.goto('./#/grammar/level');
   await expect(page.getByRole('radio', { name: new RegExp(STARTER) })).toBeVisible();
 }
 
 /** The overview shows the level's example once the bundle has arrived. */
 async function openOverview(page: Page): Promise<void> {
-  await page.goto('./#/reading-level');
-  await expect(page.locator('mn-reading-level-page mn-example')).toBeVisible();
+  await page.goto('./#/grammar');
+  await expect(page.locator('mn-grammar-page mn-example')).toBeVisible();
 }
 
 async function backToOverview(page: Page): Promise<void> {
   await page
-    .getByRole('button', { name: 'Back to words and grammar' })
-    .or(page.getByRole('link', { name: 'Back to words and grammar' }))
+    .getByRole('button', { name: 'Back to grammar' })
+    .or(page.getByRole('link', { name: 'Back to grammar' }))
     .click();
-  await expect(page.getByRole('heading', { name: 'Words and grammar', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Grammar', level: 1 })).toBeVisible();
 }
 
 test.describe('grammar profile', () => {
@@ -74,7 +74,7 @@ test.describe('grammar profile', () => {
     await page.getByRole('radio', { name: new RegExp(EVERYDAY) }).check();
     await page.getByTestId('save-level').click();
 
-    await expect(page).toHaveURL(/#\/reading-level$/);
+    await expect(page).toHaveURL(/#\/grammar$/);
     await expect(page.getByTestId('grammar-standing')).toHaveText(EVERYDAY);
     await expect(confirmation).toContainText(EVERYDAY);
     await expect(confirmation).toContainText('out of date');

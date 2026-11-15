@@ -3,6 +3,8 @@
   "src/app/core/layout/vocabulary-sync-banner.component.ts": ["styles"],
   "src/app/features/add-text/add-text-page.component.ts": ["styles"],
   "src/app/features/add-text/text-input-step.component.ts": ["styles"],
+  "src/app/features/grammar/grammar-page.component.ts": ["styles"],
+  "src/app/features/grammar/level-choice-page.component.ts": ["styles"],
   "src/app/features/grammar/preset-picker.component.ts": ["styles"],
   "src/app/features/grammar/structural-baseline-section.component.ts": ["styles"],
   "src/app/features/reader/aid-failure.component.ts": ["styles"],
@@ -18,7 +20,5 @@
   "src/app/features/reader/sentence-popover.component.ts": ["styles"],
   "src/app/features/reader/word-form-summary.component.ts": ["styles"],
   "src/app/features/reader/word-inspector.component.ts": ["styles"],
-  "src/app/features/reader/word-preview.component.ts": ["styles"],
-  "src/app/features/reading-level/level-choice-page.component.ts": ["styles"],
-  "src/app/features/reading-level/reading-level-page.component.ts": ["styles"]
+  "src/app/features/reader/word-preview.component.ts": ["styles"]
 }

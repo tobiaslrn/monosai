@@ -1773,7 +1773,7 @@ test('adds an unknown word locally from the reader @smoke @mobile', async ({ pag
   await expect(wordDetails(page).getByRole('button', { name: 'Add to word list' })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await context.setOffline(false);
-  await page.goto('./#/reading-level');
+  await page.goto('./#/words');
   await expect(page.getByText('Reader words', { exact: true })).toBeVisible();
 });
 

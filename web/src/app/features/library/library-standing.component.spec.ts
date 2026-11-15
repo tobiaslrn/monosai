@@ -218,6 +218,6 @@ describe('LibraryStandingComponent', () => {
 
     const link = element.querySelector<HTMLAnchorElement>('[data-testid="library-standing"]');
     expect(link?.tagName).toBe('A');
-    expect(link?.getAttribute('href')).toContain('/reading-level#words');
+    expect(link?.getAttribute('href')).toContain('/words');
   });
 });

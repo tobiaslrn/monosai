@@ -58,11 +58,7 @@ interface VirtualVocabularyEntry {
   ],
   template: `
     <mn-page [gap]="3">
-      <mn-page-header
-        heading="Your vocabulary"
-        backTo="/reading-level"
-        backLabel="Back to words and grammar"
-      />
+      <mn-page-header heading="Your vocabulary" backTo="/words" backLabel="Back to words" />
 
       <mn-cluster fill="first">
         <mn-search-field
@@ -147,7 +143,7 @@ interface VirtualVocabularyEntry {
                 ? 'No words yet.'
                 : 'Your word sources have no words in them.'
             }}
-            <a routerLink="/reading-level" fragment="words">Add words</a>
+            <a routerLink="/words">Add words</a>
           </p>
         }
         @case ('ready') {

@@ -258,8 +258,14 @@ for (const { width, zoom } of SCREENS) {
       await expectWhole(page, zoom);
     });
 
-    test('keeps Words and grammar whole @smoke @mobile', async ({ page }) => {
+    test('keeps Words whole @smoke @mobile', async ({ page }) => {
       await openVocabulary(page);
+      await expect(page.getByTestId('words-standing')).toBeVisible();
+      await expectWhole(page, zoom);
+    });
+
+    test('keeps Grammar whole @smoke @mobile', async ({ page }) => {
+      await page.goto('./#/grammar');
       await expect(page.getByTestId('reading-level-link')).toBeVisible();
       await expect(page.getByTestId('grammar-standing')).toBeVisible();
       await expectWhole(page, zoom);
@@ -280,13 +286,13 @@ for (const { width, zoom } of SCREENS) {
     });
 
     test('keeps the reading level choice whole @smoke @mobile', async ({ page }) => {
-      await page.goto('./#/reading-level/level');
+      await page.goto('./#/grammar/level');
       await expect(page.getByRole('heading', { name: 'Reading level', level: 1 })).toBeVisible();
       await expectWhole(page, zoom);
     });
 
     test('keeps the word list whole @smoke @mobile', async ({ page }) => {
-      await page.goto('./#/reading-level/vocabulary');
+      await page.goto('./#/words/vocabulary');
       await expect(page.getByRole('heading', { name: 'Your vocabulary', level: 1 })).toBeVisible();
       await expectWhole(page, zoom);
     });

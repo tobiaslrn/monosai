@@ -72,9 +72,7 @@ const AIDS: readonly AidOption[] = [
           data-testid="reader-vocabulary-notice"
         >
           {{ notice }}
-          <a mn-status-line-action routerLink="/reading-level" fragment="words"
-            >Words and grammar</a
-          >
+          <a mn-status-line-action routerLink="/words">Words</a>
         </mn-status-line>
       }
     </mn-dialog-group>

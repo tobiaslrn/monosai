@@ -9,19 +9,23 @@ import { wellFormedGenerationJobLink } from './generation-job-link.guard';
 import { wellFormedReadingLink } from './reading-link.guard';
 
 /**
- * Sends a retired learner-profile route to its half of the merged page.
+ * Sends a retired route to the page that now holds what it meant.
  *
- * A plain string redirect cannot carry a fragment, and the fragment is the
- * whole point: the two screens became one longer screen, and a link that used
- * to arrive at what it meant must still arrive there.
+ * Links to the retired pages live in bookmarks, in the service worker's share
+ * redirect of an older install, and in anything Android saved. A plain string
+ * redirect cannot read the fragment, and the fragment is what says which half
+ * of the old combined page a link meant: `#grammar` and `#forms` meant grammar,
+ * anything else meant words. Query parameters (`from`, the share marker) are
+ * carried across.
  */
-function readingLevelSection(fragment: 'words' | 'grammar'): RedirectFunction {
-  return (redirect) =>
-    inject(Router).createUrlTree(['/reading-level'], {
-      queryParams: redirect.queryParams,
-      fragment,
-    });
-}
+const retiredLearnerPage: RedirectFunction = (redirect) => {
+  const fragment = redirect.fragment;
+  const grammar = fragment === 'grammar' || fragment === 'forms';
+  return inject(Router).createUrlTree([grammar ? '/grammar' : '/words'], {
+    queryParams: redirect.queryParams,
+    ...(fragment === 'forms' ? { fragment } : {}),
+  });
+};
 
 /**
  * The page behind each topic of the guide.
@@ -139,45 +143,50 @@ export const APP_ROUTES: Routes = [
       ),
   },
   {
-    path: 'reading-level',
-    title: 'Words and grammar · Monosai',
+    path: 'words',
+    title: 'Words · Monosai',
     loadComponent: () =>
-      import('../../features/reading-level/reading-level-page.component').then(
-        (m) => m.ReadingLevelPageComponent,
-      ),
-  },
-  {
-    // The ladder, on its own: choosing is a draft until Save level commits it,
-    // so a learner can read each example before anything goes stale.
-    path: 'reading-level/level',
-    title: 'Reading level · Monosai',
-    loadComponent: () =>
-      import('../../features/reading-level/level-choice-page.component').then(
-        (m) => m.LevelChoicePageComponent,
-      ),
+      import('../../features/vocabulary/words-page.component').then((m) => m.WordsPageComponent),
   },
   {
     // One source, and everything it can be configured to do. A page rather
     // than a row, because the list is for choosing what to open.
-    path: 'reading-level/source/:sourceId',
+    path: 'words/source/:sourceId',
     title: 'Source · Monosai',
     loadComponent: () =>
       import('../../features/vocabulary/source-page.component').then((m) => m.SourcePageComponent),
   },
   {
-    path: 'reading-level/vocabulary',
+    path: 'words/vocabulary',
     title: 'Your vocabulary · Monosai',
     loadComponent: () =>
       import('../../features/vocabulary/vocabulary-browse-page.component').then(
         (m) => m.VocabularyBrowsePageComponent,
       ),
   },
-  // The two routes this screen replaced. Links live in bookmarks, in the
-  // service worker's share redirect, and in anything Android saved, so each
-  // keeps working and lands on the half of the merged page it meant, carrying
-  // its query parameters — `from`, and the share marker — across.
-  { path: 'vocabulary', redirectTo: readingLevelSection('words') },
-  { path: 'grammar', redirectTo: readingLevelSection('grammar') },
+  {
+    path: 'grammar',
+    title: 'Grammar · Monosai',
+    loadComponent: () =>
+      import('../../features/grammar/grammar-page.component').then((m) => m.GrammarPageComponent),
+  },
+  {
+    // The ladder, on its own: choosing is a draft until Save level commits it,
+    // so a learner can read each example before anything goes stale.
+    path: 'grammar/level',
+    title: 'Reading level · Monosai',
+    loadComponent: () =>
+      import('../../features/grammar/level-choice-page.component').then(
+        (m) => m.LevelChoicePageComponent,
+      ),
+  },
+  // The routes these pages replaced. Each keeps working and lands where it
+  // meant, carrying its query parameters across.
+  { path: 'reading-level', redirectTo: retiredLearnerPage },
+  { path: 'vocabulary', redirectTo: retiredLearnerPage },
+  { path: 'reading-level/level', redirectTo: '/grammar/level' },
+  { path: 'reading-level/source/:sourceId', redirectTo: '/words/source/:sourceId' },
+  { path: 'reading-level/vocabulary', redirectTo: '/words/vocabulary' },
   {
     path: 'settings',
     // One catalogue fetch serves the overview's model names and both model pages.

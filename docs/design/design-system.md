@@ -517,8 +517,9 @@ spends money or sends a request.
 There are exactly two deliberate exceptions: the Library's utilities,
 described above; and the control that reads Anki again at the end of the vocabulary sources card. That
 last one sits on the line that already says what it acts on — "Synced today" —
-exists only where a source Monosai keeps up to date is listed, and turns while
-it works. None of them grants other infrequent controls icon-only status.
+exists only where a source Monosai keeps up to date is listed, turns while
+it works, and stays at the row's end on the chevrons' line at every width, as a
+row's glyph does. None of them grants other infrequent controls icon-only status.
 
 This is narrower than it sounds, and deliberately so. Research on icon usability
 is consistent that only a small set of symbols is read reliably without a label,
@@ -1600,7 +1601,7 @@ These are not aspirations; a change that breaks one of them is a regression.
   that cannot fit becomes a radio list; in a list row the badge, then the
   title, then an overview row's value each take a line once the row is too narrow
   to hold them side by side, so a word is not broken to fit. The `narrow-screen`
-  e2e spec holds this for Settings, Generate, Words and grammar, Help, the
+  e2e spec holds this for Settings, Generate, Words, Grammar, Help, the
   Library and a source that could not be read, at 320px with 200% text, 320px
   with 100% and 393px with 150%. Only a long name in a list row, which ends after
   two lines, and a model name at normal size may still end in an ellipsis.

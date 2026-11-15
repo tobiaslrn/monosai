@@ -5,7 +5,7 @@ import { LanguageStore } from '../../application/language/language.store';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import type { GrammarPresetId } from '../../domain/grammar/presets';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
-import { PresetPickerComponent } from '../grammar/preset-picker.component';
+import { PresetPickerComponent } from './preset-picker.component';
 
 /**
  * Choosing a reading level.
@@ -21,11 +21,7 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
   imports: [ErrorScreenComponent, PageHeaderComponent, PresetPickerComponent],
   template: `
     <div class="mn-page choice-page">
-      <mn-page-header
-        heading="Reading level"
-        backTo="/reading-level"
-        backLabel="Back to words and grammar"
-      />
+      <mn-page-header heading="Reading level" backTo="/grammar" backLabel="Back to grammar" />
 
       @if (language.status() === 'failed') {
         <mn-error-screen
@@ -130,6 +126,6 @@ export class LevelChoicePageComponent {
         return;
       }
     }
-    await this.navigation.backOrNavigate('/reading-level');
+    await this.navigation.backOrNavigate('/grammar');
   }
 }

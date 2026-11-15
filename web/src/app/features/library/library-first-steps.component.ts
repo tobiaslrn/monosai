@@ -36,8 +36,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
       <mn-checklist-step
         [number]="1"
         heading="Add your words"
-        link="/reading-level"
-        fragment="words"
+        link="/words"
         testId="first-step-words"
         [navigationState]="libraryOriginState"
         [state]="wordsState()"

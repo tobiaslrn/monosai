@@ -99,15 +99,12 @@ altitude.
 | **platform**   | Application update, network status, shared package inbox, and the host platform                                                             | Surface an available update, pick up a shared package, and say which Anki adapter this device can reach                                                                                                                                                     | The service worker adapters, the shell                   |
 | **shared**     | `Result`, typed errors, branded ids, clock, hashing, canonical JSON, locale                                                                 | The port tokens, the busy registry, the logger interface                                                                                                                                                                                                    | Hashing, diagnostics                                     |
 
-A screen folder is not always an area folder. `features/reading-level/` holds the overview composed
-from the components in `features/vocabulary/` and `features/grammar/`, which hold no page of their
-own since those two routes were merged ([ADR 0049](../decisions/0049-one-page-for-what-you-can-read.md)),
-and the reading-level ladder at `/reading-level/level`, where a chosen level is a draft until it is
-saved ([ADR 0063](../decisions/0063-what-you-can-read-is-composed-like-the-library.md)).
-The one exception is `features/vocabulary/source-page.component.ts`, which is a route of its own —
-one source, and everything it can be configured to do, so the list above it can stay a list
-([ADR 0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)).
-The area names still line up across the layers; only the screen that renders them moved.
+`features/vocabulary/` holds the Words page at `/words`, each source's page at
+`/words/source/:sourceId` ([ADR 0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md))
+and the word list at `/words/vocabulary`. `features/grammar/` holds the Grammar page at `/grammar`
+and the reading-level ladder at `/grammar/level`, where a chosen level is a draft until it is saved
+([ADR 0063](../decisions/0063-what-you-can-read-is-composed-like-the-library.md)). The two were one
+page until [ADR 0093](../decisions/0093-words-and-grammar-are-two-pages.md); the old routes redirect.
 
 The other vocabulary route is `features/vocabulary/vocabulary-browse-page.component.ts`. It reads
 `VocabularyRepository.listVocabularyEntries()` once, then keeps search, source, difficulty, date,

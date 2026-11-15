@@ -18,7 +18,7 @@ export type VocabularyAvailabilityState =
 
 /**
  * Whether there is a vocabulary to classify against, and how big it is, for
- * surfaces outside the reading-level page.
+ * surfaces outside the Words page.
  *
  * The reader needs one fact — is there a snapshot, is it empty, or could it not
  * be read — and the Library states the count and where it came from. Both come

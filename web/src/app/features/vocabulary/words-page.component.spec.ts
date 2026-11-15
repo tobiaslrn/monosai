@@ -1,9 +1,7 @@
 import { chooseValue } from '../../../testing/select';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import { ActivatedRoute } from '@angular/router';
 import { By } from '@angular/platform-browser';
-import { of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONTRACT_COLLECTION } from '../../../testing/anki-collection';
 import { FakeAnkiProvider } from '../../../testing/anki-fakes';
@@ -15,18 +13,17 @@ import {
   ANKI_PROVIDER_FACTORY,
   PACKAGE_PROVIDER_FACTORY,
 } from '../../application/shared/anki-tokens';
-import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { PackageImportStore } from '../../application/vocabulary/package-import.store';
 import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
 import { AppSettingsStore } from '../../application/settings/app-settings.store';
 import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
 import { snapshotId } from '../../domain/shared/ids';
-import { ReadingLevelPageComponent } from './reading-level-page.component';
+import { WordsPageComponent } from './words-page.component';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReadingLevelPageComponent],
-  template: `<mn-reading-level-page />`,
+  imports: [WordsPageComponent],
+  template: `<mn-words-page />`,
 })
 class HostComponent {}
 
@@ -35,30 +32,16 @@ const PACKAGE_FILE = {
   bytes: () => Promise.resolve(new ArrayBuffer(0)),
 };
 
-describe('ReadingLevelPageComponent', () => {
+describe('WordsPageComponent', () => {
   let provider: FakeAnkiProvider;
   let beds: ReadingLevelTestBed;
-  let scrolled: string[];
 
   beforeEach(() => {
     beds = configureReadingLevelTestBed();
     provider = new FakeAnkiProvider(CONTRACT_COLLECTION, { kind: 'desktop-connect' });
     TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, { useValue: () => provider });
     TestBed.overrideProvider(PACKAGE_PROVIDER_FACTORY, { useValue: () => provider });
-
-    // jsdom has no layout and no `scrollIntoView`, so it is recorded instead.
-    scrolled = [];
-    Element.prototype.scrollIntoView = function (this: Element): void {
-      scrolled.push(this.id);
-    };
   });
-
-  /** Deep links arrive as a fragment, which the page resolves itself. */
-  function arriveAt(fragment: string): void {
-    TestBed.overrideProvider(ActivatedRoute, {
-      useValue: { fragment: of(fragment), snapshot: { fragment, queryParams: {} } },
-    });
-  }
 
   interface Rendered {
     readonly fixture: ComponentFixture<HostComponent>;
@@ -84,7 +67,7 @@ describe('ReadingLevelPageComponent', () => {
   async function render(): Promise<Rendered> {
     const fixture = TestBed.createComponent(HostComponent);
     await settle(fixture);
-    const page = fixture.debugElement.query(By.directive(ReadingLevelPageComponent));
+    const page = fixture.debugElement.query(By.directive(WordsPageComponent));
     return {
       fixture,
       element: fixture.nativeElement as HTMLElement,
@@ -95,15 +78,6 @@ describe('ReadingLevelPageComponent', () => {
 
   function text(element: HTMLElement, selector: string): string {
     return element.querySelector(selector)?.textContent.trim() ?? '';
-  }
-
-  function disclosure(element: HTMLElement, id: string): HTMLDetailsElement {
-    // A disclosure carries the id on its host and folds in its own `details`.
-    const found = element.querySelector<HTMLDetailsElement>(`#${id} details, details#${id}`);
-    if (found === null) {
-      throw new Error(`missing disclosure ${id}`);
-    }
-    return found;
   }
 
   /**
@@ -127,36 +101,23 @@ describe('ReadingLevelPageComponent', () => {
     history.replaceState({}, '');
   });
 
-  it('states both facts under one heading', async () => {
+  it('states the words and where they come from', async () => {
     const { element } = await render();
 
-    expect(text(element, 'h1')).toBe('Words and grammar');
+    expect(text(element, 'h1')).toBe('Words');
     expect(
       [...element.querySelectorAll('section.group > header > h2')].map((heading) =>
         heading.textContent.trim(),
       ),
-    ).toEqual(['Word sources', 'Grammar']);
+    ).toEqual(['Word sources']);
     expect(text(element, '[data-testid="words-standing"]')).toBe('No words yet');
-    expect(text(element, '[data-testid="grammar-standing"]')).toBe('Starter forms');
+    expect(element.querySelector('[data-testid="reading-level-link"]')).toBeNull();
   });
-
-  /** The ladder is a page of its own; this one states the level and leads there. */
-  it('leads to the ladder rather than showing it', async () => {
-    const { element } = await render();
-
-    expect(element.querySelector('mn-preset-picker')).toBeNull();
-    expect(element.querySelector('mn-list-row')).not.toBeNull();
-    expect(element.querySelector('[data-testid="reading-level-link"]')?.getAttribute('href')).toBe(
-      '/reading-level/level',
-    );
-    expect(element.querySelector('mn-example .ja')?.getAttribute('lang')).toBe('ja');
-  });
-
   it('labels every section for assistive technology', async () => {
     const { element } = await render();
 
     const sections = element.querySelectorAll('section.group');
-    expect(sections).toHaveLength(2);
+    expect(sections).toHaveLength(1);
     for (const section of sections) {
       const labelledBy = section.getAttribute('aria-labelledby');
       expect(labelledBy).not.toBeNull();
@@ -255,44 +216,7 @@ describe('ReadingLevelPageComponent', () => {
     await settle(fixture);
 
     expect(text(element, '[data-testid="words-standing"]')).toBe('12 words');
-    expect(element.querySelector('#words')?.textContent).toContain('at least 50 words');
-  });
-
-  it('names the current value of every closed disclosure', async () => {
-    const { element } = await render();
-
-    expect(disclosure(element, 'forms').open).toBe(false);
-    expect(text(element, '#forms .mn-settings-row__details')).toBe('2 categories');
-  });
-
-  it('scrolls a section fragment to the part of the page it named', async () => {
-    arriveAt('grammar');
-    const { fixture } = await render();
-    await settle(fixture);
-
-    await vi.waitFor(() => {
-      expect(scrolled).toContain('grammar');
-    });
-  });
-
-  it('opens the disclosure a fragment points inside before scrolling to it', async () => {
-    arriveAt('forms');
-    const { element, fixture } = await render();
-    await settle(fixture);
-
-    await vi.waitFor(() => {
-      expect(disclosure(element, 'forms').open).toBe(true);
-    });
-    expect(scrolled).toContain('forms');
-  });
-
-  /** Every register is allowed and the preset's prose is sent, so neither is offered. */
-  it('offers no register or wording to change', async () => {
-    const { element } = await render();
-
-    expect(element.querySelector('#wording')).toBeNull();
-    expect(element.querySelector('mn-guidance-section')).toBeNull();
-    expect(element.textContent).not.toContain('Register');
+    expect(text(element, '[data-testid="words-shortfall"]')).toContain('at least 50 words');
   });
 
   /**
@@ -323,18 +247,6 @@ describe('ReadingLevelPageComponent', () => {
     expect(alert?.textContent).toContain('AnkiConnect add-on');
     expect(alert?.textContent).toContain('anki/not-running');
     expect(alert?.querySelector('a[href$="#/help/troubleshooting"]')).not.toBeNull();
-  });
-
-  it('keeps the language failure surface and its retry', async () => {
-    const { element, fixture } = await render();
-    beds.languageStatus.set('failed');
-    await settle(fixture);
-
-    const failed = element.querySelector('.assets-failed');
-    expect(failed?.getAttribute('role')).toBe('alert');
-    expect(failed?.textContent).toContain('level is unchanged');
-    expect(element.querySelector('mn-preset-picker')).toBeNull();
-    expect(failed?.querySelector('button')?.textContent.trim()).toBe('Try again');
   });
 
   it('asks what to import when a package leaves the note type open', async () => {
@@ -396,26 +308,5 @@ describe('ReadingLevelPageComponent', () => {
     expect(status?.getAttribute('role')).toBe('status');
     expect(status?.getAttribute('aria-live')).toBe('polite');
     expect(status?.classList.contains('mn-visually-hidden')).toBe(true);
-  });
-
-  it('confirms a grammar change without asking for an acknowledgement', async () => {
-    const { element, fixture } = await render();
-
-    await TestBed.inject(GrammarProfileStore).selectPreset('mn-preset-basic');
-    await settle(fixture);
-
-    const confirmation = element.querySelector('[data-testid="grammar-confirmation"]');
-    expect(confirmation?.getAttribute('aria-live')).toBe('polite');
-    expect(confirmation?.textContent).toContain('Basic forms');
-    expect(confirmation?.textContent).toContain('out of date');
-    expect(text(element, '[data-testid="grammar-standing"]')).toBe('Basic forms');
-    // The level a caption names rides beside the name, never inside it, and no pill holds it.
-    const row = element.querySelector('[data-testid="reading-level-link"]');
-    expect(row?.querySelector('.mn-status-pill')).toBeNull();
-    expect(
-      [...(row?.querySelectorAll('[mn-list-row-meta] > span') ?? [])].map((fact) =>
-        fact.textContent.trim(),
-      ),
-    ).toEqual(['Basic forms', 'N5']);
   });
 });
