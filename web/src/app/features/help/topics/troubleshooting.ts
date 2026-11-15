@@ -314,7 +314,7 @@ export const SILENT_PROBLEMS: readonly TroubleshootingEntry[] = [
     text: 'Sharing works only when Monosai is installed from Chrome on Android. Install it, or select **Import from Anki** in Monosai instead.',
   },
   {
-    seen: ["Monosai doesn't offer an update you know exists"],
-    text: 'In **Settings**, under **About**, select **Check for updates**.',
+    seen: ["Monosai doesn't have a change you know was released"],
+    text: 'Close Monosai and open it again. Monosai downloads a new version in the background, so it can take two opens before you see it.',
   },
 ];

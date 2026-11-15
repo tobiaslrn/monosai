@@ -16,9 +16,7 @@ import { AppUpdateStore } from './app-update.store';
 class FakeUpdateChecker implements AppUpdateChecker {
   readonly events = new Subject<AppUpdateEvent>();
   checkCalls = 0;
-  activateCalls = 0;
   checkResult: Result<void, AppUpdateCheckFailure> = ok(undefined);
-  activateResult: Result<void, AppUpdateCheckFailure> = ok(undefined);
 
   updates() {
     return this.events.asObservable();
@@ -27,11 +25,6 @@ class FakeUpdateChecker implements AppUpdateChecker {
   check() {
     this.checkCalls += 1;
     return Promise.resolve(this.checkResult);
-  }
-
-  activate() {
-    this.activateCalls += 1;
-    return Promise.resolve(this.activateResult);
   }
 }
 
@@ -65,131 +58,38 @@ describe('AppUpdateStore', () => {
     expect(store().status()).toEqual({ kind: 'idle' });
   });
 
-  it('shows a visible result after a successful check with no update', async () => {
+  it('checks silently: a failed check shows nothing and reloads nothing', async () => {
+    checker.checkResult = err({ message: 'check failed' });
     const instance = store();
 
     await instance.check();
 
-    expect(instance.status()).toEqual({ kind: 'current' });
+    expect(checker.checkCalls).toBe(1);
+    expect(instance.status()).toEqual({ kind: 'idle' });
+    expect(reloadCalls).toBe(0);
   });
 
-  it('does not hide an update that becomes ready during a check', async () => {
-    let resolveCheck!: () => void;
-    checker.check = () =>
-      new Promise<Result<void, AppUpdateCheckFailure>>((resolve) => {
-        resolveCheck = () => {
-          resolve(ok(undefined));
-        };
-      });
-    const instance = store();
-    const pending = instance.check();
-    checker.events.next({ kind: 'ready' });
-    resolveCheck();
+  it('checks again when the tab becomes visible', () => {
+    store();
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
 
-    await pending;
+    document.dispatchEvent(new Event('visibilitychange'));
 
-    expect(instance.status()).toEqual({ kind: 'available' });
+    expect(checker.checkCalls).toBe(1);
   });
 
-  it('reports unsupported when the platform has no service worker', () => {
-    const instance = store();
-    checker.events.next({ kind: 'unsupported' });
-
-    expect(instance.status()).toEqual({ kind: 'unsupported' });
-  });
-
-  it('becomes available when a version is ready', () => {
-    const instance = store();
-    checker.events.next({ kind: 'ready' });
-
-    expect(instance.status()).toEqual({ kind: 'available' });
-    expect(instance.canActivate()).toBe(true);
-  });
-
-  it('reports a failed installation with a reload recovery', () => {
-    const instance = store();
-    checker.events.next({ kind: 'installation-failed', reason: 'network error' });
-
-    expect(instance.status()).toEqual({
-      kind: 'failed',
-      message: 'network error',
-      recovery: 'reload',
-    });
-  });
-
-  it('reports an unrecoverable state with a reload recovery', () => {
+  it('reports an unrecoverable worker state', () => {
     const instance = store();
     checker.events.next({ kind: 'unrecoverable', reason: 'missing chunk' });
 
-    expect(instance.status()).toEqual({
-      kind: 'failed',
-      message: 'missing chunk',
-      recovery: 'reload',
-    });
+    expect(instance.status()).toEqual({ kind: 'failed', message: 'missing chunk' });
   });
 
-  it('activates and performs a controlled reload when idle', async () => {
-    const instance = store();
-    checker.events.next({ kind: 'ready' });
-
-    await instance.activate();
-
-    expect(checker.activateCalls).toBe(1);
-    expect(reloadCalls).toBe(1);
-  });
-
-  it('refuses to activate while busy work is in progress, and never reloads', async () => {
-    const instance = store();
-    checker.events.next({ kind: 'ready' });
-    busy.track('import-draft', signal('an import draft is unsaved'));
-
-    expect(instance.canActivate()).toBe(false);
-    await instance.activate();
-
-    expect(checker.activateCalls).toBe(0);
-    expect(reloadCalls).toBe(0);
-    expect(instance.status()).toEqual({ kind: 'available' });
-  });
-
-  it('refuses to activate when there is nothing available', async () => {
-    const instance = store();
-
-    await instance.activate();
-
-    expect(checker.activateCalls).toBe(0);
-    expect(reloadCalls).toBe(0);
-  });
-
-  it('reports a failure and does not reload when activation fails', async () => {
-    checker.activateResult = err({ message: 'activation failed' });
-    const instance = store();
-    checker.events.next({ kind: 'ready' });
-
-    await instance.activate();
-
-    expect(reloadCalls).toBe(0);
-    expect(instance.status()).toEqual({
-      kind: 'failed',
-      message: 'activation failed',
-      recovery: 'retry',
-    });
-  });
-
-  it('dismisses an available update back to idle for the session', () => {
-    const instance = store();
-    checker.events.next({ kind: 'ready' });
-
-    instance.dismiss();
-
-    expect(instance.status()).toEqual({ kind: 'idle' });
-  });
-
-  it('reloadNow reloads directly without going through activation', () => {
+  it('reloadNow reloads', () => {
     const instance = store();
 
     instance.reloadNow();
 
-    expect(checker.activateCalls).toBe(0);
     expect(reloadCalls).toBe(1);
   });
 
@@ -202,23 +102,24 @@ describe('AppUpdateStore', () => {
     expect(reloadCalls).toBe(0);
   });
 
-  it('activates a downloaded update when reloading into the latest build', async () => {
+  it('downloads a newer build before reloading into it', async () => {
+    let reloadsWhenChecked = -1;
     checker.check = () => {
-      checker.events.next({ kind: 'ready' });
+      reloadsWhenChecked = reloadCalls;
       return Promise.resolve(ok(undefined));
     };
-    const instance = store();
 
-    await instance.reloadIntoLatest();
+    await store().reloadIntoLatest();
 
-    expect(checker.activateCalls).toBe(1);
+    expect(reloadsWhenChecked).toBe(0);
     expect(reloadCalls).toBe(1);
   });
 
-  it('just reloads when there is no update to activate', async () => {
+  it('still reloads when the check fails', async () => {
+    checker.checkResult = err({ message: 'check failed' });
+
     await store().reloadIntoLatest();
 
-    expect(checker.activateCalls).toBe(0);
     expect(reloadCalls).toBe(1);
   });
 
@@ -251,28 +152,15 @@ describe('AppUpdateStore', () => {
       return instance;
     }
 
-    it('keeps the notice through a check that finds nothing, and one that fails', async () => {
+    it('keeps the notice through checks and worker failures', async () => {
       const instance = superseded();
 
       await instance.check();
       checker.checkResult = err({ message: 'check failed' });
       await instance.check();
-
-      expect(instance.status().kind).toBe('superseded');
-    });
-
-    it('keeps the notice when the worker reports current, ready or a failure', () => {
-      const instance = superseded();
-
-      checker.events.next({ kind: 'current' });
-      checker.events.next({ kind: 'ready' });
-      checker.events.next({ kind: 'installation-failed', reason: 'x' });
       checker.events.next({ kind: 'unrecoverable', reason: 'y' });
-      checker.events.next({ kind: 'unsupported' });
-      instance.dismiss();
 
       expect(instance.status().kind).toBe('superseded');
-      expect(instance.canActivate()).toBe(false);
     });
 
     it('reloads even while work is unsaved, because saving can no longer succeed', () => {
@@ -292,31 +180,6 @@ describe('AppUpdateStore', () => {
       expect(instance.status()).toMatchObject({
         message: expect.stringContaining('another tab') as unknown,
       });
-    });
-  });
-
-  it('reloads anyway when activating the downloaded version fails', async () => {
-    checker.activateResult = err({ message: 'activation failed' });
-    checker.check = () => {
-      checker.events.next({ kind: 'ready' });
-      return Promise.resolve(ok(undefined));
-    };
-
-    await store().reloadIntoLatest();
-
-    expect(reloadCalls).toBe(1);
-  });
-
-  it('records a failure when a check fails', async () => {
-    checker.checkResult = err({ message: 'check failed' });
-    const instance = store();
-
-    await instance.check();
-
-    expect(instance.status()).toEqual({
-      kind: 'failed',
-      message: 'check failed',
-      recovery: 'retry',
     });
   });
 });

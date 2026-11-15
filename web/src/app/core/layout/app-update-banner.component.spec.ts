@@ -22,9 +22,6 @@ class FakeChecker implements AppUpdateChecker {
   check() {
     return Promise.resolve(ok(undefined));
   }
-  activate() {
-    return Promise.resolve(ok(undefined));
-  }
 }
 
 function render(confirmed = true) {
@@ -58,33 +55,31 @@ describe('AppUpdateBannerComponent', () => {
     expect(element.querySelector('.banner')).toBeNull();
   });
 
-  it('shows a non-modal status banner, never a dialog, once an update is available', () => {
+  it('shows a non-modal status banner, never a dialog, when the worker breaks', () => {
     const { fixture, checker, element } = render();
 
-    checker.events.next({ kind: 'ready' });
+    checker.events.next({ kind: 'unrecoverable', reason: 'missing chunk' });
     fixture.detectChanges();
 
     const banner = element.querySelector('.banner');
-    expect(banner).not.toBeNull();
     expect(banner?.getAttribute('role')).toBe('status');
     expect(banner?.getAttribute('aria-live')).toBe('polite');
     expect(element.querySelector('dialog, [role="dialog"]')).toBeNull();
     expect(document.activeElement).not.toBe(banner);
-    expect(banner?.textContent).toContain('Update ready');
   });
 
-  it('disables the update action and explains why while busy work is in progress', () => {
-    const { fixture, checker, busy, element } = render();
-    checker.events.next({ kind: 'ready' });
+  it('disables the recovery reload and explains why while busy work is in progress', () => {
+    const { fixture, checker, busy, element, reload } = render();
+    checker.events.next({ kind: 'unrecoverable', reason: 'missing chunk' });
     busy.track('generation', signal('a story is being generated'));
     fixture.detectChanges();
 
-    const enabledButton = element.querySelector('button:not([disabled])');
-    const disabledButton = element.querySelector('button[disabled]');
-    expect(disabledButton).not.toBeNull();
-    expect(disabledButton?.textContent).toContain('Reload to update');
-    expect(enabledButton).toBeNull();
+    const button = element.querySelector('button');
+    expect(button?.textContent).toContain('Reload to recover');
+    expect(button?.disabled).toBe(true);
     expect(element.textContent).toContain('Finishing current work…');
+    button?.click();
+    expect(reload).not.toHaveBeenCalled();
   });
 
   it('offers a reload action for an unrecoverable state', () => {
@@ -157,22 +152,22 @@ describe('AppUpdateBannerComponent', () => {
       });
     });
 
-    it('stays after an update is announced', () => {
+    it('stays after the worker reports a failure', () => {
       const view = render();
       lose(view);
 
-      view.checker.events.next({ kind: 'ready' });
+      view.checker.events.next({ kind: 'unrecoverable', reason: 'missing chunk' });
       view.fixture.detectChanges();
 
       expect(view.element.textContent).toContain('can no longer save');
-      expect(view.element.textContent).not.toContain('is ready');
+      expect(view.element.textContent).not.toContain('missing chunk');
     });
   });
 
   it('shows only a lost database where the surface carries no chrome', () => {
     const view = render();
     view.fixture.componentRef.setInput('supersededOnly', true);
-    view.checker.events.next({ kind: 'ready' });
+    view.checker.events.next({ kind: 'unrecoverable', reason: 'missing chunk' });
     view.fixture.detectChanges();
     expect(view.element.querySelector('.banner')).toBeNull();
 

@@ -14,7 +14,6 @@ import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { createTestDatabase, destroyTestDatabase } from '../../../testing/test-database';
 import { uuid } from '../../../testing/persistence-fixtures';
 import { GenerationActivityRegistry } from '../generation/generation-activity.registry';
-import { AppUpdateStore, type AppUpdateStatus } from '../pwa/app-update.store';
 import { CLOCK, ID_GENERATOR, JOB_REPOSITORY } from '../shared/repository-tokens';
 import { LayerRunners, type LayerRunner } from './layer-runner';
 import { IDLE_LAYER_PROGRESS, type LayerProgress } from './layer-progress';
@@ -158,7 +157,6 @@ interface LaneTestBed {
   readonly runners: Readonly<Record<PreparationLayer, FakeRunner>>;
   readonly online: WritableSignal<boolean>;
   readonly generations: WritableSignal<number>;
-  readonly update: WritableSignal<AppUpdateStatus>;
 }
 
 async function configure(): Promise<LaneTestBed> {
@@ -173,7 +171,6 @@ async function configure(): Promise<LaneTestBed> {
   };
   const online = signal(true);
   const generations = signal(0);
-  const update = signal<AppUpdateStatus>({ kind: 'idle' });
   let counter = 0;
 
   TestBed.configureTestingModule({
@@ -199,7 +196,6 @@ async function configure(): Promise<LaneTestBed> {
       },
       { provide: NETWORK_STATUS, useValue: { isOnline: online } },
       { provide: GenerationActivityRegistry, useValue: { runningCount: generations } },
-      { provide: AppUpdateStore, useValue: { status: update } },
     ],
   });
 
@@ -210,7 +206,6 @@ async function configure(): Promise<LaneTestBed> {
     runners,
     online,
     generations,
-    update,
   };
 }
 
@@ -522,16 +517,6 @@ describe('PreparationStore', () => {
       expect(beds.store.hold()).toBe('offline');
       const rows = await beds.jobs.listActive();
       expect(rows.ok && rows.value).toHaveLength(1);
-    });
-
-    it('lets an available update through rather than holding it up', async () => {
-      await outstandingRow(beds.jobs, FIRST, 'english');
-      beds.update.set({ kind: 'available' });
-
-      await beds.store.pump();
-
-      expect(beds.runners.english.started).toEqual([]);
-      expect(beds.store.hold()).toBe('update');
     });
 
     it('picks the queue back up once the hold clears', async () => {

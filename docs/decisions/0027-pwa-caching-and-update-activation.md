@@ -1,7 +1,8 @@
 # 0027 — PWA caching boundaries and update activation
 
 Date: 2026-08-21
-Status: Accepted
+Status: Accepted. Update activation superseded by
+[0094](0094-updates-apply-on-the-next-launch.md)
 
 ## Context
 
@@ -37,6 +38,9 @@ Two reasons both had to hold before excluding `/assets/language/**` and
   whether a given version is current, and doubles the storage for no benefit.
 
 ### Update activation is user-driven and refused while busy
+
+> Superseded by [ADR 0094](0094-updates-apply-on-the-next-launch.md): a new version is used
+> from the next page load, and nothing activates one in a running page.
 
 `provideServiceWorker` uses `registerWhenStable:30000` deliberately — the
 comment predates this milestone — because Monosai's workflows are exactly the

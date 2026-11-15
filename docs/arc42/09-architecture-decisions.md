@@ -142,7 +142,7 @@ shared its number until it was given the next free one.
 | [0001](../decisions/0001-angular-21-toolchain.md)                                        | Angular toolchain and unit-test environment                                    |
 | [0003](../decisions/0003-architectural-boundary-enforcement.md)                          | Architectural boundary enforcement                                             |
 | [0013](../decisions/0013-cdk-overlay-stylesheet-requirement.md)                          | The CDK overlay and accessibility stylesheets are a hard build requirement     |
-| [0027](../decisions/0027-pwa-caching-and-update-activation.md)                           | PWA caching boundaries and update activation                                   |
+| [0027](../decisions/0027-pwa-caching-and-update-activation.md)                           | PWA caching boundaries and update activation (activation superseded by 0094) |
 | [0043](../decisions/0043-voice-changes-hide-clips-and-say-so.md)                         | Changing the voice hides clips, and both screens say so                        |
 | [0082](../decisions/0082-interaction-states-have-equal-specificity-and-a-fixed-order.md) | Interaction states have equal specificity and a fixed order                    |
 | [0083](../decisions/0083-floating-panels-are-native-popovers.md)                         | Floating panels that hang from a control are native popovers                   |
@@ -153,3 +153,4 @@ shared its number until it was given the next free one.
 | [0089](../decisions/0089-one-dropdown-on-every-screen.md)                                | A choice from a list is one anchored dropdown on every screen size             |
 | [0090](../decisions/0090-settings-overview-and-searchable-picker.md)                     | Settings is an overview with sub-pages, and a searched list is a picker dialog |
 | [0091](../decisions/0091-the-interface-is-minimal-by-default.md)                         | The interface is minimal by default: cut first, one risk sentence at most |
+| [0094](../decisions/0094-updates-apply-on-the-next-launch.md)                            | Updates download in the background and apply on the next launch               |

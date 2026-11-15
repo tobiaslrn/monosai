@@ -243,16 +243,6 @@
   line-height: var(--leading-snug);
 }
 
-.mn-settings-row__result {
-  display: block;
-  /* A result's line holds its place while the work that fills it runs. */
-  min-block-size: 1lh;
-  margin-top: var(--space-1);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  line-height: var(--leading-snug);
-}
-
 /* The lead: a radio. It sits on the first line of the words. */
 .mn-settings-row .mn-settings-row__lead {
   grid-column: 1;

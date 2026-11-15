@@ -2,43 +2,19 @@ import { InjectionToken } from '@angular/core';
 import type { Observable } from 'rxjs';
 import type { Result } from '../shared/result';
 
-/**
- * A new version has finished downloading and is ready to activate.
- */
-export interface AppUpdateReady {
-  readonly kind: 'ready';
-}
-
-/** The service worker checked the current deployment and found no newer version. */
-export interface AppUpdateCurrent {
-  readonly kind: 'current';
-}
-
-/** A new version was found but failed to install; the current version keeps running. */
-export interface AppUpdateInstallationFailed {
-  readonly kind: 'installation-failed';
-  readonly reason: string;
-}
-
 /** The worker itself entered a broken state and needs a full reload to recover. */
 export interface AppUpdateUnrecoverable {
   readonly kind: 'unrecoverable';
   readonly reason: string;
 }
 
-/** There is no service worker to check — development, or a browser without one. */
-export interface AppUpdateUnsupported {
-  readonly kind: 'unsupported';
-}
+/**
+ * The one platform event the app acts on. A new version is never announced: the service worker
+ * downloads it in the background and the next page load uses it (ADR 0094).
+ */
+export type AppUpdateEvent = AppUpdateUnrecoverable;
 
-export type AppUpdateEvent =
-  | AppUpdateReady
-  | AppUpdateCurrent
-  | AppUpdateInstallationFailed
-  | AppUpdateUnrecoverable
-  | AppUpdateUnsupported;
-
-/** Failure returned by `check()`; activation failures are reported as an `AppUpdateEvent`. */
+/** Failure returned by `check()`. */
 export interface AppUpdateCheckFailure {
   readonly message: string;
 }
@@ -50,14 +26,14 @@ export interface AppUpdateCheckFailure {
  * never depend on it directly; only the adapter in `infrastructure/pwa` does.
  */
 export interface AppUpdateChecker {
-  /** Emits every update-relevant event the platform reports, for the lifetime of the app. */
+  /** Emits every event the platform reports that needs the learner, for the lifetime of the app. */
   updates(): Observable<AppUpdateEvent>;
 
-  /** Asks the platform to check for a new version right now. */
+  /**
+   * Asks the platform to look for a new version now and download it if there is one, so the next
+   * page load uses it. Resolves once the download has finished or nothing was found.
+   */
   check(): Promise<Result<void, AppUpdateCheckFailure>>;
-
-  /** Activates the already-downloaded version. Callers must reload afterwards themselves. */
-  activate(): Promise<Result<void, AppUpdateCheckFailure>>;
 }
 
 export const APP_UPDATE_CHECKER = new InjectionToken<AppUpdateChecker>(
@@ -65,8 +41,8 @@ export const APP_UPDATE_CHECKER = new InjectionToken<AppUpdateChecker>(
 );
 
 /**
- * Performs the controlled full reload after activation. Injected rather than
- * called directly on `window` so the store's reload behaviour is
- * unit-testable without a real navigation.
+ * Performs a controlled full reload. Injected rather than called directly on
+ * `window` so the store's reload behaviour is unit-testable without a real
+ * navigation.
  */
 export const APP_RELOAD = new InjectionToken<() => void>('monosai.app-reload');

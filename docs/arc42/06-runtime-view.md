@@ -17,11 +17,11 @@ Before the database opens, startup reads its stored version with a native open t
 nothing, and checks the version again once Dexie has opened it. A whole schema version above the
 one this build ships is a database from a newer build: Dexie would open it and could write to it
 or upgrade it, so startup stops there with the same recovery screen. Its primary action is Reload,
-which checks for and activates a newer build before reloading, because trying again in the same
+which checks for and downloads a newer build before reloading, because trying again in the same
 page cannot succeed; saving a copy and deleting everything stay as they are. The database never
 reopens by itself. When another tab upgrades or deletes it while this one is running, or the browser
 closes the connection, this tab stops using it and shows a notice with a Reload action that no
-update check, update event or dismissal replaces; only a reload ends it. The notice also shows on
+update check or worker event replaces; only a reload ends it. The notice also shows on
 the reader, as the one piece of chrome it carries. Saving can no longer succeed there, so Reload
 does not wait for busy work: it asks first, naming what is unsaved, and never reloads by itself.
 An in-memory generated story that is not yet saved is lost by that reload; there is no separate
@@ -337,7 +337,7 @@ sequenceDiagram
             Runner->>Rows: store each result, then record it
         end
     end
-    Note over Lane: A generation, an update, or a lost<br/>connection parks the run at a batch<br/>boundary. It never cancels one.
+    Note over Lane: A generation or a lost<br/>connection parks the run at a batch<br/>boundary. It never cancels one.
 ```
 
 The lane runs one reading at a time, the open one first. All three layers start together, and every
@@ -347,9 +347,8 @@ therefore fills front to back — sentence 1's English, grammar and clip before 
 rather than one whole layer at a time
 ([ADR 0059](../decisions/0059-preparation-fills-the-reading-in-order.md)). Translation runs its small
 opening alone and persists its frozen plan before any tail request asks. The lane never
-registers as busy: an update
-activates while a queue exists, and the rows are picked back up after the reload
-([ADR 0048](../decisions/0048-the-preparation-lane-yields.md)).
+registers as busy: a reload costs it at most the batch in flight, and the rows are picked back up
+afterwards ([ADR 0048](../decisions/0048-the-preparation-lane-yields.md)).
 
 ## 6.5 Hear a reading that is still being generated
 

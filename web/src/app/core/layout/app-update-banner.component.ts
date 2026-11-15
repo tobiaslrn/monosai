@@ -5,12 +5,12 @@ import { BannerComponent } from '../../shared-ui/banner/banner.component';
 import { ButtonDirective } from '../../shared-ui/button/button';
 
 /**
- * A non-modal update notice.
+ * A non-modal notice for the two states only a reload ends: a broken service worker and a lost
+ * database. A new version never shows here; the next launch picks it up (ADR 0094).
  *
- * Deliberately never a dialog: it must not steal focus from a form the
- * learner is in the middle of. While busy work is in progress it says so and
- * disables the action rather than hiding it, so the update stays visible and
- * predictable instead of silently withheld.
+ * Deliberately never a dialog: it must not steal focus from a form the learner is in the middle
+ * of. While busy work is in progress a broken worker's reload says so and is disabled rather
+ * than hidden.
  */
 @Component({
   selector: 'mn-app-update-banner',
@@ -18,66 +18,25 @@ import { ButtonDirective } from '../../shared-ui/button/button';
   imports: [BannerComponent, ButtonDirective],
   template: `
     @let status = store.status();
-    @if (
-      status.kind === 'superseded' ||
-      (!supersededOnly() &&
-        (status.kind === 'available' || status.kind === 'activating' || status.kind === 'failed'))
-    ) {
+    @if (status.kind === 'superseded' || (!supersededOnly() && status.kind === 'failed')) {
       <mn-banner
         class="banner"
-        [tone]="status.kind === 'superseded' || status.kind === 'failed' ? 'error' : 'info'"
-        [icon]="status.kind === 'superseded' || status.kind === 'failed' ? 'warning' : null"
+        tone="error"
+        icon="warning"
         [attr.role]="status.kind === 'superseded' ? 'alert' : 'status'"
         [attr.aria-live]="status.kind === 'superseded' ? null : 'polite'"
       >
-        @switch (status.kind) {
-          @case ('superseded') {
-            <p>{{ status.message }}</p>
-          }
-          @case ('available') {
-            <p>Update ready</p>
-            @if (store.isBusy()) {
-              <p class="mn-hint">Finishing current work…</p>
-            }
-          }
-          @case ('activating') {
-            <p>Update ready</p>
-          }
-          @case ('failed') {
-            <p>{{ status.message }}</p>
-            @if (store.isBusy()) {
-              <p class="mn-hint">Finishing current work…</p>
-            }
-          }
+        <p>{{ status.message }}</p>
+        @if (status.kind === 'failed' && store.isBusy()) {
+          <p class="mn-hint">Finishing current work…</p>
         }
         <ng-container ngProjectAs="[mn-banner-action]">
-          @switch (status.kind) {
-            @case ('superseded') {
-              <button mnButton="primary" type="button" (click)="reloadSuperseded()">Reload</button>
-            }
-            @case ('available') {
-              @if (store.isBusy()) {
-                <button mnButton="primary" type="button" disabled>Reload to update</button>
-              } @else {
-                <button mnButton="primary" type="button" (click)="activate()">
-                  Reload to update
-                </button>
-                <button mnButton="ghost" type="button" (click)="dismiss()">Later</button>
-              }
-            }
-            @case ('activating') {
-              <!-- The same control, now busy: it stays where the press left it. -->
-              <button mnButton="primary" type="button" aria-busy="true">Updating…</button>
-            }
-            @case ('failed') {
-              @if (status.recovery === 'reload') {
-                <button mnButton type="button" [disabled]="store.isBusy()" (click)="reload()">
-                  Reload to recover
-                </button>
-              } @else {
-                <button mnButton type="button" (click)="retry()">Try again</button>
-              }
-            }
+          @if (status.kind === 'superseded') {
+            <button mnButton="primary" type="button" (click)="reloadSuperseded()">Reload</button>
+          } @else {
+            <button mnButton type="button" [disabled]="store.isBusy()" (click)="reload()">
+              Reload to recover
+            </button>
           }
         </ng-container>
       </mn-banner>
@@ -113,19 +72,7 @@ export class AppUpdateBannerComponent {
     this.store.reloadSuperseded();
   }
 
-  protected activate(): void {
-    void this.store.activate();
-  }
-
-  protected retry(): void {
-    void this.store.check();
-  }
-
   protected reload(): void {
     this.store.reloadNow();
-  }
-
-  protected dismiss(): void {
-    this.store.dismiss();
   }
 }

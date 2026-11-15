@@ -61,13 +61,11 @@ import { HelpArticleComponent } from '../help-article.component';
       </section>
 
       <section aria-labelledby="install-updates">
-        <h2 id="install-updates">Update Monosai</h2>
+        <h2 id="install-updates">How Monosai updates</h2>
         <p>
-          Monosai checks for updates on its own. When one is ready, a banner says
-          <strong>Update ready</strong>. Select <strong>Reload to update</strong>, or
-          <strong>Later</strong> to finish what you're doing first. To check straight away, in
-          <a routerLink="/settings">Settings</a>, under <strong>About</strong>, select
-          <strong>Check for updates</strong>.
+          Monosai updates itself. It downloads a new version in the background, and you get it the
+          next time you open Monosai. If Monosai stays open for days, close it and open it again to
+          get the newest version.
         </p>
       </section>
 

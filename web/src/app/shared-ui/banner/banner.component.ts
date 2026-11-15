@@ -13,7 +13,7 @@ export type BannerTone = 'info' | 'warning' | 'error';
  *
  *   <mn-banner tone="info" icon="info" role="status">
  *     <p>A new version of Monosai is ready.</p>
- *     <button mn-banner-action mnButton="primary" type="button">Reload to update</button>
+ *     <button mn-banner-action mnButton="primary" type="button">Reload</button>
  *     <button mn-banner-action mnButton="ghost" type="button">Later</button>
  *   </mn-banner>
  *

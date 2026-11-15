@@ -7,6 +7,10 @@ The sequential text-layer portion is superseded by
 [ADR 0054](0054-parallel-text-preparation.md). English and grammar now run
 together in bounded request waves; audio still follows them.
 
+The hold for a waiting update is removed by
+[ADR 0094](0094-updates-apply-on-the-next-launch.md): updates apply on the next launch, so none
+waits in a running page.
+
 ## Context
 
 [ADR 0047](0047-a-reading-declares-what-it-should-have.md) gave a reading a declaration of the aid
@@ -65,7 +69,7 @@ the rows back up after the reload. Persisting job rows is what buys this.
 - **Offline.** Park with *Waiting for a connection*. Do not spin, and do not mark rows failed:
   `navigator.onLine` is a hint about interfaces, good enough to avoid starting work that is certain
   to fail and not good enough to call anything a failure.
-- **An update is waiting.**
+- **An update is waiting.** Removed by [ADR 0094](0094-updates-apply-on-the-next-launch.md).
 
 A hold clearing is the only thing that restarts a parked lane by itself. Nothing else in the
 application starts a layer without one of ADR 0047's four moments.

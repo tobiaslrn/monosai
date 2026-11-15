@@ -234,9 +234,9 @@ The service worker prefetches the shell and the icons, and caches the language a
 readings, the dictionary, and word marking work with no network. A new AI request and a live Anki
 connection report that they need one, through the offline check inside the OpenRouter client.
 
-An update never activates by itself. Registration waits for the application to become stable, and the
-learner activates the new version from a banner. See
-[ADR 0027](../decisions/0027-pwa-caching-and-update-activation.md).
+An update never takes over a running page. Registration waits for the application to become stable,
+the worker downloads a new version in the background, and the next page load uses it. See
+[ADR 0094](../decisions/0094-updates-apply-on-the-next-launch.md).
 
 ## 8.8 Security and privacy
 

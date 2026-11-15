@@ -47,8 +47,8 @@ flowchart TB
 | **The AI service**          | None. External                                                  | Text and speech, paid by the learner                                                                                                                                                                                                   |
 
 Quality properties of this topology: the browser holds every piece of learner data, so there is
-nothing to breach on a server. Updates never activate during a form or a job; the learner activates
-them ([ADR 0027](../decisions/0027-pwa-caching-and-update-activation.md)).
+nothing to breach on a server. Updates download in the background and apply on the next launch, never in
+a running page ([ADR 0094](../decisions/0094-updates-apply-on-the-next-launch.md)).
 
 ## 7.2 Infrastructure Level 2: the build and delivery pipeline
 

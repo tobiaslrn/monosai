@@ -79,7 +79,7 @@ export const NOTHING_TO_DO: EnqueueOutcome = { kind: 'nothing-to-do' };
 export const QUEUED: EnqueueOutcome = { kind: 'queued' };
 
 /** Why the lane is not working right now, in the learner's terms. */
-export type LaneHold = 'generation' | 'offline' | 'update' | 'claimed-elsewhere';
+export type LaneHold = 'generation' | 'offline' | 'claimed-elsewhere';
 
 /**
  * What the lane is working on right now.

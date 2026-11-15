@@ -2,7 +2,6 @@ import { DOCUMENT } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppUpdateStore, type AppUpdateStatus } from '../../application/pwa/app-update.store';
 import type { Logger } from '../../application/shared/diagnostics';
 import { LOGGER } from '../../application/shared/diagnostics';
 import { DATABASE_SCHEMA_VERSION } from '../../application/shared/repository-tokens';
@@ -43,17 +42,13 @@ function loggerFake(entries = 1): {
 describe('AboutSectionComponent', () => {
   let standalone: ReturnType<typeof signal<boolean>>;
   let canInstall: ReturnType<typeof signal<boolean>>;
-  let updateStatus: ReturnType<typeof signal<AppUpdateStatus>>;
   let install: ReturnType<typeof vi.fn>;
-  let check: ReturnType<typeof vi.fn>;
   let fakeLogger: ReturnType<typeof loggerFake>;
 
   beforeEach(() => {
     standalone = signal(false);
     canInstall = signal(false);
-    updateStatus = signal<AppUpdateStatus>({ kind: 'idle' });
     install = vi.fn(() => Promise.resolve('accepted' as const));
-    check = vi.fn(() => Promise.resolve());
     fakeLogger = loggerFake();
 
     TestBed.resetTestingModule();
@@ -69,10 +64,6 @@ describe('AboutSectionComponent', () => {
             install,
           },
         },
-        {
-          provide: AppUpdateStore,
-          useValue: { status: updateStatus.asReadonly(), check },
-        },
         { provide: LOGGER, useValue: fakeLogger.logger },
         { provide: DATABASE_SCHEMA_VERSION, useValue: 5 },
       ],
@@ -85,28 +76,13 @@ describe('AboutSectionComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('keeps the install state visible while hiding Install when unavailable', () => {
+  it('keeps the install state visible, with no update control, while hiding Install when unavailable', () => {
     const element = render();
 
     expect(element.textContent).toContain('Not installed');
-    expect(element.querySelector('[data-testid="check-updates"]')).not.toBeNull();
-    expect(element.textContent).toContain('Check for updates');
+    expect(element.querySelector('[data-testid="check-updates"]')).toBeNull();
+    expect(element.textContent).not.toContain('Check for updates');
     expect(element.textContent).not.toContain('Install Monosai');
-  });
-
-  it('shows feedback when the update check finds the current version', () => {
-    const fixture = TestBed.createComponent(AboutSectionComponent);
-    fixture.detectChanges();
-
-    updateStatus.set({ kind: 'current' });
-    fixture.detectChanges();
-
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Up to date');
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector(
-        '.mn-settings-row__label .mn-settings-row__result',
-      )?.textContent,
-    ).toContain('Up to date');
   });
 
   it('shows Install only while installation is possible and the app is not standalone', () => {

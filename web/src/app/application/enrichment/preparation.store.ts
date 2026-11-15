@@ -11,7 +11,6 @@ import {
 import type { Reading } from '../../domain/reading/reading';
 import type { ReadingId } from '../../domain/shared/ids';
 import { GenerationActivityRegistry } from '../generation/generation-activity.registry';
-import { AppUpdateStore } from '../pwa/app-update.store';
 import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { CLOCK, ID_GENERATOR, JOB_REPOSITORY } from '../shared/repository-tokens';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
@@ -47,17 +46,17 @@ const KIND_TO_LAYER = new Map<string, PreparationLayer>(
  *
  * Three properties are load-bearing.
  *
- * **It yields, it never cancels.** Stepping aside for the open reading, for an
- * update, or for a lost connection parks the run at a batch boundary. Nothing
+ * **It yields, it never cancels.** Stepping aside for the open reading, for a
+ * generation, or for a lost connection parks the run at a batch boundary. Nothing
  * is stored until a batch returns, so aborting mid-batch throws away a paid
  * request, and a run reported as cancelled means something final to every
  * screen watching it — including the reader, which seals the media source a
  * screen-locked session is playing from (ADR 0045).
  *
  * **It is never busy.** `AppBusyRegistry` means work a reload would destroy,
- * and it makes an update unactivatable. A queue that outlives a session would
- * wedge updates for as long as it existed. The lane does the opposite: it
- * parks, lets the update through, and resumes from the rows afterwards.
+ * and it holds back a recovery reload. A queue that outlives a session would
+ * hold it back for as long as it existed. A reload costs the lane at most the
+ * batch in flight; it resumes from the rows afterwards.
  *
  * **One pipeline per reading, not per tab.** Two tabs may prepare two
  * different readings at once; neither can prepare the same one. The claim lives
@@ -69,7 +68,6 @@ export class PreparationStore {
   private readonly runners = inject(LayerRunners);
   private readonly generations = inject(GenerationActivityRegistry);
   private readonly network = inject(NETWORK_STATUS);
-  private readonly appUpdate = inject(AppUpdateStore);
   private readonly clock = inject(CLOCK);
   private readonly ids = inject(ID_GENERATOR);
   private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
@@ -114,10 +112,7 @@ export class PreparationStore {
     // else that creates work calls `reconcile` explicitly, which is what keeps a
     // launch from starting anything (ADR 0047).
     effect(() => {
-      const clear =
-        this.network.isOnline() &&
-        this.generations.runningCount() === 0 &&
-        this.appUpdate.status().kind !== 'available';
+      const clear = this.network.isOnline() && this.generations.runningCount() === 0;
       if (clear && this.holdSignal() !== null && !this.pausedByLearnerSignal()) {
         void this.pump();
       }
@@ -457,9 +452,6 @@ export class PreparationStore {
     }
     if (!this.network.isOnline()) {
       return 'offline';
-    }
-    if (this.appUpdate.status().kind === 'available') {
-      return 'update';
     }
     return null;
   }
