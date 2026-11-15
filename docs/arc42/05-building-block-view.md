@@ -101,9 +101,10 @@ altitude.
 
 `features/vocabulary/` holds the Words page at `/words`, each source's page at
 `/words/source/:sourceId` ([ADR 0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md))
-and the word list at `/words/vocabulary`. `features/grammar/` holds the Grammar page at `/grammar`
+and the word list at `/words/vocabulary`. `features/reading-level/` holds the Grammar page at `/grammar`
 and the reading-level ladder at `/grammar/level`, where a chosen level is a draft until it is saved
-([ADR 0063](../decisions/0063-what-you-can-read-is-composed-like-the-library.md)). The two were one
+([ADR 0063](../decisions/0063-what-you-can-read-is-composed-like-the-library.md)); they compose the
+components in `features/grammar/`. The two were one
 page until [ADR 0093](../decisions/0093-words-and-grammar-are-two-pages.md); the old routes redirect.
 
 The other vocabulary route is `features/vocabulary/vocabulary-browse-page.component.ts`. It reads

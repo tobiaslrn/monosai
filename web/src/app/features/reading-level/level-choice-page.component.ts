@@ -5,7 +5,7 @@ import { LanguageStore } from '../../application/language/language.store';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import type { GrammarPresetId } from '../../domain/grammar/presets';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
-import { PresetPickerComponent } from './preset-picker.component';
+import { PresetPickerComponent } from '../grammar/preset-picker.component';
 
 /**
  * Choosing a reading level.

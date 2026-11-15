@@ -168,7 +168,9 @@ export const APP_ROUTES: Routes = [
     path: 'grammar',
     title: 'Grammar · Monosai',
     loadComponent: () =>
-      import('../../features/grammar/grammar-page.component').then((m) => m.GrammarPageComponent),
+      import('../../features/reading-level/reading-level-page.component').then(
+        (m) => m.GrammarPageComponent,
+      ),
   },
   {
     // The ladder, on its own: choosing is a draft until Save level commits it,
@@ -176,7 +178,7 @@ export const APP_ROUTES: Routes = [
     path: 'grammar/level',
     title: 'Reading level · Monosai',
     loadComponent: () =>
-      import('../../features/grammar/level-choice-page.component').then(
+      import('../../features/reading-level/level-choice-page.component').then(
         (m) => m.LevelChoicePageComponent,
       ),
   },

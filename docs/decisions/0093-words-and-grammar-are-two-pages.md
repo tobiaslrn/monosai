@@ -44,8 +44,9 @@ an older worker's hand-off to `/reading-level` is redirected the same way.
 
 ## Consequences
 
-- The Words page writes no styles of its own; the Grammar page keeps the old page's entry on
-  the composition allowlist, so the list did not grow.
+- The Words page writes no styles of its own. The Grammar page and the ladder stay at their
+  old paths in `features/reading-level/`, because the composition allowlist is keyed by path
+  and may only shrink.
 - Grammar has no way in from the Library. Settings and the story form both lead there, and
   it is set rarely.
 - The two facts are no longer seen side by side outside the Library line and Settings.

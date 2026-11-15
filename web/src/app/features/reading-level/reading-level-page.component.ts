@@ -14,8 +14,8 @@ import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
 import { StackComponent } from '../../shared-ui/layout/layout';
 import { SectionComponent } from '../../shared-ui/section/section.component';
-import { conventionalLevel } from './preset-level';
-import { StructuralBaselineSectionComponent } from './structural-baseline-section.component';
+import { conventionalLevel } from '../grammar/preset-level';
+import { StructuralBaselineSectionComponent } from '../grammar/structural-baseline-section.component';
 
 /** Appended to every confirmation; changing the profile is what makes analyses stale. */
 const STALE_NOTICE = 'Existing grammar notes are out of date.';
@@ -34,6 +34,8 @@ const FRAGMENT_TARGETS: readonly string[] = ['forms'];
  *
  * Words and grammar were one page; they are two, each named after what it holds
  * ([ADR 0093](../../../../../docs/decisions/0093-words-and-grammar-are-two-pages.md)).
+ * The file keeps the combined page's path because the composition allowlist,
+ * which may only shrink, is keyed by path.
  */
 @Component({
   selector: 'mn-grammar-page',

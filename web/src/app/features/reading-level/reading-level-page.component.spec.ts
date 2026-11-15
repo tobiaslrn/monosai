@@ -14,7 +14,7 @@ import {
   PACKAGE_PROVIDER_FACTORY,
 } from '../../application/shared/anki-tokens';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
-import { GrammarPageComponent } from './grammar-page.component';
+import { GrammarPageComponent } from './reading-level-page.component';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
