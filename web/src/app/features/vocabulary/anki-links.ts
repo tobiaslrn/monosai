@@ -13,7 +13,7 @@ export const ANKI_LINKS = {
   /** The install standing between a desktop learner and a working connection. */
   ankiConnectAddon: 'https://ankiweb.net/shared/info/2055492159',
   /** The APK that plays the add-on's part on Android. */
-  bridgeReleases: 'https://github.com/tobiaslrn/monosai/releases?q=bridge-v',
+  bridgeReleases: 'https://github.com/tobiaslrn/monosai/releases?q=bridge',
   /**
    * An app asking for a collection should be inspectable. This is the one link
    * that earns its place on a screen where nothing is broken.

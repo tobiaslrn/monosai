@@ -12,8 +12,8 @@ rather than against a collection's schema.
 ## Requirements and setup
 
 - Android 16+ (API 36), AnkiDroid 2.24+, and Chrome with the Monosai PWA.
-- Install AnkiDroid and a signed bridge APK from a `bridge-v*`
-  [release](https://github.com/tobiaslrn/monosai/releases?q=bridge-v). Every published
+- Install AnkiDroid and a signed bridge APK from a Monosai Bridge
+  [release](https://github.com/tobiaslrn/monosai/releases?q=bridge). Every published
   version is there; no build artifact has to be dug out of a CI run.
 - Open your collection in AnkiDroid, then use **Grant AnkiDroid access** and
   **Start bridge**. The permission says read/write because AnkiDroid has no

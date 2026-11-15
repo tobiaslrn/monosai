@@ -92,9 +92,9 @@ import { HelpArticleComponent } from '../help-article.component';
         <ol>
           <li>Install AnkiDroid and open your collection once.</li>
           <li>
-            Download the bridge from the newest <code>bridge-v</code> release on the
+            Download the bridge from the newest Monosai Bridge release on the
             <a
-              href="https://github.com/tobiaslrn/monosai/releases?q=bridge-v"
+              href="https://github.com/tobiaslrn/monosai/releases?q=bridge"
               target="_blank"
               rel="noopener noreferrer"
               >releases page</a
