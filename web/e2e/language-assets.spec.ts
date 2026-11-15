@@ -113,7 +113,7 @@ test.describe('offline language assets', () => {
       }),
     );
 
-    await page.goto('./#/reading-level');
+    await page.goto('./#/grammar');
 
     const failure = page.getByRole('heading', { name: 'Levels could not be loaded' });
     await expect(failure).toBeVisible({ timeout: 120_000 });
@@ -138,7 +138,7 @@ test.describe('offline language assets', () => {
       await route.fallback();
     });
 
-    await page.goto('./#/reading-level');
+    await page.goto('./#/grammar');
     await expect(page.getByRole('heading', { name: 'Levels could not be loaded' })).toBeVisible({
       timeout: 120_000,
     });
@@ -147,6 +147,6 @@ test.describe('offline language assets', () => {
     await page.getByRole('button', { name: 'Try again' }).click();
     await expectPrepared(page);
     // The reading level's example only renders once the bundle has loaded.
-    await expect(page.locator('mn-reading-level-page mn-example')).toBeVisible();
+    await expect(page.locator('mn-grammar-page mn-example')).toBeVisible();
   });
 });

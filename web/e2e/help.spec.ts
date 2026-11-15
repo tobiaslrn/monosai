@@ -94,8 +94,8 @@ test.describe('Help and utility bar', () => {
     await page.getByTestId('help-topic').first().click();
     await expect(page).toHaveURL(/#\/help\/get-started$/);
     await expect(page.getByRole('heading', { name: 'Get started', level: 1 })).toBeVisible();
-    await page.getByRole('link', { name: 'What you can read' }).first().click();
-    await expect(page).toHaveURL(/#\/reading-level#words$/);
+    await page.getByRole('link', { name: 'Words', exact: true }).first().click();
+    await expect(page).toHaveURL(/#\/words$/);
 
     await page.goto('./#/library');
     const utilities = page.getByRole('navigation', { name: 'Utilities' });

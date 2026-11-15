@@ -5,7 +5,8 @@ import { PageComponent } from '../../shared-ui/layout/layout';
 import { AboutSectionComponent } from './about-section.component';
 import { AiSectionComponent } from './ai-section.component';
 import { AppearanceSectionComponent } from './appearance-section.component';
-import { ReadingLevelRowComponent } from './reading-level-row.component';
+import { GrammarRowComponent } from './grammar-row.component';
+import { WordsRowComponent } from './words-row.component';
 import { StorageSectionComponent } from './storage-section.component';
 
 @Component({
@@ -15,7 +16,8 @@ import { StorageSectionComponent } from './storage-section.component';
     PageComponent,
     PageHeaderComponent,
     SectionComponent,
-    ReadingLevelRowComponent,
+    GrammarRowComponent,
+    WordsRowComponent,
     AiSectionComponent,
     AppearanceSectionComponent,
     StorageSectionComponent,
@@ -26,8 +28,9 @@ import { StorageSectionComponent } from './storage-section.component';
       <mn-page-header heading="Settings" [backTo]="backTarget()" [backLabel]="backLabel()" />
 
       <mn-section heading="Reading" [rows]="true">
-        <!-- A signpost rather than a setting: the details live on their own page. -->
-        <mn-reading-level-row />
+        <!-- Signposts rather than settings: the details live on their own pages. -->
+        <mn-words-row />
+        <mn-grammar-row />
       </mn-section>
 
       <mn-ai-section />

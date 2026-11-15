@@ -79,7 +79,7 @@ test.describe('generate prerequisites', () => {
     );
 
     await page.locator('[data-check="vocabulary"]').getByRole('link').click();
-    await expect(page).toHaveURL(/#\/reading-level\?from=generate(?:#words)?$/);
+    await expect(page).toHaveURL(/#\/words\?from=generate$/);
     await page.getByRole('button', { name: 'Back to story' }).click();
 
     await openAxis(page, 'genre');

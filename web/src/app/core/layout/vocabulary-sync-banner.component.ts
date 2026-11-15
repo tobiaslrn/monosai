@@ -38,9 +38,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
             <button mn-banner-action mnButton="ghost" type="button" (click)="retry()">
               Retry now
             </button>
-            <a mn-banner-action mnButton="ghost" routerLink="/reading-level" fragment="words"
-              >Manage sources</a
-            >
+            <a mn-banner-action mnButton="ghost" routerLink="/words">Manage sources</a>
           </mn-banner>
         }
       }
@@ -69,7 +67,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
 export class VocabularySyncBannerComponent {
   protected readonly coordinator = inject(AutomaticAnkiSyncCoordinator, { optional: true });
 
-  /** The same wording the Library and the reading-level page use. */
+  /** The same wording the Library and the Words page use. */
   protected wordCount(count: number): string {
     return vocabularyCountLabel(count);
   }

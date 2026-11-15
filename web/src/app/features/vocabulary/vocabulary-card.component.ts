@@ -21,7 +21,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconComponent, ListRowComponent, StackComponent],
   template: `
-    <mn-list-row [routerLink]="'/reading-level/vocabulary'" [testId]="'browse-vocabulary'">
+    <mn-list-row [routerLink]="'/words/vocabulary'" [testId]="'browse-vocabulary'">
       <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">
         <mn-icon name="vocabulary" />
       </span>

@@ -2,31 +2,18 @@ import { ChangeDetectionStrategy, Component, signal, type WritableSignal } from 
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import {
   VocabularyAvailabilityStore,
   type VocabularyAvailabilityState,
 } from '../../application/vocabulary/vocabulary-availability.store';
-import type { GrammarPreset } from '../../domain/grammar/presets';
 import { snapshotId } from '../../domain/shared/ids';
 import type { VocabularySnapshot } from '../../domain/vocabulary/snapshot';
-import { ReadingLevelRowComponent } from './reading-level-row.component';
-
-const PRESET: GrammarPreset = {
-  id: 'mn-preset-starter',
-  order: 0,
-  nameEn: 'Starter forms',
-  captionEn: 'the first patterns in any course',
-  descriptionEn: 'Single short sentences, one idea each.',
-  exampleJa: '私は学生です。',
-  exampleEn: 'I am a student.',
-  promptGuidance: 'Write single short clauses.',
-};
+import { WordsRowComponent } from './words-row.component';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReadingLevelRowComponent],
-  template: `<mn-reading-level-row />`,
+  imports: [WordsRowComponent],
+  template: `<mn-words-row />`,
 })
 class HostComponent {}
 
@@ -53,23 +40,17 @@ function snapshotOf(uniqueEntryCount: number): VocabularySnapshot {
   };
 }
 
-describe('ReadingLevelRowComponent', () => {
+describe('WordsRowComponent', () => {
   let state: WritableSignal<VocabularyAvailabilityState>;
-  let preset: WritableSignal<GrammarPreset | null>;
 
   beforeEach(() => {
     state = signal<VocabularyAvailabilityState>({ kind: 'unknown' });
-    preset = signal<GrammarPreset | null>(PRESET);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         {
           provide: VocabularyAvailabilityStore,
           useValue: { state, refresh: () => Promise.resolve() },
-        },
-        {
-          provide: GrammarProfileStore,
-          useValue: { selectedPreset: preset, load: () => Promise.resolve() },
         },
       ],
     });
@@ -81,43 +62,33 @@ describe('ReadingLevelRowComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  /** The whole row: its words are in the row, and the link is the press target over it. */
-  function row(element: HTMLElement): HTMLElement | null {
-    return element.querySelector<HTMLElement>('mn-settings-row');
+  function row(element: HTMLElement): string {
+    return (
+      element.querySelector('mn-settings-row')?.textContent.replaceAll(/\s+/g, ' ').trim() ?? ''
+    );
   }
 
   /** A signpost, not a panel: Settings points at the page, it does not hold it. */
   it('names the destination and leads to it', () => {
     const element = render();
 
-    expect(
-      element.querySelector('[data-testid="settings-reading-level"]')?.getAttribute('href'),
-    ).toBe('/reading-level');
-    expect(row(element)?.textContent).toContain('What you can read');
+    expect(element.querySelector('[data-testid="settings-words"]')?.getAttribute('href')).toBe(
+      '/words',
+    );
+    expect(row(element)).toBe('Words');
   });
 
-  it('states the current standing in one line', () => {
+  it('states how many words there are', () => {
     state.set({ kind: 'known', availability: 'ready', snapshot: snapshotOf(340) });
 
-    expect(row(render())?.textContent.replaceAll(/\s+/g, ' ')).toContain(
-      '340 words · Starter forms',
-    );
+    expect(row(render())).toContain('340 words');
   });
 
   it('distinguishes no words from a read that failed', () => {
     state.set({ kind: 'known', availability: 'none', snapshot: null });
-    expect(row(render())?.textContent).toContain('No words yet');
+    expect(row(render())).toContain('No words yet');
 
     state.set({ kind: 'unavailable', message: 'The database could not be opened.' });
-    expect(row(render())?.textContent).toContain('Your words could not be read');
-  });
-
-  /** Nothing half-said while the read is in flight. */
-  it('says only what it knows before the read answers', () => {
-    const text = row(render())?.textContent.replaceAll(/\s+/g, ' ').trim();
-
-    expect(text).toContain('What you can read');
-    expect(text).toContain('Starter forms');
-    expect(text).not.toContain('·');
+    expect(row(render())).toContain('Your words could not be read');
   });
 });

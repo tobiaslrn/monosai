@@ -1,7 +1,8 @@
 # 0049 — Vocabulary and Grammar are one page: what you can read
 
 Date: 2026-09-04
-Status: Accepted; the inline ladder is superseded by
+Status: Superseded by [ADR 0093](0093-words-and-grammar-are-two-pages.md), which splits the
+page into Words and Grammar; the inline ladder was already superseded by
 [ADR 0063](0063-what-you-can-read-is-composed-like-the-library.md)
 
 ## Context

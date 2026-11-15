@@ -1,30 +1,8 @@
-import type { OnChanges, SimpleChanges } from '@angular/core';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  effect,
-  inject,
-  input,
-  resource,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
 import { LanguageStore } from '../../application/language/language.store';
-import {
-  LOGGER,
-  NOOP_LOGGER,
-  reportRejection,
-  type Logger,
-} from '../../application/shared/diagnostics';
-import { AnkiConnectionStore } from '../../application/vocabulary/anki-connection.store';
-import { PackageImportStore } from '../../application/vocabulary/package-import.store';
-import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
-import { SourceMappingStore } from '../../application/vocabulary/source-mapping.store';
-import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
 import {
   NavigationHistoryService,
   navigationOriginState,
@@ -34,17 +12,10 @@ import { ExampleComponent } from '../../shared-ui/example/example.component';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { ListRowComponent } from '../../shared-ui/list-row/list-row.component';
 import { PageHeaderComponent } from '../../shared-ui/page-header/page-header.component';
+import { StackComponent } from '../../shared-ui/layout/layout';
 import { SectionComponent } from '../../shared-ui/section/section.component';
-import { SettingsSectionComponent } from '../../shared-ui/settings-section/settings-section.component';
 import { conventionalLevel } from '../grammar/preset-level';
 import { StructuralBaselineSectionComponent } from '../grammar/structural-baseline-section.component';
-import { AddWordsComponent } from '../vocabulary/add-words.component';
-import { AnkiMappingDraftComponent } from '../vocabulary/anki-mapping-draft.component';
-import { PackageImportComponent } from '../vocabulary/package-import.component';
-import { SourceListComponent } from '../vocabulary/source-list.component';
-import { TextListSourceComponent } from '../vocabulary/text-list-source.component';
-import { VocabularyCardComponent } from '../vocabulary/vocabulary-card.component';
-import { generationShortfallLabel } from '../../shared-ui/vocabulary-standing/vocabulary-standing';
 
 /** Appended to every confirmation; changing the profile is what makes analyses stale. */
 const STALE_NOTICE = 'Existing grammar notes are out of date.';
@@ -52,87 +23,39 @@ const STALE_NOTICE = 'Existing grammar notes are out of date.';
 /**
  * The fragments callers may deep link to.
  *
- * Each is the id of the element it names, so the router's own anchor scrolling
- * finds it as well; the page re-resolves it afterwards because the grammar half
- * does not exist until the language bundle has arrived.
+ * Each is the id of the element it names; the page resolves it once the
+ * language bundle has arrived, because nothing below the heading exists before.
  */
-const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
+const FRAGMENT_TARGETS: readonly string[] = ['forms'];
 
 /**
- * What the learner can read: two facts, and the plumbing behind each.
+ * The grammar Monosai assumes the learner knows: the reading level, with an
+ * example of it, and the forms that always count as known.
  *
- * Vocabulary and grammar describe a single subject — how hard a reading may be
- * before it stops being readable — so they are one screen, composed like the
- * Library: quiet cards on the canvas, each fact leading to the page that holds
- * all of it, and the things set once and never touched again folded beneath.
+ * Words and grammar were one page; they are two, each named after what it holds
+ * ([ADR 0093](../../../../../docs/decisions/0093-words-and-grammar-are-two-pages.md)).
+ * The file keeps the combined page's path because the composition allowlist,
+ * which may only shrink, is keyed by path.
  */
 @Component({
-  selector: 'mn-reading-level-page',
+  selector: 'mn-grammar-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  // Provided here rather than at the root, so leaving the page discards any
-  // refresh in flight, and the uncommitted Anki draft with it, and releases the
-  // provider it was reading from. The draft is a card in this section rather
-  // than a part of the control that started it, so the page owns it.
-  providers: [VocabularyRefreshStore, PackageImportStore, AnkiConnectionStore],
   imports: [
     DisclosureComponent,
     ExampleComponent,
     SectionComponent,
+    StackComponent,
     IconComponent,
     ListRowComponent,
     PageHeaderComponent,
-    SettingsSectionComponent,
-    AddWordsComponent,
-    AnkiMappingDraftComponent,
-    PackageImportComponent,
-    SourceListComponent,
-    TextListSourceComponent,
-    VocabularyCardComponent,
     StructuralBaselineSectionComponent,
   ],
   template: `
-    <div class="mn-page level-page">
-      <mn-page-header
-        heading="What you can read"
-        [backTo]="backTarget()"
-        [backLabel]="backLabel()"
-      />
+    <div class="mn-page">
+      <mn-page-header heading="Grammar" [backTo]="backTarget()" [backLabel]="backLabel()" />
 
-      <p
-        class="mn-visually-hidden"
-        role="status"
-        aria-live="polite"
-        data-testid="vocabulary-status"
-      >
-        {{ announcement() }}
-      </p>
-
-      <mn-settings-section sectionId="words" heading="Word sources">
-        <mn-add-words mn-settings-section-action (textListChosen)="textDraft.set(true)" />
-        <!--
-          Whatever is being drafted stands at the head of the section, full
-          width, above the vocabulary it has not changed yet. Both drafts used
-          to render inside the section's action slot beside the heading, which
-          squeezed a form into the space a button asks for and pushed the rest
-          of the page down the screen.
-        -->
-        @if (textDraft()) {
-          <section class="draft" aria-labelledby="mn-text-draft-heading">
-            <h3 id="mn-text-draft-heading">Your own list</h3>
-            <mn-text-list-source (saved)="closeTextDraft()" (cancelled)="closeTextDraft()" />
-          </section>
-        }
-        <mn-anki-mapping-draft />
-        <mn-vocabulary-card />
-        @if (shortfall(); as note) {
-          <p class="note">{{ note }}</p>
-        }
-
-        <mn-source-list />
-        <mn-package-import />
-      </mn-settings-section>
-
-      <mn-settings-section sectionId="grammar" heading="Grammar">
+      <!-- The group gap the cards had when this was a section of a longer page. -->
+      <mn-stack [gap]="2">
         <!--
           Announced rather than shown as a toast: the change has already been
           saved, so this confirms what happened without asking for an
@@ -152,7 +75,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
           <div class="mn-card level-card">
             <mn-list-row
               [inCard]="true"
-              [routerLink]="'/reading-level/level'"
+              [routerLink]="'/grammar/level'"
               [state]="levelOriginState"
               [testId]="'reading-level-link'"
             >
@@ -187,35 +110,10 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
             Could not save. Your level is unchanged.
           </p>
         }
-      </mn-settings-section>
+      </mn-stack>
     </div>
   `,
   styles: `
-    /*
-     * A deep link used to put a section heading flush at y=0, scrolling the page
-     * title and the back link out of view — so a learner arriving from Generate
-     * could not tell what page they had landed on. The margin is that chrome.
-     */
-    #words,
-    #grammar {
-      scroll-margin-top: 8rem;
-    }
-
-    .note {
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: var(--text-sm);
-    }
-
-    .draft {
-      display: grid;
-      gap: var(--space-2);
-    }
-
-    .draft h3 {
-      margin: 0;
-    }
-
     /* The row spans the card, so its words keep the same edge as every other row. */
     .level-card {
       display: grid;
@@ -253,41 +151,25 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
     }
   `,
 })
-export class ReadingLevelPageComponent implements OnChanges {
-  protected readonly refresh = inject(VocabularyRefreshStore);
+export class GrammarPageComponent {
   protected readonly profile = inject(GrammarProfileStore);
   protected readonly language = inject(LanguageStore);
-  private readonly mappings = inject(SourceMappingStore);
-  private readonly packageImport = inject(PackageImportStore);
-  private readonly history = inject(SnapshotHistoryStore);
-  private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly logger = inject<Logger>(LOGGER, { optional: true }) ?? NOOP_LOGGER;
 
   /** The level page's Back and Save return here through history. */
-  protected readonly levelOriginState = navigationOriginState('/reading-level');
+  protected readonly levelOriginState = navigationOriginState('/grammar');
 
   /** The deep link's target, which survives a navigation within this route. */
   private readonly fragment = toSignal(this.route.fragment, { initialValue: null });
 
-  /**
-   * Set by the service worker's redirect after Android hands Monosai a file.
-   *
-   * Route parameters reach the page as inputs, so nothing here has to read the
-   * URL itself; the marker is removed again as soon as it has been acted on so
-   * a reload or a back navigation cannot replay the share.
-   */
-  readonly shared = input<string | undefined>();
-  readonly reason = input<string | undefined>();
+  /** `generate` when the story form sent the learner here, so Back returns to it. */
   readonly from = input<string | undefined>();
 
   /**
-   * Where this page goes back to.
-   *
-   * Three screens lead here and each expects to get its own place back: the
-   * generate form says so in a query parameter, Settings marks the navigation
-   * with its origin, and everything else came from the Library. Read once at
-   * construction, because the history entry does not change under the page.
+   * Where this page goes back to: the story form says so in a query parameter,
+   * Settings marks the navigation with its origin, and anything else returns to
+   * the Library. Read once at construction, because the history entry does not
+   * change under the page.
    */
   private readonly origin = inject(NavigationHistoryService).currentOrigin();
 
@@ -303,33 +185,6 @@ export class ReadingLevelPageComponent implements OnChanges {
       return 'Back to story';
     }
     return this.origin === '/settings' ? 'Back to settings' : 'Back to library';
-  });
-
-  /** Whether the section is drafting a pasted list. Nothing is saved until Add source. */
-  protected readonly textDraft = signal(false);
-  private readonly addWords = viewChild(AddWordsComponent);
-
-  /**
-   * One live region for what the page's work is doing. An import in progress
-   * owns it, because it is the thing the learner just started; otherwise the
-   * refresh does.
-   */
-  protected readonly announcement = computed(() =>
-    this.packageImport.state().kind === 'idle'
-      ? this.refresh.announcement()
-      : this.packageImport.announcement(),
-  );
-
-  /**
-   * What a learner below the generation floor needs to know.
-   *
-   * The only thing the section says about the vocabulary beyond the card's own
-   * count, and it disappears the moment there are enough words rather than
-   * congratulating anyone for passing a threshold they never saw.
-   */
-  protected readonly shortfall = computed(() => {
-    const snapshot = this.history.active();
-    return snapshot === null ? null : generationShortfallLabel(snapshot.uniqueEntryCount);
   });
 
   protected readonly grammarValue = computed(
@@ -361,31 +216,11 @@ export class ReadingLevelPageComponent implements OnChanges {
   });
 
   constructor() {
-    void this.mappings.load();
-    void this.history.load();
     void this.language.initialize();
     void this.profile.load();
 
-    // The history is a read model of what has been committed, so it is reloaded
-    // whenever a commit finishes rather than being patched in place. A refresh
-    // is confirmed through the Anki connection store, which reloads it itself.
-    // A package import commits on its own, outside anything this page awaits,
-    // so its completed state is the key: each import reloads once, and the
-    // loader runs untracked.
-    resource({
-      params: () => {
-        const state = this.packageImport.state();
-        return state.kind === 'complete' ? state : undefined;
-      },
-      loader: () =>
-        this.history.load().catch((error: unknown) => {
-          reportRejection(this.logger, error);
-        }),
-    });
-
-    // A deep link names the half of the page the caller had in mind, so the
-    // target is opened and then scrolled to — and re-resolved when the bundle
-    // arrives, because the grammar half does not exist until it has.
+    // A deep link names a part of the page, which does not exist until the
+    // language bundle has arrived, so it is resolved once the bundle settles.
     effect(() => {
       const fragment = this.fragment();
       const status = this.language.status();
@@ -399,19 +234,6 @@ export class ReadingLevelPageComponent implements OnChanges {
         this.revealFragment(fragment);
       });
     });
-  }
-
-  /** A shared file arrives as a route input, and is taken once per arrival. */
-  ngOnChanges(changes: SimpleChanges): void {
-    const marker = this.shared();
-    if ('shared' in changes && marker !== undefined) {
-      void this.consumeShare(marker, this.reason());
-    }
-  }
-
-  protected closeTextDraft(): void {
-    this.textDraft.set(false);
-    this.addWords()?.focusToggle();
   }
 
   protected retryLanguage(): void {
@@ -444,14 +266,5 @@ export class ReadingLevelPageComponent implements OnChanges {
 
   private presetName(presetId: string): string {
     return this.profile.presets().find((preset) => preset.id === presetId)?.nameEn ?? presetId;
-  }
-
-  private async consumeShare(marker: string, reason: string | undefined): Promise<void> {
-    await this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: {},
-      replaceUrl: true,
-    });
-    await this.packageImport.receiveShared(marker, reason);
   }
 }

@@ -99,7 +99,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
   ],
   template: `
     <mn-page>
-      <mn-page-header [heading]="heading()" backTo="/reading-level" backLabel="Back to words" />
+      <mn-page-header [heading]="heading()" backTo="/words" backLabel="Back to words" />
 
       <p class="mn-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
 
@@ -609,7 +609,7 @@ export class SourcePageComponent {
       return;
     }
     await this.reload();
-    await this.router.navigate(['/reading-level'], { fragment: 'words' });
+    await this.router.navigate(['/words']);
   }
 
   private async applyConnectedSourceChange(): Promise<void> {

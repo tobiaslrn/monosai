@@ -179,7 +179,10 @@ describe('StoryFormComponent', () => {
     expect(element.querySelector('[data-testid="story-length"]')).not.toBeNull();
     // The sources are rows that lead to the screen that changes them, value under the label.
     const vocabulary = element.querySelector('[data-testid="form-vocabulary"]');
-    expect(vocabulary?.getAttribute('href')).toContain('/reading-level');
+    expect(vocabulary?.getAttribute('href')).toContain('/words');
+    expect(element.querySelector('[data-testid="form-grammar"]')?.getAttribute('href')).toContain(
+      '/grammar',
+    );
     expect(vocabulary?.closest('mn-settings-row')?.textContent).toContain('200 reviewed words');
     expect(
       element.querySelector('[data-testid="form-grammar"]')?.closest('mn-settings-row')

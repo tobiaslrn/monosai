@@ -63,7 +63,7 @@ term the first time a page uses it, in an ordinary sentence, then keep to it.
 | word source    | one place your known words come from: Anki, an Anki package or a list | deck (unless it is one), feed |
 | word list      | a word source you type or paste, one word per line                    | text list                     |
 | story          | any text in your library, written by Monosai or pasted                | reading, document, item       |
-| reading level  | the grammar Monosai assumes you know, set in **What you can read**    | grammar level, profile        |
+| reading level  | the grammar Monosai assumes you know, set in **Settings** > **Grammar** | grammar level, profile      |
 | text model     | the AI model that writes stories, translations and grammar notes      | LLM, flagship                 |
 | speech model   | the AI model that reads a story aloud                                 | TTS, voice model              |
 | OpenRouter key | the API key from your OpenRouter account                              | token, secret                 |
@@ -89,7 +89,7 @@ short definition on first use on a page. Japanese text is wrapped in `<span lang
 - **Give a path with ">"** between places you open: **Settings** > **Text models**. Name a
   section heading with "under", because it isn't something you open: "In **Settings**, under
   **Storage**, select **Protect storage**." Start from a place the reader can find: the
-  Library, **Settings** or **What you can read**.
+  Library, **Settings** or **Words**.
 - **A path that is also a link** is the link text, without bold: "Open
   [Settings > Text models](…)". Link the place where the reader acts, once per section.
 - **Add the kind of control only when it helps:** "the **Connect** button", "the

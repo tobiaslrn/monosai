@@ -71,7 +71,7 @@ describe('LevelChoicePageComponent', () => {
     save(element);
 
     await vi.waitFor(() => {
-      expect(backOrNavigate).toHaveBeenCalledWith('/reading-level');
+      expect(backOrNavigate).toHaveBeenCalledWith('/grammar');
     });
     expect(store.selection().presetId).toBe('mn-preset-basic');
   });
@@ -83,7 +83,7 @@ describe('LevelChoicePageComponent', () => {
     save(element);
 
     await vi.waitFor(() => {
-      expect(backOrNavigate).toHaveBeenCalledWith('/reading-level');
+      expect(backOrNavigate).toHaveBeenCalledWith('/grammar');
     });
     expect(selectPreset).not.toHaveBeenCalled();
   });

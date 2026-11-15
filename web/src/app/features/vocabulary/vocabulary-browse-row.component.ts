@@ -50,7 +50,7 @@ import { IconComponent } from '../../shared-ui/icon/icon.component';
           <li>
             <mn-icon name="anki-source" />
             @if (sourceFor(sourceId); as source) {
-              <a [routerLink]="['/reading-level/source', sourceId]">{{ name(source) }}</a>
+              <a [routerLink]="['/words/source', sourceId]">{{ name(source) }}</a>
             } @else {
               <span>Source no longer available</span>
             }

@@ -53,7 +53,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
             variant="flush"
             [class.is-off]="!included(source)"
             [mutedLeading]="!included(source)"
-            [routerLink]="['/reading-level/source', source.id]"
+            [routerLink]="['/words/source', source.id]"
             [testId]="'source-row'"
           >
             <span mn-list-row-leading class="mn-icon-badge" aria-hidden="true">

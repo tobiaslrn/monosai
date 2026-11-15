@@ -103,7 +103,7 @@ shared its number until it was given the next free one.
 | [0086](../decisions/0086-word-form-summary-popup.md)                        | Word details use a compact form summary                                           |
 | [0031](../decisions/0031-touch-reading-gestures-and-docked-details.md)      | On touch, a long press selects a sentence and details dock as a sheet             |
 | [0032](../decisions/0032-touch-word-taps-and-one-selection-colour.md)       | A tap on a phone is one press, one colour, and one open thing                     |
-| [0049](../decisions/0049-one-page-for-what-you-can-read.md)                 | Vocabulary and Grammar are one page: what you can read                            |
+| [0049](../decisions/0049-one-page-for-what-you-can-read.md)                 | Vocabulary and Grammar are one page: what you can read (superseded by 0093)       |
 | [0050](../decisions/0050-the-library-wears-the-navigation.md)               | The Library standing line is the way to the learner's level                       |
 | [0051](../decisions/0051-non-reader-utilities-and-first-use-help.md)        | Non-reader utilities and first-use Help; amends 0050 and 0025                     |
 | [0053](../decisions/0053-reader-touch-details-and-measured-sheets.md)       | Native touch selection, sentence double taps, and measured detail sheets          |
@@ -116,6 +116,7 @@ shared its number until it was given the next free one.
 | [0070](../decisions/0070-gemini-speech-is-stored-compressed.md)             | Speech that arrives as raw PCM is stored compressed, and old clips are re-encoded |
 | [0079](../decisions/0079-help-is-a-hub-of-topics.md)                        | Help is a hub of topic pages, and the guidance lives in the application           |
 | [0092](../decisions/0092-help-is-written-as-a-guide.md)                     | Help is written as a guide: its own writing guide, and failures looked up by what the screen says |
+| [0093](../decisions/0093-words-and-grammar-are-two-pages.md)                | Words and Grammar are two pages, each named after what it holds                   |
 
 ### Audio
 

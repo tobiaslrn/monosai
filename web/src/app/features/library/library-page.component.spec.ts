@@ -111,7 +111,7 @@ class FakeSetupProgressStore {
     label: 'Your words',
     satisfied: false,
     detail: 'Add words from Anki, a file or a pasted list',
-    route: '/reading-level',
+    route: '/words',
     actionLabel: 'Add words',
   });
   readonly textModelCheck = signal({
@@ -243,7 +243,7 @@ describe('LibraryPageComponent', () => {
       [...(steps?.querySelectorAll<HTMLAnchorElement>('mn-checklist-step a') ?? [])].map((link) =>
         link.getAttribute('href'),
       ),
-    ).toEqual(['/reading-level#words', '/settings']);
+    ).toEqual(['/words', '/settings']);
     expect(steps?.querySelector('[data-testid="first-step-paste"]')?.getAttribute('href')).toBe(
       '/add',
     );
@@ -340,7 +340,7 @@ describe('LibraryPageComponent', () => {
     const fixture = await render();
 
     expect(element(fixture).querySelector('mn-library-standing a')?.getAttribute('href')).toBe(
-      '/reading-level#words',
+      '/words',
     );
     expect(element(fixture).querySelector('mn-page-header h1')?.textContent).toBe('Library');
   });

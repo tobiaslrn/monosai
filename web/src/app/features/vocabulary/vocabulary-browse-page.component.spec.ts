@@ -87,9 +87,11 @@ describe('VocabularyBrowsePageComponent', () => {
     const { element } = await render();
 
     expect(element.textContent).toContain('No words yet.');
-    expect(element.querySelector('a[href="/reading-level#words"]')?.textContent).toContain(
-      'Add words',
+    // The page's Back link leads to the same page, so the link is found by its words.
+    const add = [...element.querySelectorAll('a[href="/words"]')].find((link) =>
+      link.textContent.includes('Add words'),
     );
+    expect(add).toBeDefined();
   });
 
   it('distinguishes a stored empty snapshot from no vocabulary', async () => {
@@ -195,7 +197,7 @@ describe('VocabularyBrowsePageComponent', () => {
     expect(element.textContent).toContain('たべる');
     expect(element.textContent).toContain('eat');
     expect(element.textContent).toContain('Contributing sources');
-    expect(element.querySelector('a[href^="/reading-level/source/"]')).not.toBeNull();
+    expect(element.querySelector('a[href^="/words/source/"]')).not.toBeNull();
   });
 
   it('does not keep stale counts beside a failed reload', async () => {

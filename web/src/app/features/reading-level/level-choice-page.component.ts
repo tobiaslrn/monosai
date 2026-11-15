@@ -21,11 +21,7 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
   imports: [ErrorScreenComponent, PageHeaderComponent, PresetPickerComponent],
   template: `
     <div class="mn-page choice-page">
-      <mn-page-header
-        heading="Reading level"
-        backTo="/reading-level"
-        backLabel="Back to what you can read"
-      />
+      <mn-page-header heading="Reading level" backTo="/grammar" backLabel="Back to grammar" />
 
       @if (language.status() === 'failed') {
         <mn-error-screen
@@ -130,6 +126,6 @@ export class LevelChoicePageComponent {
         return;
       }
     }
-    await this.navigation.backOrNavigate('/reading-level');
+    await this.navigation.backOrNavigate('/grammar');
   }
 }

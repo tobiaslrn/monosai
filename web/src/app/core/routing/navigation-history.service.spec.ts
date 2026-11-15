@@ -71,10 +71,9 @@ describe('navigation origin validation', () => {
     expect(() => navigationOriginState('//example.com')).toThrow(/Unsafe navigation origin/);
   });
 
-  it('accepts the reading-level overview, which the ladder returns to', () => {
-    const state = navigationOriginState('/reading-level');
-
-    expect(readNavigationOrigin(state)).toBe('/reading-level');
-    expect(readNavigationOrigin({ monosaiNavigationOrigin: '/reading-level/level' })).toBeNull();
+  it('accepts the words and grammar pages, which their sub-pages return to', () => {
+    expect(readNavigationOrigin(navigationOriginState('/words'))).toBe('/words');
+    expect(readNavigationOrigin(navigationOriginState('/grammar'))).toBe('/grammar');
+    expect(readNavigationOrigin({ monosaiNavigationOrigin: '/grammar/level' })).toBeNull();
   });
 });

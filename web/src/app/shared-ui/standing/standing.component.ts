@@ -6,7 +6,7 @@ import { RouterLink, type NavigationExtras } from '@angular/router';
  * A headline that is also the way to the page behind it: one sentence at
  * display size, and an optional quieter line under it.
  *
- *   <mn-standing link="/reading-level" fragment="words">
+ *   <mn-standing link="/words">
  *     <span>You know 515 words.</span>
  *     <span mn-standing-detail>Connect Anki to write stories from your own words.</span>
  *   </mn-standing>

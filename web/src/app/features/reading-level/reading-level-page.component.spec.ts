@@ -1,8 +1,6 @@
-import { chooseValue } from '../../../testing/select';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
-import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONTRACT_COLLECTION } from '../../../testing/anki-collection';
@@ -16,26 +14,16 @@ import {
   PACKAGE_PROVIDER_FACTORY,
 } from '../../application/shared/anki-tokens';
 import { GrammarProfileStore } from '../../application/grammar/grammar-profile.store';
-import { PackageImportStore } from '../../application/vocabulary/package-import.store';
-import { SnapshotHistoryStore } from '../../application/vocabulary/snapshot-history.store';
-import { AppSettingsStore } from '../../application/settings/app-settings.store';
-import { VocabularyRefreshStore } from '../../application/vocabulary/vocabulary-refresh.store';
-import { snapshotId } from '../../domain/shared/ids';
-import { ReadingLevelPageComponent } from './reading-level-page.component';
+import { GrammarPageComponent } from './reading-level-page.component';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReadingLevelPageComponent],
-  template: `<mn-reading-level-page />`,
+  imports: [GrammarPageComponent],
+  template: `<mn-grammar-page />`,
 })
 class HostComponent {}
 
-const PACKAGE_FILE = {
-  fileName: 'core-japanese.apkg',
-  bytes: () => Promise.resolve(new ArrayBuffer(0)),
-};
-
-describe('ReadingLevelPageComponent', () => {
+describe('GrammarPageComponent', () => {
   let provider: FakeAnkiProvider;
   let beds: ReadingLevelTestBed;
   let scrolled: string[];
@@ -63,16 +51,6 @@ describe('ReadingLevelPageComponent', () => {
   interface Rendered {
     readonly fixture: ComponentFixture<HostComponent>;
     readonly element: HTMLElement;
-    /**
-     * The page's own store instance.
-     *
-     * `VocabularyRefreshStore` is provided on the component so that leaving the
-     * page discards the refresh, which means the root injector holds a
-     * different one; driving that would leave the rendered page untouched.
-     */
-    readonly refresh: VocabularyRefreshStore;
-    /** The page's own import store, for the same reason. */
-    readonly packageImport: PackageImportStore;
   }
 
   async function settle(fixture: ComponentFixture<HostComponent>): Promise<void> {
@@ -84,13 +62,7 @@ describe('ReadingLevelPageComponent', () => {
   async function render(): Promise<Rendered> {
     const fixture = TestBed.createComponent(HostComponent);
     await settle(fixture);
-    const page = fixture.debugElement.query(By.directive(ReadingLevelPageComponent));
-    return {
-      fixture,
-      element: fixture.nativeElement as HTMLElement,
-      refresh: page.injector.get(VocabularyRefreshStore),
-      packageImport: page.injector.get(PackageImportStore),
-    };
+    return { fixture, element: fixture.nativeElement as HTMLElement };
   }
 
   function text(element: HTMLElement, selector: string): string {
@@ -127,19 +99,14 @@ describe('ReadingLevelPageComponent', () => {
     history.replaceState({}, '');
   });
 
-  it('states both facts under one heading', async () => {
+  it('states the reading level under its own heading', async () => {
     const { element } = await render();
 
-    expect(text(element, 'h1')).toBe('What you can read');
-    expect(
-      [...element.querySelectorAll('section.group > header > h2')].map((heading) =>
-        heading.textContent.trim(),
-      ),
-    ).toEqual(['Word sources', 'Grammar']);
-    expect(text(element, '[data-testid="words-standing"]')).toBe('No words yet');
+    expect(text(element, 'h1')).toBe('Grammar');
+    expect(element.querySelector('section.group')).toBeNull();
     expect(text(element, '[data-testid="grammar-standing"]')).toBe('Starter forms');
+    expect(element.querySelector('[data-testid="words-standing"]')).toBeNull();
   });
-
   /** The ladder is a page of its own; this one states the level and leads there. */
   it('leads to the ladder rather than showing it', async () => {
     const { element } = await render();
@@ -147,115 +114,9 @@ describe('ReadingLevelPageComponent', () => {
     expect(element.querySelector('mn-preset-picker')).toBeNull();
     expect(element.querySelector('mn-list-row')).not.toBeNull();
     expect(element.querySelector('[data-testid="reading-level-link"]')?.getAttribute('href')).toBe(
-      '/reading-level/level',
+      '/grammar/level',
     );
     expect(element.querySelector('mn-example .ja')?.getAttribute('lang')).toBe('ja');
-  });
-
-  it('labels every section for assistive technology', async () => {
-    const { element } = await render();
-
-    const sections = element.querySelectorAll('section.group');
-    expect(sections).toHaveLength(2);
-    for (const section of sections) {
-      const labelledBy = section.getAttribute('aria-labelledby');
-      expect(labelledBy).not.toBeNull();
-      expect(element.querySelector(`#${String(labelledBy)}`)).not.toBeNull();
-    }
-  });
-
-  /**
-   * Both drafts once rendered inside the section's action slot, where a form
-   * got the width a button asks for and grew the heading row around itself.
-   */
-  it('drafts a source in the section rather than beside its heading', async () => {
-    const { element, fixture } = await render();
-    const action = element.querySelector('.mn-settings-section__action');
-    if (action === null) throw new Error('the section has no action slot');
-
-    element.querySelector<HTMLButtonElement>('[data-testid="add-words"]')?.click();
-    await settle(fixture);
-    element.querySelector<HTMLButtonElement>('[data-testid="add-text-source"]')?.click();
-    await settle(fixture);
-
-    const editor = element.querySelector('[data-testid="text-source-editor"]');
-    expect(editor).not.toBeNull();
-    expect(action.contains(editor)).toBe(false);
-
-    element.querySelector<HTMLButtonElement>('[data-testid="choose-anki"]')?.click();
-    await vi.waitFor(async () => {
-      await settle(fixture);
-      expect(element.querySelector('mn-anki-mapping-draft mn-card')).not.toBeNull();
-    });
-    expect(action.contains(element.querySelector('mn-anki-mapping-draft'))).toBe(false);
-  });
-
-  it('counts the words in the learner-facing noun once a source has been read', async () => {
-    const { element, fixture } = await render();
-
-    element.querySelector<HTMLButtonElement>('[data-testid="add-words"]')?.click();
-    await settle(fixture);
-    element.querySelector<HTMLButtonElement>('[data-testid="choose-anki"]')?.click();
-    await settle(fixture);
-    await vi.waitFor(async () => {
-      await settle(fixture);
-      expect(element.querySelectorAll('mn-anki-mapping-draft [role="combobox"]')).toHaveLength(4);
-    });
-    const selects = element.querySelectorAll<HTMLElement>(
-      'mn-anki-mapping-draft [role="combobox"]',
-    );
-    for (const [index, value] of ['Core Japanese', 'Basic', 'Expression', 'Meaning'].entries()) {
-      chooseValue(selects[index]!, value);
-      await settle(fixture);
-    }
-    [...element.querySelectorAll<HTMLButtonElement>('mn-anki-mapping-draft button')]
-      .find((button) => button.textContent.includes('Preview vocabulary'))
-      ?.click();
-    await vi.waitFor(async () => {
-      await settle(fixture);
-      expect(element.textContent).toContain('Confirm words');
-    });
-    [...element.querySelectorAll<HTMLButtonElement>('mn-anki-mapping-draft button')]
-      .find((button) => button.textContent.includes('Confirm words'))
-      ?.click();
-
-    await vi.waitFor(async () => {
-      await settle(fixture);
-      expect(text(element, '[data-testid="words-standing"]')).toMatch(/\bwords?$/);
-    });
-    const rows = element.querySelectorAll('[data-testid="source-row"]');
-    expect(rows).toHaveLength(1);
-    expect(rows[0]!.textContent).toContain('On this computer');
-  });
-
-  it('says how many words a story needs while there are too few', async () => {
-    const { element, fixture } = await render();
-    beds.vocabulary.snapshots.push({
-      id: snapshotId('snapshot-1'),
-      revision: 'revision-1',
-      createdAt: 1_700_000_000_000,
-      status: 'complete',
-      uniqueEntryCount: 12,
-      sourceIds: [],
-      sourceKinds: ['anki-connect'],
-      analyzerVersion: '1',
-      normalizationVersion: '1',
-      stats: {
-        sourcesQueried: 1,
-        entriesRead: 12,
-        nonEmptyValues: 12,
-        rejectedEmptyValues: 0,
-        duplicateOccurrences: 0,
-        uniqueExpressions: 12,
-        sourceWarnings: [],
-      },
-    });
-    beds.vocabulary.activeSnapshotId = snapshotId('snapshot-1');
-    await TestBed.inject(SnapshotHistoryStore).load();
-    await settle(fixture);
-
-    expect(text(element, '[data-testid="words-standing"]')).toBe('12 words');
-    expect(element.querySelector('#words')?.textContent).toContain('at least 50 words');
   });
 
   it('names the current value of every closed disclosure', async () => {
@@ -263,16 +124,6 @@ describe('ReadingLevelPageComponent', () => {
 
     expect(disclosure(element, 'forms').open).toBe(false);
     expect(text(element, '#forms .mn-settings-row__details')).toBe('2 categories');
-  });
-
-  it('scrolls a section fragment to the part of the page it named', async () => {
-    arriveAt('grammar');
-    const { fixture } = await render();
-    await settle(fixture);
-
-    await vi.waitFor(() => {
-      expect(scrolled).toContain('grammar');
-    });
   });
 
   it('opens the disclosure a fragment points inside before scrolling to it', async () => {
@@ -295,36 +146,6 @@ describe('ReadingLevelPageComponent', () => {
     expect(element.textContent).not.toContain('Register');
   });
 
-  /**
-   * The failure belongs where the learner is standing when it happens: in the
-   * sheet they just pressed Anki in, with the code and the way to look it up.
-   */
-  it('reports a failed connection in the sheet, with its code and a way to look it up', async () => {
-    TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, {
-      useValue: () =>
-        new FakeAnkiProvider(CONTRACT_COLLECTION, {
-          probeError: { domain: 'anki', code: 'not-running', message: 'nothing answered' },
-        }),
-    });
-    const { element, fixture } = await render();
-
-    element.querySelector<HTMLButtonElement>('[data-testid="add-words"]')?.click();
-    await settle(fixture);
-    element.querySelector<HTMLButtonElement>('[data-testid="choose-anki"]')?.click();
-    await vi.waitFor(async () => {
-      await settle(fixture);
-      expect(element.querySelector('[data-testid="anki-connect-failed"]')).not.toBeNull();
-    });
-
-    const alert = element.querySelector('[data-testid="anki-connect-failed"]');
-    expect(alert?.getAttribute('role')).toBe('alert');
-    expect(alert?.textContent).toContain('Anki is not answering');
-    expect(alert?.querySelector('details')?.open).toBe(false);
-    expect(alert?.textContent).toContain('AnkiConnect add-on');
-    expect(alert?.textContent).toContain('anki/not-running');
-    expect(alert?.querySelector('a[href$="#/help/troubleshooting"]')).not.toBeNull();
-  });
-
   it('keeps the language failure surface and its retry', async () => {
     const { element, fixture } = await render();
     beds.languageStatus.set('failed');
@@ -335,67 +156,6 @@ describe('ReadingLevelPageComponent', () => {
     expect(failed?.textContent).toContain('level is unchanged');
     expect(element.querySelector('mn-preset-picker')).toBeNull();
     expect(failed?.querySelector('button')?.textContent.trim()).toBe('Try again');
-  });
-
-  it('asks what to import when a package leaves the note type open', async () => {
-    const { element, fixture, packageImport } = await render();
-
-    await packageImport.start(PACKAGE_FILE);
-    await settle(fixture);
-
-    expect(element.querySelector('[data-testid="package-import-selection"]')).not.toBeNull();
-    expect(text(element, '[data-testid="words-standing"]')).toBe('No words yet');
-
-    element.querySelector<HTMLButtonElement>('[data-testid="package-import-confirm"]')?.click();
-    await vi.waitFor(async () => {
-      await settle(fixture);
-      expect(text(element, '[data-testid="package-import-complete"]')).toContain('Core Japanese');
-    });
-    expect(text(element, '[data-testid="words-standing"]')).toMatch(/\bwords?$/);
-  });
-
-  /**
-   * The port is only ever touched when a connection fails, so that is the only
-   * place it is offered — behind a disclosure, beside the retry it changes.
-   */
-  it('offers the port only after a failure, and saves it on the retry', async () => {
-    TestBed.overrideProvider(ANKI_PROVIDER_FACTORY, {
-      useValue: () =>
-        new FakeAnkiProvider(CONTRACT_COLLECTION, {
-          probeError: { domain: 'anki', code: 'not-running', message: 'nothing answered' },
-        }),
-    });
-    const { element, fixture } = await render();
-    const settings = TestBed.inject(AppSettingsStore);
-
-    element.querySelector<HTMLButtonElement>('[data-testid="add-words"]')?.click();
-    await settle(fixture);
-    expect(element.querySelector('[data-testid="anki-connect-port"]')).toBeNull();
-
-    element.querySelector<HTMLButtonElement>('[data-testid="choose-anki"]')?.click();
-    await vi.waitFor(async () => {
-      await settle(fixture);
-      expect(element.querySelector('[data-testid="anki-connect-port"]')).not.toBeNull();
-    });
-
-    const port = element.querySelector<HTMLInputElement>('[data-testid="anki-connect-port"]');
-    if (port === null) throw new Error('missing AnkiConnect port input');
-    port.value = '9999';
-    port.dispatchEvent(new Event('input'));
-    element.querySelector<HTMLButtonElement>('[data-testid="anki-retry"]')?.click();
-
-    await vi.waitFor(() => {
-      expect(settings.ankiConnectPort()).toBe(9_999);
-    });
-  });
-
-  it('announces politely rather than interrupting', async () => {
-    const { element } = await render();
-    const status = element.querySelector('[data-testid="vocabulary-status"]');
-
-    expect(status?.getAttribute('role')).toBe('status');
-    expect(status?.getAttribute('aria-live')).toBe('polite');
-    expect(status?.classList.contains('mn-visually-hidden')).toBe(true);
   });
 
   it('confirms a grammar change without asking for an acknowledgement', async () => {
