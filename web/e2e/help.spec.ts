@@ -86,7 +86,7 @@ test.describe('Help and utility bar', () => {
   });
 
   test('links to each flow and names every icon-only destination @smoke', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'What Monosai does' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Get started' }).first()).toBeVisible();
     const github = page.getByRole('link', { name: 'GitHub (opens in a new tab)' });
     await expect(github).toHaveAttribute('href', 'https://github.com/tobiaslrn/monosai');
     await expect(github).toHaveAttribute('target', '_blank');
@@ -94,8 +94,8 @@ test.describe('Help and utility bar', () => {
     await page.getByTestId('help-topic').first().click();
     await expect(page).toHaveURL(/#\/help\/get-started$/);
     await expect(page.getByRole('heading', { name: 'Get started', level: 1 })).toBeVisible();
-    await page.getByRole('link', { name: 'Paste', exact: true }).click();
-    await expect(page).toHaveURL(/#\/add$/);
+    await page.getByRole('link', { name: 'What you can read' }).first().click();
+    await expect(page).toHaveURL(/#\/reading-level#words$/);
 
     await page.goto('./#/library');
     const utilities = page.getByRole('navigation', { name: 'Utilities' });

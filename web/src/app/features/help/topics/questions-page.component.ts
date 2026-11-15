@@ -10,14 +10,28 @@ import { HelpArticleComponent } from '../help-article.component';
   imports: [RouterLink, HelpArticleComponent],
   template: `
     <mn-help-article slug="questions">
-      <p mn-lead>Short answers to what learners ask most, with links to the full explanation.</p>
+      <p mn-lead>
+        Here are short answers to the questions learners ask most, each with a link to the full
+        explanation.
+      </p>
+
+      <section aria-labelledby="q-who">
+        <h2 id="q-who">Who is Monosai for?</h2>
+        <p>
+          Monosai is for your first months of reading, while most real Japanese is still full of
+          words you don't know. Once you can read a page written for native speakers with a
+          dictionary, move on to books, manga and articles.
+        </p>
+      </section>
 
       <section aria-labelledby="q-cost">
         <h2 id="q-cost">Does Monosai cost anything?</h2>
         <p>
-          Monosai is free. Stories, translations, grammar notes and audio use your own OpenRouter
-          credit, usually a fraction of a cent to a few cents per story.
-          <a routerLink="/help/write">Write a story</a> lists what each request is for.
+          No. Monosai is free, but its AI features use your own OpenRouter credit. With the
+          recommended models, a story with its translation and notes costs from a fraction of a cent
+          to a few cents, and its audio from well under a cent to about 20 cents.
+          <a routerLink="/help/write" fragment="write-cost">Write a story</a> lists what each
+          request is for.
         </p>
       </section>
 
@@ -33,16 +47,16 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="q-anki">
         <h2 id="q-anki">Do I have to use Anki?</h2>
         <p>
-          No. Anki is the easiest way to keep your words up to date, but you can type or paste a
-          list of words instead. <a routerLink="/help/your-words">Add your words</a> explains both.
+          No. With Anki, your words stay up to date as you review, but you can enter a list of words
+          instead. <a routerLink="/help/your-words">Add your words</a> explains both.
         </p>
       </section>
 
       <section aria-labelledby="q-iphone">
         <h2 id="q-iphone">Does Monosai work on iPhone and iPad?</h2>
         <p>
-          Monosai runs in Safari on iPhone and iPad, but it isn't tested there yet. To add your
-          words, export a package from AnkiMobile and import it, or use a word list. Monosai Bridge
+          Monosai runs in Safari on iPhone and iPad, but it isn't tested there. To add your words,
+          export an Anki package from AnkiMobile and import it, or use a word list. Monosai Bridge
           is for Android only.
         </p>
       </section>
@@ -55,8 +69,8 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="q-private">
         <h2 id="q-private">Is my data private?</h2>
         <p>
-          Your stories, words and settings stay in this browser, and Monosai collects no analytics.
-          AI requests go to OpenRouter and contain only what each task needs.
+          Yes. Your stories, words and settings stay in this browser, and Monosai collects no
+          analytics. AI requests go to OpenRouter and contain only what each task needs.
           <a routerLink="/help/privacy">Privacy and your data</a> lists exactly what is sent.
         </p>
       </section>
@@ -64,25 +78,26 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="q-devices">
         <h2 id="q-devices">Can I use my stories on another device?</h2>
         <p>
-          No. There's no account or sync, so each browser keeps its own stories and settings. Your
-          Anki words can be added on each device.
+          No. There's no account or sync, so each browser keeps its own stories and settings. You
+          can add your Anki words on each device.
         </p>
       </section>
 
       <section aria-labelledby="q-minimum">
         <h2 id="q-minimum">How many words do I need?</h2>
         <p>
-          At least {{ minimumWords }} to write a story, and more for harder levels, as
-          <a routerLink="/help/reading-level">Set your reading level</a> shows. Pasted text needs
-          none.
+          You need at least {{ minimumWords }} known words to write a story, and more for harder
+          levels, as <a routerLink="/help/reading-level">Set your reading level</a> shows. Pasted
+          text needs none.
         </p>
       </section>
 
       <section aria-labelledby="q-short">
         <h2 id="q-short">Why are my stories short and plain?</h2>
         <p>
-          Usually because you know few words yet. With fewer than a few hundred, there's little to
-          build a story from. Keep reviewing in Anki, and your stories grow with you.
+          Stories are short and plain while you know few words. With fewer than a few hundred,
+          there's little to build a story from. Keep reviewing in Anki, and your stories grow with
+          you.
         </p>
       </section>
 
@@ -90,7 +105,8 @@ import { HelpArticleComponent } from '../help-article.component';
         <h2 id="q-unknown">Why does a story contain words I don't know?</h2>
         <p>
           Monosai replaces the unknown words it can and underlines the rest. A few are normal.
-          <a routerLink="/help/write">Write a story</a> explains what helps when there are many.
+          <a routerLink="/help/write" fragment="write-unknown">Write a story</a> explains what helps
+          when there are many.
         </p>
       </section>
 
@@ -104,14 +120,14 @@ import { HelpArticleComponent } from '../help-article.component';
 
       <section aria-labelledby="q-edit">
         <h2 id="q-edit">Can I edit a story after it's saved?</h2>
-        <p>You can rename or delete a story, but you can't change its text.</p>
+        <p>No. You can rename or delete a story, but you can't change its text.</p>
       </section>
 
       <section aria-labelledby="q-audio">
         <h2 id="q-audio">Why does the audio say a word oddly?</h2>
         <p>
-          Cheaper speech models read each word on its own and sometimes pick the wrong reading. Tap
-          or click the word to check it. <a routerLink="/help/voice">Set up audio</a> explains the
+          Cheaper speech models read each word on its own and sometimes pick the wrong reading.
+          Select the word to check it. <a routerLink="/help/voice">Set up audio</a> explains the
           difference between models.
         </p>
       </section>
@@ -134,14 +150,6 @@ import { HelpArticleComponent } from '../help-article.component';
           Open a GitHub issue with the diagnostics from Settings, as
           <a routerLink="/help/troubleshooting" fragment="trouble-report">Fix a problem</a>
           describes. The diagnostics never contain your key or your text.
-        </p>
-      </section>
-
-      <section aria-labelledby="q-outgrow">
-        <h2 id="q-outgrow">When should I move on from Monosai?</h2>
-        <p>
-          Once you can read a page written for native speakers with a dictionary, move on to books,
-          manga and articles. Monosai is built for the months before that.
         </p>
       </section>
     </mn-help-article>

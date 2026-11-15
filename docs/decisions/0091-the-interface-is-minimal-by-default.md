@@ -4,7 +4,8 @@ Date: 2026-11-12
 Status: Accepted. Supersedes the copy parts of [0051](0051-non-reader-utilities-and-first-use-help.md)
 and [0079](0079-help-is-a-hub-of-topics.md): the first-run subline, the privacy foot, the
 setup-free way round as a required element, and the hub's lead sentence.
-Help prose is governed by [0092](0092-help-is-written-as-a-guide.md) instead.
+Amended by [0092](0092-help-is-written-as-a-guide.md): its copy rules cover interface strings
+only, and Help no longer opens on its topic shelf.
 
 ## Context
 

@@ -1360,15 +1360,16 @@ Four exceptions:
 - **Help is a prose surface, and it is a guide rather than a page.** Its job is
   explanation: static, local English guidance in one readable column, with
   section headings, short paragraphs, and links close to the actions they
-  explain. `/help` carries what the application is for, what it is not for, and a
+  explain. `/help` carries a short lead on what the application is for and a
   shelf of topics; each topic is its own route below it, wearing the shared page
   frame with Back to Help and ending in its neighbours, as one pagination (`mn-pager`):
   a Previous and a Next card with the same anatomy, an eyebrow over the title and the
   arrow on the outer side, side by side when they fit and stacked when they do not.
-  The hub opens with the shelf of topics, since a learner opens
-  Help to find one, and the note follows. The prose is written as R55 and
+  The hub opens with a lead of one or two sentences, what Monosai does and where a
+  newcomer starts, so a stranger reads what the application is before choosing a topic;
+  the shelf follows straight after, in view on a phone. The prose is written as R55 and
   [the help writing guide](help-writing.md) say: whole sentences addressed to "you", controls
-  in bold as the screen spells them, a lead sentence on every topic, and a failure looked up
+  in bold as the screen spells them, a lead on every topic, and a failure looked up
   by the heading the screen shows. The measure and the prose
   elements live in `mn-prose`, so a topic page writes words and nothing else.
   Two options being compared are a card each, never a table: the figures are few,
@@ -1578,8 +1579,8 @@ section, no list of further reading, and nothing in a picker row that is working
 a link on a screen where nothing is wrong is a symptom. The exceptions are
 narrow and stated — a claim the reader is entitled to check, such as an app
 saying it only reads a collection, may carry the link that lets them check it.
-Where a failure prints a technical code, the code carries the link that looks it
-up. Every one of these opens in a new tab and says so.
+A failure is looked up in Help's Fix a problem by its heading; its code reaches a
+report through Copy diagnostics. Every one of these opens in a new tab and says so.
 
 ## 10. Accessibility floor
 

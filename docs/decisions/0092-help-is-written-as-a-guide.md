@@ -2,8 +2,8 @@
 
 Date: 2026-11-14
 Status: Accepted. Amends [0079](0079-help-is-a-hub-of-topics.md) (the topics and the error
-codes topic) and narrows [0091](0091-the-interface-is-minimal-by-default.md) to interface
-strings.
+codes topic) and [0091](0091-the-interface-is-minimal-by-default.md) (Help no longer opens on
+its topic shelf), and narrows 0091's copy rules to interface strings.
 
 ## Context
 
@@ -29,20 +29,27 @@ A review of the guide as a first-time learner would read it also found gaps and 
 ## Decision
 
 - **Help has its own writing guide**, [`docs/design/help-writing.md`](../design/help-writing.md),
-  and R55 points to it. Help is written in whole sentences addressed to "you", with
-  contractions, a lead sentence on every topic, task or noun-phrase titles, controls in bold
+  and R55 points to it. The owner asked for this change to the rules, as R5 requires. Help is written in whole sentences addressed to "you", with
+  contractions, a short lead on every topic, task or noun-phrase titles, controls in bold
   exactly as the screen spells them, paths with ">", one term per idea, and numbered steps.
-  R48 to R54 and their budgets govern interface strings only, unchanged.
+  R48 to R54 and their budgets govern interface strings only, unchanged; the form rules of
+  R54 apply to Help too.
 - **The guide has eleven topics**, in the order a first-time learner needs them: Get started,
   Add your words, Set your reading level, Write a story, Read a story, Choose a text model,
   Set up audio, Install and use offline, Privacy and your data, Common questions, and Fix a
-  problem. Privacy leaves the install topic because "is my key safe?" is asked before
-  "can I install it?".
+  problem. Privacy gets a topic of its own because "is my key safe?" is not an installation
+  question.
 - **Fix a problem is looked up by what the screen says.** Each entry is the heading the
   failure shows, its cause and what to do, with the code beside it for a bug report. The
   headings are read from the same tables the failure screens use (`ai-error-copy.ts`,
   `anki-error-copy.ts`), so the two cannot drift apart. Failure screens stay a title and one
-  action, as 0091 says; the codes still reach a report through Copy diagnostics.
+  action, as 0091 says; the codes still reach a report through Copy diagnostics. A model
+  test that fails in Settings shows the same shared heading after "Test failed", rather than
+  the provider's own wording, so it can be looked up too.
+- **The hub opens with a short lead**: what Monosai does and where a newcomer starts, in one
+  or two sentences, with the topic shelf straight below. Someone who opens Help for the first
+  time wants to know what Monosai is before choosing a topic, and on a phone the shelf stays
+  in view. Who Monosai is for moves to Common questions.
 - **A fact lives on one page.** Common questions answers in a sentence or two and links to
   the topic; it no longer keeps its own list of error codes.
 - **Retired addresses redirect**: `/help/first-steps` to `/help/get-started` and

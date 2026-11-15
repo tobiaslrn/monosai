@@ -25,10 +25,9 @@ import { HelpArticleComponent } from '../help-article.component';
         <ol>
           <li>Open <a routerLink="/settings/voice">Settings > Voice</a>.</li>
           <li>Select <strong>Model</strong>, and choose a speech model.</li>
-          <li>
-            Choose a <strong>Voice</strong> and a <strong>Pace</strong>. If the model offers a
-            <strong>Speaking style</strong>, choose one too.
-          </li>
+          <li>Choose a <strong>Voice</strong>, or enter its name if the model has no list.</li>
+          <li>Choose a <strong>Pace</strong>.</li>
+          <li>Optional: if <strong>Speaking style</strong> appears, choose one.</li>
           <li>Select <strong>Play sample</strong>.</li>
         </ol>
         <p>
@@ -59,7 +58,10 @@ import { HelpArticleComponent } from '../help-article.component';
                 { label: 'A 50-sentence story', value: 'Well under a cent' },
               ]"
             />
-            <p>A simple speech model, so cheap that cost never matters. It misreads some words.</p>
+            <p>
+              Kokoro is a simple speech model, so cheap that cost never matters. It misreads some
+              words.
+            </p>
           </mn-card>
           <mn-card heading="Gemini 3.1 Flash TTS Preview">
             <p><code>google/gemini-3.1-flash-tts-preview</code></p>
@@ -73,8 +75,8 @@ import { HelpArticleComponent } from '../help-article.component';
               ]"
             />
             <p>
-              An instruction model with natural pauses and intonation, which reads kanji in context.
-              Daily use costs a few dollars a month.
+              Gemini TTS is an instruction model with natural pauses and intonation, and it reads
+              kanji in context. Daily use costs a few dollars a month.
             </p>
           </mn-card>
         </mn-stack>
@@ -82,20 +84,23 @@ import { HelpArticleComponent } from '../help-article.component';
       </section>
 
       <section aria-labelledby="voice-readings">
-        <h2 id="voice-readings">When a word is read wrong</h2>
+        <h2 id="voice-readings">If a word sounds wrong</h2>
         <p>
           Simple speech models read each word from a fixed dictionary, so
           <span lang="ja">私</span> is always <span lang="ja">わたくし</span>, even where
           <span lang="ja">わたし</span> is meant. Instruction models get readings like this right
           far more often.
         </p>
-        <p>
-          Don't learn readings from the audio alone. Tap or click the word to check its reading.
-        </p>
+        <p>Don't learn readings from the audio alone. Select the word to check its reading.</p>
       </section>
 
       <section aria-labelledby="voice-change">
-        <h2 id="voice-change">Change the voice later</h2>
+        <h2 id="voice-change">Change the voice</h2>
+        <p>
+          After you change the model, <strong>Voice</strong>, <strong>Pace</strong> or
+          <strong>Speaking style</strong>, select <strong>Play sample</strong> again. New audio
+          stays off until the sample plays.
+        </p>
         <p>
           Audio you've already generated keeps the voice it was made with. To hear a story in the
           new voice, open <strong>Story options</strong>, select <strong>Delete audio…</strong>, and
@@ -106,9 +111,10 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="voice-cost">
         <h2 id="voice-cost">What audio costs</h2>
         <p>
-          Generating audio is a request to OpenRouter for each sentence. Monosai saves the audio on
-          your device, so replaying it is free and works offline, and changing the playback speed
-          costs nothing.
+          Generating audio sends a request to OpenRouter for each sentence, and each
+          <strong>Play sample</strong> is a small request too. Monosai saves the audio on your
+          device, so replaying it is free and works offline, and changing the playback speed costs
+          nothing.
         </p>
       </section>
     </mn-help-article>

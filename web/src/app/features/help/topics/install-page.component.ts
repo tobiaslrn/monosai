@@ -19,16 +19,24 @@ import { HelpArticleComponent } from '../help-article.component';
           An installed Monosai opens in its own window, without the browser's address bar. On
           Android, it can also receive an Anki package that you share from AnkiDroid.
         </p>
-        <h3>On a computer or Android phone</h3>
+        <h3>On a computer</h3>
         <p>
-          In Chrome, select the install icon in the address bar. Or open
-          <a routerLink="/settings">Settings</a> and select <strong>Install Monosai</strong> under
-          <strong>About</strong>. That row appears only while Chrome offers to install Monosai.
+          In Chrome, select the install icon in the address bar. Or, in
+          <a routerLink="/settings">Settings</a>, under <strong>About</strong>, select
+          <strong>Install Monosai</strong>. That row appears only while Chrome offers to install
+          Monosai.
+        </p>
+        <h3>On an Android phone</h3>
+        <p>
+          In Chrome, open the menu and select <strong>Install app</strong> or
+          <strong>Add to home screen</strong>. You can also select <strong>Install Monosai</strong>
+          in Settings, as on a computer.
         </p>
         <h3>On iPhone or iPad</h3>
         <p>
-          In Safari, tap the Share button, then <strong>Add to Home Screen</strong>. Monosai isn't
-          tested on iPhone and iPad yet, so some things may not work as described here.
+          In Safari, tap the <strong>Share</strong> button, then
+          <strong>Add to Home Screen</strong>. Monosai isn't tested on iPhone and iPad, so some
+          things may not work as this guide describes.
         </p>
       </section>
 
@@ -39,7 +47,7 @@ import { HelpArticleComponent } from '../help-article.component';
           that, you can do all of this without a connection:
         </p>
         <ul>
-          <li>Read your stories and pasted texts.</li>
+          <li>Read your stories.</li>
           <li>Look up words.</li>
           <li>Play audio you've already generated.</li>
           <li>Paste new Japanese text.</li>
@@ -53,18 +61,18 @@ import { HelpArticleComponent } from '../help-article.component';
       </section>
 
       <section aria-labelledby="install-updates">
-        <h2 id="install-updates">Get updates</h2>
+        <h2 id="install-updates">Update Monosai</h2>
         <p>
           Monosai checks for updates on its own. When one is ready, a banner says
-          <strong>Update ready</strong>: select <strong>Reload to update</strong>, or
-          <strong>Later</strong> to finish what you're doing first. To check straight away, open
-          <a routerLink="/settings">Settings</a> and select <strong>Check for updates</strong> under
-          <strong>About</strong>.
+          <strong>Update ready</strong>. Select <strong>Reload to update</strong>, or
+          <strong>Later</strong> to finish what you're doing first. To check straight away, in
+          <a routerLink="/settings">Settings</a>, under <strong>About</strong>, select
+          <strong>Check for updates</strong>.
         </p>
       </section>
 
       <section aria-labelledby="install-browsers">
-        <h2 id="install-browsers">Supported browsers</h2>
+        <h2 id="install-browsers">Which browsers work</h2>
         <p>
           Monosai is tested in Chrome on Windows and on Android 12 or later. Other browsers may
           work, but they aren't tested.

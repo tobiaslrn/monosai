@@ -93,7 +93,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
   {
     slug: 'questions',
     title: 'Common questions',
-    summary: 'Short answers',
+    summary: 'Cost, iPhone, privacy, bugs',
     icon: 'help',
   },
   {

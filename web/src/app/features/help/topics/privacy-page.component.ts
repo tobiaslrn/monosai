@@ -32,9 +32,15 @@ import { HelpArticleComponent } from '../help-article.component';
           </p>
         </mn-notice>
         <p>
-          When a device runs low on space, the browser may clear site data on its own. To stop that,
-          open <a routerLink="/settings">Settings</a> and select
-          <strong>Protect storage</strong> under <strong>Storage</strong>.
+          When a device runs low on space, the browser may clear site data on its own. To ask the
+          browser to keep Monosai's data, in <a routerLink="/settings">Settings</a>, under
+          <strong>Storage</strong>, select <strong>Protect storage</strong>. If the row says
+          <strong>Storage protection</strong> instead, it shows what the browser decided.
+        </p>
+        <p>
+          On iPhone and iPad, Safari may delete a website's data after a week in which you don't
+          open it. Add Monosai to your Home Screen, as
+          <a routerLink="/help/install">Install and use offline</a> describes, to keep your data.
         </p>
       </section>
 
@@ -45,17 +51,18 @@ import { HelpArticleComponent } from '../help-article.component';
           encryption, so use Monosai on a device and browser profile you trust.
         </p>
         <p>
-          On openrouter.ai, you can give the key a credit limit, which caps what it can ever spend.
-          To remove the key from Monosai, open <a routerLink="/settings">Settings</a>, select
-          <strong>OpenRouter key</strong>, then <strong>Delete key</strong>.
+          On <code>openrouter.ai</code>, you can give the key a credit limit, which caps what it can
+          ever spend. To remove the key from Monosai, open <a routerLink="/settings">Settings</a>,
+          select <strong>OpenRouter key</strong>, then select <strong>Delete key</strong> and
+          confirm.
         </p>
       </section>
 
       <section aria-labelledby="privacy-sent">
         <h2 id="privacy-sent">What is sent to OpenRouter</h2>
         <p>
-          Monosai contacts OpenRouter only when you use an AI feature or test a model. Each request
-          contains only what that task needs:
+          Monosai contacts OpenRouter only when you use an AI feature, test a model or browse the
+          list of models. Each request contains only what that task needs:
         </p>
         <ul>
           <li>
@@ -82,15 +89,17 @@ import { HelpArticleComponent } from '../help-article.component';
         <h2 id="privacy-delete">Delete your data</h2>
         <ul>
           <li>
-            To delete one story, open its menu in the Library and choose <strong>Delete</strong>.
+            To delete one story, open its menu in the Library and select <strong>Delete</strong>.
           </li>
           <li>
-            To free space, open <a routerLink="/settings">Settings</a> and select
-            <strong>Delete saved audio</strong> under <strong>Storage</strong>.
+            To free space, in <a routerLink="/settings">Settings</a>, under
+            <strong>Storage</strong>, select <strong>Delete saved audio</strong>.
           </li>
           <li>
             To remove everything, select <strong>Delete all data</strong> in the same place. Monosai
-            asks twice, deletes your stories, words, settings, key and audio, and then reloads.
+            asks twice, deletes your stories, words, settings, key and audio, and then reloads. This
+            also deletes the downloaded dictionary, so Monosai needs a connection the next time it
+            opens.
           </li>
         </ul>
         <p>Deleting can't be undone.</p>

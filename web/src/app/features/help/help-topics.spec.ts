@@ -106,7 +106,7 @@ describe('help topic content', () => {
 
   it('warns that a dictionary-driven speech model fixes a kanji to one reading', () => {
     const page = text(VoicePageComponent);
-    expect(page).toContain('When a word is read wrong');
+    expect(page).toContain('If a word sounds wrong');
     expect(page).toContain('私');
     expect(page).toContain('わたくし');
   });
@@ -115,7 +115,7 @@ describe('help topic content', () => {
     const page = text(YourWordsPageComponent);
     expect(page).toContain('AnkiMobile on iPhone or iPad');
     expect(page).toContain('Monosai Bridge');
-    expect(page).toContain('read and write access');
+    expect(page).toContain('read and write AnkiDroid');
     expect(page).toContain('webCorsOriginList');
   });
 
@@ -135,7 +135,7 @@ describe('help topic content', () => {
     for (const level of ['Starter forms', 'Basic forms', 'Everyday forms', 'Literary patterns']) {
       expect(page).toContain(level);
     }
-    expect(page).toContain('Literary patterns: 1,400 words');
+    expect(page).toContain('Literary patterns need about 1,400 words');
   });
 
   it('says translation and notes are prepared unless turned off, and each costs extra', () => {

@@ -6,6 +6,7 @@ import { AI_ERROR_COPY } from '../../../shared-ui/ai-error/ai-error-copy';
 import { ANKI_ERROR_COPY } from '../../vocabulary/anki-error-copy';
 import { TroubleshootingPageComponent } from './troubleshooting-page.component';
 import { SILENT_PROBLEMS, TROUBLESHOOTING_GROUPS } from './troubleshooting';
+import { textParts } from './troubleshooting-page.component';
 
 function group(id: string) {
   const found = TROUBLESHOOTING_GROUPS.find((candidate) => candidate.id === id);
@@ -44,7 +45,7 @@ describe('troubleshooting', () => {
     ]) {
       for (const entry of entries) {
         expect(entry.text, entry.code ?? entry.seen.join()).toMatch(/[.!?]$/u);
-        expect(entry.text.split('**').length % 2, entry.text).toBe(1);
+        expect(() => textParts(entry.text), entry.text).not.toThrow();
       }
     }
   });
@@ -60,6 +61,24 @@ describe('troubleshooting', () => {
     expect(bold).toContain('Play sample');
     expect(code).toContain('ai/credit-exhausted');
     expect(code).toContain('anki/origin-not-allowed');
-    expect(element.textContent).not.toContain('**');
+    expect(code).toContain('2055492159');
+    expect(element.querySelector('a[href="/help/your-words"]')).not.toBeNull();
+    expect(element.textContent).not.toMatch(/\*\*|`/u);
+  });
+
+  it('refuses a mark left open rather than styling the rest of the text', () => {
+    expect(() => textParts('Select **Start.')).toThrow();
+    expect(textParts('Select **Start**, then `x`.').map((part) => part.kind)).toEqual([
+      'text',
+      'strong',
+      'text',
+      'code',
+      'text',
+    ]);
+  });
+
+  it('lists the failures a learner meets first ahead of the rare ones', () => {
+    const ai = TROUBLESHOOTING_GROUPS[0]?.entries.map((entry) => entry.code) ?? [];
+    expect(ai.slice(0, 2)).toEqual(['ai/credit-exhausted', 'ai/authentication']);
   });
 });
