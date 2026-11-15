@@ -73,7 +73,7 @@ const AIDS: readonly AidOption[] = [
         >
           {{ notice }}
           <a mn-status-line-action routerLink="/reading-level" fragment="words"
-            >What you can read</a
+            >Words and grammar</a
           >
         </mn-status-line>
       }

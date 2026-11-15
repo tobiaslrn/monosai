@@ -40,7 +40,8 @@ let nextRowId = 0;
  * native button, pressed with `(pressed)`, such as a choice in a sheet.
  *
  * The end block is pinned to the inline end and centred on the title block.
- * When the row is too narrow for both, it moves below the title whole. A link
+ * When the row is too narrow for both, it moves below the title whole, unless
+ * it is one glyph button, which stays at the end on the chevrons' line. A link
  * row is one native link named by its title and described by its meta; the
  * menu sits outside that link, so its button is never inside it.
  *
@@ -228,13 +229,25 @@ let nextRowId = 0;
       display: none;
     }
 
-    /* Too narrow for both: the end block takes a line of its own, under the title. */
+    /*
+     * A lone glyph button stands where a chevron would: its glyph, not its
+     * touch target, on the trailing edge, so it lines up with the rows above.
+     */
+    mn-row .mn-row__end:has(> .mn-icon-button:only-child) {
+      margin-inline-end: calc((var(--icon-control) - var(--touch-target)) / 2);
+    }
+
+    /*
+     * Too narrow for both: the end block takes a line of its own, under the
+     * title. A lone glyph button is as narrow as a chevron and fits beside any
+     * title, so it keeps its place at the end.
+     */
     @container (max-width: 22rem) {
-      mn-row > .mn-row__main {
+      mn-row > .mn-row__main:not(:has(> .mn-row__end > .mn-icon-button:only-child)) {
         flex-wrap: wrap;
       }
 
-      mn-row:not(.mn-row--link) .mn-row__end {
+      mn-row:not(.mn-row--link) .mn-row__end:not(:has(> .mn-icon-button:only-child)) {
         flex-basis: 100%;
         justify-content: flex-start;
         margin-inline-start: 0;

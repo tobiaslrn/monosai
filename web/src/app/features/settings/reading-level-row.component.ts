@@ -25,7 +25,7 @@ import { vocabularyCountLabel } from '../../shared-ui/vocabulary-standing/vocabu
   imports: [SettingsRowComponent],
   template: `
     <mn-settings-row
-      label="What you can read"
+      label="Words and grammar"
       end="nav"
       link="/reading-level"
       testId="settings-reading-level"

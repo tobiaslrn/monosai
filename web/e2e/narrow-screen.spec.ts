@@ -258,7 +258,7 @@ for (const { width, zoom } of SCREENS) {
       await expectWhole(page, zoom);
     });
 
-    test('keeps What you can read whole @smoke @mobile', async ({ page }) => {
+    test('keeps Words and grammar whole @smoke @mobile', async ({ page }) => {
       await openVocabulary(page);
       await expect(page.getByTestId('reading-level-link')).toBeVisible();
       await expect(page.getByTestId('grammar-standing')).toBeVisible();

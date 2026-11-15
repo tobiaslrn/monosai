@@ -303,7 +303,7 @@ export const TROUBLESHOOTING_GROUPS: readonly TroubleshootingGroup[] = [
 export const SILENT_PROBLEMS: readonly TroubleshootingEntry[] = [
   {
     seen: ['Your words from Anki are out of date'],
-    text: "Anki must be open, or Monosai Bridge running, when Monosai refreshes. Open the source in **What you can read** and select **Refresh now**. An Anki package doesn't update itself: export a new one and select **Replace file**.",
+    text: "Anki must be open, or Monosai Bridge running, when Monosai refreshes. Open the source in **Words and grammar** and select **Refresh now**. An Anki package doesn't update itself: export a new one and select **Replace file**.",
   },
   {
     seen: ["There's no Install Monosai row in Settings"],

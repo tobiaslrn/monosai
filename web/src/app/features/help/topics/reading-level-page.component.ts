@@ -22,7 +22,7 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="level-choose">
         <h2 id="level-choose">Change your reading level</h2>
         <ol>
-          <li>Open <a routerLink="/reading-level" fragment="grammar">What you can read</a>.</li>
+          <li>Open <a routerLink="/reading-level" fragment="grammar">Words and grammar</a>.</li>
           <li>Under <strong>Grammar</strong>, select <strong>Reading level</strong>.</li>
           <li>Choose the highest level you can read without effort.</li>
           <li>Select <strong>Save level</strong>.</li>
@@ -91,7 +91,7 @@ import { HelpArticleComponent } from '../help-article.component';
           Some forms appear in almost every sentence: particles, counters, punctuation, the copula
           and common endings. Monosai always counts them as known, so they're never underlined as
           new words and don't need to be in your Anki collection. To see them all, open
-          <a routerLink="/reading-level" fragment="forms">What you can read > Always-known forms</a
+          <a routerLink="/reading-level" fragment="forms">Words and grammar > Always-known forms</a
           >.
         </p>
       </section>

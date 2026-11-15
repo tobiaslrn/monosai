@@ -63,7 +63,7 @@ import { HelpArticleComponent } from '../help-article.component';
         <p>Then, in Monosai:</p>
         <ol>
           <li>
-            Open <a routerLink="/reading-level" fragment="words">What you can read</a> and select
+            Open <a routerLink="/reading-level" fragment="words">Words and grammar</a> and select
             <strong>Add source</strong>.
           </li>
           <li>Select <strong>Connect to Anki</strong>.</li>
@@ -110,7 +110,7 @@ import { HelpArticleComponent } from '../help-article.component';
           <li>Select <strong>Start</strong>.</li>
           <li>
             In Monosai, open
-            <a routerLink="/reading-level" fragment="words">What you can read</a> and select
+            <a routerLink="/reading-level" fragment="words">Words and grammar</a> and select
             <strong>Add source</strong>.
           </li>
           <li>
@@ -142,7 +142,7 @@ import { HelpArticleComponent } from '../help-article.component';
           </li>
           <li>
             In Monosai, open
-            <a routerLink="/reading-level" fragment="words">What you can read</a> and select
+            <a routerLink="/reading-level" fragment="words">Words and grammar</a> and select
             <strong>Add source</strong>.
           </li>
           <li>
@@ -164,7 +164,7 @@ import { HelpArticleComponent } from '../help-article.component';
         <h2 id="words-list">Add a word list</h2>
         <ol>
           <li>
-            Open <a routerLink="/reading-level" fragment="words">What you can read</a> and select
+            Open <a routerLink="/reading-level" fragment="words">Words and grammar</a> and select
             <strong>Add source</strong>.
           </li>
           <li>Select <strong>Add a word list</strong>.</li>
@@ -200,7 +200,7 @@ import { HelpArticleComponent } from '../help-article.component';
         </p>
         <p>
           To manage a source, open it in
-          <a routerLink="/reading-level" fragment="words">What you can read</a>:
+          <a routerLink="/reading-level" fragment="words">Words and grammar</a>:
         </p>
         <ul>
           <li><strong>Refresh now</strong> reads Anki again straight away.</li>

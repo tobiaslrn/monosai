@@ -19,10 +19,10 @@ async function openOverview(page: Page): Promise<void> {
 
 async function backToOverview(page: Page): Promise<void> {
   await page
-    .getByRole('button', { name: 'Back to what you can read' })
-    .or(page.getByRole('link', { name: 'Back to what you can read' }))
+    .getByRole('button', { name: 'Back to words and grammar' })
+    .or(page.getByRole('link', { name: 'Back to words and grammar' }))
     .click();
-  await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Words and grammar', level: 1 })).toBeVisible();
 }
 
 test.describe('grammar profile', () => {

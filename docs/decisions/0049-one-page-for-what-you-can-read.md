@@ -2,7 +2,9 @@
 
 Date: 2026-09-04
 Status: Accepted; the inline ladder is superseded by
-[ADR 0063](0063-what-you-can-read-is-composed-like-the-library.md)
+[ADR 0063](0063-what-you-can-read-is-composed-like-the-library.md). Since 2026-11-15 the
+page is titled **Words and grammar**: naming its two halves proved clearer than naming the
+outcome. The one page stays.
 
 ## Context
 

@@ -93,7 +93,7 @@ describe('ReadingLevelRowComponent', () => {
     expect(
       element.querySelector('[data-testid="settings-reading-level"]')?.getAttribute('href'),
     ).toBe('/reading-level');
-    expect(row(element)?.textContent).toContain('What you can read');
+    expect(row(element)?.textContent).toContain('Words and grammar');
   });
 
   it('states the current standing in one line', () => {
@@ -116,7 +116,7 @@ describe('ReadingLevelRowComponent', () => {
   it('says only what it knows before the read answers', () => {
     const text = row(render())?.textContent.replaceAll(/\s+/g, ' ').trim();
 
-    expect(text).toContain('What you can read');
+    expect(text).toContain('Words and grammar');
     expect(text).toContain('Starter forms');
     expect(text).not.toContain('·');
   });

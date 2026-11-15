@@ -140,7 +140,7 @@ export const APP_ROUTES: Routes = [
   },
   {
     path: 'reading-level',
-    title: 'What you can read · Monosai',
+    title: 'Words and grammar · Monosai',
     loadComponent: () =>
       import('../../features/reading-level/reading-level-page.component').then(
         (m) => m.ReadingLevelPageComponent,

@@ -1600,7 +1600,7 @@ These are not aspirations; a change that breaks one of them is a regression.
   that cannot fit becomes a radio list; in a list row the badge, then the
   title, then an overview row's value each take a line once the row is too narrow
   to hold them side by side, so a word is not broken to fit. The `narrow-screen`
-  e2e spec holds this for Settings, Generate, What you can read, Help, the
+  e2e spec holds this for Settings, Generate, Words and grammar, Help, the
   Library and a source that could not be read, at 320px with 200% text, 320px
   with 100% and 393px with 150%. Only a long name in a list row, which ends after
   two lines, and a model name at normal size may still end in an ellipsis.

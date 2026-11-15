@@ -130,7 +130,7 @@ describe('ReadingLevelPageComponent', () => {
   it('states both facts under one heading', async () => {
     const { element } = await render();
 
-    expect(text(element, 'h1')).toBe('What you can read');
+    expect(text(element, 'h1')).toBe('Words and grammar');
     expect(
       [...element.querySelectorAll('section.group > header > h2')].map((heading) =>
         heading.textContent.trim(),

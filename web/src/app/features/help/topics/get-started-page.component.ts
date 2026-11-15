@@ -47,7 +47,7 @@ import { HelpArticleComponent } from '../help-article.component';
       <section aria-labelledby="start-words">
         <h2 id="start-words">Add your words</h2>
         <p>
-          Open <a routerLink="/reading-level" fragment="words">What you can read</a> and select
+          Open <a routerLink="/reading-level" fragment="words">Words and grammar</a> and select
           <strong>Add source</strong>. Choose <strong>Connect to Anki</strong>,
           <strong>Import from Anki</strong> or <strong>Add a word list</strong>.
           <a routerLink="/help/your-words">Add your words</a> explains each one, including what

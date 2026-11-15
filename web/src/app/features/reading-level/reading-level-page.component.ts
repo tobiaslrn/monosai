@@ -93,7 +93,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['words', 'grammar', 'forms'];
   template: `
     <div class="mn-page level-page">
       <mn-page-header
-        heading="What you can read"
+        heading="Words and grammar"
         [backTo]="backTarget()"
         [backLabel]="backLabel()"
       />

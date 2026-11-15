@@ -22,7 +22,7 @@ test.describe('application shell', () => {
    * The masthead carries no second link to it: a label repeating the sentence
    * beneath it in nearly the same words is what this replaced.
    */
-  test('reaches what you can read from the Library standing line and back @smoke', async ({
+  test('reaches words and grammar from the Library standing line and back @smoke', async ({
     page,
   }) => {
     await importReading(page, '猫が好きです。犬も好きです。', 'ねこ');
@@ -35,7 +35,7 @@ test.describe('application shell', () => {
     await standing.click();
 
     await expect(page).toHaveURL(/#\/reading-level#words$/);
-    await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Words and grammar', level: 1 })).toBeVisible();
 
     await page.getByRole('button', { name: 'Back to library' }).click();
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
@@ -46,7 +46,7 @@ test.describe('application shell', () => {
    * connecting an external application is something people come here to look
    * for, and finding nothing would say it cannot be done.
    */
-  test('signposts what you can read from Settings without describing it there', async ({
+  test('signposts words and grammar from Settings without describing it there', async ({
     page,
   }) => {
     await page.goto('./#/settings');
@@ -54,11 +54,11 @@ test.describe('application shell', () => {
     await expect(page.getByText('Your setup')).toHaveCount(0);
     await expect(page.getByRole('link', { name: /Vocabulary/ })).toHaveCount(0);
 
-    const row = page.locator('mn-settings-row', { hasText: 'What you can read' });
+    const row = page.locator('mn-settings-row', { hasText: 'Words and grammar' });
     await expect(row).toContainText('No words yet');
     await page.getByTestId('settings-reading-level').click();
 
-    await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Words and grammar', level: 1 })).toBeVisible();
     await page.getByRole('button', { name: 'Back to settings' }).click();
     await expect(page).toHaveURL(/#\/settings$/);
   });
@@ -73,7 +73,7 @@ test.describe('application shell', () => {
 
     await expect(page).toHaveURL(/#\/reading-level/);
     await expect(page).toHaveURL(/#words$/);
-    await expect(page.getByRole('heading', { name: 'What you can read', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Words and grammar', level: 1 })).toBeVisible();
     await page.getByRole('link', { name: 'Back to library' }).click();
     await expect(page).toHaveURL(/#\/library$/);
 
