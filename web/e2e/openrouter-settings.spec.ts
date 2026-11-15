@@ -282,7 +282,7 @@ test.describe('the model tree', () => {
     await page.getByTestId(`model-option-${MODEL}`).click();
 
     await expectReadiness(textModelReadiness(page), 'failed');
-    await expect(page.getByRole('alert')).toContainText('offline');
+    await expect(page.getByRole('alert')).toContainText('Test failed. Offline.');
     await expect(textModelReadiness(page)).toContainText(MODEL);
 
     // The failed status is the retry, and it succeeds once the device is back.
