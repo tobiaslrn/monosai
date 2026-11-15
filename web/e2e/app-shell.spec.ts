@@ -94,6 +94,10 @@ test.describe('application shell', () => {
     await page.goto('./#/reading-level/level');
     await expect(page).toHaveURL(/#\/grammar\/level$/);
     await expect(page.getByRole('heading', { name: 'Reading level', level: 1 })).toBeVisible();
+
+    await page.goto('./#/reading-level/vocabulary');
+    await expect(page).toHaveURL(/#\/words\/vocabulary$/);
+    await expect(page.getByRole('heading', { name: 'Your vocabulary', level: 1 })).toBeVisible();
   });
 
   test('shows build diagnostics without user content', async ({ page }) => {

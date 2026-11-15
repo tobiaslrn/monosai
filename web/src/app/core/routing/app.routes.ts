@@ -183,9 +183,11 @@ export const APP_ROUTES: Routes = [
       ),
   },
   // The routes these pages replaced. Each keeps working and lands where it
-  // meant, carrying its query parameters across.
-  { path: 'reading-level', redirectTo: retiredLearnerPage },
-  { path: 'vocabulary', redirectTo: retiredLearnerPage },
+  // meant, carrying its query parameters across. The two page redirects match
+  // only their own path: as prefixes they would also catch the retired
+  // sub-routes below and send all of them to Words.
+  { path: 'reading-level', pathMatch: 'full', redirectTo: retiredLearnerPage },
+  { path: 'vocabulary', pathMatch: 'full', redirectTo: retiredLearnerPage },
   { path: 'reading-level/level', redirectTo: '/grammar/level' },
   { path: 'reading-level/source/:sourceId', redirectTo: '/words/source/:sourceId' },
   { path: 'reading-level/vocabulary', redirectTo: '/words/vocabulary' },
