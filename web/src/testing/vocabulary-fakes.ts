@@ -47,6 +47,7 @@ import type {
   VocabularyBrowse,
   VocabularyCapture,
   VocabularyEntry,
+  VocabularyItemsAtRevision,
   VocabularyRepository,
 } from '../app/domain/vocabulary/vocabulary-repository';
 import { DomMarkupTextExtractor } from '../app/infrastructure/anki/dom-markup-text';
@@ -206,9 +207,13 @@ export class StubVocabularyRepository implements VocabularyRepository {
     );
   }
 
-  async *streamItems(id: SnapshotId): AsyncIterable<readonly VocabularyItem[]> {
-    await Promise.resolve();
-    yield this.items.filter((item) => item.snapshotId === id);
+  loadItems(id: SnapshotId): Promise<Result<VocabularyItemsAtRevision | null, StorageError>> {
+    const snapshot = this.snapshots.find((entry) => entry.id === id);
+    const items = this.items.filter((item) => item.snapshotId === id);
+    if (snapshot === undefined && items.length === 0) {
+      return Promise.resolve(ok(null));
+    }
+    return Promise.resolve(ok({ revision: snapshot?.revision ?? '', items }));
   }
 
   listProvenance(id: SnapshotId): Promise<Result<readonly VocabularyProvenance[], StorageError>> {

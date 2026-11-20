@@ -112,6 +112,12 @@ export interface VocabularyBrowse {
   readonly sources: readonly CapturedSourceObservation[];
 }
 
+/** A vocabulary's items, read together with the revision they belong to. */
+export interface VocabularyItemsAtRevision {
+  readonly revision: string;
+  readonly items: readonly VocabularyItem[];
+}
+
 export interface VocabularyRepository {
   /** Replaces the current vocabulary atomically; at most one snapshot remains. */
   commitSnapshot(commit: SnapshotCommit): Promise<Result<VocabularySnapshot, StorageError>>;
@@ -128,8 +134,12 @@ export interface VocabularyRepository {
   listVocabularyEntries(): Promise<Result<VocabularyBrowse | null, StorageError>>;
   /** Lists canonical expression hashes for comparing two vocabulary contents. */
   listExpressionHashes(id: SnapshotId): Promise<Result<readonly string[], StorageError>>;
-  /** Streams matcher input in bounded batches instead of one large array. */
-  streamItems(id: SnapshotId, batchSize: number): AsyncIterable<readonly VocabularyItem[]>;
+  /**
+   * Reads a vocabulary's validated items and its revision in one read
+   * transaction, so a refresh cannot land between two parts of the read. Null
+   * when that vocabulary is no longer stored.
+   */
+  loadItems(id: SnapshotId): Promise<Result<VocabularyItemsAtRevision | null, StorageError>>;
   listProvenance(id: SnapshotId): Promise<Result<readonly VocabularyProvenance[], StorageError>>;
   countStoriesUsingSnapshot(id: SnapshotId): Promise<Result<number, StorageError>>;
 }

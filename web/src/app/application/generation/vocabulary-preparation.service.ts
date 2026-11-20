@@ -20,9 +20,6 @@ import {
   type RecentFocusSize,
 } from '../../domain/settings/settings';
 
-/** Items read per streamed batch, matching the reader's classification path. */
-const ITEM_BATCH_SIZE = 500;
-
 export interface PreparedVocabulary {
   /** Deduplicated canonical expressions: the allowlist and validation authority. */
   readonly allowedVocabulary: readonly string[];
@@ -67,23 +64,25 @@ export class VocabularyPreparationService {
   ): Promise<Result<PreparedVocabulary, StorageError>> {
     const candidatesByExpression = new Map<string, PaletteCandidate>();
 
-    for await (const batch of this.vocabulary.streamItems(snapshotId, ITEM_BATCH_SIZE)) {
-      for (const item of batch) {
-        if (item.canonicalExpression === '') {
-          continue;
-        }
-        const existing = candidatesByExpression.get(item.canonicalExpression);
-        if (existing === undefined) {
-          candidatesByExpression.set(item.canonicalExpression, {
-            id: item.id,
-            ...mergeSchedulingSignals(undefined, item),
-          });
-        } else {
-          candidatesByExpression.set(item.canonicalExpression, {
-            ...existing,
-            ...mergeSchedulingSignals(existing, item),
-          });
-        }
+    const loaded = await this.vocabulary.loadItems(snapshotId);
+    if (!loaded.ok) {
+      return loaded;
+    }
+    for (const item of loaded.value?.items ?? []) {
+      if (item.canonicalExpression === '') {
+        continue;
+      }
+      const existing = candidatesByExpression.get(item.canonicalExpression);
+      if (existing === undefined) {
+        candidatesByExpression.set(item.canonicalExpression, {
+          id: item.id,
+          ...mergeSchedulingSignals(undefined, item),
+        });
+      } else {
+        candidatesByExpression.set(item.canonicalExpression, {
+          ...existing,
+          ...mergeSchedulingSignals(existing, item),
+        });
       }
     }
 

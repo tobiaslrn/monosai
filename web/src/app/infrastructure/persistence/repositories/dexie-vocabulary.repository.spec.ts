@@ -98,10 +98,8 @@ describe('DexieVocabularyRepository', () => {
     db.close();
     await db.open();
 
-    const reloaded: unknown[] = [];
-    for await (const batch of repository.streamItems(commit.snapshot.id, 10)) {
-      reloaded.push(...batch);
-    }
+    const loaded = await repository.loadItems(commit.snapshot.id);
+    const reloaded: unknown[] = loaded.ok ? [...(loaded.value?.items ?? [])] : [];
     expect(reloaded).toContainEqual(expect.objectContaining({ practice: practised.practice }));
     // The basis has to survive with the words, or a reload could not tell a word
     // nobody practised from one this source was never able to speak about.
@@ -122,10 +120,8 @@ describe('DexieVocabularyRepository', () => {
       items: [first, ...commit.items.slice(1)],
     });
 
-    const reloaded: unknown[] = [];
-    for await (const batch of repository.streamItems(commit.snapshot.id, 10)) {
-      reloaded.push(...batch);
-    }
+    const loaded = await repository.loadItems(commit.snapshot.id);
+    const reloaded: unknown[] = loaded.ok ? [...(loaded.value?.items ?? [])] : [];
 
     expect(reloaded).toContainEqual(expect.objectContaining(first));
   });
@@ -492,16 +488,14 @@ describe('DexieVocabularyRepository', () => {
     expect(count.ok && count.value).toBe(1);
   });
 
-  it('streams matcher input in bounded batches', async () => {
+  it('loads matcher input with the revision it belongs to', async () => {
     const commit = snapshotFixture(8, 5);
     await repository.commitSnapshot(commit);
 
-    const batches: number[] = [];
-    for await (const batch of repository.streamItems(commit.snapshot.id, 2)) {
-      batches.push(batch.length);
-    }
+    const loaded = await repository.loadItems(commit.snapshot.id);
 
-    expect(batches).toEqual([2, 2, 1]);
+    expect(loaded.ok && loaded.value?.revision).toBe(commit.snapshot.revision);
+    expect(loaded.ok && loaded.value?.items).toHaveLength(5);
   });
 
   it('retains provenance for deduplicated expressions', async () => {
@@ -556,5 +550,45 @@ describe('DexieVocabularyRepository', () => {
     const app = await settings.getAppSettings();
     expect(app.ok && app.value.theme).toBe('dark');
     expect(app.ok && app.value.activeSnapshotId).toBe(commit.snapshot.id);
+  });
+
+  describe('matcher input', () => {
+    it('loads one consistent vocabulary when a commit lands during the read', async () => {
+      const first = snapshotFixture(1, 4);
+      await repository.commitSnapshot(first);
+      const replacement = { ...snapshotFixture(2, 5), expectedRevision: first.snapshot.revision };
+
+      // Another tab, or this tab's automatic sync, commits meanwhile.
+      const [loaded] = await Promise.all([
+        repository.loadItems(first.snapshot.id),
+        repository.commitSnapshot(replacement),
+      ]);
+
+      if (!loaded.ok || loaded.value === null) throw new Error('the items should load');
+      const streamed = loaded.value.items.map((item) => item.id).sort();
+      const before = first.items.map((item) => item.id).sort();
+      const after = replacement.items.map((item) => item.id).sort();
+      expect([before, after]).toContainEqual(streamed);
+    });
+
+    it('refuses a stored item that is not a vocabulary item', async () => {
+      const commit = snapshotFixture(1, 2);
+      await repository.commitSnapshot(commit);
+      await db.vocabularyItems.put({
+        id: uuid(1999),
+        snapshotId: commit.snapshot.id,
+        v: ROW_VERSION,
+      } as never);
+
+      const loaded = await repository.loadItems(commit.snapshot.id);
+
+      expect(!loaded.ok && loaded.error.code).toBe('corrupt-record');
+    });
+
+    it('reports a vocabulary that is no longer stored', async () => {
+      const loaded = await repository.loadItems(snapshotFixture(1, 2).snapshot.id);
+
+      expect(loaded.ok && loaded.value).toBeNull();
+    });
   });
 });

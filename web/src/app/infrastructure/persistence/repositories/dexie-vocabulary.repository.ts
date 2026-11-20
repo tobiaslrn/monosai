@@ -19,6 +19,7 @@ import type {
   VocabularyBrowse,
   VocabularyCapture,
   VocabularyEntry,
+  VocabularyItemsAtRevision,
   VocabularyRepository,
 } from '../../../domain/vocabulary/vocabulary-repository';
 import { storageError, type StorageError } from '../../../domain/storage/storage-error';
@@ -407,22 +408,45 @@ export class DexieVocabularyRepository implements VocabularyRepository {
     return parsed.ok ? ok(parsed.value.map(toItem).map((item) => item.expressionHash)) : parsed;
   }
 
-  /** Streams matcher input in bounded batches so no query loads every item. */
-  async *streamItems(id: SnapshotId, batchSize: number): AsyncIterable<readonly VocabularyItem[]> {
-    let offset = 0;
-    for (;;) {
-      const batch = await this.db.vocabularyItems
-        .where('snapshotId')
-        .equals(id)
-        .offset(offset)
-        .limit(batchSize)
-        .toArray();
-      if (batch.length === 0) {
-        return;
-      }
-      yield batch.map(toItem);
-      offset += batch.length;
+  /**
+   * Reads one vocabulary's items with the revision they belong to.
+   *
+   * One read transaction, for the reason `captureVocabulary` gives: a refresh
+   * keeps the vocabulary's id and replaces every item, so items read in
+   * separate queries could be half one vocabulary and half another.
+   */
+  async loadItems(id: SnapshotId): Promise<Result<VocabularyItemsAtRevision | null, StorageError>> {
+    const loaded = await runStorage('vocabularyItems.load', () =>
+      this.db.transaction('r', [this.db.vocabularySnapshots, this.db.vocabularyItems], async () => {
+        const snapshotRow = await this.db.vocabularySnapshots.get(id);
+        if (snapshotRow === undefined) {
+          return null;
+        }
+        return {
+          snapshotRow,
+          items: await this.db.vocabularyItems.where('snapshotId').equals(id).toArray(),
+        };
+      }),
+    );
+    if (!loaded.ok) {
+      return loaded;
     }
+    if (loaded.value === null) {
+      return ok(null);
+    }
+    const snapshot = parseRecord(
+      vocabularySnapshotRowSchema,
+      loaded.value.snapshotRow,
+      'vocabularySnapshots',
+    );
+    if (!snapshot.ok) {
+      return snapshot;
+    }
+    const items = parseRecords(vocabularyItemRowSchema, loaded.value.items, 'vocabularyItems');
+    if (!items.ok) {
+      return items;
+    }
+    return ok({ revision: snapshot.value.revision, items: items.value.map(toItem) });
   }
 
   async listProvenance(

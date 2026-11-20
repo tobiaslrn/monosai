@@ -9,9 +9,6 @@ import { AppSettingsStore } from '../settings/app-settings.store';
 import { LANGUAGE_RUNTIME } from '../shared/language-tokens';
 import { VOCABULARY_REPOSITORY } from '../shared/repository-tokens';
 
-/** Vocabulary items sent to the worker per batch while compiling a matcher. */
-const ITEM_BATCH_SIZE = 500;
-
 /**
  * Vocabulary status for a set of sentences.
  *
@@ -121,12 +118,22 @@ export class VocabularyClassificationService {
       return ok(undefined);
     }
 
-    const items = [];
-    for await (const batch of this.vocabulary.streamItems(snapshotId, ITEM_BATCH_SIZE)) {
-      items.push(...batch);
+    const loaded = await this.vocabulary.loadItems(snapshotId);
+    if (!loaded.ok) {
+      return err(
+        languageError(
+          'snapshot-not-compiled',
+          'Your vocabulary could not be read.',
+          loaded.error.code,
+        ),
+      );
     }
 
-    const compiled = await this.runtime.compileSnapshot(snapshotId, items, signal);
+    const compiled = await this.runtime.compileSnapshot(
+      snapshotId,
+      loaded.value?.items ?? [],
+      signal,
+    );
     if (!compiled.ok) {
       return compiled;
     }
