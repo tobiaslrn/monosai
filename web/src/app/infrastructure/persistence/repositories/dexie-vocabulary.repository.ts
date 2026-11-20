@@ -479,11 +479,9 @@ export class DexieVocabularyRepository implements VocabularyRepository {
     commit: SnapshotCommit,
     id: SnapshotId,
   ): Promise<void> {
-    if (commit.expectedRevision === undefined) {
-      return;
-    }
     const stored = await this.db.vocabularySnapshots.get(id);
     // An absent vocabulary is not a conflict: there is nothing newer to lose.
+    // A build prepared on no vocabulary expects none, so any stored one is newer.
     if (stored !== undefined && stored.revision !== commit.expectedRevision) {
       throw new StorageRuleViolation(
         storageError(

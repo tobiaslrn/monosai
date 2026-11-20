@@ -76,6 +76,7 @@ describe('VocabularyAvailabilityStore', () => {
       provenance: [],
       sources: [],
       caches: [],
+      expectedRevision: null,
     });
     await store.refresh();
 
@@ -116,6 +117,7 @@ describe('VocabularyAvailabilityStore', () => {
       provenance: [],
       sources: [],
       caches: [],
+      expectedRevision: null,
     });
 
     await store.refresh();

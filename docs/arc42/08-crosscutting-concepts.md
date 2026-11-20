@@ -22,8 +22,9 @@ Its id is stable across refreshes so a generated story keeps one link to the cur
 which means the id cannot say whether the words behind it changed. Each committed replacement
 therefore also writes a **revision**: an opaque token that changes on every commit, including one
 where the word list is identical and only what those words prove about recent study is new. Anything
-that captured a vocabulary compares the revision to learn its capture is stale, and a commit can name
-the revision it was prepared against so a slow build cannot overwrite a newer one.
+that captured a vocabulary compares the revision to learn its capture is stale. Every commit names
+the revision it was prepared against, or states that it found no vocabulary at all, so a slow build
+cannot overwrite a newer one and two first builds from different tabs cannot both count as first.
 
 Every token in the reader carries one of three statuses:
 

@@ -278,6 +278,7 @@ export class AutomaticAnkiSyncCoordinator {
       held === null ||
       prepared.vocabularyChanged ||
       committed.revision !== prepared.commit.snapshot.revision ||
+      builtOn === null ||
       (builtOn !== held.revision && builtOn !== this.unchangedRevision) ||
       !sameWarnings(held.stats.sourceWarnings, committed.stats.sourceWarnings)
     );

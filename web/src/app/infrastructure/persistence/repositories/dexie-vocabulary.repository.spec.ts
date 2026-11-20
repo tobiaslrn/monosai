@@ -276,7 +276,7 @@ describe('DexieVocabularyRepository', () => {
   it('gives every committed replacement its own revision', async () => {
     const first = snapshotFixture(44);
     await repository.commitSnapshot(first);
-    const second = snapshotFixture(45);
+    const second = { ...snapshotFixture(45), expectedRevision: first.snapshot.revision };
 
     const committed = await repository.commitSnapshot(second);
 
@@ -290,7 +290,7 @@ describe('DexieVocabularyRepository', () => {
   it('refuses a build prepared against a vocabulary that has since been replaced', async () => {
     const first = snapshotFixture(46);
     await repository.commitSnapshot(first);
-    const newer = snapshotFixture(47);
+    const newer = { ...snapshotFixture(47), expectedRevision: first.snapshot.revision };
     await repository.commitSnapshot(newer);
 
     const stale = snapshotFixture(48);
@@ -304,6 +304,18 @@ describe('DexieVocabularyRepository', () => {
     // The newer commit survives untouched: refusing is the point of the guard.
     const active = await repository.getActiveSnapshot();
     expect(active.ok && active.value?.revision).toBe(newer.snapshot.revision);
+  });
+
+  it('refuses a first build when another first build was committed meanwhile', async () => {
+    // Both builds were prepared on a fresh install, so neither read a revision.
+    const fromThisTab = snapshotFixture(61);
+    const fromAnotherTab = snapshotFixture(62, 2);
+    await repository.commitSnapshot({ ...fromAnotherTab, expectedRevision: null });
+
+    const refused = await repository.commitSnapshot({ ...fromThisTab, expectedRevision: null });
+
+    expect(!refused.ok && refused.error.code).toBe('conflict');
+    expect(await db.vocabularyItems.count()).toBe(fromAnotherTab.items.length);
   });
 
   it('accepts a build prepared against the revision that is actually stored', async () => {
@@ -432,6 +444,7 @@ describe('DexieVocabularyRepository', () => {
     const replaced = await repository.commitSnapshot({
       ...newer,
       snapshot: { ...newer.snapshot, createdAt: older.snapshot.createdAt + 5000 },
+      expectedRevision: older.snapshot.revision,
     });
 
     const snapshots = await repository.listSnapshots();

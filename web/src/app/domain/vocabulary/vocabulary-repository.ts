@@ -37,16 +37,19 @@ export interface SnapshotCommit extends VocabularyContent {
   /** Source caches this commit replaces. */
   readonly caches: readonly VocabularySourceCache[];
   /**
-   * The revision this build was prepared against, when the caller knows it.
+   * The revision this build was prepared against, or `null` when it was
+   * prepared with no vocabulary stored at all.
    *
    * Building a vocabulary is slow enough that another tab can commit while one
    * is being prepared, and the loser would otherwise overwrite a newer refresh
    * or a source the learner has just removed with content assembled before
-   * either happened. Given here, the commit fails as a conflict instead, and
-   * the caller re-prepares against what is actually stored. Omitted for the
-   * first commit and wherever no earlier state was read.
+   * either happened. When what is stored is no longer what the build read, the
+   * commit fails as a conflict instead, and the caller re-prepares against what
+   * is actually stored. `null` is a claim like any revision: two first builds
+   * prepared at once cannot both be first, so the second is refused rather
+   * than silently replacing the first.
    */
-  readonly expectedRevision?: string;
+  readonly expectedRevision: string | null;
 }
 
 /**

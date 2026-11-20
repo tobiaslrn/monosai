@@ -135,7 +135,7 @@ export class VocabularySyncService {
         // Building analyzes every expression, which is slow enough that another
         // tab can commit meanwhile. Naming the revision this was built from
         // makes the write refuse rather than undo that commit.
-        ...(current.value === null ? {} : { expectedRevision: current.value.revision }),
+        expectedRevision: current.value?.revision ?? null,
       },
       vocabularyChanged: !sameExpressionHashes(
         currentExpressionHashes,

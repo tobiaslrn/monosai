@@ -80,7 +80,7 @@ export class StubVocabularyRepository implements VocabularyRepository {
       return Promise.resolve({ ok: false, error: this.commitFailure });
     }
     const stored = this.snapshots.find((snapshot) => snapshot.id === this.activeSnapshotId);
-    if (commit.expectedRevision !== undefined && stored !== undefined) {
+    if (stored !== undefined) {
       if (stored.revision !== commit.expectedRevision) {
         return Promise.resolve({
           ok: false,

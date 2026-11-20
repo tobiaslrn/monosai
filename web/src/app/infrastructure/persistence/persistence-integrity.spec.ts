@@ -811,7 +811,7 @@ describe('storage failure handling', () => {
     abortError.name = 'AbortError';
     const spy = vi.spyOn(db.vocabularyProvenance, 'bulkAdd').mockRejectedValue(abortError);
 
-    const second = snapshotFixture(2);
+    const second = { ...snapshotFixture(2), expectedRevision: first.snapshot.revision };
     const committed = await vocabulary.commitSnapshot(second);
 
     expect(committed.ok).toBe(false);

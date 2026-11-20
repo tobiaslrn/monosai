@@ -317,7 +317,7 @@ export function snapshotFixture(seed: number, entryCount = 3): SnapshotCommit {
     },
   };
 
-  return { snapshot, items, provenance, sources: [], caches: [] };
+  return { snapshot, items, provenance, sources: [], caches: [], expectedRevision: null };
 }
 
 export function readingIdFor(seed: number): ReadingId {
