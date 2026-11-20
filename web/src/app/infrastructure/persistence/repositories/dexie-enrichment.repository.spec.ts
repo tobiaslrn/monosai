@@ -714,4 +714,106 @@ describe('DexieEnrichmentRepository', () => {
     expect(await db.audioAssets.count()).toBe(0);
     expect(await db.translations.count()).toBe(1);
   });
+
+  describe('a grammar key shared by two readings', () => {
+    /** A second reading with the same text: every sentence produces the same grammar key. */
+    async function twin(): Promise<ReturnType<typeof importedReadingFixture>> {
+      const other = importedReadingFixture({ seed: 2 });
+      await readings.saveImportedReading(other);
+      return other;
+    }
+
+    function keysFor(
+      reading: ReturnType<typeof importedReadingFixture>,
+    ): Map<(typeof draft.sentences)[number]['id'], string> {
+      return new Map([[reading.sentences[0]!.id, 'shared']]);
+    }
+
+    /** What the second reading's own preparation stores for its identical sentence. */
+    async function analyseBoth(other: ReturnType<typeof importedReadingFixture>): Promise<void> {
+      await repository.storeGrammarAnalysis(grammarAnalysis(0, 'shared'), keysFor(draft));
+      await repository.storeGrammarAnalysis(
+        {
+          ...grammarAnalysis(0, 'shared'),
+          id: uuid(7950),
+          sentenceId: other.sentences[0]!.id,
+          readingId: other.reading.id,
+        },
+        keysFor(other),
+      );
+    }
+
+    it('still counts the first reading as reviewed after the second reading stores the same key', async () => {
+      const other = await twin();
+      await analyseBoth(other);
+
+      const summary = await repository.summarizeGrammar(draft.reading.id, keysFor(draft));
+
+      expect(summary.ok && summary.value.state).toBe('complete');
+    });
+
+    it("keeps the first reading's grammar review when the second reading is deleted", async () => {
+      const other = await twin();
+      await analyseBoth(other);
+
+      await readings.deleteReading(other.reading.id);
+
+      const kept = await repository.getGrammarAnalysisByCacheKey('shared');
+      expect(kept.ok && kept.value).not.toBeNull();
+      const stored = await readings.getReading(draft.reading.id);
+      const summary = await repository.summarizeGrammar(draft.reading.id, keysFor(draft));
+      expect(summary.ok && summary.value).toEqual(stored.ok && stored.value?.grammarSummary);
+    });
+  });
+
+  describe('a clip shared by two readings', () => {
+    /** A reading that shares only the first sentence's Japanese with the fixture. */
+    async function partlyTwin(): Promise<ReturnType<typeof importedReadingFixture>> {
+      const other = importedReadingFixture({
+        seed: 3,
+        paragraphTexts: [['別の文です。', 'ねこがすきです。']],
+      });
+      await readings.saveImportedReading(other);
+      return other;
+    }
+
+    it('keeps the clip for the other reading when the reading it was written for is deleted', async () => {
+      const other = await partlyTwin();
+      await repository.storeAudio(audio(0), currentAudioKeys());
+      await repository.storeAudio(audio(1), currentAudioKeys());
+
+      await readings.deleteReading(draft.reading.id);
+
+      expect(await db.audioAssets.toCollection().primaryKeys()).toEqual(['audio-0']);
+      const handedOn = await repository.listAudioSummaries(other.reading.id);
+      expect(handedOn.ok && handedOn.value.map((clip) => clip.sentenceId)).toEqual([
+        other.sentences[1]!.id,
+      ]);
+    });
+
+    it('counts the clip for the other reading by its key before anything is handed on', async () => {
+      const other = await partlyTwin();
+      await repository.storeAudio(audio(0), currentAudioKeys());
+      const otherKeys = new Map([
+        [other.sentences[0]!.id, 'audio-other'],
+        [other.sentences[1]!.id, 'audio-0'],
+      ]);
+
+      const missing = await repository.listSentenceIdsMissingAudio(other.reading.id, otherKeys);
+      const summary = await repository.summarizeAudio(other.reading.id, otherKeys);
+
+      expect(missing.ok && missing.value).toEqual([other.sentences[0]!.id]);
+      expect(summary.ok && summary.value).toEqual({ total: 2, completed: 1, failed: 0 });
+    });
+
+    it('still deletes the clips no other reading shares', async () => {
+      await partlyTwin();
+      await repository.storeAudio(audio(1), currentAudioKeys());
+      await repository.storeAudio(audio(2), currentAudioKeys());
+
+      await readings.deleteReading(draft.reading.id);
+
+      expect(await db.audioAssets.count()).toBe(0);
+    });
+  });
 });

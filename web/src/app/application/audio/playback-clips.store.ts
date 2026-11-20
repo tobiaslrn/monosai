@@ -174,22 +174,36 @@ export class PlaybackClipsStore {
       this.currentAvailableSignal.set(new Set());
     }
 
-    const summaries = await this.enrichment.listAudioSummaries(reading.id);
+    // Both reads: the clips written for this reading, which hold the older
+    // fallbacks, and the clips under its current keys, which may have been
+    // written for the same sentence in another reading.
+    const [written, current] = await Promise.all([
+      this.enrichment.listAudioSummaries(reading.id),
+      this.enrichment.listAudioSummariesForCacheKeys([...new Set(cacheKeys.values())]),
+    ]);
     if (token !== this.refreshToken) {
       return { kind: 'superseded' };
     }
-    if (!summaries.ok) {
+    const failure = !written.ok ? written.error : !current.ok ? current.error : null;
+    if (failure !== null) {
       this.currentAvailableSignal.set(new Set());
       this.playableSignal.set(new Map());
-      return { kind: 'failed', message: summaries.error.message };
+      return { kind: 'failed', message: failure.message };
     }
+    const summaries = [
+      ...new Map(
+        [...(written.ok ? written.value : []), ...(current.ok ? current.value : [])].map(
+          (summary) => [summary.cacheKey, summary],
+        ),
+      ).values(),
+    ];
     // Matched by key rather than by the row's own `sentenceId`: the audio table
     // is keyed by `cacheKey`, so two sentences with identical Japanese share one
     // clip and one row. Fallbacks are matched by content hash, which is the
     // safety line that prevents an edited sentence from inheriting old audio.
-    const stored = new Map(summaries.value.map((summary) => [summary.cacheKey, summary]));
-    const newestByContentHash = new Map<string, (typeof summaries.value)[number]>();
-    for (const summary of summaries.value) {
+    const stored = new Map(summaries.map((summary) => [summary.cacheKey, summary]));
+    const newestByContentHash = new Map<string, (typeof summaries)[number]>();
+    for (const summary of summaries) {
       const previous = newestByContentHash.get(summary.sourceContentHash);
       if (previous === undefined || summary.createdAt > previous.createdAt) {
         newestByContentHash.set(summary.sourceContentHash, summary);

@@ -268,6 +268,48 @@ describe('PlaybackClipsStore', () => {
     });
   });
 
+  describe('a clip written for another reading', () => {
+    it('plays it for the same sentence here, since its key is the current one', async () => {
+      const twin = importedReadingFixture({ seed: 6, paragraphTexts: [['はい。']] });
+      const here = importedReadingFixture({ seed: 7, paragraphTexts: [['はい。']] });
+      await bed.readings.saveImportedReading(twin);
+      await bed.readings.saveImportedReading(here);
+      const loaded = await bed.readings.getReading(here.reading.id);
+      if (!loaded.ok || loaded.value === null) {
+        throw new Error('the reading should save');
+      }
+      const shared = keyFor(bed, here.sentences[0]!.contentHash);
+      await bed.enrichment.storeAudio(
+        {
+          id: assetId(uuid(8300)),
+          sentenceId: twin.sentences[0]!.id,
+          readingId: twin.reading.id,
+          sourceContentHash: twin.sentences[0]!.contentHash,
+          modelId: bed.settings().modelId,
+          voiceId: bed.settings().voiceId,
+          optionsFingerprint: audioOptionsFingerprint(TEST_HASHER, {
+            responseFormat: 'mp3',
+            speechStyle: bed.settings().speechStyle,
+            speechPace: bed.settings().speechPace,
+          }),
+          pace: 'playback',
+          mimeType: 'audio/mpeg',
+          byteLength: 4,
+          blob: new Blob([new Uint8Array([9, 9, 9, 9])], { type: 'audio/mpeg' }),
+          cacheKey: shared,
+          createdAt: PLAYBACK_NOW,
+        },
+        new Map([[twin.sentences[0]!.id, shared]]),
+      );
+
+      await bed.clips.refresh(loaded.value);
+
+      expect(bed.clips.missingCount()).toBe(0);
+      expect(bed.clips.hasStaleAudio()).toBe(false);
+      expect(bed.clips.canPlayWholeReading()).toBe(true);
+    });
+  });
+
   describe('refreshing', () => {
     it('names the reading at once, before anything has been read', () => {
       void bed.clips.refresh(bed.reading);

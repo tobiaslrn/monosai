@@ -80,3 +80,19 @@ export function sentencesWithoutStoredAid(
   }
   return [...cacheKeys].filter(([, key]) => !storedKeys.has(key)).map(([sentenceId]) => sentenceId);
 }
+
+/**
+ * The never-prepared sentences that also have no row under their current key.
+ *
+ * A grammar or audio key carries no reading, so a sentence another reading
+ * shares has its row the moment that reading prepares it, written for the
+ * other reading's sentence. Asking by sentence id alone would call it
+ * unprepared and queue it again on every reconciliation.
+ */
+export function stillMissing(
+  neverPrepared: readonly SentenceId[],
+  missingUnderCurrentKeys: readonly SentenceId[],
+): readonly SentenceId[] {
+  const missing = new Set(missingUnderCurrentKeys);
+  return neverPrepared.filter((sentenceId) => missing.has(sentenceId));
+}

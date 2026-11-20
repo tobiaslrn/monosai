@@ -36,9 +36,14 @@ import { runStorage } from './storage-operation';
 /**
  * Cached auxiliary results.
  *
- * Writes are idempotent by cache key, and the owning reading's denormalized
+ * Writes are idempotent by cache key, and the writing reading's denormalized
  * summary is recalculated in the same transaction so library cards stay honest
  * without loading sentence children or audio blobs.
+ *
+ * A row is shared by every sentence whose current key it is, in any reading, so
+ * coverage is always asked by key. The row's own `readingId` and `sentenceId`
+ * name the sentence it was last written for, which decides what a deletion
+ * looks at first and nothing else.
  */
 export class DexieEnrichmentRepository implements EnrichmentRepository {
   constructor(private readonly db: MonosaiDatabase) {}
@@ -398,32 +403,30 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
   }
 
   async summarizeTranslations(
-    readingId: ReadingId,
+    _readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<CompletionSummary, StorageError>> {
     return runStorage('translations.summarize', async () => {
-      const completed = await this.currentTranslationCount(readingId, cacheKeys);
+      const completed = await this.currentTranslationCount(cacheKeys);
       return { total: cacheKeys.size, completed, failed: 0 };
     });
   }
 
   async summarizeAudio(
-    readingId: ReadingId,
+    _readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<CompletionSummary, StorageError>> {
     return runStorage('audioAssets.summarize', async () => {
-      const completed = await this.currentAudioCount(readingId, cacheKeys);
+      const completed = await this.currentAudioCount(cacheKeys);
       return { total: cacheKeys.size, completed, failed: 0 };
     });
   }
 
   async summarizeGrammar(
-    readingId: ReadingId,
+    _readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<GrammarSummary, StorageError>> {
-    return runStorage('grammarAnalyses.summarize', () =>
-      this.computeGrammarSummary(readingId, cacheKeys),
-    );
+    return runStorage('grammarAnalyses.summarize', () => this.computeGrammarSummary(cacheKeys));
   }
 
   /**
@@ -473,16 +476,16 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
   }
 
   async listSentenceIdsMissingTranslation(
-    readingId: ReadingId,
+    _readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<readonly SentenceId[], StorageError>> {
     const loaded = await runStorage('translations.keys', () =>
-      this.db.translations.where('readingId').equals(readingId).primaryKeys(),
+      storedCacheKeys(this.db.translations, cacheKeys),
     );
     if (!loaded.ok) {
       return loaded;
     }
-    const stored = new Set(loaded.value);
+    const stored = loaded.value;
     const missing: SentenceId[] = [];
     for (const [sentenceId, cacheKey] of cacheKeys) {
       if (!stored.has(cacheKey)) {
@@ -493,16 +496,16 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
   }
 
   async listSentenceIdsMissingAudio(
-    readingId: ReadingId,
+    _readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<readonly SentenceId[], StorageError>> {
     const loaded = await runStorage('audioAssets.keys', () =>
-      this.db.audioAssets.where('readingId').equals(readingId).primaryKeys(),
+      storedCacheKeys(this.db.audioAssets, cacheKeys),
     );
     if (!loaded.ok) {
       return loaded;
     }
-    const stored = new Set(loaded.value);
+    const stored = loaded.value;
     const missing: SentenceId[] = [];
     for (const [sentenceId, cacheKey] of cacheKeys) {
       if (!stored.has(cacheKey)) {
@@ -518,23 +521,26 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
    * `listSentenceIdsMissingTranslation` already applies.
    */
   private async currentTranslationCount(
-    readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<number> {
-    const stored = new Set(
-      await this.db.translations.where('readingId').equals(readingId).primaryKeys(),
-    );
+    const stored = await storedCacheKeys(this.db.translations, cacheKeys);
     return [...cacheKeys.values()].filter((cacheKey) => stored.has(cacheKey)).length;
   }
 
+  /**
+   * Read by key, like every other count here: an analysis another reading
+   * wrote for the same sentence under the same key is this reading's too.
+   */
   private async computeGrammarSummary(
-    readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<GrammarSummary> {
     if (cacheKeys.size === 0) {
       return NO_GRAMMAR_REVIEW;
     }
-    const rows = await this.db.grammarAnalyses.where('readingId').equals(readingId).toArray();
+    const rows = await this.db.grammarAnalyses
+      .where(':id')
+      .anyOf([...new Set(cacheKeys.values())])
+      .toArray();
     const currentByKey = new Map(rows.map((row) => [row.cacheKey, row]));
     let analyzedSentenceCount = 0;
     let concern = 0;
@@ -554,7 +560,7 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<void> {
-    const completed = await this.currentTranslationCount(readingId, cacheKeys);
+    const completed = await this.currentTranslationCount(cacheKeys);
     await this.db.readings.update(readingId, {
       translationSummary: { total: cacheKeys.size, completed, failed: 0 },
     });
@@ -564,7 +570,7 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<void> {
-    const summary = await this.computeGrammarSummary(readingId, cacheKeys);
+    const summary = await this.computeGrammarSummary(cacheKeys);
     await this.db.readings.update(readingId, { grammarSummary: summary });
   }
 
@@ -580,15 +586,12 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
    * two sentences with identical Japanese share one clip and therefore one row
    * — which is the point of a content-addressed cache. Counting rows would
    * report such a reading as permanently one clip short, leaving a Prepare
-   * entry that synthesizes nothing and a Play gate that never opens.
+   * entry that synthesizes nothing and a Play gate that never opens. The same
+   * holds across readings: a clip another reading stored under this key counts
+   * here, wherever its row says it was last written.
    */
-  private async currentAudioCount(
-    readingId: ReadingId,
-    cacheKeys: ReadonlyMap<SentenceId, string>,
-  ): Promise<number> {
-    const stored = new Set(
-      await this.db.audioAssets.where('readingId').equals(readingId).primaryKeys(),
-    );
+  private async currentAudioCount(cacheKeys: ReadonlyMap<SentenceId, string>): Promise<number> {
+    const stored = await storedCacheKeys(this.db.audioAssets, cacheKeys);
     return [...cacheKeys.values()].filter((cacheKey) => stored.has(cacheKey)).length;
   }
 
@@ -596,11 +599,29 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<void> {
-    const completed = await this.currentAudioCount(readingId, cacheKeys);
+    const completed = await this.currentAudioCount(cacheKeys);
     await this.db.readings.update(readingId, {
       audioSummary: { total: cacheKeys.size, completed, failed: 0 },
     });
   }
+}
+
+/**
+ * Which of these keys have a row, read through the primary key alone, so a
+ * clip's bytes are never deserialized.
+ */
+async function storedCacheKeys<Row>(
+  table: Table<Row, string>,
+  cacheKeys: ReadonlyMap<SentenceId, string>,
+): Promise<ReadonlySet<string>> {
+  if (cacheKeys.size === 0) {
+    return new Set();
+  }
+  const keys = await table
+    .where(':id')
+    .anyOf([...new Set(cacheKeys.values())])
+    .primaryKeys();
+  return new Set(keys);
 }
 
 /** Metadata for stored rows, validated and stripped of bytes and row version. */

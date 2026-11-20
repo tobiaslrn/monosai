@@ -45,6 +45,7 @@ import {
   toTokenAnalysisRow,
 } from './reading-mappers';
 import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage-operation';
+import { releaseReadingAids } from './shared-aid-rows';
 import {
   assertEnrichmentConsistent,
   assertNoSnapshotDependentValidation,
@@ -424,10 +425,12 @@ export class DexieReadingRepository implements ReadingRepository {
           this.db.generationProvenance,
         ],
         async () => {
-          await this.db.audioAssets.where('readingId').equals(id).delete();
+          // Before the sentences go: a shared row is handed to a sentence of
+          // another reading with the same content, found through this one's.
+          await releaseReadingAids(this.db, this.db.audioAssets, id);
           await this.db.translations.where('readingId').equals(id).delete();
           await this.db.translationPlans.delete(id);
-          await this.db.grammarAnalyses.where('readingId').equals(id).delete();
+          await releaseReadingAids(this.db, this.db.grammarAnalyses, id);
           await this.db.frozenValidations.where('readingId').equals(id).delete();
           await this.db.tokenAnalyses.where('readingId').equals(id).delete();
           await this.db.sentences.where('readingId').equals(id).delete();

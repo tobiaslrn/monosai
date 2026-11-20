@@ -8,6 +8,11 @@ import { formatCountOf } from '../shared/locale';
  * cascade deletes exactly these, and the integrity test asserts exactly these
  * are empty afterwards, so adding an owned store without extending the cascade
  * fails a test rather than leaking rows.
+ *
+ * Grammar analyses and clips are shared by every reading with the same
+ * sentence. The cascade hands such a row to another reading's sentence instead
+ * of deleting it, so afterwards it names that reading and still counts as no
+ * orphan of this one.
  */
 export const OWNED_READING_STORES = [
   'paragraphs',

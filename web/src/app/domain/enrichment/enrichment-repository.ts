@@ -13,7 +13,12 @@ import type { TranslationPlan } from './translation-plan';
 
 /**
  * Cached auxiliary results. Writes are idempotent by cache key and update the
- * owning reading's denormalized summary in the same transaction.
+ * writing reading's denormalized summary in the same transaction.
+ *
+ * One row serves every sentence, in any reading, whose current key it is. So
+ * summaries and the `listSentenceIdsMissing*` queries count a sentence by its
+ * key alone, and the reading id they take names the reading asked about, not a
+ * filter on rows.
  */
 export interface EnrichmentRepository {
   getTranslationPlan(readingId: ReadingId): Promise<Result<TranslationPlan | null, StorageError>>;

@@ -351,7 +351,7 @@ export class AudioJobStore {
 
     const wanted =
       scope === 'never-prepared'
-        ? await this.audio.neverPreparedSentenceIds(context.cacheKeys)
+        ? await this.audio.neverPreparedSentenceIds(context.readingId, context.cacheKeys)
         : await this.audio.missingSentenceIds(context.readingId, context.cacheKeys);
     if (!wanted.ok) {
       return unavailable({ source: 'storage', error: wanted.error });

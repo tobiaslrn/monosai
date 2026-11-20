@@ -15,6 +15,7 @@ import {
   runStorageWithRules,
   StorageRuleViolation,
 } from './repositories/storage-operation';
+import { releaseReadingAids } from './repositories/shared-aid-rows';
 
 /** The API key never leaves through an export, and audio is raw bytes JSON cannot hold. */
 const TABLES_LEFT_OUT_OF_EXPORT: readonly string[] = ['credentials', 'audioAssets'];
@@ -98,18 +99,21 @@ export class BrowserStorageMaintenance implements StorageMaintenance {
     });
   }
 
-  /** Deletes one reading's audio atomically, leaving every other aid intact. */
+  /**
+   * Deletes one reading's audio atomically, leaving every other aid intact, and
+   * every clip another reading with the same sentence still uses.
+   */
   clearReadingAudio(readingId: ReadingId): Promise<Result<void, StorageError>> {
     return runStorage('storage.clearReadingAudio', async () => {
       await this.db.transaction(
         'rw',
-        [this.db.audioAssets, this.db.assetJobs, this.db.readings],
+        [this.db.audioAssets, this.db.assetJobs, this.db.readings, this.db.sentences],
         async () => {
           const reading = await this.db.readings.get(readingId);
           if (reading === undefined) {
             return;
           }
-          await this.db.audioAssets.where('readingId').equals(readingId).delete();
+          await releaseReadingAids(this.db, this.db.audioAssets, readingId);
           await this.db.assetJobs
             .where('[readingId+kind]')
             .equals([readingId, 'prepare-audio'])
@@ -132,11 +136,15 @@ export class BrowserStorageMaintenance implements StorageMaintenance {
       const tables =
         layer === 'english'
           ? [aidTable, this.db.translationPlans, this.db.assetJobs, this.db.readings]
-          : [aidTable, this.db.assetJobs, this.db.readings];
+          : [aidTable, this.db.assetJobs, this.db.readings, this.db.sentences];
       await this.db.transaction('rw', tables, async () => {
         const reading = await this.db.readings.get(readingId);
         if (reading === undefined) return;
-        await aidTable.where('readingId').equals(readingId).delete();
+        if (layer === 'english') {
+          await this.db.translations.where('readingId').equals(readingId).delete();
+        } else {
+          await releaseReadingAids(this.db, this.db.grammarAnalyses, readingId);
+        }
         if (layer === 'english') await this.db.translationPlans.delete(readingId);
         await this.db.assetJobs.where('[readingId+kind]').equals([readingId, jobKind]).delete();
         await this.db.readings.update(

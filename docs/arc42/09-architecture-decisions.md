@@ -20,19 +20,20 @@ shared its number until it was given the next free one.
 
 ### Persistence and data integrity
 
-| ADR                                                                         | Decision                                                              |
-| --------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| [0002](../decisions/0002-hashing-and-canonical-serialization.md)            | Hashing algorithm and canonical serialization                         |
-| [0004](../decisions/0004-persistence-shape.md)                              | Persistence shape decisions                                           |
-| [0012](../decisions/0012-resume-basis.md)                                   | Resume basis: exact, nearest, or beginning, stated rather than hidden |
-| [0042](../decisions/0042-cross-tab-reading-mutations.md)                    | Tabs tell each other about deleted readings, and format in one locale |
-| [0047](../decisions/0047-a-reading-declares-what-it-should-have.md)         | A reading declares what it should have                                |
-| [0048](../decisions/0048-the-preparation-lane-yields.md)                    | The preparation lane yields, and is never busy                        |
-| [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md)      | Grammar preparation uses bounded batches and resumable recovery       |
-| [0054](../decisions/0054-parallel-text-preparation.md)                      | Text preparation uses sparse adaptive batches and bounded waves       |
-| [0059](../decisions/0059-preparation-fills-the-reading-in-order.md)         | Preparation fills the reading in order, from one shared pool          |
-| [0060](../decisions/0060-progressive-translation-freezes-terminology.md)    | Progressive translation freezes a persisted terminology plan          |
-| [0062](../decisions/0062-vocabulary-identity-is-expression-plus-meaning.md) | Vocabulary identity is expression plus meaning                        |
+| ADR                                                                                 | Decision                                                               |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [0002](../decisions/0002-hashing-and-canonical-serialization.md)                    | Hashing algorithm and canonical serialization                          |
+| [0004](../decisions/0004-persistence-shape.md)                                      | Persistence shape decisions                                            |
+| [0012](../decisions/0012-resume-basis.md)                                           | Resume basis: exact, nearest, or beginning, stated rather than hidden  |
+| [0042](../decisions/0042-cross-tab-reading-mutations.md)                            | Tabs tell each other about deleted readings, and format in one locale  |
+| [0047](../decisions/0047-a-reading-declares-what-it-should-have.md)                 | A reading declares what it should have                                 |
+| [0048](../decisions/0048-the-preparation-lane-yields.md)                            | The preparation lane yields, and is never busy                         |
+| [0052](../decisions/0052-grammar-preparation-progress-and-recovery.md)              | Grammar preparation uses bounded batches and resumable recovery        |
+| [0054](../decisions/0054-parallel-text-preparation.md)                              | Text preparation uses sparse adaptive batches and bounded waves        |
+| [0059](../decisions/0059-preparation-fills-the-reading-in-order.md)                 | Preparation fills the reading in order, from one shared pool           |
+| [0060](../decisions/0060-progressive-translation-freezes-terminology.md)            | Progressive translation freezes a persisted terminology plan           |
+| [0062](../decisions/0062-vocabulary-identity-is-expression-plus-meaning.md)         | Vocabulary identity is expression plus meaning                         |
+| [0096](../decisions/0096-shared-aids-are-counted-by-key-and-outlive-one-reading.md) | Shared aids are counted by key and outlive the reading that wrote them |
 
 ### Language processing
 

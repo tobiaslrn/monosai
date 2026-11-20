@@ -1,4 +1,4 @@
-import { sentencesWithoutStoredAid } from '../../domain/enrichment/preparation';
+import { sentencesWithoutStoredAid, stillMissing } from '../../domain/enrichment/preparation';
 import { Injectable, inject } from '@angular/core';
 import type { AiError } from '../../domain/ai/ai-error';
 import type {
@@ -151,11 +151,19 @@ export class AudioSynthesisService {
    * What the preparation lane queues, as opposed to what *Prepare again* asks:
    * a cache key changes with the model, and a reading already prepared must not
    * be prepared a second time because the learner picked a different one.
+   * A clip under the current key counts even when it was written for the same
+   * sentence in another reading: it plays here as it is.
    */
   async neverPreparedSentenceIds(
+    readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<readonly SentenceId[], StorageError>> {
-    const stored = await this.enrichment.listSentenceIdsWithStoredAudio([...cacheKeys.keys()]);
-    return stored.ok ? ok(sentencesWithoutStoredAid(cacheKeys, stored.value)) : stored;
+    const [stored, missing] = await Promise.all([
+      this.enrichment.listSentenceIdsWithStoredAudio([...cacheKeys.keys()]),
+      this.enrichment.listSentenceIdsMissingAudio(readingId, cacheKeys),
+    ]);
+    if (!stored.ok) return stored;
+    if (!missing.ok) return missing;
+    return ok(stillMissing(sentencesWithoutStoredAid(cacheKeys, stored.value), missing.value));
   }
 }

@@ -65,6 +65,13 @@ const V11_STORES: Readonly<Record<string, string | null>> = {
   translationPlans: '&readingId, state, inputFingerprint',
 };
 
+const V19_STORES: Readonly<Record<string, string | null>> = {
+  ...V11_STORES,
+  // Finds the sentences of other readings that share a grammar analysis or a
+  // clip, whose keys carry no reading, before a deletion removes one.
+  sentences: '&id, readingId, paragraphId, [readingId+positionInReading], contentHash',
+};
+
 export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   {
     version: 1,
@@ -458,6 +465,13 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
         await settings.put(row);
       }
     },
+  },
+  {
+    // Index only. Every sentence row already carries its content hash, and the
+    // browser builds the index inside the version-change transaction, so no
+    // row is rewritten and an interrupted upgrade leaves version 18 as it was.
+    version: 19,
+    stores: V19_STORES,
   },
 ];
 

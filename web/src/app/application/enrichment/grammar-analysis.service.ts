@@ -1,4 +1,4 @@
-import { sentencesWithoutStoredAid } from '../../domain/enrichment/preparation';
+import { sentencesWithoutStoredAid, stillMissing } from '../../domain/enrichment/preparation';
 import { Injectable, inject } from '@angular/core';
 import { aiError, type AiError } from '../../domain/ai/ai-error';
 import {
@@ -201,13 +201,18 @@ export class GrammarAnalysisService {
    * What the preparation lane queues, as opposed to what *Prepare again* asks:
    * a cache key changes with the model, and a reading already prepared must not
    * be prepared a second time because the learner picked a different one.
+   * An analysis under the current key counts even when it was written for the
+   * same sentence in another reading: it applies here as it is.
    */
   async neverPreparedSentenceIds(
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<readonly SentenceId[], StorageError>> {
-    const stored = await this.enrichment.listSentenceIdsWithStoredGrammarAnalysis([
-      ...cacheKeys.keys(),
+    const [stored, missing] = await Promise.all([
+      this.enrichment.listSentenceIdsWithStoredGrammarAnalysis([...cacheKeys.keys()]),
+      this.missingSentenceIds(cacheKeys),
     ]);
-    return stored.ok ? ok(sentencesWithoutStoredAid(cacheKeys, stored.value)) : stored;
+    if (!stored.ok) return stored;
+    if (!missing.ok) return missing;
+    return ok(stillMissing(sentencesWithoutStoredAid(cacheKeys, stored.value), missing.value));
   }
 }

@@ -158,6 +158,11 @@ defaulting existing installations to unacknowledged. The write is transactional;
 a failed migration keeps the original database available through the existing
 recovery path.
 
+Schema version 19 indexes sentences by content hash, so deleting a reading or clearing its
+grammar or audio can find another reading with the same sentence and hand it the shared row
+instead of deleting it. The index is built inside the version-change transaction; no row is
+rewritten ([ADR 0096](../decisions/0096-shared-aids-are-counted-by-key-and-outlive-one-reading.md)).
+
 Translation plans are validated persisted state with three explicit forms: opening pending,
 glossary repair required, and ready with a frozen glossary. Establishing a ready plan and its
 accepted opening translations is one transaction. Provisional opening rows remain recoverable but
@@ -198,6 +203,11 @@ generation still count only current keys. This lets a reading remain audible aft
 without silently serving speech for edited text ([ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md)).
 The player applies the saved local rate only to rows marked for playback pacing,
 and splits continuous resources when a baked-time row is next ([ADR 0073](../decisions/0073-pace-at-playback-style-in-prompt.md)).
+
+Grammar and audio keys never name the reading, so one row serves the same sentence in every
+reading. Coverage, missing-sentence queries and playback ask by key, never by the reading a row was
+last written for, and a deletion hands a row on to a reading that still has the sentence
+([ADR 0096](../decisions/0096-shared-aids-are-counted-by-key-and-outlive-one-reading.md)).
 This is how a repeated request costs nothing, and how a voice change hides clips that no longer match
 instead of playing them ([ADR 0043](../decisions/0043-voice-changes-hide-clips-and-say-so.md)).
 Persisted whole-reading jobs use a configuration-level fingerprint without sentence content. A

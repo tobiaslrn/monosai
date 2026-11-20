@@ -926,7 +926,7 @@ describe('BrowserStorageMaintenance', () => {
     const enrichment = new DexieEnrichmentRepository(db);
     const jobs = new DexieJobRepository(db, clock);
     const target = importedReadingFixture({ seed: 31 });
-    const other = importedReadingFixture({ seed: 32 });
+    const other = importedReadingFixture({ seed: 32, paragraphTexts: [['別の話です。']] });
     await readings.saveImportedReading(target);
     await readings.saveImportedReading(other);
 
@@ -976,6 +976,57 @@ describe('BrowserStorageMaintenance', () => {
     const otherReading = await readings.getReading(other.reading.id);
     expect(targetReading.ok && targetReading.value?.audioSummary.completed).toBe(0);
     expect(otherReading.ok && otherReading.value?.audioSummary.completed).toBe(1);
+  });
+
+  it('keeps the clip and analysis another reading with the same sentence uses when one reading clears them', async () => {
+    const readings = new DexieReadingRepository(db, clock);
+    const enrichment = new DexieEnrichmentRepository(db);
+    const target = importedReadingFixture({ seed: 33 });
+    const twin = importedReadingFixture({ seed: 34 });
+    await readings.saveImportedReading(target);
+    await readings.saveImportedReading(twin);
+    const sentence = target.sentences[0]!;
+    await enrichment.storeAudio(
+      {
+        id: assetId(uuid(9450)),
+        sentenceId: sentence.id,
+        readingId: target.reading.id,
+        sourceContentHash: sentence.contentHash,
+        modelId: 'vendor/tts',
+        voiceId: 'voice-a',
+        optionsFingerprint: 'fingerprint',
+        mimeType: 'audio/mpeg',
+        byteLength: 2,
+        blob: new Blob([new Uint8Array([1, 2])], { type: 'audio/mpeg' }),
+        cacheKey: 'shared-audio',
+        createdAt: clock.now(),
+      },
+      new Map([[sentence.id, 'shared-audio']]),
+    );
+    await enrichment.storeGrammarAnalysis(
+      {
+        id: uuid(9451),
+        cacheKey: 'shared-grammar',
+        sentenceId: sentence.id,
+        readingId: target.reading.id,
+        sourceContentHash: sentence.contentHash,
+        profileHash: 'profile',
+        modelId: 'vendor/text',
+        promptVersion: 'v1',
+        findings: [],
+        createdAt: clock.now(),
+      },
+      new Map([[sentence.id, 'shared-grammar']]),
+    );
+
+    expect((await maintenance.clearReadingAudio(target.reading.id)).ok).toBe(true);
+    expect((await maintenance.clearReadingAid(target.reading.id, 'grammar')).ok).toBe(true);
+
+    const twinSentence = twin.sentences[0]!.id;
+    expect((await db.audioAssets.get('shared-audio'))?.sentenceId).toBe(twinSentence);
+    expect((await db.grammarAnalyses.get('shared-grammar'))?.sentenceId).toBe(twinSentence);
+    const cleared = await readings.getReading(target.reading.id);
+    expect(cleared.ok && cleared.value?.audioSummary.completed).toBe(0);
   });
 
   it('clears one reading translation and its job without touching other aids', async () => {

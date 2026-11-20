@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { jobId, sentenceId } from '../shared/ids';
 import { importedReadingFixture } from '../../../testing/persistence-fixtures';
 import type { AssetJob, JobState } from './jobs';
-import { isReady, missingLayers, schedulable, sentencesWithoutStoredAid } from './preparation';
+import {
+  isReady,
+  missingLayers,
+  schedulable,
+  sentencesWithoutStoredAid,
+  stillMissing,
+} from './preparation';
 
 const base = importedReadingFixture().reading;
 
@@ -99,6 +105,14 @@ describe('reading preparation', () => {
       const keys = new Map([[first, 'key-a']]);
 
       expect(sentencesWithoutStoredAid(keys, [second])).toEqual([first]);
+    });
+  });
+
+  describe('never-prepared sentences with a row under their current key', () => {
+    it('drops a sentence whose current key another reading has already stored', () => {
+      expect(stillMissing([sentenceId('s1'), sentenceId('s2')], [sentenceId('s2')])).toEqual([
+        sentenceId('s2'),
+      ]);
     });
   });
 });
