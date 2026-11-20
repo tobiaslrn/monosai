@@ -3,6 +3,7 @@ import { languageError, type LanguageError } from '../../domain/language/languag
 import type { ClassificationResult, SentenceTokens } from '../../domain/language/language-runtime';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
 import type { SnapshotId } from '../../domain/shared/ids';
+import type { StorageError } from '../../domain/storage/storage-error';
 import { err, ok, type Result } from '../../domain/shared/result';
 import { LanguageStore } from '../language/language.store';
 import { AppSettingsStore } from '../settings/app-settings.store';
@@ -31,7 +32,13 @@ export const VOCABULARY_NOT_CONFIGURED: VocabularyStatus = { kind: 'not-configur
  *
  * Imported readings follow the current snapshot, so classification is derived
  * on open rather than frozen. The compiled matcher is kept in the worker and
- * recompiled only when the current snapshot changes.
+ * recompiled only when the vocabulary changes.
+ *
+ * A refresh keeps the vocabulary's id and only moves its revision, and a
+ * refresh in another tab tells this one nothing. So the matcher is identified
+ * by id and revision, and every classification first reads the stored
+ * revision: a single small read, which is what lets a tab notice a vocabulary
+ * another tab committed.
  */
 @Injectable({ providedIn: 'root' })
 export class VocabularyClassificationService {
@@ -40,7 +47,9 @@ export class VocabularyClassificationService {
   private readonly settings = inject(AppSettingsStore);
   private readonly language = inject(LanguageStore);
 
-  private compiledSnapshotId: SnapshotId | null = null;
+  private compiled: CompiledMatcher | null = null;
+  /** Moves on every `invalidate`, so a compile that was already running cannot claim to be current. */
+  private generation = 0;
 
   async classify(
     sentences: readonly SentenceTokens[],
@@ -107,26 +116,27 @@ export class VocabularyClassificationService {
 
   /** Forces the next classification to rebuild the worker's matcher. */
   invalidate(): void {
-    this.compiledSnapshotId = null;
+    this.compiled = null;
+    this.generation += 1;
   }
 
   private async ensureCompiled(
     snapshotId: SnapshotId,
     signal?: AbortSignal,
   ): Promise<Result<void, LanguageError>> {
-    if (this.compiledSnapshotId === snapshotId) {
+    const stored = await this.vocabulary.getSnapshot(snapshotId);
+    if (!stored.ok) {
+      return err(unreadable(stored.error));
+    }
+    const storedRevision = stored.value?.revision ?? null;
+    if (this.compiled?.snapshotId === snapshotId && this.compiled.revision === storedRevision) {
       return ok(undefined);
     }
 
+    const generation = this.generation;
     const loaded = await this.vocabulary.loadItems(snapshotId);
     if (!loaded.ok) {
-      return err(
-        languageError(
-          'snapshot-not-compiled',
-          'Your vocabulary could not be read.',
-          loaded.error.code,
-        ),
-      );
+      return err(unreadable(loaded.error));
     }
 
     const compiled = await this.runtime.compileSnapshot(
@@ -137,7 +147,22 @@ export class VocabularyClassificationService {
     if (!compiled.ok) {
       return compiled;
     }
-    this.compiledSnapshotId = snapshotId;
+    // The revision the items were read at, not the one checked above: a commit
+    // between the two reads is then caught by the next classification.
+    if (generation === this.generation) {
+      this.compiled = { snapshotId, revision: loaded.value?.revision ?? null };
+    }
     return ok(undefined);
   }
+}
+
+/** Which vocabulary the worker's matcher was built from. */
+interface CompiledMatcher {
+  readonly snapshotId: SnapshotId;
+  /** Null when the vocabulary was no longer stored and the matcher is empty. */
+  readonly revision: string | null;
+}
+
+function unreadable(error: StorageError): LanguageError {
+  return languageError('snapshot-not-compiled', 'Your vocabulary could not be read.', error.code);
 }

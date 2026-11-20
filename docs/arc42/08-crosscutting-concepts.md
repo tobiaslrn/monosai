@@ -25,6 +25,9 @@ where the word list is identical and only what those words prove about recent st
 that captured a vocabulary compares the revision to learn its capture is stale. Every commit names
 the revision it was prepared against, or states that it found no vocabulary at all, so a slow build
 cannot overwrite a newer one and two first builds from different tabs cannot both count as first.
+The worker's compiled matcher is identified by id and revision too, and each classification reads
+the stored revision first, so a tab notices a vocabulary another tab committed. Matcher input is
+read with its revision in one transaction.
 
 Every token in the reader carries one of three statuses:
 
