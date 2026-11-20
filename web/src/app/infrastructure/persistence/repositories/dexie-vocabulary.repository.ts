@@ -124,6 +124,7 @@ export class DexieVocabularyRepository implements VocabularyRepository {
             await this.db.vocabularySources.bulkPut(sourceRows);
           }
           if (cacheRows.length > 0) {
+            await this.assertCachedSourcesExistWithinTransaction(cacheRows);
             await this.db.vocabularySourceCaches.bulkPut(cacheRows);
           }
           const current = await this.readAppSettingsWithinTransaction();
@@ -511,6 +512,31 @@ export class DexieVocabularyRepository implements VocabularyRepository {
         storageError(
           'conflict',
           'Your vocabulary changed while this one was being prepared. Nothing was overwritten.',
+        ),
+      );
+    }
+  }
+
+  /**
+   * Refuses a cache for a source that is no longer stored.
+   *
+   * Removing a source deletes its cache but leaves the revision alone, so a
+   * refresh that read the source before it was removed would pass the
+   * revision check and write the cache back, with nothing left to delete it.
+   * A conflict sends that refresh back to prepare against the sources that
+   * remain. Runs after the commit's own sources are written, so a source the
+   * commit adds counts as stored.
+   */
+  private async assertCachedSourcesExistWithinTransaction(
+    cacheRows: readonly VocabularySourceCacheRow[],
+  ): Promise<void> {
+    const sourceIds = cacheRows.map((row) => row.sourceId);
+    const stored = await this.db.vocabularySources.where(':id').anyOf(sourceIds).primaryKeys();
+    if (stored.length < new Set(sourceIds).size) {
+      throw new StorageRuleViolation(
+        storageError(
+          'conflict',
+          'A vocabulary source was removed while this one was being prepared. Nothing was overwritten.',
         ),
       );
     }

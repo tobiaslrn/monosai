@@ -79,13 +79,18 @@ export class VocabularySyncService {
     if (!listed.ok) {
       return listed;
     }
-    const included = upsert(listed.value, pendingSources).filter(isIncludedInVocabulary);
+    const known = upsert(listed.value, pendingSources);
+    const included = known.filter(isIncludedInVocabulary);
     const cached = await this.sources.readCaches(included.map((source) => source.id));
     if (!cached.ok) {
       return cached;
     }
+    // A source removed since its refresh was read keeps no cache: writing it
+    // back would leave a row that nothing deletes.
+    const knownIds = new Set(known.map((source) => source.id));
+    const keptCaches = replacementCaches.filter((cache) => knownIds.has(cache.sourceId));
     const cachesById = new Map(cached.value.map((cache) => [cache.sourceId, cache]));
-    for (const cache of replacementCaches) {
+    for (const cache of keptCaches) {
       cachesById.set(cache.sourceId, cache);
     }
 
@@ -131,7 +136,7 @@ export class VocabularySyncService {
       commit: {
         ...built.value.content,
         sources: pendingSources,
-        caches: replacementCaches,
+        caches: keptCaches,
         // Building analyzes every expression, which is slow enough that another
         // tab can commit meanwhile. Naming the revision this was built from
         // makes the write refuse rather than undo that commit.

@@ -17,6 +17,7 @@ import type { MonosaiDatabase } from '../monosai-db';
 import { ROW_VERSION } from '../schemas/common.schema';
 import { DexieSettingsRepository } from './dexie-settings.repository';
 import { DexieVocabularyRepository } from './dexie-vocabulary.repository';
+import { DexieVocabularySourceRepository } from './dexie-vocabulary-source.repository';
 import { unmeasuredBasis } from '../../../domain/anki/practice-evidence';
 
 function packageSourceFixture(id: VocabularySourceId): VocabularySource {
@@ -589,6 +590,36 @@ describe('DexieVocabularyRepository', () => {
       const loaded = await repository.loadItems(snapshotFixture(1, 2).snapshot.id);
 
       expect(loaded.ok && loaded.value).toBeNull();
+    });
+  });
+
+  describe('a source removed while a refresh was in flight', () => {
+    it('does not bring back the cache of a source removed after the refresh read it', async () => {
+      const first = snapshotFixture(1);
+      const sourceId = first.provenance[0]!.sourceId;
+      const cache = (refreshedAt: number) => ({
+        sourceId,
+        refreshedAt,
+        entries: [],
+        warnings: [],
+        practice: unmeasuredBasis(refreshedAt),
+      });
+      await repository.commitSnapshot({
+        ...first,
+        sources: [packageSourceFixture(sourceId)],
+        caches: [cache(1_700_000_000_000)],
+      });
+
+      // The learner removes the source while an automatic refresh is reading Anki.
+      await new DexieVocabularySourceRepository(db).remove(sourceId);
+      // The refresh then commits what it fetched, against the unchanged revision.
+      await repository.commitSnapshot({
+        ...snapshotFixture(2),
+        caches: [cache(1_700_000_100_000)],
+        expectedRevision: first.snapshot.revision,
+      });
+
+      expect(await db.vocabularySourceCaches.get(sourceId)).toBeUndefined();
     });
   });
 });

@@ -1,4 +1,4 @@
-import { err, ok, type Result } from '../../../domain/shared/result';
+import { ok, type Result } from '../../../domain/shared/result';
 import type { VocabularySourceId } from '../../../domain/shared/ids';
 import type { VocabularySourceRepository } from '../../../domain/vocabulary/vocabulary-source-repository';
 import type {
@@ -15,7 +15,7 @@ import {
   type VocabularySourceCacheRow,
   type VocabularySourceRow,
 } from '../schemas/vocabulary.schema';
-import { runStorage } from './storage-operation';
+import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage-operation';
 
 /**
  * Source mappings are few, so enablement is filtered in memory rather than
@@ -76,24 +76,26 @@ export class DexieVocabularySourceRepository implements VocabularySourceReposito
     id: VocabularySourceId,
     enabled: boolean,
   ): Promise<Result<VocabularySource, StorageError>> {
-    const loaded = await runStorage('vocabularySources.get', () =>
-      this.db.vocabularySources.get(id),
+    // One transaction, so a refresh committing the same source row between the
+    // read and the write cannot undo the learner's choice, or be undone by it.
+    const written = await runStorageWithRules('vocabularySources.setEnabled', () =>
+      this.db.transaction('rw', this.db.vocabularySources, async () => {
+        const loaded = await this.db.vocabularySources.get(id);
+        if (!loaded) {
+          throw new StorageRuleViolation(
+            storageError('not-found', 'That vocabulary source no longer exists.'),
+          );
+        }
+        const parsed = parseRecord(vocabularySourceRowSchema, loaded, `vocabularySources:${id}`);
+        if (!parsed.ok) {
+          throw new StorageRuleViolation(parsed.error);
+        }
+        const updated: VocabularySourceRow = { ...parsed.value, enabled };
+        await this.db.vocabularySources.put(updated);
+        return updated;
+      }),
     );
-    if (!loaded.ok) {
-      return loaded;
-    }
-    if (!loaded.value) {
-      return err(storageError('not-found', 'That vocabulary source no longer exists.'));
-    }
-    const parsed = parseRecord(vocabularySourceRowSchema, loaded.value, `vocabularySources:${id}`);
-    if (!parsed.ok) {
-      return parsed;
-    }
-    const updated: VocabularySourceRow = { ...parsed.value, enabled };
-    const written = await runStorage('vocabularySources.put', () =>
-      this.db.vocabularySources.put(updated),
-    );
-    return written.ok ? ok(toSource(updated)) : written;
+    return written.ok ? ok(toSource(written.value)) : written;
   }
 
   async readCaches(
