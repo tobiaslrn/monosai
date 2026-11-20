@@ -255,10 +255,17 @@ export class FakeReadingRepository implements ReadingRepository {
     }
     const matching = this.readings
       .filter((item) => request.filter === 'all' || item.kind === request.filter)
-      .filter(
-        (item) => request.createdBefore === undefined || item.createdAt < request.createdBefore,
+      .sort(
+        (left, right) =>
+          right.createdAt - left.createdAt ||
+          (left.id < right.id ? 1 : left.id > right.id ? -1 : 0),
       )
-      .sort((left, right) => right.createdAt - left.createdAt);
+      .filter(
+        ({ createdAt, id }) =>
+          request.after === undefined ||
+          createdAt < request.after.createdAt ||
+          (createdAt === request.after.createdAt && id < request.after.id),
+      );
     return Promise.resolve(
       ok({ items: matching.slice(0, request.limit), hasMore: matching.length > request.limit }),
     );

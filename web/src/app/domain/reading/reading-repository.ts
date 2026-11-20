@@ -48,8 +48,20 @@ export interface SentenceRef {
 export interface LibraryPageRequest {
   readonly filter: LibraryFilter;
   readonly limit: number;
-  /** Exclusive cursor: the `createdAt` of the last item on the previous page. */
-  readonly createdBefore?: number;
+  /**
+   * Exclusive cursor: the last item on the previous page.
+   *
+   * The id is part of it because creation times are not unique: two readings
+   * made in the same millisecond would otherwise straddle a page boundary and
+   * the second would never be listed.
+   */
+  readonly after?: LibraryCursor;
+}
+
+/** Where a library page ends: pages run newest first, ties broken by id. */
+export interface LibraryCursor {
+  readonly createdAt: number;
+  readonly id: ReadingId;
 }
 
 export interface LibraryPage {

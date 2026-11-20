@@ -472,12 +472,39 @@ describe('DexieReadingRepository', () => {
       const second = await repository.listLibraryPage({
         filter: 'all',
         limit: 2,
-        createdBefore: first.value.items[1]!.createdAt,
+        after: first.value.items[1]!,
       });
       expect(second.ok && second.value.items.map((reading) => reading.title)).toEqual([
         'Reading 0',
       ]);
       expect(second.ok && second.value.hasMore).toBe(false);
+    });
+
+    it('lists every reading once when a page ends inside a run of equal creation times', async () => {
+      for (let index = 0; index < 3; index += 1) {
+        await repository.saveImportedReading(
+          importedReadingFixture({
+            seed: index + 1,
+            title: `Reading ${index}`,
+            createdAt: 1_700_000_000_000,
+          }),
+        );
+      }
+
+      for (const filter of ['all', 'imported'] as const) {
+        const first = await repository.listLibraryPage({ filter, limit: 2 });
+        if (!first.ok) throw new Error('the first page should load');
+        const second = await repository.listLibraryPage({
+          filter,
+          limit: 2,
+          after: first.value.items.at(-1)!,
+        });
+        if (!second.ok) throw new Error('the second page should load');
+
+        const listed = [...first.value.items, ...second.value.items].map((reading) => reading.id);
+        expect(new Set(listed).size, filter).toBe(3);
+        expect(second.value.hasMore, filter).toBe(false);
+      }
     });
 
     it('filters by imported and generated source', async () => {

@@ -191,16 +191,24 @@ export class DexieReadingRepository implements ReadingRepository {
   }
 
   async listLibraryPage(request: LibraryPageRequest): Promise<Result<LibraryPage, StorageError>> {
-    const upperBound = request.createdBefore ?? Number.MAX_SAFE_INTEGER;
+    const { after } = request;
+    const upperBound = after?.createdAt ?? Number.MAX_SAFE_INTEGER;
     const loaded = await runStorage('readings.listPage', () => {
+      // Inclusive of the cursor's own time: readings made in the same millisecond
+      // as the last item listed may not have been listed yet. A reversed index
+      // walks equal times in descending id order, so those are the ones with a
+      // smaller id.
       const collection =
         request.filter === 'all'
-          ? this.db.readings.where('createdAt').below(upperBound)
+          ? this.db.readings.where('createdAt').belowOrEqual(upperBound)
           : this.db.readings
               .where('[kind+createdAt]')
-              .between([request.filter, Dexie.minKey], [request.filter, upperBound], true, false);
+              .between([request.filter, Dexie.minKey], [request.filter, upperBound], true, true);
       return collection
         .reverse()
+        .filter(
+          (row) => after === undefined || row.createdAt < after.createdAt || row.id < after.id,
+        )
         .limit(request.limit + 1)
         .toArray();
     });

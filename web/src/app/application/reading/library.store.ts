@@ -143,7 +143,7 @@ export class LibraryStore {
       const page = await this.readings.listLibraryPage({
         filter,
         limit: LIBRARY_PAGE_SIZE,
-        createdBefore: oldest.createdAt,
+        after: { createdAt: oldest.createdAt, id: oldest.id },
       });
 
       // A filter or full reload may have replaced the cursor while the page
