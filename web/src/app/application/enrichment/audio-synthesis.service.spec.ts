@@ -303,6 +303,57 @@ describe('AudioSynthesisService', () => {
     expect(afterChange.ok && afterChange.value).toHaveLength(bed.draft.sentences.length);
     expect(await bed.db.audioAssets.count()).toBe(1);
   });
+
+  describe('a clip shared with another reading', () => {
+    it("counts a reused clip for the reading that reused it and leaves the first reading's summary alone", async () => {
+      const other = importedReadingFixture({
+        seed: 2,
+        paragraphTexts: [['ねこがすきです。', '別の文です。']],
+      });
+      await new DexieReadingRepository(bed.db, fixedClock(NOW)).saveImportedReading(other);
+      const config = resolved();
+      const otherKeys = bed.keys.audioKeys(
+        other.sentences,
+        config.modelId,
+        config.voiceId,
+        config.optionsFingerprint,
+      );
+      const shared = firstSentence();
+      const otherShared = other.sentences.find((s) => s.japaneseText === shared.japaneseText)!;
+      expect(otherKeys.get(otherShared.id)).toBe(keyFor(shared));
+
+      const first = await bed.service.run(
+        shared,
+        bed.draft.reading.id,
+        keyFor(shared),
+        config,
+        new AbortController().signal,
+      );
+      if (!first.ok) throw new Error('synthesis should have succeeded');
+      await bed.service.store(first.value, cacheKeys());
+      const firstSummary = (await bed.db.readings.get(bed.draft.reading.id))?.audioSummary;
+
+      // The second reading's job: a cache hit, then the same store call it makes for any clip.
+      const reused = await bed.service.run(
+        otherShared,
+        other.reading.id,
+        keyFor(shared),
+        config,
+        new AbortController().signal,
+      );
+      if (!reused.ok) throw new Error('the cached clip should be served');
+      await bed.service.store(reused.value, otherKeys);
+
+      const missing = await bed.service.missingSentenceIds(other.reading.id, otherKeys);
+      expect(missing.ok && missing.value).not.toContain(otherShared.id);
+      expect((await bed.db.readings.get(other.reading.id))?.audioSummary).toEqual({
+        total: other.sentences.length,
+        completed: 1,
+        failed: 0,
+      });
+      expect((await bed.db.readings.get(bed.draft.reading.id))?.audioSummary).toEqual(firstSummary);
+    });
+  });
 });
 
 describe('AudioConfigurationService', () => {

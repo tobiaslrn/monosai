@@ -31,6 +31,8 @@ other reading can produce the same key.
 clip's bytes are never read. The playback store reads the clips under the reading's current keys as
 well as the ones written for it. The "never prepared" query of ADR 0047 also leaves out a sentence
 whose current key already has a row, so a shared sentence is not queued on every reconciliation.
+A clip served from the cache is addressed to the sentence and reading that asked for it before it
+is stored, so the store refreshes that reading's summary and not the one that wrote it first.
 
 **A deletion keeps a row another reading can use.** Deleting a reading, and clearing its grammar or
 audio, looks at the rows written for its sentences. When another reading has a sentence with the

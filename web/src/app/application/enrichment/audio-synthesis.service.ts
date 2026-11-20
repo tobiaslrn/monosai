@@ -70,10 +70,12 @@ export class AudioSynthesisService {
   /**
    * Produces one clip, from the cache when there is one.
    *
-   * A cache hit is returned as the stored asset itself rather than rebuilt:
-   * unlike a translation, whose English can be reused for identical Japanese in
-   * another reading, a clip's key already carries everything that identifies it
-   * and the stored row is the row this sentence wants.
+   * A cache hit keeps the stored clip, which the key fully identifies, but is
+   * addressed to this sentence and reading. The key never names the reading,
+   * so the row may have been written for the same sentence in another one;
+   * storing it unaddressed would refresh that other reading's summary with
+   * this reading's keys and leave this one uncounted
+   * ([ADR 0096](../../../../../docs/decisions/0096-shared-aids-are-counted-by-key-and-outlive-one-reading.md)).
    */
   async run(
     sentence: Sentence,
@@ -85,7 +87,12 @@ export class AudioSynthesisService {
   ): Promise<Result<AudioAsset, AiError>> {
     const cached = await this.enrichment.getAudioByCacheKey(cacheKey);
     if (cached.ok && cached.value !== null) {
-      return ok(cached.value);
+      return ok({
+        ...cached.value,
+        sentenceId: sentence.id,
+        readingId,
+        sourceContentHash: sentence.contentHash,
+      });
     }
 
     const payload = await this.provider.synthesize(
