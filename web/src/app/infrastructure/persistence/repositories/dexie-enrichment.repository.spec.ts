@@ -816,4 +816,36 @@ describe('DexieEnrichmentRepository', () => {
       expect(await db.audioAssets.count()).toBe(0);
     });
   });
+
+  describe('a reading deleted while its aids were being produced', () => {
+    it('does not store a clip for a reading that no longer exists', async () => {
+      await readings.deleteReading(draft.reading.id);
+
+      const stored = await repository.storeAudio(audio(0), currentAudioKeys());
+
+      expect(!stored.ok && stored.error.code).toBe('not-found');
+      expect(await db.audioAssets.count()).toBe(0);
+    });
+
+    it('does not store a grammar review for a reading that no longer exists', async () => {
+      await readings.deleteReading(draft.reading.id);
+
+      const stored = await repository.storeGrammarAnalysis(
+        grammarAnalysis(0),
+        currentGrammarKeys(),
+      );
+
+      expect(!stored.ok && stored.error.code).toBe('not-found');
+      expect(await db.grammarAnalyses.count()).toBe(0);
+    });
+
+    it('does not store a translation for a reading that no longer exists', async () => {
+      await readings.deleteReading(draft.reading.id);
+
+      const stored = await repository.storeTranslation(translation(0), currentTranslationKeys());
+
+      expect(!stored.ok && stored.error.code).toBe('not-found');
+      expect(await db.translations.count()).toBe(0);
+    });
+  });
 });

@@ -171,6 +171,9 @@ does not rewrite or discard existing translation or job rows.
 
 Other tabs learn about a deleted or changed reading through a `BroadcastChannel`, not by polling
 ([ADR 0042](../decisions/0042-cross-tab-reading-mutations.md)).
+A job can still finish a request after its reading was deleted, so every write of a translation,
+plan, grammar analysis or clip checks inside its own transaction that the reading exists, and
+refuses with `not-found` otherwise. Nothing is left behind that no deletion would remove.
 
 ## 8.6 Caching of AI results
 

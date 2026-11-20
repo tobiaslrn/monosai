@@ -17,7 +17,7 @@ import type {
 } from '../../../domain/enrichment/records';
 import type { EnrichmentRepository } from '../../../domain/enrichment/enrichment-repository';
 import type { TranslationPlan } from '../../../domain/enrichment/translation-plan';
-import type { StorageError } from '../../../domain/storage/storage-error';
+import { storageError, type StorageError } from '../../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../monosai-db';
 import { parseRecord, parseRecords } from '../record-validation';
 import { ROW_VERSION } from '../schemas/common.schema';
@@ -31,7 +31,7 @@ import {
   type TranslationRow,
   type TranslationPlanRow,
 } from '../schemas/enrichment.schema';
-import { runStorage } from './storage-operation';
+import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage-operation';
 
 /**
  * Cached auxiliary results.
@@ -44,6 +44,12 @@ import { runStorage } from './storage-operation';
  * coverage is always asked by key. The row's own `readingId` and `sentenceId`
  * name the sentence it was last written for, which decides what a deletion
  * looks at first and nothing else.
+ *
+ * Every write that names a reading first checks, inside its own transaction,
+ * that the reading still exists. A job can finish a request after the reading
+ * was deleted, here or in another tab, and its row would otherwise outlive the
+ * deletion with nothing left to remove it. The refusal is `not-found`, which
+ * is not retried.
  */
 export class DexieEnrichmentRepository implements EnrichmentRepository {
   constructor(private readonly db: MonosaiDatabase) {}
@@ -63,10 +69,11 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
   async storeTranslationPlan(
     plan: TranslationPlan,
   ): Promise<Result<TranslationPlan, StorageError>> {
-    const stored = await runStorage('translationPlans.put', async () => {
-      const reading = await this.db.readings.get(plan.readingId);
-      if (reading === undefined) throw new Error('The reading no longer exists.');
-      await this.db.translationPlans.put({ ...plan, v: ROW_VERSION });
+    const stored = await runStorageWithRules('translationPlans.put', async () => {
+      await this.db.transaction('rw', [this.db.translationPlans, this.db.readings], async () => {
+        await this.requireReading(plan.readingId);
+        await this.db.translationPlans.put({ ...plan, v: ROW_VERSION });
+      });
     });
     return stored.ok ? ok(plan) : stored;
   }
@@ -77,13 +84,12 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     currentCacheKeys: ReadonlyMap<SentenceId, string>,
     expectedInputFingerprint: string,
   ): Promise<Result<TranslationPlan, StorageError>> {
-    const stored = await runStorage('translationPlans.commit', async () => {
+    const stored = await runStorageWithRules('translationPlans.commit', async () => {
       await this.db.transaction(
         'rw',
         [this.db.translationPlans, this.db.translations, this.db.readings],
         async () => {
-          const reading = await this.db.readings.get(plan.readingId);
-          if (reading === undefined) throw new Error('The reading no longer exists.');
+          await this.requireReading(plan.readingId);
           const active = await this.db.translationPlans.get(plan.readingId);
           if (active?.inputFingerprint !== expectedInputFingerprint) {
             throw new Error('The active translation plan changed.');
@@ -111,7 +117,7 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     currentCacheKeys: ReadonlyMap<SentenceId, string>,
     planFingerprint: string,
   ): Promise<Result<TranslationRecord, StorageError>> {
-    const stored = await runStorage('translations.putForPlan', async () => {
+    const stored = await runStorageWithRules('translations.putForPlan', async () => {
       await this.db.transaction(
         'rw',
         [this.db.translationPlans, this.db.translations, this.db.readings],
@@ -120,8 +126,7 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
           if (active?.state !== 'ready' || active.planFingerprint !== planFingerprint) {
             throw new Error('The active translation plan changed.');
           }
-          const reading = await this.db.readings.get(record.readingId);
-          if (reading === undefined) throw new Error('The reading no longer exists.');
+          await this.requireReading(record.readingId);
           await this.db.translations.put({ ...record, v: ROW_VERSION });
           await this.refreshTranslationSummary(record.readingId, currentCacheKeys);
         },
@@ -193,8 +198,9 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     record: TranslationRecord,
     currentCacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<TranslationRecord, StorageError>> {
-    const written = await runStorage('translations.put', async () => {
+    const written = await runStorageWithRules('translations.put', async () => {
       await this.db.transaction('rw', [this.db.translations, this.db.readings], async () => {
+        await this.requireReading(record.readingId);
         await this.db.translations.put({ ...record, v: ROW_VERSION });
         await this.refreshTranslationSummary(record.readingId, currentCacheKeys);
       });
@@ -267,8 +273,9 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     record: GrammarAnalysisRecord,
     currentCacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<GrammarAnalysisRecord, StorageError>> {
-    const written = await runStorage('grammarAnalyses.put', async () => {
+    const written = await runStorageWithRules('grammarAnalyses.put', async () => {
       await this.db.transaction('rw', [this.db.grammarAnalyses, this.db.readings], async () => {
+        await this.requireReading(record.readingId);
         await this.db.grammarAnalyses.put({ ...record, v: ROW_VERSION });
         await this.refreshGrammarSummary(record.readingId, currentCacheKeys);
       });
@@ -345,8 +352,9 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     const { blob, ...metadata } = asset;
     const bytes = await blob.arrayBuffer();
 
-    const written = await runStorage('audioAssets.put', async () => {
+    const written = await runStorageWithRules('audioAssets.put', async () => {
       await this.db.transaction('rw', [this.db.audioAssets, this.db.readings], async () => {
+        await this.requireReading(asset.readingId);
         await this.db.audioAssets.put({ ...metadata, bytes, v: ROW_VERSION });
         await this.refreshAudioSummary(asset.readingId, currentCacheKeys);
       });
@@ -554,6 +562,13 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     return analyzedSentenceCount === cacheKeys.size
       ? grammarComplete(concern)
       : grammarPartial(analyzedSentenceCount, concern);
+  }
+
+  /** Fails the surrounding transaction when the reading was deleted meanwhile. */
+  private async requireReading(readingId: ReadingId): Promise<void> {
+    if ((await this.db.readings.where(':id').equals(readingId).count()) === 0) {
+      throw new StorageRuleViolation(storageError('not-found', 'That reading no longer exists.'));
+    }
   }
 
   private async refreshTranslationSummary(
