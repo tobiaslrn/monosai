@@ -2,7 +2,7 @@ import { ankiError, type AnkiError } from '../../app/domain/anki/anki-error';
 import { err, ok, type Result } from '../../app/domain/shared/result';
 import type { PackageResourceLimits } from './resource-limits';
 import type { ZipArchive } from './zip-reader';
-import { decompressZstdWithin, zstdHeaderOverLimit, type ZstdDecompressor } from './zstd-bounds';
+import { checkZstdHeaders, decompressZstdWithin, type ZstdDecompressor } from './zstd-bounds';
 
 export type { ZstdDecompressor } from './zstd-bounds';
 
@@ -111,22 +111,24 @@ export async function loadCollection(
           `${member.name}: ${reason}`,
         ),
       );
-    const header = zstdHeaderOverLimit(bytes, limits.maxMemberBytes);
+    const undecodable = (reason: string): Result<never, AnkiError> =>
+      err(
+        ankiError(
+          'package-unreadable',
+          'The collection inside this package could not be decompressed.',
+          reason,
+        ),
+      );
+    const header = checkZstdHeaders(bytes, limits.maxMemberBytes);
     if (header !== null) {
-      return tooLarge(header);
+      return header.kind === 'over-limit' ? tooLarge(header.reason) : undecodable(header.reason);
     }
     const createDecoder = await decompressZstd();
     let decompressed: Uint8Array | null;
     try {
       decompressed = decompressZstdWithin(bytes, createDecoder, limits.maxMemberBytes);
     } catch (thrown) {
-      return err(
-        ankiError(
-          'package-unreadable',
-          'The collection inside this package could not be decompressed.',
-          thrown instanceof Error ? thrown.message : 'zstd decompression failed',
-        ),
-      );
+      return undecodable(thrown instanceof Error ? thrown.message : 'zstd decompression failed');
     }
     if (decompressed === null) {
       return tooLarge(`expands past ${String(limits.maxMemberBytes)} bytes`);

@@ -149,9 +149,14 @@ about 3.4x — so a legitimate package never meets one.
 
 The sizes an archive declares only refuse an honest package early. The member
 and ratio limits are held on the bytes actually produced, while the deflate
-stream and the zstd decoder produce them, and a zstd frame whose header asks
+stream and the zstd decoder produce them. A browser inflates each written chunk
+in full before anything is read, so deflate input is written in 16 KiB slices,
+each only once the stream is ready for it: no more than one slice's output,
+about 16 MB, is ever produced past the limit. A zstd frame whose header asks
 for a larger window or content than the member limit is refused before any
-decoding, because the decoder allocates both up front.
+decoding, because the decoder allocates both up front, and so is data that
+ends inside a frame header, which the decoder would otherwise read as far as
+the window and allocate it.
 
 ## Consequences
 

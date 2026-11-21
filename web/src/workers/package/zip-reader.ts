@@ -150,6 +150,22 @@ function readZip64Extra(
   }
 }
 
+/** Compressed bytes handed to the decompressor at a time. */
+export const INFLATE_SLICE_BYTES = 16 * 1024;
+
+/** Writes `data` a slice at a time, each only once the stream can take it, then closes. */
+async function writeInSlices(
+  writer: WritableStreamDefaultWriter<BufferSource>,
+  data: Uint8Array<ArrayBuffer>,
+): Promise<void> {
+  for (let offset = 0; offset < data.byteLength; offset += INFLATE_SLICE_BYTES) {
+    await writer.ready;
+    await writer.write(data.subarray(offset, offset + INFLATE_SLICE_BYTES));
+  }
+  await writer.ready;
+  await writer.close();
+}
+
 /**
  * Inflates a raw deflate member, stopping once it outgrows `maxBytes`.
  *
@@ -162,6 +178,12 @@ function readZip64Extra(
  * the sizes the archive declares are the attacker's to choose, and checking
  * only after the whole member is buffered would let a small archive exhaust
  * memory first. `null` means the budget ran out.
+ *
+ * A browser inflates each written chunk in full before the reader sees any of
+ * it, so the compressed bytes go in as small slices, and the next slice is only
+ * written once the stream is ready for it. The reader therefore drains one
+ * slice's output, at most about a thousand times the slice, before the next
+ * slice is inflated, and stops there once the budget is spent.
  */
 async function inflateRaw(
   data: Uint8Array<ArrayBuffer>,
@@ -169,9 +191,9 @@ async function inflateRaw(
 ): Promise<Uint8Array | null> {
   const stream = new DecompressionStream('deflate-raw');
   const writer = stream.writable.getWriter();
-  const written = writer.write(data).then(() => writer.close());
+  const written = writeInSlices(writer, data);
   // Cancelling the readable side errors the writable one, and nothing awaits
-  // the write on that path.
+  // the writes on that path.
   written.catch(() => undefined);
 
   const reader = stream.readable.getReader();

@@ -13,26 +13,53 @@ const SKIPPABLE_MAGIC = 0x184d2a50;
 const BLOCK_RLE = 1;
 const BLOCK_RESERVED = 3;
 
+/** Why a zstd member is refused before decoding starts. */
+export interface ZstdHeaderProblem {
+  /** `over-limit` when a frame asks for too much; `unreadable` when a header cannot be read. */
+  readonly kind: 'over-limit' | 'unreadable';
+  readonly reason: string;
+}
+
 /**
- * Names the first frame whose header asks for more memory than `maxBytes`.
+ * Finds the first frame whose header asks for more memory than `maxBytes`, or
+ * that cannot be read in full.
  *
  * A decoder allocates a frame's window, or its whole declared content for a
  * single-segment frame, as soon as it reads the header, before a single byte
  * is decoded. Both sizes are the attacker's to choose, so they are checked
- * here, over every frame, before decoding starts. Structure this scan cannot
- * follow is left to the decoder, which refuses it.
+ * here, over every frame, before decoding starts. A header cut off by the end
+ * of the data is refused too: a decoder reads as much of it as is there,
+ * allocates the window it names, and only then finds the data missing.
+ * Everything up to the end of the data must be a whole frame.
  */
-export function zstdHeaderOverLimit(bytes: Uint8Array, maxBytes: number): string | null {
+export function checkZstdHeaders(bytes: Uint8Array, maxBytes: number): ZstdHeaderProblem | null {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const length = bytes.byteLength;
+  const cutOff = (at: number): ZstdHeaderProblem => ({
+    kind: 'unreadable',
+    reason: `the zstd data ends inside a frame at byte ${String(at)}`,
+  });
   let offset = 0;
-  while (offset + 8 <= bytes.byteLength) {
+  while (offset < length) {
+    if (offset + 4 > length) {
+      return cutOff(offset);
+    }
     const magic = view.getUint32(offset, true);
     if ((magic & SKIPPABLE_MAGIC_MASK) >>> 0 === SKIPPABLE_MAGIC) {
+      if (offset + 8 > length) {
+        return cutOff(offset);
+      }
       offset += 8 + view.getUint32(offset + 4, true);
+      if (offset > length) {
+        return cutOff(length);
+      }
       continue;
     }
     if (magic !== ZSTD_MAGIC) {
-      return null;
+      return { kind: 'unreadable', reason: `no zstd frame starts at byte ${String(offset)}` };
+    }
+    if (offset + 5 > length) {
+      return cutOff(offset);
     }
     const descriptor = view.getUint8(offset + 4);
     const singleSegment = (descriptor >> 5) & 1;
@@ -43,6 +70,9 @@ export function zstdHeaderOverLimit(bytes: Uint8Array, maxBytes: number): string
 
     let window = 0;
     if (singleSegment === 0) {
+      if (cursor + 1 > length) {
+        return cutOff(offset);
+      }
       const windowDescriptor = view.getUint8(cursor);
       const base = 2 ** (10 + (windowDescriptor >> 3));
       window = base + (base / 8) * (windowDescriptor & 7);
@@ -50,8 +80,8 @@ export function zstdHeaderOverLimit(bytes: Uint8Array, maxBytes: number): string
     }
     cursor += dictionaryFlag === 3 ? 4 : dictionaryFlag;
     const sizeBytes = sizeFlag === 0 ? singleSegment : 2 ** sizeFlag;
-    if (cursor + sizeBytes > bytes.byteLength) {
-      return null;
+    if (cursor + sizeBytes > length) {
+      return cutOff(offset);
     }
     let contentSize = 0;
     for (let index = sizeBytes - 1; index >= 0; index -= 1) {
@@ -65,15 +95,18 @@ export function zstdHeaderOverLimit(bytes: Uint8Array, maxBytes: number): string
       window = contentSize;
     }
     if (window > maxBytes) {
-      return `a zstd frame asks for a ${String(window)} byte window`;
+      return {
+        kind: 'over-limit',
+        reason: `a zstd frame asks for a ${String(window)} byte window`,
+      };
     }
     if (contentSize > maxBytes) {
-      return `a zstd frame declares ${String(contentSize)} bytes`;
+      return { kind: 'over-limit', reason: `a zstd frame declares ${String(contentSize)} bytes` };
     }
 
     for (;;) {
-      if (cursor + 3 > bytes.byteLength) {
-        return null;
+      if (cursor + 3 > length) {
+        return cutOff(offset);
       }
       const header =
         view.getUint8(cursor) |
@@ -81,7 +114,7 @@ export function zstdHeaderOverLimit(bytes: Uint8Array, maxBytes: number): string
         (view.getUint8(cursor + 2) << 16);
       const type = (header >> 1) & 3;
       if (type === BLOCK_RESERVED) {
-        return null;
+        return { kind: 'unreadable', reason: `a zstd block at byte ${String(cursor)} is reserved` };
       }
       cursor += 3 + (type === BLOCK_RLE ? 1 : header >> 3);
       if ((header & 1) === 1) {
@@ -89,6 +122,9 @@ export function zstdHeaderOverLimit(bytes: Uint8Array, maxBytes: number): string
       }
     }
     offset = cursor + (hasChecksum === 1 ? 4 : 0);
+    if (offset > length) {
+      return cutOff(length);
+    }
   }
   return null;
 }

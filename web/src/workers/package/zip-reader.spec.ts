@@ -1,25 +1,38 @@
+import { constants, deflateRawSync, inflateRawSync } from 'node:zlib';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PackageResourceLimits } from './resource-limits';
-import { openZipArchive } from './zip-reader';
+import { INFLATE_SLICE_BYTES, openZipArchive } from './zip-reader';
 
-async function deflateRaw(bytes: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-  const stream = new CompressionStream('deflate-raw');
-  const writer = stream.writable.getWriter();
-  void writer.write(bytes).then(() => writer.close());
-  const chunks: Uint8Array[] = [];
-  const reader = stream.readable.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-  }
-  const out = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0));
-  let offset = 0;
-  for (const chunk of chunks) {
-    out.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return out;
+const PIECE_BYTES = 64 * 1024;
+
+/**
+ * A `DecompressionStream` that behaves the way browsers do: each written chunk
+ * is inflated in full and every piece is enqueued before the next read, with
+ * no regard for how much the reader has taken. It counts what it produces, so
+ * a test can see what the stream itself allocated rather than what was read.
+ */
+function eagerInflation(counter: { produced: number }): TransformStream<BufferSource, Uint8Array> {
+  let input = new Uint8Array(0);
+  let emitted = 0;
+  return new TransformStream<BufferSource, Uint8Array>({
+    transform(chunk, controller) {
+      const bytes =
+        chunk instanceof ArrayBuffer
+          ? new Uint8Array(chunk)
+          : new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+      const joined = new Uint8Array(input.byteLength + bytes.byteLength);
+      joined.set(input);
+      joined.set(bytes, input.byteLength);
+      input = joined;
+      const output = inflateRawSync(input, { finishFlush: constants.Z_SYNC_FLUSH });
+      for (let offset = emitted; offset < output.byteLength; offset += PIECE_BYTES) {
+        const piece = output.subarray(offset, Math.min(offset + PIECE_BYTES, output.byteLength));
+        counter.produced += piece.byteLength;
+        controller.enqueue(piece);
+      }
+      emitted = output.byteLength;
+    },
+  });
 }
 
 /** A one-member zip whose directory states whatever uncompressed size it is told to. */
@@ -72,36 +85,51 @@ describe('openZipArchive', () => {
       maxMemberBytes: 256 * 1024,
       maxCompressionRatio: 250,
     };
-    // 32 MiB of zeros deflates to about 32 KiB. The directory claims 4 KiB, so
+    // 64 MiB of zeros deflates to about 64 KiB. The directory claims 4 KiB, so
     // both checks made before inflating pass.
-    const compressed = await deflateRaw(new Uint8Array(32 * 1024 * 1024));
+    const compressed = new Uint8Array(deflateRawSync(new Uint8Array(64 * 1024 * 1024)));
     const archive = openZipArchive(zipWith('collection.anki21', compressed, 4096), limits);
     if (!archive.ok) throw new Error('the archive should open');
 
-    const Original = globalThis.DecompressionStream;
-    let produced = 0;
-    class CountingDecompressionStream {
-      readonly writable: WritableStream<BufferSource>;
-      readonly readable: ReadableStream<Uint8Array>;
-      constructor(format: CompressionFormat) {
-        const inner = new Original(format);
-        this.writable = inner.writable;
-        this.readable = inner.readable.pipeThrough(
-          new TransformStream<Uint8Array, Uint8Array>({
-            transform(chunk, controller) {
-              produced += chunk.byteLength;
-              controller.enqueue(chunk);
-            },
-          }),
-        );
-      }
-    }
-    vi.stubGlobal('DecompressionStream', CountingDecompressionStream);
+    const counter = { produced: 0 };
+    vi.stubGlobal(
+      'DecompressionStream',
+      class {
+        readonly writable: WritableStream<BufferSource>;
+        readonly readable: ReadableStream<Uint8Array>;
+        constructor() {
+          const stream = eagerInflation(counter);
+          this.writable = stream.writable;
+          this.readable = stream.readable;
+        }
+      },
+    );
 
     const read = await archive.value.read('collection.anki21');
 
     expect(!read.ok && read.error.code).toBe('package-resource-limit');
-    // A chunk or two past the limit is the most a bounded reader can produce.
-    expect(produced).toBeLessThan(4 * limits.maxMemberBytes);
+    // Deflate expands by at most 1032 times, so this is one slice's output: the
+    // next slice was never handed over.
+    expect(counter.produced).toBeLessThanOrEqual(1032 * INFLATE_SLICE_BYTES);
+  });
+
+  it('still inflates a member within the limit', async () => {
+    const limits: PackageResourceLimits = {
+      maxArchiveBytes: 64 * 1024 * 1024,
+      maxEntries: 10,
+      maxMemberBytes: 1024 * 1024,
+      maxCompressionRatio: 250,
+    };
+    const original = new Uint8Array(200 * 1024).map((_, index) => (index * 7919) % 251);
+    const compressed = new Uint8Array(deflateRawSync(original));
+    const archive = openZipArchive(
+      zipWith('collection.anki21', compressed, original.byteLength),
+      limits,
+    );
+    if (!archive.ok) throw new Error('the archive should open');
+
+    const read = await archive.value.read('collection.anki21');
+
+    expect(read.ok && read.value).toEqual(original);
   });
 });

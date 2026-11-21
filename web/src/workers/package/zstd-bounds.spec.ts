@@ -86,6 +86,40 @@ describe('loadCollection with a zstd collection', () => {
     expect(decoders).toBe(0);
   });
 
+  it.each([
+    ['a header naming a huge window and nothing after it', [0x00, 0xa7], 'package-resource-limit'],
+    ['a frame content size cut off', [0xc0, 0xa7, 0x00, 0x00], 'package-unreadable'],
+    ['a small window and no blocks', [0x00, 0x38], 'package-unreadable'],
+    ['a frame magic and nothing else', [], 'package-unreadable'],
+  ])('refuses a valid frame followed by %s before decoding', async (_, tail, code) => {
+    let decoders = 0;
+    const counting: ZstdDecompressor = (ondata) => {
+      decoders += 1;
+      return new Decompress(ondata);
+    };
+    const valid = runLengthFrame(1);
+    const bytes = new Uint8Array([...valid, 0x28, 0xb5, 0x2f, 0xfd, ...tail]);
+
+    const loaded = await loadCollection(archiveOf(bytes), () => Promise.resolve(counting), LIMITS);
+
+    expect(!loaded.ok && loaded.error.code).toBe(code);
+    expect(decoders).toBe(0);
+  });
+
+  it('refuses data that stops short of a frame magic', async () => {
+    let decoders = 0;
+    const counting: ZstdDecompressor = (ondata) => {
+      decoders += 1;
+      return new Decompress(ondata);
+    };
+    const bytes = new Uint8Array([...runLengthFrame(1), 0x28, 0xb5]);
+
+    const loaded = await loadCollection(archiveOf(bytes), () => Promise.resolve(counting), LIMITS);
+
+    expect(!loaded.ok && loaded.error.code).toBe('package-unreadable');
+    expect(decoders).toBe(0);
+  });
+
   it('decodes a frame within the limit', async () => {
     const loaded = await loadCollection(
       archiveOf(runLengthFrame(1)),
