@@ -272,8 +272,10 @@ identity, and a deterministic whole-reading candidate set before its first reque
 and useful recurring terms come from stored token analyses; no grammar result or extra AI request
 is needed. A small opening (normally three sentences, or a three-to-five-sentence first paragraph)
 returns both per-sentence English and an optional glossary. A valid glossary is frozen with the
-accepted opening rows in one transaction before any tail request starts. If only the glossary is
-invalid, the English is stored provisionally and Retry repairs only the glossary. Later requests
+accepted opening rows in one transaction before any tail request starts. An opening sentence the
+reply still leaves out after its one follow-up is recorded as failed, and the tail never asks for it
+again; Retry does. A refusal of the whole setup in the opening sends no tail at all. If only the
+glossary is invalid, the English is stored provisionally and Retry repairs only the glossary. Later requests
 use stable Japanese passage windows, identical captured story context, and the identical frozen
 glossary. At most three translation requests roll concurrently; each also holds a shared permit.
 

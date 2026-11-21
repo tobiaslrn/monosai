@@ -34,6 +34,18 @@ export interface TranslationRun {
   readonly publish: (counts: LayerCounts) => void;
 }
 
+/**
+ * What the opening settled: the frozen plan to translate the rest against, the
+ * row as it now stands, and the failure that left an opening sentence without
+ * English, if one did.
+ */
+export interface EstablishedOpening {
+  readonly context: TranslationJobContext;
+  readonly counts: LayerCounts;
+  readonly job: AssetJob;
+  readonly failure: AiError | null;
+}
+
 /** The context every translation request of a plan carries. */
 export function translationContextFor(
   plan: TranslationPlan,
@@ -70,9 +82,7 @@ export class TranslationTerminologyService {
     job: AssetJob,
     counts: LayerCounts,
     run: TranslationRun,
-  ): Promise<
-    Result<{ context: TranslationJobContext; counts: LayerCounts } | null, AiError | StorageError>
-  > {
+  ): Promise<Result<EstablishedOpening | null, AiError | StorageError>> {
     const openingPassage = translationPassageWindow(context.sentences, 0);
     const opening = selectOpeningSentences(
       context.sentences,
@@ -151,11 +161,19 @@ export class TranslationTerminologyService {
         durationMs: this.clock.now() - run.startedAt,
         count: outcome.records.length,
       });
+      let latest = job;
       for (const record of outcome.records) {
         const advanced = await this.jobs.recordCompletion(job.id, record.sentenceId);
         if (!advanced.ok) return err(advanced.error);
+        latest = advanced.value;
       }
-      const nextCounts = { ...counts, completed: counts.completed + outcome.records.length };
+      const recorded = await this.recordFailures(latest, outcome);
+      if (!recorded.ok) return err(recorded.error);
+      const nextCounts = {
+        ...counts,
+        completed: counts.completed + outcome.records.length,
+        failed: recorded.value.job.failedItems.length,
+      };
       run.publish(nextCounts);
       return err(
         aiError(
@@ -186,13 +204,62 @@ export class TranslationTerminologyService {
       durationMs: this.clock.now() - run.startedAt,
       count: records.length,
     });
+    let latest = job;
     for (const record of records) {
       const advanced = await this.jobs.recordCompletion(job.id, record.sentenceId);
       if (!advanced.ok) return err(advanced.error);
+      latest = advanced.value;
     }
-    const nextCounts = { ...counts, completed: counts.completed + records.length };
+    const recorded = await this.recordFailures(latest, outcome);
+    if (!recorded.ok) return err(recorded.error);
+    const nextCounts = {
+      ...counts,
+      completed: counts.completed + records.length,
+      failed: recorded.value.job.failedItems.length,
+    };
     run.publish(nextCounts);
-    return ok({ context: { ...context, plan: ready, cacheKeys: readyKeys }, counts: nextCounts });
+    return ok({
+      context: { ...context, plan: ready, cacheKeys: readyKeys },
+      counts: nextCounts,
+      job: recorded.value.job,
+      failure: recorded.value.failure,
+    });
+  }
+
+  /**
+   * Records the opening sentences the reply left without English, after the
+   * batch and its one follow-up, as failed items. The tail never asks for them
+   * again: a job does not retry on its own, and *Retry* is the learner's
+   * (ADR 0048).
+   */
+  private async recordFailures(
+    job: AssetJob,
+    outcome: { readonly failures: readonly SentenceId[]; readonly error: AiError | null },
+  ): Promise<Result<{ job: AssetJob; failure: AiError | null }, StorageError>> {
+    const failure =
+      outcome.failures.length === 0
+        ? null
+        : (outcome.error ??
+          aiError(
+            'malformed-response',
+            'translation',
+            'The translations did not match the sentences that were sent.',
+          ));
+    // A stop cut the batch short: nothing failed, the rest is simply not done.
+    if (failure === null || failure.code === 'cancelled') {
+      return ok({ job, failure: null });
+    }
+    let current = job;
+    for (const sentenceId of outcome.failures) {
+      const recorded = await this.jobs.recordFailure(job.id, {
+        sentenceId,
+        errorCode: failure.code,
+        failedAt: this.clock.now(),
+      });
+      if (!recorded.ok) return err(recorded.error);
+      current = recorded.value;
+    }
+    return ok({ job: current, failure });
   }
 
   async repairGlossary(

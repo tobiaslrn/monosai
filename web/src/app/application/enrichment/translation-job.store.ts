@@ -156,6 +156,10 @@ export class TranslationJobStore {
     this.lifecycle.publish({ kind: 'running', readingId: context.readingId, counts });
     let readyContext: TranslationJobContext | null =
       context.plan.state === 'ready' ? context : null;
+    // The row as the opening left it, holes included, so the tail leaves the
+    // opening's failures for Retry rather than asking for them again.
+    let row = job;
+    let openingFailure: AiError | null = null;
     if (context.plan.state === 'opening-pending') {
       const established = await this.terminology.establishOpening(context, job, counts, terms);
       if (!established.ok) {
@@ -174,6 +178,8 @@ export class TranslationJobStore {
       }
       readyContext = established.value.context;
       counts = established.value.counts;
+      row = established.value.job;
+      openingFailure = established.value.failure;
     } else if (context.plan.state === 'glossary-repair-required') {
       const repaired = await this.terminology.repairGlossary(context, job, counts, terms);
       if (!repaired.ok) {
@@ -188,13 +194,19 @@ export class TranslationJobStore {
       counts = repaired.value.counts;
     }
     if (readyContext === null) return;
-    const tail = await this.runTail(readyContext, job, counts, run);
+    // A refusal of the whole setup in the opening would refuse every tail batch
+    // the same way, so none is sent (ADR 0048).
+    if (openingFailure !== null && !isSentenceLocalTextFailure(openingFailure)) {
+      await this.lifecycle.settle(row, counts, run, openingFailure);
+      return;
+    }
+    const tail = await this.runTail(readyContext, row, counts, run);
     counts = tail.counts;
     if (tail.storage !== null) {
       this.lifecycle.fail(context.readingId, tail.storage, counts);
       return;
     }
-    const settled = await this.lifecycle.settle(job, counts, run, tail.error);
+    const settled = await this.lifecycle.settle(row, counts, run, tail.error ?? openingFailure);
     if (settled === 'complete') {
       this.logger.info('translation.completed', {
         durationMs: this.clock.now() - this.runStartedAt,

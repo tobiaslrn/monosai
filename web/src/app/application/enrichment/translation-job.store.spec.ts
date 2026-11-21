@@ -508,6 +508,58 @@ describe('TranslationJobStore', () => {
     expect(tailCalls).toBeLessThanOrEqual(3);
   });
 
+  it('records an opening sentence the reply left out instead of asking for it again', async () => {
+    const asked: string[][] = [];
+    vi.spyOn(bed.provider, 'translate').mockImplementation((request) => {
+      const targets = translationTargets(request);
+      asked.push(targets.map((target) => target.textJa));
+      const translations = targets
+        // The provider never answers for the second sentence of the opening.
+        .filter((target) => request.kind !== 'opening' || target.textJa !== '文1です。')
+        .map((target) => ({ id: target.id, textEn: `EN ${target.textJa}` }));
+      return Promise.resolve(
+        ok(request.kind === 'opening' ? { translations, glossary: [] } : { translations }),
+      );
+    });
+
+    await bed.store.start(bed.draft.reading.id);
+
+    const tail = asked.slice(2).flat();
+    // The opening asked twice (the batch and its one follow-up); the tail must
+    // not ask a third time on its own.
+    expect(tail).not.toContain('文1です。');
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('failed');
+    const [row] = await bed.db.assetJobs.toArray();
+    expect(row?.failedItems.map((item) => item.sentenceId)).toEqual([
+      bed.draft.sentences.find((sentence) => sentence.japaneseText === '文1です。')!.id,
+    ]);
+  });
+
+  it('sends no tail once the opening follow-up is refused for the whole setup', async () => {
+    const asked: string[][] = [];
+    vi.spyOn(bed.provider, 'translate').mockImplementation((request) => {
+      const targets = translationTargets(request);
+      asked.push(targets.map((target) => target.textJa));
+      if (asked.length > 1) {
+        return Promise.resolve(err(aiError('authentication', 'translation', 'Key rejected.')));
+      }
+      const translations = targets
+        .filter((target) => target.textJa !== '文1です。')
+        .map((target) => ({ id: target.id, textEn: `EN ${target.textJa}` }));
+      return Promise.resolve(ok({ translations, glossary: [] }));
+    });
+
+    await bed.store.start(bed.draft.reading.id);
+
+    // The opening and its follow-up, and nothing after the refusal.
+    expect(asked).toHaveLength(2);
+    expect(bed.store.progress()).toMatchObject({
+      kind: 'failed',
+      error: { source: 'provider', error: { code: 'authentication' } },
+    });
+  });
+
   it('supplies every tail request the same frozen terminology and story context', async () => {
     await bed.store.start(bed.draft.reading.id);
 
