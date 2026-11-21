@@ -159,24 +159,31 @@ export class VocabularyRefreshStore {
     this.catalogSignal.set(null);
     this.warningsSignal.set([]);
 
-    const signal = this.beginRun('probing');
+    const run = this.beginRun('probing');
+    const signal = run.signal;
 
     const probed = await provider.probe(signal);
+    if (!this.owns(run)) {
+      return;
+    }
     if (!probed.ok) {
-      this.fail(probed.error);
+      this.fail(probed.error, run);
       return;
     }
     this.capabilitiesSignal.set(probed.value);
 
     this.stateSignal.set({ kind: 'discovering' });
     const discovered = await provider.discover(signal);
+    if (!this.owns(run)) {
+      return;
+    }
     if (!discovered.ok) {
-      this.fail(discovered.error);
+      this.fail(discovered.error, run);
       return;
     }
     this.catalogSignal.set(discovered.value);
 
-    this.finishRun();
+    this.finishRun(run);
     this.stateSignal.set(IDLE);
     this.announce(
       `Connected. Found ${String(discovered.value.decks.length)} decks and ${String(
@@ -211,7 +218,8 @@ export class VocabularyRefreshStore {
       return;
     }
 
-    const signal = this.beginRun('validating');
+    const run = this.beginRun('validating');
+    const signal = run.signal;
 
     const catalog = this.catalog();
     const resolution =
@@ -226,6 +234,7 @@ export class VocabularyRefreshStore {
             ? 'Some vocabulary sources no longer match your collection. Repair or remove them, then refresh again.'
             : 'Include at least one vocabulary source before refreshing.',
         ),
+        run,
       );
       return;
     }
@@ -239,6 +248,9 @@ export class VocabularyRefreshStore {
     const seenMappings = new Set<VocabularySourceId>();
 
     for await (const event of provider.extractReviewed(resolved, signal)) {
+      if (!this.owns(run)) {
+        return;
+      }
       switch (event.kind) {
         case 'progress':
           if (!seenMappings.has(event.mappingId)) {
@@ -261,16 +273,19 @@ export class VocabularyRefreshStore {
           break;
         case 'failed':
           if (event.error.code === 'cancelled') {
-            this.cancelled();
+            this.cancelled(run);
           } else {
-            this.fail(event.error);
+            this.fail(event.error, run);
           }
           return;
       }
     }
 
+    if (!this.owns(run)) {
+      return;
+    }
     if (isAborted(signal)) {
-      this.cancelled();
+      this.cancelled(run);
       return;
     }
 
@@ -305,6 +320,9 @@ export class VocabularyRefreshStore {
     const built = await this.sync.prepare(
       { caches, ...(pendingSources === undefined ? {} : { sources: pendingSources }) },
       (progress) => {
+        if (!this.owns(run)) {
+          return;
+        }
         this.stateSignal.set({
           kind: 'analyzing',
           completed: progress.completed,
@@ -313,21 +331,24 @@ export class VocabularyRefreshStore {
       },
       signal,
     );
+    if (!this.owns(run)) {
+      return;
+    }
     if (!built.ok) {
       if (built.error.code === 'cancelled') {
-        this.cancelled();
+        this.cancelled(run);
       } else {
-        this.fail(built.error);
+        this.fail(built.error, run);
       }
       return;
     }
     if (isAborted(signal)) {
-      this.cancelled();
+      this.cancelled(run);
       return;
     }
 
     this.stateSignal.set({ kind: 'summarizing' });
-    this.finishRun();
+    this.finishRun(run);
     this.stateSignal.set({
       kind: 'awaiting-confirmation',
       summary: { stats: built.value.commit.snapshot.stats, prepared: built.value },
@@ -400,26 +421,48 @@ export class VocabularyRefreshStore {
     this.releaseProvider();
   }
 
-  private beginRun(kind: 'probing' | 'validating'): AbortSignal {
+  /**
+   * Starts a run and returns the controller that identifies it.
+   *
+   * Starting a run aborts the previous one, but that run's continuation still
+   * resumes after whatever it was awaiting. Each continuation checks it still
+   * owns the store before touching state, so a superseded run can neither
+   * overwrite the newer run's state nor clear the controller `cancel` needs.
+   */
+  private beginRun(kind: 'probing' | 'validating'): AbortController {
     this.controller?.abort();
     const controller = new AbortController();
     this.controller = controller;
     this.stateSignal.set({ kind });
-    return controller.signal;
+    return controller;
   }
 
-  private finishRun(): void {
-    this.controller = null;
+  private owns(run: AbortController): boolean {
+    return this.controller === run;
   }
 
-  private fail(error: RefreshFailure): void {
-    this.finishRun();
+  private finishRun(run: AbortController): void {
+    if (this.owns(run)) {
+      this.controller = null;
+    }
+  }
+
+  /**
+   * Ends a run in failure, or reports a refusal made before any run started.
+   *
+   * Without a run there is no controller of its own to clear, and clearing
+   * another run's would leave that run impossible to cancel.
+   */
+  private fail(error: RefreshFailure, run?: AbortController): void {
+    if (run !== undefined) {
+      this.finishRun(run);
+    }
     this.stateSignal.set({ kind: 'failed', error });
     this.announce(error.message);
   }
 
-  private cancelled(): void {
-    this.finishRun();
+  private cancelled(run: AbortController): void {
+    this.finishRun(run);
     this.stateSignal.set({ kind: 'cancelled' });
     this.announce(
       'Refresh cancelled. Nothing was saved and your previous vocabulary is unchanged.',

@@ -76,6 +76,38 @@ describe('VocabularyRefreshStore', () => {
       expect(store.mappingEditorEnabled()).toBe(false);
     });
 
+    it('keeps the newer connection in charge when an older probe answers late', async () => {
+      // A probe that only answers once its run is aborted, the way the HTTP
+      // client reports a cancelled request.
+      class AbortAnsweringProvider extends FakeAnkiProvider {
+        override probe(signal?: AbortSignal) {
+          return new Promise<Awaited<ReturnType<FakeAnkiProvider['probe']>>>((resolve) => {
+            signal?.addEventListener('abort', () => {
+              resolve({ ok: false, error: ankiError('cancelled', 'The request was cancelled.') });
+            });
+          });
+        }
+      }
+      // A probe still waiting for Anki when the older one gives up.
+      let secondSignal: AbortSignal | undefined;
+      class PendingProvider extends FakeAnkiProvider {
+        override probe(signal?: AbortSignal) {
+          secondSignal = signal;
+          return new Promise<Awaited<ReturnType<FakeAnkiProvider['probe']>>>(() => undefined);
+        }
+      }
+
+      void store.connect(
+        new AbortAnsweringProvider(CONTRACT_COLLECTION, { kind: 'desktop-connect' }),
+      );
+      void store.connect(new PendingProvider(CONTRACT_COLLECTION, { kind: 'desktop-connect' }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(store.state()).toEqual({ kind: 'probing' });
+      store.cancel();
+      expect(secondSignal?.aborted).toBe(true);
+    });
+
     it('probes and discovers, then returns to idle', async () => {
       await connect();
 
