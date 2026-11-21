@@ -33,6 +33,9 @@ well as the ones written for it. The "never prepared" query of ADR 0047 also lea
 whose current key already has a row, so a shared sentence is not queued on every reconciliation.
 A clip served from the cache is addressed to the sentence and reading that asked for it before it
 is stored, so the store refreshes that reading's summary and not the one that wrote it first.
+Preparation that finds nothing to request stores nothing, so it counts the reading's grammar or
+audio summary by key itself. A reading with no analysis under its current keys reads as never
+asked for, not as reviewed for no sentence.
 
 **A deletion keeps a row another reading can use.** Deleting a reading, and clearing its grammar or
 audio, looks at the rows written for its sentences. When another reading has a sentence with the
@@ -71,7 +74,8 @@ at once, and the next deletion hands them on.
 ## Consequences
 
 - A reading's summary can count a row that another reading wrote, which is what makes a duplicate
-  import cost nothing to prepare.
+  import cost nothing to prepare. Its summary says so the first time its preparation runs and
+  finds every sentence already covered.
 - Clearing a reading's audio or grammar deletes only what that reading alone uses, and the confirm
   dialogs say so ("the audio only this story uses"). Neither they nor the deletion plan count or
   promise space for a row another reading keeps.

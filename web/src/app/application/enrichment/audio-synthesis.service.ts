@@ -138,6 +138,14 @@ export class AudioSynthesisService {
     return this.enrichment.storeAudio(asset, currentCacheKeys);
   }
 
+  /** Counts the reading's summary again by its current keys, storing nothing. */
+  recountSummary(
+    readingId: ReadingId,
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<void, StorageError>> {
+    return this.enrichment.recountAudioSummary(readingId, currentCacheKeys);
+  }
+
   /**
    * Which sentences have no clip under the current keys.
    *

@@ -194,6 +194,37 @@ describe('GrammarJobStore', () => {
     expect(new Set(rows.map((row) => row.configFingerprint)).size).toBe(2);
   });
 
+  describe('a reading whose sentences another reading already analysed', () => {
+    // The same Japanese as the first reading, as a text imported twice has.
+    const duplicate = longReading(5);
+
+    beforeEach(async () => {
+      bed.provider.grammarQueue.push(
+        ok({ findings: [] }),
+        ok({ findings: [] }),
+        ok({ findings: [] }),
+      );
+      await bed.store.start(bed.draft.reading.id);
+      await bed.readings.saveImportedReading(duplicate);
+    });
+
+    it('counts the analyses it shares when queueing finds nothing to request', async () => {
+      const outcome = await bed.store.enqueue(duplicate.reading.id);
+
+      expect(outcome.kind).toBe('nothing-to-do');
+      const row = await bed.readings.getReading(duplicate.reading.id);
+      expect(row.ok && row.value?.grammarSummary.state).toBe('complete');
+    });
+
+    it('counts the analyses it shares when a run finds nothing to request', async () => {
+      await bed.store.start(duplicate.reading.id);
+
+      expect(bed.provider.generationCalls.grammar).toBe(3);
+      const row = await bed.readings.getReading(duplicate.reading.id);
+      expect(row.ok && row.value?.grammarSummary.state).toBe('complete');
+    });
+  });
+
   it('keeps every stored analysis when cancellation stops later batches', async () => {
     bed.provider.grammarQueue.push(
       ok({ findings: [] }),

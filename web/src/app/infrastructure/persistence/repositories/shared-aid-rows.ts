@@ -128,6 +128,10 @@ export async function coverageByKey<Row>(
 /**
  * Read by key, like every other count: an analysis another reading wrote for
  * the same sentence under the same key is this reading's too.
+ *
+ * With no analysis under the current keys the reading reads as never asked
+ * for, rather than reviewed for no sentence at all. That happens after a clear,
+ * or after the model changed, and either way nothing applies to this reading.
  */
 export async function grammarCoverageByKey(
   db: MonosaiDatabase,
@@ -149,6 +153,9 @@ export async function grammarCoverageByKey(
       analyzedSentenceCount += 1;
       concern += concernCount(row.findings);
     }
+  }
+  if (analyzedSentenceCount === 0) {
+    return NO_GRAMMAR_REVIEW;
   }
   return analyzedSentenceCount === cacheKeys.size
     ? grammarComplete(concern)

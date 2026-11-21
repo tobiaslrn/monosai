@@ -405,6 +405,30 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     );
   }
 
+  recountAudioSummary(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<void, StorageError>> {
+    return runStorage('audioAssets.recountSummary', () =>
+      // An async scope, so Dexie keeps the transaction across the native
+      // awaits inside the count.
+      this.db.transaction('rw', [this.db.readings, this.db.audioAssets], async () => {
+        await this.refreshAudioSummary(readingId, cacheKeys);
+      }),
+    );
+  }
+
+  recountGrammarSummary(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<void, StorageError>> {
+    return runStorage('grammarAnalyses.recountSummary', () =>
+      this.db.transaction('rw', [this.db.readings, this.db.grammarAnalyses], async () => {
+        await this.refreshGrammarSummary(readingId, cacheKeys);
+      }),
+    );
+  }
+
   async summarizeTranslations(
     _readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,

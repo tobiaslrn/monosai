@@ -8,7 +8,7 @@ import {
 import type { StorageMaintenance } from '../../domain/storage/storage-maintenance';
 import type { StorageError } from '../../domain/storage/storage-error';
 import type { ClearableReadingAid } from '../../domain/storage/storage-maintenance';
-import { NO_GRAMMAR_REVIEW, type GrammarSummary } from '../../domain/reading/summaries';
+import { NO_GRAMMAR_REVIEW } from '../../domain/reading/summaries';
 import { DATABASE_NAME, type MonosaiDatabase } from './monosai-db';
 import {
   runStorage,
@@ -166,26 +166,15 @@ export class BrowserStorageMaintenance implements StorageMaintenance {
           readingId,
           layer === 'english'
             ? { translationSummary: { total: reading.sentenceCount, completed: 0, failed: 0 } }
-            : { grammarSummary: await this.grammarAfterClear(currentCacheKeys) },
+            : {
+                grammarSummary:
+                  currentCacheKeys === null
+                    ? NO_GRAMMAR_REVIEW
+                    : await grammarCoverageByKey(this.db, currentCacheKeys),
+              },
         );
       });
     });
-  }
-
-  /**
-   * What a cleared reading's grammar summary says: the analyses it still has by
-   * key, which only another reading's kept rows can be. With none left it was
-   * never asked for, as before any request, rather than reviewed for no
-   * sentence at all.
-   */
-  private async grammarAfterClear(
-    currentCacheKeys: ReadonlyMap<SentenceId, string> | null,
-  ): Promise<GrammarSummary> {
-    if (currentCacheKeys === null) return NO_GRAMMAR_REVIEW;
-    const summary = await grammarCoverageByKey(this.db, currentCacheKeys);
-    return summary.state === 'partial' && summary.analyzedSentenceCount === 0
-      ? NO_GRAMMAR_REVIEW
-      : summary;
   }
 
   /**

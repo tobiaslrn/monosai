@@ -265,9 +265,15 @@ export class GrammarJobStore {
       return unavailable({ source: 'storage', error: wanted.error });
     }
     // No row is written for a reading with nothing outstanding: an empty job
-    // could never complete itself, and the lane would pick it up forever.
+    // could never complete itself, and the lane would pick it up forever. No
+    // analysis is stored either, so the summary is counted here: a reading
+    // whose sentences another reading already analysed would otherwise never
+    // count the analyses it shares.
     if (wanted.value.length === 0) {
-      return { kind: 'nothing-to-do', total: context.total };
+      const recounted = await this.grammar.recountSummary(readingId, context.cacheKeys);
+      return recounted.ok
+        ? { kind: 'nothing-to-do', total: context.total }
+        : unavailable({ source: 'storage', error: recounted.error });
     }
     const created = await this.createJob(context, wanted.value, initialState);
     return created.ok

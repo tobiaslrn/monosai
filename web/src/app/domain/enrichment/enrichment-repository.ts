@@ -127,6 +127,23 @@ export interface EnrichmentRepository {
     readonly mimeType: AudioMimeType;
   }): Promise<Result<'replaced' | 'skipped', StorageError>>;
 
+  /**
+   * Writes the reading's audio or grammar summary as counted by its current
+   * keys, for preparation that finds nothing to request.
+   *
+   * Storing an aid refreshes the summary, but a reading whose every sentence
+   * another reading already prepared stores nothing, so without this its
+   * summary would never count what it shares.
+   */
+  recountAudioSummary(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<void, StorageError>>;
+  recountGrammarSummary(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<void, StorageError>>;
+
   summarizeTranslations(
     readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,

@@ -331,6 +331,37 @@ describe('AudioJobStore', () => {
     });
   });
 
+  describe('a reading whose sentences another reading already read aloud', () => {
+    // `other` has the same Japanese as `draft`, as a text imported twice does.
+    beforeEach(async () => {
+      await bed.store.start(bed.draft.reading.id);
+    });
+
+    it('counts the clips it shares when queueing finds nothing to request', async () => {
+      const outcome = await bed.store.enqueue(bed.other.reading.id);
+
+      expect(outcome.kind).toBe('nothing-to-do');
+      const row = await bed.readings.getReading(bed.other.reading.id);
+      expect(row.ok && row.value?.audioSummary).toEqual({
+        total: SENTENCE_COUNT,
+        completed: SENTENCE_COUNT,
+        failed: 0,
+      });
+    });
+
+    it('counts the clips it shares when a run finds nothing to request', async () => {
+      await bed.store.start(bed.other.reading.id);
+
+      expect(bed.store.progress().kind).toBe('complete');
+      const row = await bed.readings.getReading(bed.other.reading.id);
+      expect(row.ok && row.value?.audioSummary).toEqual({
+        total: SENTENCE_COUNT,
+        completed: SENTENCE_COUNT,
+        failed: 0,
+      });
+    });
+  });
+
   it('requeues an invalid clip at its reading priority and then finishes', async () => {
     const order = japaneseInOrder(bed.draft);
     let firstAttempts = 0;

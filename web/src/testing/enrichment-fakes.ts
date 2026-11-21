@@ -258,6 +258,29 @@ export class FakeEnrichmentRepository implements EnrichmentRepository {
     return Promise.resolve(ok('replaced'));
   }
 
+  /** What each recount was asked for, in order. */
+  readonly recounts: {
+    readonly layer: 'audio' | 'grammar';
+    readonly readingId: ReadingId;
+    readonly cacheKeys: ReadonlyMap<SentenceId, string>;
+  }[] = [];
+
+  recountAudioSummary(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<void, StorageError>> {
+    this.recounts.push({ layer: 'audio', readingId, cacheKeys });
+    return Promise.resolve(ok(undefined));
+  }
+
+  recountGrammarSummary(
+    readingId: ReadingId,
+    cacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<void, StorageError>> {
+    this.recounts.push({ layer: 'grammar', readingId, cacheKeys });
+    return Promise.resolve(ok(undefined));
+  }
+
   summarizeTranslations(
     readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,

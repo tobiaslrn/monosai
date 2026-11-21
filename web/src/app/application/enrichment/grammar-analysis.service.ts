@@ -178,6 +178,14 @@ export class GrammarAnalysisService {
     return this.enrichment.storeGrammarAnalysis(record, currentCacheKeys);
   }
 
+  /** Counts the reading's summary again by its current keys, storing nothing. */
+  recountSummary(
+    readingId: ReadingId,
+    currentCacheKeys: ReadonlyMap<SentenceId, string>,
+  ): Promise<Result<void, StorageError>> {
+    return this.enrichment.recountGrammarSummary(readingId, currentCacheKeys);
+  }
+
   /** Finds sentences that do not have a current analysis under these keys. */
   async missingSentenceIds(
     cacheKeys: ReadonlyMap<SentenceId, string>,
