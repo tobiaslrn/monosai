@@ -120,6 +120,20 @@ describe('openOpenRouterKeyDialog', () => {
     expect(line()).toBeUndefined();
   });
 
+  it('refuses a key with a stray character, and saves nothing', async () => {
+    const { fixture } = await open();
+
+    type(fixture, 'sk-or-new\u200b');
+    save().click();
+    await settle(fixture);
+
+    expect(line()).toBe('This key has a stray character. Copy it again.');
+    expect(TestBed.inject(CredentialStore).isConfigured()).toBe(false);
+
+    type(fixture, 'sk-or-new');
+    expect(line()).toBeUndefined();
+  });
+
   it('saves the key and closes with it', async () => {
     const { outcome, fixture } = await open();
 

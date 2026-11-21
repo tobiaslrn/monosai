@@ -79,6 +79,13 @@ describe('DexieCredentialRepository', () => {
     expect(await db.credentials.count()).toBe(0);
   });
 
+  it('rejects a key with a character a request header cannot carry', async () => {
+    const saved = await repository.replace('sk-or-abc\u200bdef');
+
+    expect(saved.ok).toBe(false);
+    expect(await db.credentials.count()).toBe(0);
+  });
+
   it('removes the key without touching other data', async () => {
     await repository.replace(SECRET);
     await db.settings.put({

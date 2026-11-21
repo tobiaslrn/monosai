@@ -166,6 +166,12 @@ credit. The provider had already accepted the request, so a code that would
 read as a missing capability is reported as `unknown` instead: it never
 spends the structured-output recovery and never records a downgrade.
 
+A key holding a character outside printable ASCII, usually an invisible one
+picked up while copying, makes the browser refuse to build the request. That
+used to read as an unreachable provider and was retried twice. The key dialog
+and the credential repository now refuse such a key on save, and the client
+reports a saved one as `authentication` without sending anything.
+
 ### Fingerprints use a key generation, never the key
 
 Configuration tests are stored in ordinary settings rows. A fingerprint

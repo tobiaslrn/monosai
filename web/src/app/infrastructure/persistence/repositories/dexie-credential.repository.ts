@@ -1,7 +1,11 @@
 import type { Clock } from '../../../domain/shared/clock';
 import { err, ok, type Result } from '../../../domain/shared/result';
 import type { CredentialRepository } from '../../../domain/settings/credential-repository';
-import { NO_CREDENTIAL, type CredentialStatus } from '../../../domain/settings/credential';
+import {
+  isWellFormedApiKey,
+  NO_CREDENTIAL,
+  type CredentialStatus,
+} from '../../../domain/settings/credential';
 import { storageError, type StorageError } from '../../../domain/storage/storage-error';
 import type { MonosaiDatabase } from '../monosai-db';
 import { parseRecord } from '../record-validation';
@@ -43,6 +47,9 @@ export class DexieCredentialRepository implements CredentialRepository {
     const trimmed = apiKey.trim();
     if (trimmed.length === 0) {
       return err(storageError('conflict', 'An API key cannot be empty.'));
+    }
+    if (!isWellFormedApiKey(trimmed)) {
+      return err(storageError('conflict', 'An API key holds only printable ASCII characters.'));
     }
 
     const existing = await this.loadRow();

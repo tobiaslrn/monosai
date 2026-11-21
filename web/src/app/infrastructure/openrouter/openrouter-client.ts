@@ -8,6 +8,7 @@ import {
 } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import type { CredentialRepository } from '../../domain/settings/credential-repository';
+import { isWellFormedApiKey } from '../../domain/settings/credential';
 import { describeThrown } from '../../domain/shared/errors';
 import { err, ok, type Result } from '../../domain/shared/result';
 import {
@@ -391,6 +392,19 @@ export class OpenRouterClient {
     // cancelled request would still be sent and billed.
     if (request.signal?.aborted === true) {
       return err(cancelled(request.task));
+    }
+    // A key saved before keys were checked on save may hold a character a
+    // header cannot carry. Fetch would throw while building the request, which
+    // reads as an unreachable provider and is retried; the key is the problem.
+    if (!isWellFormedApiKey(apiKey)) {
+      return err(
+        aiError(
+          'authentication',
+          request.task,
+          'The saved key holds a character a request cannot carry.',
+          { detail: { issueCode: 'key-format' } },
+        ),
+      );
     }
     const controller = new AbortController();
     // Whether the deadline passed is tracked here rather than read off the

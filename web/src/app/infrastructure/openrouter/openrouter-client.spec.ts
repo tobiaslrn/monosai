@@ -31,6 +31,28 @@ function expectError<T>(result: Result<T, AiError>): AiError {
 }
 
 describe('OpenRouterClient requests', () => {
+  it('blames a key a header cannot carry at once, without retrying', async () => {
+    // A key pasted from a rich-text source with an invisible zero-width space,
+    // saved before keys were checked on save.
+    const harness = openRouterHarness({
+      credentials: new FakeCredentialRepository(`${FAKE_OPENROUTER.apiKey}\u200b`),
+    });
+
+    const result = await harness.client.postJson(
+      {
+        path: CHAT_COMPLETIONS_PATH,
+        task: 'text-model-test',
+        modelId: FAKE_OPENROUTER.textModel,
+        body: { model: FAKE_OPENROUTER.textModel },
+      },
+      chatCompletionSchema,
+    );
+
+    expect(!result.ok && result.error.code).toBe('authentication');
+    expect(harness.server.callCount).toBe(0);
+    expect(harness.sleeps).toEqual([]);
+  });
+
   it('sends the key as a bearer token to the OpenRouter origin only', async () => {
     const harness = openRouterHarness();
 
