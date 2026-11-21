@@ -340,7 +340,9 @@ sequenceDiagram
     Note over Lane: A generation or a lost<br/>connection parks the run at a batch<br/>boundary. It never cancels one.
 ```
 
-The lane runs one reading at a time, the open one first. All three layers start together, and every
+The lane runs one reading at a time, the open one first. A reading it stepped aside from for the
+open one parks at a batch boundary and is picked back up once the open reading has nothing left to
+prepare, including when it had nothing to begin with. All three layers start together, and every
 request they want to make takes its turn from one shared `PreparationPacer`: at most ten in flight
 across the three layers, granted to the lowest waiting `(sentence position, layer)`. The reading
 therefore fills front to back — sentence 1's English, grammar and clip before sentence 60's English —

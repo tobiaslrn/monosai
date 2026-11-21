@@ -466,7 +466,56 @@ describe('PreparationStore', () => {
 
       expect(beds.runners.english.yields).toBeGreaterThan(0);
       expect(beds.runners.english.cancelled).toEqual([]);
-      expect(beds.runners.english.started).toEqual([FIRST, SECOND]);
+      // It goes back to the first reading once, and a run that parks again
+      // without being asked does not spin the lane.
+      expect(beds.runners.english.started).toEqual([FIRST, SECOND, FIRST]);
+    });
+
+    it('goes back to the reading it stepped away from once the open one is done', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW + 1);
+      await outstandingRow(beds.jobs, SECOND, 'english', NOW + 2);
+      const runner = beds.runners.english;
+      const gate = runner.holdOpen();
+      runner.pauseOn = FIRST;
+      const start = runner.start.bind(runner);
+      runner.start = (id: ReadingId) => {
+        // Only the run preempted by the open reading parks; a later run finishes.
+        if (id === SECOND) runner.pauseOn = null;
+        return start(id);
+      };
+      const draining = beds.store.pump();
+      await gate.started;
+
+      beds.store.setOpenReading(SECOND);
+      gate.release();
+      await draining;
+
+      expect(runner.started).toEqual([FIRST, SECOND, FIRST]);
+      const left = await beds.jobs.listActive();
+      expect(left.ok && left.value.map((row) => row.readingId)).toEqual([]);
+    });
+
+    it('does not leave a reading parked when the opened reading has nothing to prepare', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW + 1);
+      const runner = beds.runners.english;
+      const gate = runner.holdOpen();
+      runner.pauseOn = FIRST;
+      const start = runner.start.bind(runner);
+      let runs = 0;
+      runner.start = (id: ReadingId) => {
+        runs += 1;
+        if (runs > 1) runner.pauseOn = null;
+        return start(id);
+      };
+      const draining = beds.store.pump();
+      await gate.started;
+
+      // The learner opens a reading that is already fully prepared.
+      beds.store.setOpenReading(SECOND);
+      gate.release();
+      await draining;
+
+      expect(runner.started).toEqual([FIRST, FIRST]);
     });
 
     it('never cancels a layer to make room, audio least of all', async () => {
