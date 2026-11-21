@@ -100,7 +100,7 @@ const CUT_OFF: TroubleshootingEntry = {
 /** A model's moderation check refused the text: the key and the model are fine. */
 const FLAGGED: TroubleshootingEntry = {
   seen: [MODERATION_HEADING],
-  text: "Some models check what you send them, and this model's check refused the text. Choose another model in **Settings** > **Text models**.",
+  text: 'OpenRouter checks the text sent to some models, and it flagged this text. Choose another model in **Settings** > **Text models**.',
   code: 'ai/capability-unsupported',
 };
 
