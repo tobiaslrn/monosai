@@ -348,9 +348,10 @@ sequenceDiagram
     Note over Lane: A generation or a lost<br/>connection parks the run at a batch<br/>boundary. It never cancels one.
 ```
 
-The lane runs one reading at a time, the open one first. A reading it stepped aside from for the
-open one parks at a batch boundary and is picked back up once the open reading has nothing left to
-prepare, including when it had nothing to begin with. A layer the learner asks for on the open
+The lane runs one reading at a time: the open one first, then the rest in the order their rows were
+created. A reading it stepped aside from for the open one parks at a batch boundary and takes its
+place in that order again as soon as the open reading is done, including when the open reading had
+nothing to prepare. A layer the learner asks for on the open
 reading, the player's _Generate audio_ included, also goes through the lane, so the reading is
 claimed before anything is requested: it starts beside the layers already working that reading,
 again if it already finished there, or the lane steps aside from another reading for it, and while a hold or another tab has the reading it waits on

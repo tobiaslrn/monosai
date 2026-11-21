@@ -97,8 +97,8 @@ export class PreparationStore {
   private readonly activeLayers = new Set<PreparationLayer>();
   /**
    * Readings the lane asked to step aside for the open one. Each may be picked
-   * again once the open reading has nothing left, so the lane goes back to what
-   * it interrupted instead of leaving it parked until something else pumps.
+   * again once the open reading is done, so the lane goes back to what it
+   * interrupted instead of leaving it parked until something else pumps.
    */
   private readonly steppedAside = new Set<ReadingId>();
   /**
@@ -320,8 +320,8 @@ export class PreparationStore {
     // Readings this pass has already stepped away from. A parked reading is
     // still outstanding and its row still says so, so without this the lane
     // would pick it straight back up and park it again for ever. One the lane
-    // stepped aside from for the open reading comes back once nothing else is
-    // left to pick.
+    // stepped aside from for the open reading comes back once the open reading
+    // is done.
     const deferred = new Set<ReadingId>();
     for (;;) {
       // The queue is refreshed before the hold is checked, so a held lane can
@@ -337,9 +337,6 @@ export class PreparationStore {
       }
       const next = this.pick(rows, deferred);
       if (next === null) {
-        if (this.returnToSteppedAside(deferred)) {
-          continue;
-        }
         this.currentSignal.set(null);
         await this.releaseClaim();
         return;
@@ -499,17 +496,16 @@ export class PreparationStore {
 
   /**
    * Makes the readings the lane stepped aside from for the open one eligible
-   * again, once nothing else is. Each step aside earns one return: a reading
+   * again, once the open one is done. Each step aside earns one return: a reading
    * that parks again without being asked to stays parked for this pass, so a
    * run that will not progress cannot spin the lane.
    */
-  private returnToSteppedAside(deferred: Set<ReadingId>): boolean {
-    const back = [...deferred].filter((readingId) => this.steppedAside.has(readingId));
-    for (const readingId of back) {
-      this.steppedAside.delete(readingId);
-      deferred.delete(readingId);
+  private returnToSteppedAside(deferred: Set<ReadingId>): void {
+    for (const readingId of [...deferred]) {
+      if (this.steppedAside.delete(readingId)) {
+        deferred.delete(readingId);
+      }
     }
-    return back.length > 0;
   }
 
   private yieldActiveLayers(): void {
@@ -521,15 +517,19 @@ export class PreparationStore {
 
   /**
    * The reading to work next: the one the learner has open, then the rest in
-   * the order their rows were created.
+   * the order their rows were created. Once the open reading is done, a reading
+   * the lane stepped aside from for it takes its place in that order again.
    */
-  private pick(
-    queue: readonly QueuedReading[],
-    deferred: ReadonlySet<ReadingId>,
-  ): QueuedReading | null {
+  private pick(queue: readonly QueuedReading[], deferred: Set<ReadingId>): QueuedReading | null {
     const open = this.openReadingSignal();
-    const eligible = queue.filter((entry) => !deferred.has(entry.readingId));
-    return eligible.find((entry) => entry.readingId === open) ?? eligible.at(0) ?? null;
+    const eligible = (): readonly QueuedReading[] =>
+      queue.filter((entry) => !deferred.has(entry.readingId));
+    const opened = eligible().find((entry) => entry.readingId === open);
+    if (opened !== undefined) {
+      return opened;
+    }
+    this.returnToSteppedAside(deferred);
+    return eligible().at(0) ?? null;
   }
 
   private block(readingId: ReadingId, layer: PreparationLayer): void {

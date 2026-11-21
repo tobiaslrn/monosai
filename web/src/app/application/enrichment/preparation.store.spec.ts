@@ -22,6 +22,7 @@ import { PreparationStore } from './preparation.store';
 const NOW = 1_700_800_000_000;
 const FIRST = readingId(uuid(9001));
 const SECOND = readingId(uuid(9002));
+const THIRD = readingId(uuid(9003));
 
 /**
  * One layer's producer, reduced to what the lane sequences.
@@ -493,6 +494,28 @@ describe('PreparationStore', () => {
       expect(runner.started).toEqual([FIRST, SECOND, FIRST]);
       const left = await beds.jobs.listActive();
       expect(left.ok && left.value.map((row) => row.readingId)).toEqual([]);
+    });
+
+    it('goes back to the reading it stepped away from before readings queued after it', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW + 1);
+      await outstandingRow(beds.jobs, THIRD, 'english', NOW + 2);
+      await outstandingRow(beds.jobs, SECOND, 'english', NOW + 3);
+      const runner = beds.runners.english;
+      const gate = runner.holdOpen();
+      runner.pauseOn = FIRST;
+      const start = runner.start.bind(runner);
+      runner.start = (id: ReadingId) => {
+        if (id === SECOND) runner.pauseOn = null;
+        return start(id);
+      };
+      const draining = beds.store.pump();
+      await gate.started;
+
+      beds.store.setOpenReading(SECOND);
+      gate.release();
+      await draining;
+
+      expect(runner.started).toEqual([FIRST, SECOND, FIRST, THIRD]);
     });
 
     it('does not leave a reading parked when the opened reading has nothing to prepare', async () => {
