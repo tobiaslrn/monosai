@@ -134,7 +134,9 @@ back, picked, from its own record.
 
 Every input is captured before the first request, so changing a setting during a run cannot change
 what the running story is judged against. This includes vocabulary strictness: relaxed spends no
-content repair, standard spends at most one, and strict spends at most two.
+content repair, standard spends at most one, and strict spends at most two. The grammar profile is
+captured from the learner's stored level even when nothing has read it yet. When that level cannot
+be read, the run is refused before any request rather than written for the default level.
 
 The state machine lives in `GenerationStore`: it decides when to parse, validate, review, repair, and
 finalize, and what the learner is told at each step. What the loop does to the unknown words along
@@ -319,9 +321,10 @@ A reading declares the aid layers it should eventually contain
 four, turn that declaration into work: a layer is switched on, a generated story is saved with the
 layers chosen for it, a reader is opened, and an explicit _Prepare_, _Retry_, or _Prepare again_.
 Each queues a job row covering the sentences that have never been given that layer under **any**
-configuration, so changing the model queues nothing. An explicit request is the exception: it covers
-whatever the current configuration has not yet produced, so _Generate audio_ after a voice change
-reads the reading again in the new voice.
+configuration, so changing the model queues nothing. An explicit request for English or audio is
+the exception: it covers whatever the current configuration has not yet produced, so _Generate
+audio_ after a voice change reads the reading again in the new voice. An explicit request for
+grammar still covers only the sentences that have never been analysed.
 
 ```mermaid
 sequenceDiagram
