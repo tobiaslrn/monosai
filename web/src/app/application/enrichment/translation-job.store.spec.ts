@@ -436,11 +436,9 @@ describe('TranslationJobStore', () => {
       .map(([request]) => request)
       .find((request) => request.kind === 'glossary-repair');
     // Only the new model's opening English may inform the repaired glossary.
-    expect.soft(repair?.openingTranslations?.map((entry) => entry.textEn.split(' ')[0])).toEqual([
-      'NEW',
-      'NEW',
-      'NEW',
-    ]);
+    expect
+      .soft(repair?.openingTranslations?.map((entry) => entry.textEn.split(' ')[0]))
+      .toEqual(['NEW', 'NEW', 'NEW']);
 
     // Every row under the ready plan's keys is the new model's text.
     const plan = await bed.enrichment.getTranslationPlan(readingId);
@@ -479,7 +477,10 @@ describe('TranslationJobStore', () => {
     const draft = importedReadingFixture({
       seed: 98,
       paragraphTexts: [
-        Array.from({ length: 5 * MAX_TRANSLATION_BATCH }, (_value, index) => `鍵${String(index)}です。`),
+        Array.from(
+          { length: 5 * MAX_TRANSLATION_BATCH },
+          (_value, index) => `鍵${String(index)}です。`,
+        ),
       ],
     });
     await bed.readings.saveImportedReading(draft);
