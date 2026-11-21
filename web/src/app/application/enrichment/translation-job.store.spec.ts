@@ -30,6 +30,7 @@ import { fakeTextModelStore } from '../../../testing/text-model-store-fake';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import type { GrammarProfileSelection } from '../../domain/grammar/profile';
 import { PreparationPacer } from './preparation-pacer';
+import { TranslationJobPlanner } from './translation-job-planner.service';
 import { TranslationJobStore } from './translation-job.store';
 
 const NOW = 1_700_600_000_000;
@@ -394,6 +395,70 @@ describe('TranslationJobStore', () => {
     const ready = await bed.enrichment.getTranslationPlan(bed.draft.reading.id);
     expect(ready.ok && ready.value?.state).toBe('ready');
     expect(bed.store.progress().kind).toBe('complete');
+  });
+
+  it('repairs terminology only from the opening English of the current model', async () => {
+    const readingId = bed.draft.reading.id;
+    const answerWith = (label: string, opening: 'valid' | 'invalid') =>
+      vi.spyOn(bed.provider, 'translate').mockImplementation((request) => {
+        if (request.kind === 'glossary-repair') {
+          return Promise.resolve(ok({ translations: [], glossary: [] }));
+        }
+        const translations = translationTargets(request).map((target) => ({
+          id: target.id,
+          textEn: `${label} ${target.textJa}`,
+        }));
+        if (request.kind !== 'opening') return Promise.resolve(ok({ translations }));
+        return Promise.resolve(
+          ok({
+            translations,
+            glossary:
+              opening === 'valid' ? [] : [{ surfaceJa: 'invented', renderingEn: 'Invented' }],
+          }),
+        );
+      });
+
+    // The whole reading is translated under the first model.
+    answerWith('OLD', 'valid');
+    await bed.store.start(readingId);
+    expect(bed.store.progress().kind).toBe('complete');
+
+    // The learner switches models; the new opening's glossary is unusable.
+    bed.settings.update((current) => ({ ...current, modelId: 'vendor/other-model' }));
+    vi.restoreAllMocks();
+    const spy = answerWith('NEW', 'invalid');
+    await bed.store.start(readingId);
+    expect(bed.store.progress().kind).toBe('failed');
+
+    await bed.store.retry(readingId);
+
+    const repair = spy.mock.calls
+      .map(([request]) => request)
+      .find((request) => request.kind === 'glossary-repair');
+    // Only the new model's opening English may inform the repaired glossary.
+    expect.soft(repair?.openingTranslations?.map((entry) => entry.textEn.split(' ')[0])).toEqual([
+      'NEW',
+      'NEW',
+      'NEW',
+    ]);
+
+    // Every row under the ready plan's keys is the new model's text.
+    const plan = await bed.enrichment.getTranslationPlan(readingId);
+    expect(plan.ok && plan.value?.state).toBe('ready');
+    const refs = await bed.readings.listSentenceRefs(readingId);
+    const sentences = await bed.readings.loadSentences(refs.ok ? refs.value.map((r) => r.id) : []);
+    const keys = TestBed.inject(TranslationJobPlanner).keysForPlan(
+      sentences.ok ? sentences.value : [],
+      plan.ok && plan.value !== null ? plan.value : (null as never),
+    );
+    const rows = await bed.enrichment.listTranslationsForCacheKeys([...keys.values()]);
+    const current = rows.ok ? rows.value : [];
+    expect(current).toHaveLength(SENTENCE_COUNT);
+    expect(
+      current
+        .filter((row) => !row.textEn.startsWith('NEW ') || row.modelId !== 'vendor/other-model')
+        .map((row) => `${row.modelId}: ${row.textEn}`),
+    ).toEqual([]);
   });
 
   it('does not publish opening English when the ready-plan transaction fails', async () => {

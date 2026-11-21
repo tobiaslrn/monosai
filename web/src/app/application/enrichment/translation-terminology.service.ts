@@ -209,8 +209,13 @@ export class TranslationTerminologyService {
     );
     if (!rows.ok) return err(rows.error);
     const sentencesById = new Map(context.sentences.map((sentence) => [sentence.id, sentence]));
-    const provisional = rows.value.filter((record) =>
-      plan.provisionalOpeningSentenceIds.includes(record.sentenceId),
+    // A sentence keeps the English of every model and plan it was ever translated
+    // under. Only the row stored under this plan's provisional key is the opening
+    // this repair is for; an older row must neither inform nor become its terms.
+    const provisional = rows.value.filter(
+      (record) =>
+        plan.provisionalOpeningSentenceIds.includes(record.sentenceId) &&
+        record.cacheKey === context.cacheKeys.get(record.sentenceId),
     );
     const openingTranslations = provisional.flatMap((record) => {
       const sentence = sentencesById.get(record.sentenceId);

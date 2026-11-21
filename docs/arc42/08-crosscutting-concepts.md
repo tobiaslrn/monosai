@@ -171,7 +171,9 @@ rewritten ([ADR 0096](../decisions/0096-shared-aids-are-counted-by-key-and-outli
 Translation plans are validated persisted state with three explicit forms: opening pending,
 glossary repair required, and ready with a frozen glossary. Establishing a ready plan and its
 accepted opening translations is one transaction. Provisional opening rows remain recoverable but
-do not carry a ready plan's cache identity. Schema history adds the plan store monotonically and
+do not carry a ready plan's cache identity. Glossary repair reads only the rows stored under the
+plan's own provisional keys, so English from another model or an earlier plan never informs the
+repaired terms or moves under the ready plan's keys. Schema history adds the plan store monotonically and
 does not rewrite or discard existing translation or job rows.
 
 Other tabs learn about a deleted or changed reading through a `BroadcastChannel`, not by polling
