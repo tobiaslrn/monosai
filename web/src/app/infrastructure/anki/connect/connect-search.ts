@@ -39,6 +39,26 @@ export function searchFor(mapping: SourceMapping): string {
 }
 
 /**
+ * The cards a filtered deck has moved that a mapping keeps when Anki can be
+ * asked only by deck name.
+ *
+ * The fallback for an Anki whose `did:` cannot see a card's home deck. `deck:`
+ * matches a filtered card by either deck, so a filtered deck built inside the
+ * mapped tree cannot be told apart from the card's home there: a deck-only
+ * mapping leaves out its own cards sitting in one, and a deck-and-subdecks
+ * mapping keeps every card sitting in one. A filtered deck outside the tree is
+ * decided exactly.
+ */
+export function filteredByNameFor(mapping: SourceMapping): string {
+  const deck = escapeTerm(mapping.deckName);
+  const terms = [`"deck:${deck}"`, `"note:${escapeTerm(mapping.noteTypeName)}"`];
+  if (mapping.deckScope === 'deck-only') {
+    terms.push(`-"deck:${deck}::*"`);
+  }
+  return [...terms, 'deck:filtered'].join(' ');
+}
+
+/**
  * The activity searches run for one mapping, in a fixed order.
  *
  * Anki answers these itself, against its own study days and the learner's own

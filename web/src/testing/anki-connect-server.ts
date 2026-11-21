@@ -52,6 +52,14 @@ export interface FakeServerOptions {
    * bridge's shape would pass against columns the real add-on never sends.
    */
   readonly cardShape?: 'bridge' | 'desktop';
+  /**
+   * How `did:` reads, which changed between Anki releases.
+   *
+   * Up to 2.1.66 it takes one deck id and rejects a list; 23.10 to 24.06 take a
+   * list. Both match only the deck a card sits in. From 24.11 it also matches the
+   * home deck of a card a filtered deck has moved, which is the default here.
+   */
+  readonly didSearch?: 'single-current' | 'current' | 'current-and-home';
 }
 
 /** Copied from a fixture card, where any optional column may be missing. */
@@ -191,6 +199,11 @@ export class FakeAnkiConnectServer {
     const query = typeof params['query'] === 'string' ? params['query'] : '';
     if (this.options.failingSearchTerms?.some((term) => query.includes(term)) === true) {
       return this.envelope(null, 'query-failed: invalid search');
+    }
+    // Anki up to 2.1.66 reads `did:` as one number and fails on a list with a
+    // plain exception message, which names no error code.
+    if (this.options.didSearch === 'single-current' && /did:[^\s)"]*,/u.test(query)) {
+      return this.envelope(null, 'Invalid search: an integer was expected');
     }
 
     const result =
@@ -380,11 +393,14 @@ export class FakeAnkiConnectServer {
       );
     }
     if (term.startsWith('did:')) {
-      // The same two decks by id, without subdecks.
+      // By id and without subdecks: the deck a card sits in and, from 24.11,
+      // its home deck too.
       const ids = new Set(term.slice('did:'.length).split(',').map(Number));
-      return [card.deckName, card.filteredDeckName].some(
-        (name) => name !== undefined && ids.has(this.deckIdOf(name)),
-      );
+      const decks =
+        this.options.didSearch === undefined || this.options.didSearch === 'current-and-home'
+          ? [card.deckName, card.filteredDeckName]
+          : [card.filteredDeckName ?? card.deckName];
+      return decks.some((name) => name !== undefined && ids.has(this.deckIdOf(name)));
     }
     if (term.startsWith('cid:')) {
       return term.slice('cid:'.length).split(',').map(Number).includes(card.cardId);

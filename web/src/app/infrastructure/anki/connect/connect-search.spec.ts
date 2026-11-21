@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { mappingFor } from '../../../../testing/anki-provider-contract';
-import { ACTIVITY_SEARCHES, activitySearchFor, batched, searchFor } from './connect-search';
+import {
+  ACTIVITY_SEARCHES,
+  activitySearchFor,
+  batched,
+  filteredByNameFor,
+  searchFor,
+} from './connect-search';
 
 describe('searchFor', () => {
   it('asks for the deck and the note type', () => {
@@ -34,6 +40,20 @@ describe('searchFor', () => {
     expect(query).not.toContain('is:new');
     expect(query).not.toContain('is:review');
     expect(query).not.toContain('-is:');
+  });
+});
+
+describe('filteredByNameFor', () => {
+  it('asks for the filtered cards under the deck but not under its subdecks', () => {
+    expect(filteredByNameFor(mappingFor({ deckName: 'N5_vocab' }))).toBe(
+      '"deck:N5\\_vocab" "note:Basic" -"deck:N5\\_vocab::*" deck:filtered',
+    );
+  });
+
+  it('asks for every filtered card in the tree when subdecks are wanted', () => {
+    expect(filteredByNameFor(mappingFor({ deckScope: 'deck-and-subdecks' }))).toBe(
+      '"deck:Core Japanese" "note:Basic" deck:filtered',
+    );
   });
 });
 

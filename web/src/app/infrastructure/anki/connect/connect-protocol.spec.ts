@@ -42,11 +42,15 @@ describe('shared bridge wire fixtures', () => {
   /**
    * Allowed of the desktop add-on, but deliberately not implemented by the
    * bridge. AnkiDroid's content provider exposes no review log, so the fixture
-   * records the refusal the extraction path is written to fall back from; and
-   * deck ids are asked only of the desktop add-on, because the bridge names a
-   * filtered card's home deck itself.
+   * records the refusal the extraction path is written to fall back from.
    */
-  const REFUSED_BY_BRIDGE = ['deckNamesAndIds', 'getReviewsOfCards'];
+  const REFUSED_BY_BRIDGE = ['getReviewsOfCards'];
+  /**
+   * Allowed, but only ever sent to the desktop add-on, so the shared bridge
+   * contract has no fixture for it: deck ids are asked only where `cardsInfo`
+   * cannot name a filtered card's home deck, and the bridge names it itself.
+   */
+  const DESKTOP_ONLY: readonly string[] = ['deckNamesAndIds'];
   /**
    * Every card key the bridge can send. It sits outside the small collection the
    * fake replays, so it is checked against the schema rather than the fake.
@@ -55,7 +59,7 @@ describe('shared bridge wire fixtures', () => {
   const replayedFixtures = protocolFixtures.filter((f) => f.name !== FULL_SHAPE);
   it('covers exactly the read allowlist and a refused write', () => {
     expect(replayedFixtures.map((f) => f.request.action).sort()).toEqual(
-      [...ALLOWED_ACTIONS, 'addNote'].sort(),
+      [...ALLOWED_ACTIONS.filter((action) => !DESKTOP_ONLY.includes(action)), 'addNote'].sort(),
     );
     expect(
       replayedFixtures

@@ -46,12 +46,11 @@ internal val FIXTURE_IDENTITY = BridgeIdentity(
 class RouterTest {
     @Test fun everyFixtureIsByteIdentical() {
         val directory = File(javaClass.classLoader!!.getResource("fixtures")!!.toURI())
-        // One fixture per implemented read, the full card shape, and the three the
-        // bridge refuses: a write; `getReviewsOfCards`, which AnkiDroid has no
-        // review log for; and `deckNamesAndIds`, which only the desktop adapter
-        // asks, because the bridge names a filtered card's home deck itself.
+        // One fixture per implemented read, the full card shape, and the two the
+        // bridge refuses: a write, and `getReviewsOfCards`, which AnkiDroid has no
+        // review log for.
         val fullShape = 1
-        val refused = 3
+        val refused = 2
         assertEquals(AllowedReads.entries.size + fullShape + refused, directory.listFiles()!!.size)
         for (fixture in directory.listFiles()!!) {
             val actual = Router(FixtureReads(), FIXTURE_IDENTITY).route(File(fixture, "request.json").readText())

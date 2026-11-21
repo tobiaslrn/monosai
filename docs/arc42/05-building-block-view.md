@@ -175,7 +175,12 @@ the same action ([ADR 0066](../decisions/0066-desktop-fsrs-difficulty-by-search.
 A card belongs to a mapping by its home deck. The bridge names a filtered card's
 home deck; the desktop add-on reports only the deck a card sits in, so the
 desktop adapter asks `deck:filtered` which of its cards sit in a filtered deck,
-and a `did:` search over the ids from `deckNamesAndIds` which of those belong
+and a `did:` search over the ids from `deckNamesAndIds` which of those belong.
+Only from Anki 24.11 does `did:` see a filtered card's home deck, and the
+AnkiConnect version does not say which release answers, so the adapter probes
+once per mapping and otherwise decides by deck name, which cannot place a card
+in a filtered deck built inside the mapped tree. `deckNamesAndIds` is sent only
+to the desktop add-on and is not part of the bridge contract in `protocol/`
 ([ADR 0098](../decisions/0098-a-filtered-card-belongs-to-its-home-deck.md)).
 Both adapters escape deck and note type names in every search, so Anki's `*`
 and `_` wildcards in a name match only themselves.

@@ -2,7 +2,7 @@ import { ankiError, type AnkiError } from '../../../domain/anki/anki-error';
 import type { AnkiExtractionEvent } from '../../../domain/anki/anki-provider';
 import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
 import type { AnkiConnectClient, ReviewsOfCards } from './connect-client';
-import { batched, searchFor } from './connect-search';
+import { batched, filteredByNameFor, searchFor } from './connect-search';
 import { captureActivity, type ActivityPools } from './connect-activity';
 import { resolveDifficultyPercents } from './difficulty-search';
 import {
@@ -23,7 +23,7 @@ import {
 import type { CardInfo } from './connect-client';
 import { resolveIntroducedFirstReviews } from './introduced-first-review';
 import { matchCardPredicates } from './card-predicate-search';
-import { ok, type Result } from '../../../domain/shared/result';
+import { err, ok, type Result } from '../../../domain/shared/result';
 
 /** Ids per `cardsInfo` or `notesInfo` request when the endpoint states no limit. */
 export const DEFAULT_BATCH_SIZE = 200;
@@ -58,7 +58,8 @@ export interface ExtractionOptions {
    * says nothing about where it belongs: a filtered deck built inside the mapped
    * deck can hold cards from anywhere. Anki's own `deck:filtered` search is
    * asked which cards sit in a filtered deck, and a `did:` search by deck id
-   * which of those belong to the mapping.
+   * which of those belong to the mapping, or a name search on an Anki whose
+   * `did:` cannot see home decks.
    */
   readonly reportsHomeDeck?: boolean;
 }
@@ -75,7 +76,8 @@ export interface ExtractionOptions {
  * Deck membership is confirmed against the home deck of each card rather than
  * trusted from the query alone, so a provider whose search semantics differ
  * cannot widen a mapping's scope unnoticed. Where the endpoint cannot name the
- * home deck of a card sitting in a filtered deck, Anki is asked for it by id.
+ * home deck of a card sitting in a filtered deck, Anki is asked for it by id,
+ * or by name on an older Anki.
  */
 export async function* extractMapping(
   client: AnkiConnectClient,
@@ -386,21 +388,47 @@ function observed(seen: boolean): EvidenceAvailability {
 }
 
 /**
+ * How a filtered card's home deck is asked: by deck id where Anki's `did:` sees
+ * home decks, by deck name where it does not.
+ */
+type HomeSearch = 'by-id' | 'by-name';
+
+/**
+ * Errors that mean Anki answered but cannot run the search as asked, such as a
+ * `did:` list an older Anki cannot parse. The name search still works there;
+ * anything else, such as a cancelled refresh or Anki quitting, ends the read.
+ */
+const UNABLE_TO_SEARCH: readonly AnkiError['code'][] = [
+  'query-failed',
+  'unsupported-action',
+  'malformed-response',
+];
+
+/**
  * Decides which cards belong to a mapping when the endpoint names only the deck
  * each card sits in.
  *
  * Anki's `deck:filtered` says which cards sit in a filtered deck; for every
- * other card the reported deck is its home. A filtered card's home is asked
- * with `did:`, which matches a card by the deck it sits in or by its home deck,
- * without subdecks. Asked with the ids of the mapping's decks less the
- * filtered decks these cards sit in, it can only match a card through its
- * home. `deck:filtered` and the deck ids are asked at most once per mapping,
- * and each only when a card needs it, so a mapping nobody studies from a
- * filtered deck costs at most the one search.
+ * other card the reported deck is its home. What `did:` matches depends on the
+ * Anki release: up to 2.1.66 it takes one deck id, 23.10 to 24.06 take a list,
+ * and both match only the deck a card sits in; from 24.11 it also matches a
+ * filtered card's home deck. The AnkiConnect version does not say which, so
+ * Anki is asked once per mapping, about one filtered card, with the id of every
+ * deck but the one it sits in: a match can only come through its home.
+ *
+ * Where it matches, each filtered card is asked with the ids of the mapping's
+ * decks less the filtered decks these cards sit in, which is exact. Otherwise,
+ * or when Anki cannot run the search, the cards are decided by deck name, which
+ * is exact for a filtered deck outside the mapped tree; see
+ * {@link filteredByNameFor}. Every search here is asked only when a card needs
+ * it, so a mapping nobody studies from a filtered deck costs at most the one
+ * `deck:filtered` search.
  */
 class HomeDeckCheck {
   private moved: ReadonlySet<number> | undefined;
   private deckIds: Readonly<Record<string, number>> | undefined;
+  private search: HomeSearch | undefined;
+  private keptByName: ReadonlySet<number> | undefined;
 
   constructor(
     private readonly client: AnkiConnectClient,
@@ -428,28 +456,26 @@ class HomeDeckCheck {
     }
     const moved = this.moved;
     const filtered = cards.filter((card) => moved.has(card.cardId));
-    if (filtered.length === 0) {
+    const [first] = filtered;
+    if (first === undefined) {
       return ok(decisions);
     }
-    if (this.deckIds === undefined) {
-      const deckIds = await this.client.deckNamesAndIds(this.signal);
-      if (!deckIds.ok) {
-        return deckIds;
+    if (this.search === undefined) {
+      const search = await this.probe(first);
+      if (!search.ok) {
+        return search;
       }
-      this.deckIds = deckIds.value;
+      this.search = search.value;
     }
-    const sittingIn = new Set(filtered.map((card) => card.deckName));
-    const homeIds = Object.entries(this.deckIds)
-      .filter(([name]) => !sittingIn.has(name) && inScope({ deckName: name }, this.mapping))
-      .map(([, id]) => id);
-    const belonging =
-      homeIds.length === 0
-        ? ok(new Set<number>())
-        : await matchCardPredicates(
-            this.client,
-            filtered.map((card) => ({ cardId: card.cardId, term: `did:${homeIds.join(',')}` })),
-            this.signal,
-          );
+    let belonging = this.search === 'by-id' ? await this.byId(filtered) : await this.byName();
+    if (
+      !belonging.ok &&
+      this.search === 'by-id' &&
+      UNABLE_TO_SEARCH.includes(belonging.error.code)
+    ) {
+      this.search = 'by-name';
+      belonging = await this.byName();
+    }
     if (!belonging.ok) {
       return belonging;
     }
@@ -458,6 +484,67 @@ class HomeDeckCheck {
     }
     return ok(decisions);
   }
+
+  /**
+   * Whether this Anki's `did:` matches a filtered card by its home deck.
+   *
+   * `deck:filtered` is asked again, so a card sent home in the meantime, which
+   * every listed id would then match, reads as no rather than as yes.
+   */
+  private async probe(card: CardInfo): Promise<Result<HomeSearch, AnkiError>> {
+    const deckIds = await this.client.deckNamesAndIds(this.signal);
+    if (!deckIds.ok) {
+      return byNameUnless(deckIds.error);
+    }
+    this.deckIds = deckIds.value;
+    const others = Object.entries(deckIds.value)
+      .filter(([name]) => name !== card.deckName)
+      .map(([, id]) => id);
+    if (!Object.hasOwn(deckIds.value, card.deckName) || others.length === 0) {
+      return ok('by-name');
+    }
+    const seen = await this.client.findCards(
+      `cid:${card.cardId} deck:filtered did:${others.join(',')}`,
+      this.signal,
+    );
+    if (!seen.ok) {
+      return byNameUnless(seen.error);
+    }
+    return ok(seen.value.includes(card.cardId) ? 'by-id' : 'by-name');
+  }
+
+  private async byId(
+    filtered: readonly CardInfo[],
+  ): Promise<Result<ReadonlySet<number>, AnkiError>> {
+    const deckIds = this.deckIds ?? {};
+    const sittingIn = new Set(filtered.map((card) => card.deckName));
+    const homeIds = Object.entries(deckIds)
+      .filter(([name]) => !sittingIn.has(name) && inScope({ deckName: name }, this.mapping))
+      .map(([, id]) => id);
+    if (homeIds.length === 0) {
+      return ok(new Set<number>());
+    }
+    return matchCardPredicates(
+      this.client,
+      filtered.map((card) => ({ cardId: card.cardId, term: `did:${homeIds.join(',')}` })),
+      this.signal,
+    );
+  }
+
+  private async byName(): Promise<Result<ReadonlySet<number>, AnkiError>> {
+    if (this.keptByName === undefined) {
+      const kept = await this.client.findCards(filteredByNameFor(this.mapping), this.signal);
+      if (!kept.ok) {
+        return kept;
+      }
+      this.keptByName = new Set(kept.value);
+    }
+    return ok(this.keptByName);
+  }
+}
+
+function byNameUnless(error: AnkiError): Result<HomeSearch, AnkiError> {
+  return UNABLE_TO_SEARCH.includes(error.code) ? ok('by-name') : err(error);
 }
 
 /**

@@ -15,9 +15,10 @@ export const ALLOWED_ACTIONS = [
   'version',
   'requestPermission',
   'deckNames',
-  // Deck ids for `did:` searches, which alone tell a filtered card's home deck
-  // from the filtered deck it sits in. Only the desktop adapter asks; the bridge
-  // names the home deck itself.
+  // Deck ids for `did:` searches, which from Anki 24.11 tell a filtered card's
+  // home deck from the filtered deck it sits in. Desktop only: the bridge names
+  // the home deck itself, so this is not part of the shared bridge contract
+  // under `protocol/` and the bridge answers it as an unknown action.
   'deckNamesAndIds',
   'modelNames',
   'modelFieldNames',
