@@ -1,6 +1,11 @@
 import type * as z from 'zod';
 import type { Logger } from '../../application/shared/diagnostics';
-import { aiError, isAutomaticallyRetryable, type AiError } from '../../domain/ai/ai-error';
+import {
+  aiError,
+  isAutomaticallyRetryable,
+  isModerationRefusal,
+  type AiError,
+} from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import type { CredentialRepository } from '../../domain/settings/credential-repository';
 import { describeThrown } from '../../domain/shared/errors';
@@ -109,14 +114,15 @@ export class OpenRouterClient {
    * payload is allowed further into the application.
    */
   async postJson<T>(request: OpenRouterRequest, schema: z.ZodType<T>): Promise<Result<T, AiError>> {
-    const raw = await this.send(
+    const json = await this.send(
       request,
       'POST',
       request.body,
       'application/json',
       MAX_JSON_RESPONSE_BYTES,
+      (raw) => this.readJson(raw, request),
     );
-    return this.parseJson(raw, request, schema);
+    return this.validate(json, request, schema);
   }
 
   /** Sends a bounded GET request and validates its JSON response. */
@@ -124,40 +130,77 @@ export class OpenRouterClient {
     request: OpenRouterRequestContext,
     schema: z.ZodType<T>,
   ): Promise<Result<T, AiError>> {
-    const raw = await this.send(
+    const json = await this.send(
       request,
       'GET',
       undefined,
       'application/json',
       MAX_JSON_RESPONSE_BYTES,
+      (raw) => this.readJson(raw, request),
     );
-    return this.parseJson(raw, request, schema);
+    return this.validate(json, request, schema);
   }
 
-  private parseJson<T>(
-    raw: Result<RawResponse, AiError>,
+  /**
+   * Decodes one JSON answer and reads any error the provider put inside it.
+   *
+   * Runs inside the retry loop, because OpenRouter reports an upstream failure
+   * that happens after the response has started as an HTTP 200 whose body is
+   * an error. That failure is classified by the code it carries, exactly like
+   * an HTTP error, so a rate limit is retried and an empty balance is reported
+   * as one.
+   */
+  private readJson(raw: RawResponse, request: OpenRouterRequestContext): Result<unknown, AiError> {
+    if (!raw.contentType.includes('application/json')) {
+      return err(this.malformed(request.task, 'content-type'));
+    }
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(new TextDecoder().decode(raw.bytes));
+    } catch {
+      return err(this.malformed(request.task, 'invalid-json'));
+    }
+    const embedded = this.describeEmbeddedError(parsedJson, request);
+    return embedded === null ? ok(parsedJson) : err(embedded);
+  }
+
+  /**
+   * Classifies an error carried inside a successful response, or returns null.
+   *
+   * The provider accepted the request before it failed, so the request's shape
+   * was not what it refused. A code that would otherwise read as a missing
+   * capability is therefore reported as an unclassified failure: it must never
+   * reach the structured-output recovery and record a downgrade for the model.
+   */
+  private describeEmbeddedError(json: unknown, request: OpenRouterRequestContext): AiError | null {
+    const carried = embeddedError(json);
+    if (carried === undefined) {
+      return null;
+    }
+    const parsed = providerErrorEnvelopeSchema.safeParse({ error: carried });
+    const envelope = parsed.success ? parsed.data : null;
+    const code = Number(envelope?.error.code);
+    const status = Number.isInteger(code) && code >= 400 && code < 600 ? code : 502;
+    const correlationId = this.newCorrelationId();
+    const mapped = mapHttpStatus(status, contextOf(request), envelope, undefined, correlationId);
+    if (mapped.code === 'capability-unsupported' && !isModerationRefusal(mapped)) {
+      return aiError('unknown', request.task, 'The provider reported an error inside its answer.', {
+        cause: `embedded ${String(status)}`,
+        detail: { status, correlationId },
+      });
+    }
+    return mapped;
+  }
+
+  private validate<T>(
+    json: Result<unknown, AiError>,
     request: OpenRouterRequestContext,
     schema: z.ZodType<T>,
   ): Result<T, AiError> {
-    if (!raw.ok) {
-      return raw;
+    if (!json.ok) {
+      return json;
     }
-    if (!raw.value.contentType.includes('application/json')) {
-      const error = this.malformed(request.task, 'content-type');
-      this.logFailure(request, error);
-      return err(error);
-    }
-
-    let parsedJson: unknown;
-    try {
-      parsedJson = JSON.parse(new TextDecoder().decode(raw.value.bytes));
-    } catch {
-      const error = this.malformed(request.task, 'invalid-json');
-      this.logFailure(request, error);
-      return err(error);
-    }
-
-    const parsed = schema.safeParse(parsedJson);
+    const parsed = schema.safeParse(json.value);
     if (!parsed.success) {
       const [issue] = parsed.error.issues;
       const path = issue?.path.join('.') ?? '';
@@ -179,11 +222,9 @@ export class OpenRouterClient {
 
   /** Sends a synthesis request and returns the raw clip for validation. */
   async postAudio(request: OpenRouterRequest): Promise<Result<AudioResponse, AiError>> {
-    const raw = await this.send(request, 'POST', request.body, 'audio/*', MAX_AUDIO_RESPONSE_BYTES);
-    if (!raw.ok) {
-      return raw;
-    }
-    return ok({ bytes: raw.value.bytes, mimeType: raw.value.contentType });
+    return this.send(request, 'POST', request.body, 'audio/*', MAX_AUDIO_RESPONSE_BYTES, (raw) =>
+      ok({ bytes: raw.bytes, mimeType: raw.contentType }),
+    );
   }
 
   private malformed(task: AiTask, issueCode: string): AiError {
@@ -200,20 +241,25 @@ export class OpenRouterClient {
    * Retries stop at the policy limit, at the first non-transient failure, and
    * the moment the caller cancels, which is what keeps a retrying request from
    * outliving the screen that started it.
+   *
+   * `read` turns each delivered body into the answer, inside the loop, so a
+   * transient failure the body itself reports is retried like any other.
    */
-  private async send(
+  private async send<R>(
     request: OpenRouterRequestContext,
     method: 'GET' | 'POST',
     body: Record<string, unknown> | undefined,
     accept: string,
     maxBytes: number,
-  ): Promise<Result<RawResponse, AiError>> {
+    read: (raw: RawResponse) => Result<R, AiError>,
+  ): Promise<Result<R, AiError>> {
     const aborted = (): boolean => request.signal?.aborted ?? false;
     const startedAt = Date.now();
     this.logger?.info('ai.request.started', requestFields(request));
     let attempt = 0;
     for (;;) {
-      const outcome = await this.attempt(request, method, body, accept, maxBytes);
+      const delivered = await this.attempt(request, method, body, accept, maxBytes);
+      const outcome = delivered.ok ? read(delivered.value) : delivered;
       if (outcome.ok) {
         this.logger?.info('ai.request.succeeded', {
           ...requestFields(request),
@@ -513,6 +559,24 @@ function usageFields(value: unknown): {
     ...(cachedTokens === undefined ? {} : { cachedTokens }),
     ...(cacheWriteTokens === undefined ? {} : { cacheWriteTokens }),
   };
+}
+
+/**
+ * The error object a successful response carries, if any.
+ *
+ * OpenRouter puts it at the top level when the upstream failed before any
+ * choice existed, and on the choice when it failed while generating.
+ */
+function embeddedError(json: unknown): unknown {
+  if (!isRecord(json)) {
+    return undefined;
+  }
+  if (isRecord(json['error'])) {
+    return json['error'];
+  }
+  const choices = json['choices'];
+  const first: unknown = Array.isArray(choices) ? choices[0] : undefined;
+  return isRecord(first) && isRecord(first['error']) ? first['error'] : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

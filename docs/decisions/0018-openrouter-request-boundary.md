@@ -149,6 +149,14 @@ choosing a different model, and it spends no recovery: the same text in
 another shape meets the same check. A 403 without that metadata still means
 the key.
 
+OpenRouter can also answer HTTP 200 with an error object, at the top level or
+on a choice that failed while generating, when the upstream fails after the
+response has started. The client reads that object inside its retry loop and
+classifies it by the code it carries, so a 429 is retried and a 402 is out of
+credit. The provider had already accepted the request, so a code that would
+read as a missing capability is reported as `unknown` instead: it never
+spends the structured-output recovery and never records a downgrade.
+
 ### Fingerprints use a key generation, never the key
 
 Configuration tests are stored in ordinary settings rows. A fingerprint

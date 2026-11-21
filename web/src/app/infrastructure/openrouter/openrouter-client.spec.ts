@@ -13,6 +13,7 @@ import { OpenRouterClient } from './openrouter-client';
 import { CHAT_COMPLETIONS_PATH, OPENROUTER_BASE_URL } from './openrouter-endpoints';
 import { chatCompletionSchema } from './openrouter-response.schema';
 import { MAX_AUTOMATIC_RETRIES } from './retry-policy';
+import { OpenRouterTextModelTester } from './text-model-test.adapter';
 
 const probe = {
   path: CHAT_COMPLETIONS_PATH,
@@ -569,5 +570,96 @@ describe('OpenRouterClient moderation refusals', () => {
     expect(expectError(await client.postJson(probe, chatCompletionSchema)).code).toBe(
       'authentication',
     );
+  });
+});
+
+describe('OpenRouterClient errors reported inside a successful response', () => {
+  const answer = {
+    choices: [{ finish_reason: 'stop', message: { content: '{"items": []}' } }],
+  };
+
+  it('classifies and retries a rate limit carried in a 200 body', async () => {
+    const { client, calls } = cannedClient([
+      { status: 200, body: { error: { code: 429, message: 'Rate limit exceeded' } } },
+      { status: 200, body: answer },
+    ]);
+
+    const result = await client.postJson(probe, chatCompletionSchema);
+
+    expect(calls()).toBe(2);
+    expect(result.ok).toBe(true);
+  });
+
+  it('reports a credit failure carried in a 200 body as credit exhaustion', async () => {
+    const { client, calls } = cannedClient([
+      { status: 200, body: { error: { code: 402, message: 'Insufficient credits' } } },
+    ]);
+
+    expect(expectError(await client.postJson(probe, chatCompletionSchema)).code).toBe(
+      'credit-exhausted',
+    );
+    expect(calls()).toBe(1);
+  });
+
+  it('reads an error on a choice that failed while generating', async () => {
+    const { client, calls } = cannedClient([
+      {
+        status: 200,
+        body: {
+          choices: [
+            {
+              finish_reason: 'error',
+              message: { content: '' },
+              error: { code: 502, message: 'Upstream provider error' },
+            },
+          ],
+        },
+      },
+      { status: 200, body: answer },
+    ]);
+
+    const result = await client.postJson(probe, chatCompletionSchema);
+
+    expect(calls()).toBe(2);
+    expect(result.ok).toBe(true);
+  });
+
+  it('never reads an error inside an accepted request as a refused capability', async () => {
+    const { client } = cannedClient([
+      {
+        status: 200,
+        body: { error: { code: 400, message: 'response_format is not supported' } },
+      },
+    ]);
+
+    const error = expectError(await client.postJson(probe, chatCompletionSchema));
+
+    expect(error.code).not.toBe('capability-unsupported');
+  });
+
+  it('does not record a native-schema model as json-contract after an upstream error', async () => {
+    const { client } = cannedClient([
+      { status: 200, body: { error: { code: 502, message: 'Upstream provider error' } } },
+      {
+        status: 200,
+        body: {
+          choices: [
+            {
+              finish_reason: 'stop',
+              message: {
+                content: '{"items": [{"id": "a", "note": "ok"}, {"id": "b", "note": null}]}',
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    const tester = new OpenRouterTextModelTester(client);
+
+    const result = await tester.testConfiguration({ modelId: FAKE_OPENROUTER.textModel });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.structuredOutput).toBe('native-schema');
   });
 });
