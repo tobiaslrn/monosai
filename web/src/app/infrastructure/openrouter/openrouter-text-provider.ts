@@ -1,4 +1,5 @@
-import type { AiError } from '../../domain/ai/ai-error';
+import { aiError, type AiError } from '../../domain/ai/ai-error';
+import type { AiTask } from '../../domain/ai/ai-task';
 import type { ExceptionDecision } from '../../domain/ai/exception-review';
 import type {
   GrammarReviewRequest,
@@ -17,7 +18,8 @@ import type {
   TranslationBatchRequest,
   TranslationResponse,
 } from '../../domain/ai/translation-request';
-import type { Result } from '../../domain/shared/result';
+import { err, type Result } from '../../domain/shared/result';
+import { retryOnRejection, untilAborted } from '../audio/lazy-load';
 import type { OpenRouterEnricher } from './enrichment.adapter';
 import type { OpenRouterStoryGenerator } from './story-generation.adapter';
 import type { OpenRouterTextModelTester } from './text-model-test.adapter';
@@ -44,25 +46,47 @@ export type EnricherLoader = () => Promise<OpenRouterEnricher>;
  * learner who only imports their own text never needs. The port's methods are
  * already asynchronous, so resolving either on first use costs nothing at the
  * call site, and the loaded instance is kept.
+ *
+ * A load that fails, a chunk that cannot be fetched offline or after a deploy,
+ * answers with a failure result like any other, and the next call loads again.
  */
 export class OpenRouterTextProvider implements TextGenerationProvider {
-  private generator: OpenRouterStoryGenerator | null = null;
-  private enricher: OpenRouterEnricher | null = null;
+  private readonly generator: StoryGeneratorLoader;
+  private readonly enricher: EnricherLoader;
 
   constructor(
     private readonly tester: OpenRouterTextModelTester,
-    private readonly loadGenerator: StoryGeneratorLoader,
-    private readonly loadEnricher: EnricherLoader,
-  ) {}
-
-  private async generation(): Promise<OpenRouterStoryGenerator> {
-    this.generator ??= await this.loadGenerator();
-    return this.generator;
+    loadGenerator: StoryGeneratorLoader,
+    loadEnricher: EnricherLoader,
+    private readonly isOnline: () => boolean = () => true,
+  ) {
+    this.generator = retryOnRejection(loadGenerator);
+    this.enricher = retryOnRejection(loadEnricher);
   }
 
-  private async enrichment(): Promise<OpenRouterEnricher> {
-    this.enricher ??= await this.loadEnricher();
-    return this.enricher;
+  /** Loads an adapter and hands it the call, or reports why it could not be loaded. */
+  private async withLoaded<A, T>(
+    load: () => Promise<A>,
+    task: AiTask,
+    signal: AbortSignal | undefined,
+    use: (adapter: A) => Promise<Result<T, AiError>>,
+  ): Promise<Result<T, AiError>> {
+    let adapter: A;
+    try {
+      adapter = await untilAborted(load(), signal);
+    } catch {
+      if (signal?.aborted === true) {
+        return err(aiError('cancelled', task, 'The request was cancelled.'));
+      }
+      return err(
+        this.isOnline()
+          ? aiError('unknown', task, 'The code for this request could not be loaded.', {
+              cause: 'chunk-load',
+            })
+          : aiError('offline', task, 'The device is offline.'),
+      );
+    }
+    return use(adapter);
   }
 
   testConfiguration(
@@ -72,51 +96,63 @@ export class OpenRouterTextProvider implements TextGenerationProvider {
     return this.tester.testConfiguration(config, signal);
   }
 
-  async draftPlots(
+  draftPlots(
     request: StoryPlotRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
   ): Promise<Result<readonly string[], AiError>> {
-    return (await this.generation()).draftPlots(request, config, signal);
+    return this.withLoaded(this.generator, 'story-plots', signal, (adapter) =>
+      adapter.draftPlots(request, config, signal),
+    );
   }
 
-  async generateStory(
+  generateStory(
     request: StoryGenerationRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
   ): Promise<Result<StoryCandidate, AiError>> {
-    return (await this.generation()).generateStory(request, config, signal);
+    return this.withLoaded(this.generator, 'story-generation', signal, (adapter) =>
+      adapter.generateStory(request, config, signal),
+    );
   }
 
-  async repairStory(
+  repairStory(
     request: StoryRepairRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
   ): Promise<Result<StoryCandidate, AiError>> {
-    return (await this.generation()).repairStory(request, config, signal);
+    return this.withLoaded(this.generator, 'story-repair', signal, (adapter) =>
+      adapter.repairStory(request, config, signal),
+    );
   }
 
-  async reviewExceptions(
+  reviewExceptions(
     request: ExceptionReviewRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
   ): Promise<Result<readonly ExceptionDecision[], AiError>> {
-    return (await this.generation()).reviewExceptions(request, config, signal);
+    return this.withLoaded(this.generator, 'exception-review', signal, (adapter) =>
+      adapter.reviewExceptions(request, config, signal),
+    );
   }
 
-  async reviewGrammar(
+  reviewGrammar(
     request: GrammarReviewRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
   ): Promise<Result<GrammarReviewResult, AiError>> {
-    return (await this.enrichment()).reviewGrammar(request, config, signal);
+    return this.withLoaded(this.enricher, 'grammar-review', signal, (adapter) =>
+      adapter.reviewGrammar(request, config, signal),
+    );
   }
 
-  async translate(
+  translate(
     request: TranslationBatchRequest,
     config: TextTaskConfig,
     signal?: AbortSignal,
   ): Promise<Result<TranslationResponse, AiError>> {
-    return (await this.enrichment()).translate(request, config, signal);
+    return this.withLoaded(this.enricher, 'translation', signal, (adapter) =>
+      adapter.translate(request, config, signal),
+    );
   }
 }

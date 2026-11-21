@@ -62,6 +62,7 @@ export function provideOpenRouter(): Provider[] {
         // time an adapter is loaded the provider is already constructed, so the
         // lookup is a plain read rather than a cycle.
         const injector = inject(Injector);
+        const view = inject(DOCUMENT).defaultView;
         const memo = (): StructuredOutputMemo => injector.get(STRUCTURED_OUTPUT_MEMO);
         return new OpenRouterTextProvider(
           new OpenRouterTextModelTester(shared),
@@ -74,6 +75,7 @@ export function provideOpenRouter(): Provider[] {
             ),
           // Loaded on the first review or translation, for the same reason.
           async () => new (await import('./enrichment.adapter')).OpenRouterEnricher(shared, memo()),
+          () => view?.navigator.onLine ?? true,
         );
       },
     },
