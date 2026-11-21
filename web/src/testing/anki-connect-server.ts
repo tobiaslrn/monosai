@@ -48,8 +48,8 @@ export interface FakeServerOptions {
    * Which endpoint's `cardsInfo` shape to answer with; the bridge's by default.
    *
    * The desktop add-on calls the card type `type` and carries no FSRS
-   * difficulty or last answer, so a desktop test that used the bridge's shape
-   * would pass against columns the real add-on never sends.
+   * difficulty, last answer or home deck, so a desktop test that used the
+   * bridge's shape would pass against columns the real add-on never sends.
    */
   readonly cardShape?: 'bridge' | 'desktop';
 }
@@ -236,9 +236,12 @@ export class FakeAnkiConnectServer {
             ...(card.interval === undefined ? {} : { interval: card.interval }),
             ...this.endpointColumns(card),
             queue: card.queue,
-            // A filtered card reports where it sits, and its home deck beside it.
+            // A filtered card reports where it sits. The bridge names its home
+            // deck beside it; the desktop add-on does not.
             deckName: card.filteredDeckName ?? card.deckName,
-            ...(card.filteredDeckName === undefined ? {} : { originalDeckName: card.deckName }),
+            ...(card.filteredDeckName === undefined || this.options.cardShape === 'desktop'
+              ? {}
+              : { originalDeckName: card.deckName }),
           }));
       }
       case 'getReviewsOfCards': {
@@ -299,8 +302,9 @@ export class FakeAnkiConnectServer {
   /**
    * Anki's search, reduced to what the adapter's queries use.
    *
-   * `deck:X` matches X and its descendants; a leading `-` negates a term; and
-   * `note:Y` matches the note type. Terms combine with AND. Per-card questions
+   * `deck:X` matches X and its descendants, `deck:filtered` the cards sitting in
+   * a filtered deck; a leading `-` negates a term; and `note:Y` matches the note
+   * type. Terms combine with AND. Per-card questions
    * arrive as `(cid:1,2 term)` clauses joined by OR.
    */
   private findCards(query: string): number[] {
@@ -336,6 +340,10 @@ export class FakeAnkiConnectServer {
   }
 
   private matchesTerm(card: ServerCard, term: string): boolean {
+    // Anki's name for every card a filtered deck has moved, not a deck name.
+    if (term === 'deck:filtered') {
+      return card.filteredDeckName !== undefined;
+    }
     if (term.startsWith('deck:')) {
       // The home deck decides, as it does in Anki: a filtered deck moves a card
       // for a while without changing which deck it belongs to.

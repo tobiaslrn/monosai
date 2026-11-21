@@ -220,6 +220,7 @@ export class AndroidConnectAdapter implements AnkiVocabularyProvider {
       for await (const event of extractMapping(this.client, mapping, batchSize, signal, {
         readsReviewHistory: false,
         readsIntroducedHistory: true,
+        reportsHomeDeck: true,
         now: this.now,
       })) {
         yield event;

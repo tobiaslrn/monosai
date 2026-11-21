@@ -48,6 +48,15 @@ export interface ExtractionOptions {
   readonly searchesFsrsDifficulty?: boolean;
   /** One timestamp per mapping keeps every recovered day internally consistent. */
   readonly now?: () => number;
+  /**
+   * Whether `cardsInfo` names the home deck of a card sitting in a filtered deck.
+   *
+   * The first-party bridge does, as `originalDeckName`. The desktop add-on
+   * reports only the deck a card currently sits in, so a card it places outside
+   * the mapping may still belong to it, and Anki's own `deck:filtered` search is
+   * asked which of those cards a filtered deck has moved.
+   */
+  readonly reportsHomeDeck?: boolean;
 }
 
 /**
@@ -61,7 +70,9 @@ export interface ExtractionOptions {
  *
  * Deck membership is confirmed against the `deckName` each card reports rather
  * than trusted from the query alone, so a provider whose search semantics
- * differ cannot widen a mapping's scope unnoticed.
+ * differ cannot widen a mapping's scope unnoticed. A card reported outside the
+ * mapping by an endpoint that cannot name its home deck is kept only when Anki
+ * confirms a filtered deck moved it there.
  */
 export async function* extractMapping(
   client: AnkiConnectClient,
@@ -96,6 +107,9 @@ export async function* extractMapping(
   // so one unsupported action costs one request rather than one per batch.
   let readsReviewHistory = options.readsReviewHistory ?? false;
   let warnedAboutReviews = false;
+  // Asked at most once, and only when a card actually needs it, so a mapping
+  // nobody is studying from a filtered deck costs no extra request.
+  let movedByFilteredDeck: ReadonlySet<number> | undefined;
 
   for (const batch of batched(found.value, batchSize)) {
     if (signal?.aborted === true) {
@@ -109,8 +123,29 @@ export async function* extractMapping(
       return;
     }
 
-    const eligible = cards.value.filter(
-      (card) => isEligibleReviewedCard(card.reps, card.queue) && inScope(card, mapping),
+    const reviewed = cards.value.filter((card) => isEligibleReviewedCard(card.reps, card.queue));
+    const unexplained = new Set(
+      reviewed
+        .filter(
+          (card) =>
+            options.reportsHomeDeck !== true &&
+            (card.originalDeckName ?? null) === null &&
+            !inScope(card, mapping),
+        )
+        .map((card) => card.cardId),
+    );
+    if (unexplained.size > 0 && movedByFilteredDeck === undefined) {
+      const moved = await client.findCards(`(${searchFor(mapping)}) deck:filtered`, signal);
+      if (!moved.ok) {
+        yield { kind: 'failed', error: moved.error };
+        return;
+      }
+      movedByFilteredDeck = new Set(moved.value);
+    }
+    const eligible = reviewed.filter((card) =>
+      unexplained.has(card.cardId)
+        ? movedByFilteredDeck?.has(card.cardId) === true
+        : inScope(card, mapping),
     );
     eligibleCards.push(...eligible);
     examined += cards.value.length;
@@ -355,12 +390,13 @@ function observed(seen: boolean): EvidenceAvailability {
 }
 
 /**
- * Confirms the card belongs to the mapping's deck.
+ * Confirms the card belongs to the mapping's deck by the deck it reports.
  *
  * A filtered deck moves a card without changing where it belongs, so its home
- * deck decides. Checking only the current deck would drop exactly the cards the
- * learner is studying right now, which is the opposite of what recent practice
- * is for.
+ * deck decides where the endpoint names it. Checking only the current deck would
+ * drop exactly the cards the learner is studying right now, which is the
+ * opposite of what recent practice is for; the caller asks Anki about the cards
+ * whose home deck the endpoint does not name.
  */
 function inScope(
   card: Pick<CardInfo, 'deckName' | 'originalDeckName'>,

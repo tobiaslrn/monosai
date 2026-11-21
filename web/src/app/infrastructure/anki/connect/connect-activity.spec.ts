@@ -222,6 +222,12 @@ describe('recent practice from Anki', () => {
     });
   });
 
+  it('keeps a filtered card when the endpoint names only the deck it sits in', async () => {
+    expect(evidenceOf(await extract({ cardShape: 'desktop' }), 'そら')).toMatchObject({
+      answeredWithinDays: 1,
+    });
+  });
+
   it('never lets a suspended card contribute its recent answer', async () => {
     const { entries } = await extract();
     expect(entries.map((entry) => entry.rawFieldValue)).not.toContain('ゆき');

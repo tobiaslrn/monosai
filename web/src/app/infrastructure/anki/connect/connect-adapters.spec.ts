@@ -423,3 +423,124 @@ describe('AndroidConnectAdapter', () => {
     expect(collected.failure).toBeNull();
   });
 });
+
+/**
+ * Answers the way the desktop AnkiConnect add-on does: `cardsInfo` names the deck
+ * a card currently sits in and nothing else. `findCards` is Anki's own search,
+ * which matches a card in a filtered deck through its home deck, and
+ * `deck:filtered` matches the cards sitting in any filtered deck.
+ */
+function upstreamDesktopAnki(
+  cardsInfo: (ids: readonly number[]) => unknown[],
+  filteredCards: readonly number[] = [],
+  notesInfo: (ids: readonly number[]) => unknown[] = (ids) =>
+    ids.map((noteId) => ({
+      noteId,
+      modelName: 'Basic',
+      tags: [],
+      fields: {
+        Expression: { value: `語${String(noteId)}`, order: 0 },
+        Meaning: { value: 'word', order: 1 },
+      },
+      cards: [],
+    })),
+): typeof fetch {
+  return (_input, init) => {
+    const body = JSON.parse(init?.body as string) as {
+      action: string;
+      params: Record<string, unknown>;
+    };
+    const ids = (body.params['cards'] ?? body.params['notes'] ?? []) as number[];
+    const query = typeof body.params['query'] === 'string' ? body.params['query'] : '';
+    let result: unknown;
+    switch (body.action) {
+      case 'findCards':
+        // The mapping's own search finds both cards; no activity or difficulty
+        // search matches anything.
+        if (query.endsWith(' deck:filtered')) {
+          result = [...filteredCards];
+        } else {
+          result = query.startsWith('"deck:') ? [1, 2] : [];
+        }
+        break;
+      case 'cardsInfo':
+        result = cardsInfo(ids);
+        break;
+      case 'notesInfo':
+        result = notesInfo(ids);
+        break;
+      case 'getReviewsOfCards':
+        result = Object.fromEntries(ids.map((id) => [String(id), []]));
+        break;
+      default:
+        result = null;
+    }
+    return Promise.resolve(new Response(JSON.stringify({ result, error: null })));
+  };
+}
+
+function upstreamCard(cardId: number, deckName: string): Record<string, unknown> {
+  return {
+    cardId,
+    fields: {},
+    fieldOrder: 0,
+    question: '',
+    answer: '',
+    modelName: 'Basic',
+    ord: 0,
+    deckName,
+    css: '',
+    factor: 2500,
+    interval: 12,
+    note: cardId + 100,
+    type: 2,
+    queue: 2,
+    due: 1,
+    reps: 4,
+    lapses: 0,
+    left: 0,
+    mod: 1,
+  };
+}
+
+function desktopAdapterOver(fetchFn: typeof fetch): DesktopConnectAdapter {
+  return new DesktopConnectAdapter(
+    new AnkiConnectClient({
+      endpoints: DESKTOP_ENDPOINTS,
+      fetchFn,
+      pageOrigin: 'http://localhost:4200',
+      unreachableCode: 'not-running',
+    }),
+  );
+}
+
+describe('DesktopConnectAdapter against the add-on answer shapes', () => {
+  const mapping = mappingFor({ kind: 'anki-connect', providerKind: 'desktop-connect' });
+
+  it('keeps a reviewed card the learner is studying from a filtered deck', async () => {
+    const adapter = desktopAdapterOver(
+      upstreamDesktopAnki(
+        (ids) => ids.map((id) => upstreamCard(id, id === 2 ? 'Filtered Deck 1' : 'Core Japanese')),
+        [2],
+      ),
+    );
+
+    const collected = await collectExtraction(adapter, [mapping]);
+
+    expect(collected.failure).toBeNull();
+    expect(collected.entries.map((entry) => entry.sourceNoteId).sort()).toEqual(['101', '102']);
+  });
+
+  it('still drops a card outside the deck that no filtered deck explains', async () => {
+    const adapter = desktopAdapterOver(
+      upstreamDesktopAnki((ids) =>
+        ids.map((id) => upstreamCard(id, id === 2 ? 'Other Deck' : 'Core Japanese')),
+      ),
+    );
+
+    const collected = await collectExtraction(adapter, [mapping]);
+
+    expect(collected.failure).toBeNull();
+    expect(collected.entries.map((entry) => entry.sourceNoteId)).toEqual(['101']);
+  });
+});

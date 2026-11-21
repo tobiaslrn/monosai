@@ -172,6 +172,10 @@ never opens AnkiDroid's private collection or presents the result as an exact ti
 The bridge reports FSRS difficulty directly; the desktop add-on does not, so the
 desktop adapter recovers it to the whole percent through `prop:d` searches over
 the same action ([ADR 0066](../decisions/0066-desktop-fsrs-difficulty-by-search.md)).
+The bridge also names a filtered card's home deck; the desktop add-on reports
+only the deck a card sits in, so a reviewed card it places outside the mapping is
+kept when one `deck:filtered` search over the mapping confirms that a filtered
+deck moved it there.
 The update boundary makes bounded HTTPS requests to GitHub only on app launch or
 explicit download and verifies the APK signer before system installation.
 The router also answers with the build's own identity — its release name and the
