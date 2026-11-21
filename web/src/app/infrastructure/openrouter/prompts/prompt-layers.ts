@@ -59,17 +59,29 @@ export const CONFIG_CLOSE = 'MONOSAI_CONFIG>>>';
  * Both kinds are stripped from both wrappers, so content can neither close its
  * own block nor open a block of the more privileged kind and start speaking as
  * a setting the task is supposed to honour.
+ *
+ * One pass is not enough: each replacement keeps the brackets of the marker it
+ * removes, so two marker names spliced together leave a live marker behind.
+ * The pass repeats until nothing changes. Every replacement shortens the text,
+ * so it ends, and it ends only when no delimiter of either kind is left.
  */
 function neutralizeDelimiters(text: string): string {
-  return text
-    .split(DATA_OPEN)
-    .join('<<<')
-    .split(DATA_CLOSE)
-    .join('>>>')
-    .split(CONFIG_OPEN)
-    .join('<<<')
-    .split(CONFIG_CLOSE)
-    .join('>>>');
+  let current = text;
+  for (;;) {
+    const next = current
+      .split(DATA_OPEN)
+      .join('<<<')
+      .split(DATA_CLOSE)
+      .join('>>>')
+      .split(CONFIG_OPEN)
+      .join('<<<')
+      .split(CONFIG_CLOSE)
+      .join('>>>');
+    if (next === current) {
+      return current;
+    }
+    current = next;
+  }
 }
 
 /** Wraps captured text as content the task operates on but never obeys. */
