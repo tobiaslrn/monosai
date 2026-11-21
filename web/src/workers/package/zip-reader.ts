@@ -151,17 +151,28 @@ function readZip64Extra(
 }
 
 /**
- * Inflates a raw deflate member.
+ * Inflates a raw deflate member, stopping once it outgrows `maxBytes`.
  *
  * The bytes are pushed straight into the `DecompressionStream` and pulled back
  * out of its own readable side, rather than routed through a `Blob` or a
  * `Response`. Those belong to whichever realm supplies them, and piping one
  * realm's stream into another's fails; a stream only ever talks to itself here.
+ *
+ * The budget is enforced on the bytes actually produced, while they arrive:
+ * the sizes the archive declares are the attacker's to choose, and checking
+ * only after the whole member is buffered would let a small archive exhaust
+ * memory first. `null` means the budget ran out.
  */
-async function inflateRaw(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array> {
+async function inflateRaw(
+  data: Uint8Array<ArrayBuffer>,
+  maxBytes: number,
+): Promise<Uint8Array | null> {
   const stream = new DecompressionStream('deflate-raw');
   const writer = stream.writable.getWriter();
   const written = writer.write(data).then(() => writer.close());
+  // Cancelling the readable side errors the writable one, and nothing awaits
+  // the write on that path.
+  written.catch(() => undefined);
 
   const reader = stream.readable.getReader();
   const chunks: Uint8Array[] = [];
@@ -171,8 +182,12 @@ async function inflateRaw(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array> {
     if (done) {
       break;
     }
-    chunks.push(value);
     total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
   }
   await written;
 
@@ -304,14 +319,20 @@ export function openZipArchive(
       );
     }
 
-    let inflated: Uint8Array;
+    // The declared sizes above only refuse an honest archive early. The real
+    // output is held to the same member size and ratio while it is produced.
+    const budget = Math.min(
+      limits.maxMemberBytes,
+      Math.max(entry.compressedSize, 1) * limits.maxCompressionRatio,
+    );
+    let inflated: Uint8Array | null;
     try {
-      inflated = await inflateRaw(raw);
+      inflated = await inflateRaw(raw, budget);
     } catch {
       return err(unreadable(`${name} could not be decompressed`));
     }
-    if (inflated.byteLength > limits.maxMemberBytes) {
-      return err(overLimit(`${name} expanded to ${String(inflated.byteLength)} bytes`));
+    if (inflated === null) {
+      return err(overLimit(`${name} expands past ${String(budget)} bytes`));
     }
     return ok(inflated);
   }

@@ -168,8 +168,8 @@ export function createPackageHarness(options: PackageHarnessOptions = {}): Packa
     },
     createDatabase: () => factory,
     loadZstd: async () => {
-      const { decompress } = await import('fzstd');
-      return (input) => decompress(input);
+      const { Decompress } = await import('fzstd');
+      return (ondata) => new Decompress(ondata);
     },
     ...(options.limits === undefined ? {} : { limits: options.limits }),
   });

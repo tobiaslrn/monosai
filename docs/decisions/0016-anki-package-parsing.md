@@ -147,6 +147,12 @@ any single decompressed member (512 MB), and the expansion ratio of one member
 (250x). Real collections sit far below all four — the Kaishi collection expands
 about 3.4x — so a legitimate package never meets one.
 
+The sizes an archive declares only refuse an honest package early. The member
+and ratio limits are held on the bytes actually produced, while the deflate
+stream and the zstd decoder produce them, and a zstd frame whose header asks
+for a larger window or content than the member limit is refused before any
+decoding, because the decoder allocates both up front.
+
 ## Consequences
 
 - Two new runtime dependencies, both worker-only and lazily imported.

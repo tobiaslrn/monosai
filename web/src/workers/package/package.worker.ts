@@ -17,8 +17,8 @@ const host = new PackageWorkerHost({
   },
   createDatabase: sqlJsDatabaseFactory,
   loadZstd: async () => {
-    const { decompress } = await import('fzstd');
-    return (input) => decompress(input);
+    const { Decompress } = await import('fzstd');
+    return (ondata) => new Decompress(ondata);
   },
 });
 

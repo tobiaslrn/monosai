@@ -2,6 +2,9 @@ import { ankiError, type AnkiError } from '../../app/domain/anki/anki-error';
 import { err, ok, type Result } from '../../app/domain/shared/result';
 import type { PackageResourceLimits } from './resource-limits';
 import type { ZipArchive } from './zip-reader';
+import { decompressZstdWithin, zstdHeaderOverLimit, type ZstdDecompressor } from './zstd-bounds';
+
+export type { ZstdDecompressor } from './zstd-bounds';
 
 /**
  * The collection members Monosai knows how to open, newest first.
@@ -28,9 +31,6 @@ export interface LoadedCollection {
 }
 
 const SQLITE_MAGIC = 'SQLite format 3\0';
-
-/** Decompresses a zstd frame. Loaded lazily so the cost lands only on v3 packages. */
-export type ZstdDecompressor = (input: Uint8Array) => Uint8Array;
 
 /**
  * Reads the `meta` member, which is a protobuf holding just the package version.
@@ -103,9 +103,22 @@ export async function loadCollection(
 
   let bytes = read.value;
   if (member.compression === 'zstd') {
-    const decompress = await decompressZstd();
+    const tooLarge = (reason: string): Result<never, AnkiError> =>
+      err(
+        ankiError(
+          'package-resource-limit',
+          'This package is larger or more deeply compressed than Monosai will process.',
+          `${member.name}: ${reason}`,
+        ),
+      );
+    const header = zstdHeaderOverLimit(bytes, limits.maxMemberBytes);
+    if (header !== null) {
+      return tooLarge(header);
+    }
+    const createDecoder = await decompressZstd();
+    let decompressed: Uint8Array | null;
     try {
-      bytes = decompress(bytes);
+      decompressed = decompressZstdWithin(bytes, createDecoder, limits.maxMemberBytes);
     } catch (thrown) {
       return err(
         ankiError(
@@ -115,15 +128,10 @@ export async function loadCollection(
         ),
       );
     }
-    if (bytes.byteLength > limits.maxMemberBytes) {
-      return err(
-        ankiError(
-          'package-resource-limit',
-          'This package is larger or more deeply compressed than Monosai will process.',
-          `${member.name} expanded to ${String(bytes.byteLength)} bytes`,
-        ),
-      );
+    if (decompressed === null) {
+      return tooLarge(`expands past ${String(limits.maxMemberBytes)} bytes`);
     }
+    bytes = decompressed;
   }
 
   if (!looksLikeSqlite(bytes)) {
