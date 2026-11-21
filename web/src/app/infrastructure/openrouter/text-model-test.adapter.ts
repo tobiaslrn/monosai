@@ -1,4 +1,4 @@
-import { aiError, type AiError } from '../../domain/ai/ai-error';
+import { aiError, isModerationRefusal, type AiError } from '../../domain/ai/ai-error';
 import type { ModelTest, StructuredOutputMode, TextModelConfig } from '../../domain/ai/model-test';
 import { isGeminiModel } from '../../domain/ai/tts-configuration';
 import { err, ok, type Result } from '../../domain/shared/result';
@@ -86,7 +86,8 @@ export class OpenRouterTextModelTester {
     // JSON schema. Some upstreams (including Gemini through OpenRouter) report
     // a generic invalid-request parameter instead of naming response_format,
     // so any capability rejection here is safe to recover without the schema.
-    const refusedSchema = native.error.code === 'capability-unsupported';
+    const refusedSchema =
+      native.error.code === 'capability-unsupported' && !isModerationRefusal(native.error);
     if (!refusedSchema && native.error.code !== 'malformed-response') {
       return native;
     }

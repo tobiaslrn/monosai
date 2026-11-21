@@ -1,4 +1,9 @@
-import { aiError, TRUNCATED_REPLY_ISSUE_CODE, type AiError } from '../../domain/ai/ai-error';
+import {
+  aiError,
+  isModerationRefusal,
+  TRUNCATED_REPLY_ISSUE_CODE,
+  type AiError,
+} from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import { estimateTokens, MAX_REQUEST_TOKENS } from '../../domain/ai/context-budget';
 import type { StructuredOutputMode } from '../../domain/ai/model-test';
@@ -83,6 +88,11 @@ export class StructuredTaskRunner {
     // A native-schema attempt has no other optional capability. Upstreams do
     // not consistently name `response_format` in 400 responses, so a generic
     // capability rejection is also eligible for the one bounded recovery.
+    // A moderation check refuses the text, not the shape, so the same text in
+    // another shape would be refused and billed again.
+    if (isModerationRefusal(first.error)) {
+      return first;
+    }
     if (first.error.code === 'capability-unsupported') {
       // Only a refusal that names structured output is remembered at once. A
       // generic one is remembered only once the recovery has shown that the

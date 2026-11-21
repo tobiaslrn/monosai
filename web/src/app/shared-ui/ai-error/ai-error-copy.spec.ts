@@ -61,6 +61,20 @@ describe('AI_ERROR_COPY', () => {
     expect(copy.heading.toLowerCase()).toContain('credit');
   });
 
+  it('tells a learner whose text was flagged to change the model, not the key', () => {
+    const copy = aiErrorCopy(
+      aiError('capability-unsupported', 'story-generation', 'x', {
+        detail: { capability: 'moderation' },
+      }),
+    );
+
+    expect(copy.heading).toBe('OpenRouter flagged the text');
+    for (const line of [copy.heading, copy.primaryAction, copy.retryAction]) {
+      expect(line.toLowerCase()).not.toContain('key');
+    }
+    expect(copy.retryAction).toBe(AI_ERROR_COPY['capability-unsupported'].retryAction);
+  });
+
   it('keeps a rejected key about the key, now that credit has its own variant', () => {
     const copy = AI_ERROR_COPY.authentication;
 

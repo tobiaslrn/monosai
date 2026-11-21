@@ -134,6 +134,34 @@ describe('StructuredTaskRunner failures that are not about the schema', () => {
     },
   );
 
+  it('spends no recovery on text a moderation check refused', async () => {
+    let calls = 0;
+    const fetchFn: typeof fetch = () => {
+      calls += 1;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            error: { code: 403, message: 'Input flagged', metadata: { reasons: ['violence'] } },
+          }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+    };
+    const client = new OpenRouterClient({
+      fetchFn,
+      credentials: new FakeCredentialRepository(),
+      isOnline: () => true,
+      sleep: () => Promise.resolve(),
+    });
+    const memo = recordingMemo();
+
+    const result = await new OpenRouterEnricher(client, memo).reviewGrammar(REQUEST, NATIVE);
+
+    expect(result.ok).toBe(false);
+    expect(calls).toBe(1);
+    expect(memo.downgraded).toEqual([]);
+  });
+
   it('remembers an unnamed refusal once the recovery without the schema succeeds', async () => {
     const harness = openRouterHarness({
       content: 'grammar-complete',

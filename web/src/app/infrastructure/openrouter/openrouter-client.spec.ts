@@ -507,3 +507,67 @@ describe('OpenRouterClient edge responses', () => {
     expect(calls).toBe(1);
   });
 });
+
+interface CannedReply {
+  readonly status: number;
+  readonly body: unknown;
+}
+
+/** Answers each request with the next canned reply, repeating the last one. */
+function cannedClient(replies: readonly CannedReply[]): {
+  readonly client: OpenRouterClient;
+  readonly calls: () => number;
+} {
+  let calls = 0;
+  const fetchFn: typeof fetch = () => {
+    const reply = replies[Math.min(calls, replies.length - 1)];
+    calls += 1;
+    return Promise.resolve(
+      new Response(JSON.stringify(reply?.body), {
+        status: reply?.status ?? 500,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+  };
+  return {
+    client: new OpenRouterClient({
+      fetchFn,
+      credentials: new FakeCredentialRepository(),
+      isOnline: () => true,
+      sleep: () => Promise.resolve(),
+      random: () => 0.5,
+    }),
+    calls: () => calls,
+  };
+}
+
+describe('OpenRouterClient moderation refusals', () => {
+  it('does not blame the key when the model flagged the input', async () => {
+    const { client, calls } = cannedClient([
+      {
+        status: 403,
+        body: {
+          error: {
+            code: 403,
+            message: 'gpt-x requires moderation on OpenAI. Your input was flagged for "violence".',
+            metadata: { reasons: ['violence'], flagged_input: '...', provider_name: 'OpenAI' },
+          },
+        },
+      },
+    ]);
+
+    const error = expectError(await client.postJson(probe, chatCompletionSchema));
+
+    expect(error.code).toBe('capability-unsupported');
+    expect(error.detail?.capability).toBe('moderation');
+    expect(calls()).toBe(1);
+  });
+
+  it('still reports a plain 403 as a refused key', async () => {
+    const { client } = cannedClient([{ status: 403, body: { error: { message: 'Forbidden' } } }]);
+
+    expect(expectError(await client.postJson(probe, chatCompletionSchema)).code).toBe(
+      'authentication',
+    );
+  });
+});

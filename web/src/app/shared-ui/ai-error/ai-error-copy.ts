@@ -1,4 +1,9 @@
-import { isTruncatedReply, type AiError, type AiErrorCode } from '../../domain/ai/ai-error';
+import {
+  isModerationRefusal,
+  isTruncatedReply,
+  type AiError,
+  type AiErrorCode,
+} from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 
 /**
@@ -167,6 +172,9 @@ export const AI_TASK_COPY: Record<AiTask, string> = {
   'tts-synthesis': 'reading this sentence aloud',
 };
 
+/** The title of a moderation refusal, shared with the troubleshooting guide. */
+export const MODERATION_HEADING = 'OpenRouter flagged the text';
+
 export function aiErrorCopy(error: AiError): AiErrorCopy {
   // The output ran out of room, not the input. The shared row's "the request
   // was too large" would send the learner to shorten something that was fine.
@@ -177,6 +185,11 @@ export function aiErrorCopy(error: AiError): AiErrorCopy {
       primaryAction: 'Try again, or choose a different model.',
       retryAction: 'Try again, or choose a different model.',
     };
+  }
+  // The key worked and the model exists; its moderation check refused the text.
+  // A different model is still the remedy, so only the title differs.
+  if (isModerationRefusal(error)) {
+    return { ...AI_ERROR_COPY['capability-unsupported'], heading: MODERATION_HEADING };
   }
   if (
     error.code === 'capability-unsupported' &&

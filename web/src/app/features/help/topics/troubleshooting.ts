@@ -1,6 +1,6 @@
 import type { AiErrorCode } from '../../../domain/ai/ai-error';
 import type { AnkiErrorCode } from '../../../domain/anki/anki-error';
-import { AI_ERROR_COPY } from '../../../shared-ui/ai-error/ai-error-copy';
+import { AI_ERROR_COPY, MODERATION_HEADING } from '../../../shared-ui/ai-error/ai-error-copy';
 import {
   ANKI_ERROR_COPY,
   connectFailureCopy,
@@ -95,6 +95,13 @@ const CUT_OFF: TroubleshootingEntry = {
   seen: ['The reply was cut off'],
   text: 'The model stopped before it finished, usually because it spent its tokens reasoning. Try again, set **Reasoning** lower, or raise the **Token limit** in **Settings** > **Text models**.',
   code: 'ai/context-budget-exceeded',
+};
+
+/** A model's moderation check refused the text: the key and the model are fine. */
+const FLAGGED: TroubleshootingEntry = {
+  seen: [MODERATION_HEADING],
+  text: "Some models check what you send them, and this model's check refused the text. Choose another model in **Settings** > **Text models**.",
+  code: 'ai/capability-unsupported',
 };
 
 /** Anki failures, most common first. */
@@ -198,6 +205,7 @@ export const TROUBLESHOOTING_GROUPS: readonly TroubleshootingGroup[] = [
         code: `ai/${code}`,
       })),
       CUT_OFF,
+      FLAGGED,
     ],
   },
   {

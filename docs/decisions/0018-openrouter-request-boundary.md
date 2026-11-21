@@ -141,6 +141,14 @@ output. A refusal that names nothing still gets the one recovery, because some
 upstreams do not name `response_format`, but it is remembered only when that
 recovery succeeds.
 
+A 403 whose body carries moderation metadata (`reasons` or `flagged_input`) is
+not a refused key. OpenRouter sends it when a model that requires moderation
+flags the input. It is a `capability-unsupported` naming the `moderation`
+capability, worded "OpenRouter flagged the text" with the usual next step of
+choosing a different model, and it spends no recovery: the same text in
+another shape meets the same check. A 403 without that metadata still means
+the key.
+
 ### Fingerprints use a key generation, never the key
 
 Configuration tests are stored in ordinary settings rows. A fingerprint

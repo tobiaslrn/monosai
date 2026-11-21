@@ -136,3 +136,19 @@ export function isTruncatedReply(error: AiError): boolean {
     error.detail?.issueCode === TRUNCATED_REPLY_ISSUE_CODE
   );
 }
+
+/**
+ * The capability a moderation refusal names.
+ *
+ * A model that requires moderation checked the input and refused this text. It
+ * is a `capability-unsupported` because the remedy is the same, a different
+ * model, but it needs its own words: the key worked, and no other request shape
+ * gets the same text past the same check.
+ */
+export const MODERATION_CAPABILITY = 'moderation';
+
+export function isModerationRefusal(error: AiError): boolean {
+  return (
+    error.code === 'capability-unsupported' && error.detail?.capability === MODERATION_CAPABILITY
+  );
+}

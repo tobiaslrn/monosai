@@ -16,6 +16,11 @@ export const providerErrorEnvelopeSchema = z.object({
     code: z.union([z.string(), z.number()]).exactOptional(),
     type: z.string().exactOptional(),
     param: z.string().nullish(),
+    /**
+     * Provider-specific facts. Read only for which keys are present, so its
+     * content is left unparsed and never copied anywhere.
+     */
+    metadata: z.unknown().exactOptional(),
   }),
 });
 

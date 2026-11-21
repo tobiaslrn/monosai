@@ -1,4 +1,9 @@
-import { aiError, type AiError, type AiErrorDetail } from '../../domain/ai/ai-error';
+import {
+  aiError,
+  MODERATION_CAPABILITY,
+  type AiError,
+  type AiErrorDetail,
+} from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import type { ProviderErrorEnvelope } from './openrouter-response.schema';
 
@@ -114,6 +119,23 @@ function mentionsContextLength(envelope: ProviderErrorEnvelope | null): boolean 
   );
 }
 
+/**
+ * Whether a 403 is a moderation refusal rather than a refused key.
+ *
+ * OpenRouter answers 403 when a model that requires moderation flags the input,
+ * and says so with `reasons` or `flagged_input` in the error metadata. The key
+ * worked; telling the learner to fix it sends them to the one setting that
+ * cannot help.
+ */
+function flaggedByModeration(envelope: ProviderErrorEnvelope | null): boolean {
+  const metadata = envelope?.error.metadata;
+  if (typeof metadata === 'object' && metadata !== null) {
+    if ('reasons' in metadata || 'flagged_input' in metadata) return true;
+  }
+  const message = providerMessage(envelope);
+  return message.includes('moderation') || message.includes('flagged');
+}
+
 function mentionsMissingModel(envelope: ProviderErrorEnvelope | null): boolean {
   const message = providerMessage(envelope);
   return MODEL_KEYWORDS.some((keyword) => message.includes(keyword));
@@ -168,6 +190,17 @@ export function mapHttpStatus(
 ): AiError {
   const { task } = context;
 
+  if (status === 403 && flaggedByModeration(envelope)) {
+    return aiError(
+      'capability-unsupported',
+      task,
+      'The model refused the text after a moderation check.',
+      {
+        cause: 'HTTP 403',
+        detail: detailOf(context, { status, capability: MODERATION_CAPABILITY }),
+      },
+    );
+  }
   if (status === 401 || status === 403) {
     return aiError('authentication', task, 'The provider rejected the saved key.', {
       cause: `HTTP ${String(status)}`,
