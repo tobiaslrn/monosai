@@ -409,15 +409,26 @@ export class PreparationStore {
     readingId: ReadingId,
     layers: readonly PreparationLayer[],
   ): Promise<readonly PreparationLayer[]> {
-    const running = new Map<PreparationLayer, Promise<void>>();
+    // Every run the group started, including a layer started again after it
+    // settled, and the layers whose latest run has not settled yet.
+    const runs: Promise<void>[] = [];
+    const ran = new Set<PreparationLayer>();
+    const live = new Map<PreparationLayer, Promise<void>>();
     const begin = (layer: PreparationLayer): Promise<void> => {
       this.activeLayers.add(layer);
+      ran.add(layer);
       this.currentSignal.set({
         readingId,
-        layers: PREPARATION_ORDER.filter((each) => each === layer || running.has(each)),
+        layers: PREPARATION_ORDER.filter((each) => each === layer || live.has(each)),
       });
-      const started = this.runners.runnerFor(layer).start(readingId);
-      running.set(layer, started);
+      const started = this.runners
+        .runnerFor(layer)
+        .start(readingId)
+        .finally(() => {
+          if (live.get(layer) === started) live.delete(layer);
+        });
+      live.set(layer, started);
+      runs.push(started);
       return started;
     };
     this.groupYielding = false;
@@ -433,19 +444,22 @@ export class PreparationStore {
       ) {
         return null;
       }
-      return running.get(layer) ?? begin(layer);
+      // A layer that already settled in this group, such as audio the learner
+      // asks for again after a failure or a voice change, starts again now
+      // rather than after the layers still running.
+      return live.get(layer) ?? begin(layer);
     };
     try {
-      for (let settled = 0; settled < running.size;) {
-        const pending = [...running.values()];
+      for (let settled = 0; settled < runs.length;) {
+        const pending = [...runs];
         await Promise.all(pending);
         settled = pending.length;
       }
     } finally {
       this.joinGroup = null;
-      running.forEach((_, layer) => this.activeLayers.delete(layer));
+      ran.forEach((layer) => this.activeLayers.delete(layer));
     }
-    return PREPARATION_ORDER.filter((layer) => running.has(layer));
+    return PREPARATION_ORDER.filter((layer) => ran.has(layer));
   }
 
   /** Checks holds before a group starts, preserving paid in-flight work. */

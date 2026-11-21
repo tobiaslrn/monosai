@@ -567,6 +567,26 @@ describe('PreparationStore', () => {
       expect(rows.map((row) => row.state)).toEqual(['complete', 'complete']);
     });
 
+    it('starts a layer again at once when it already finished beside the others', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW);
+      beds.store.setOpenReading(FIRST);
+      const gate = beds.runners.english.holdOpen();
+      const draining = beds.store.pump();
+      await gate.started;
+      await outstandingRow(beds.jobs, FIRST, 'audio', NOW + 1);
+      await beds.store.startLayer(FIRST, 'audio');
+      expect(beds.runners.audio.started).toEqual([FIRST]);
+
+      // Try again after a failure, or Generate audio after a voice change.
+      await outstandingRow(beds.jobs, FIRST, 'audio', NOW + 2);
+      const again = beds.store.startLayer(FIRST, 'audio');
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      expect(beds.runners.audio.started).toEqual([FIRST, FIRST]);
+      gate.release();
+      await Promise.all([draining, again]);
+    });
+
     it('steps aside from another reading for the one the learner has open', async () => {
       await outstandingRow(beds.jobs, FIRST, 'english', NOW + 1);
       beds.store.setOpenReading(SECOND);
