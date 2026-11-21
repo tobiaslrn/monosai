@@ -39,6 +39,20 @@ const MODEL_KEYWORDS: readonly string[] = [
   'invalid model',
 ];
 
+/**
+ * Provider wording that means the request was longer than the model's context.
+ *
+ * Providers answer an oversized prompt with a plain 400 rather than a 413, and
+ * that is not a capability the model lacks: a smaller request to the same model
+ * succeeds, and a different request shape would be refused just the same.
+ */
+const CONTEXT_LENGTH_KEYWORDS: readonly string[] = [
+  'context length',
+  'context_length',
+  'context window',
+  'prompt is too long',
+];
+
 function providerMessage(envelope: ProviderErrorEnvelope | null): string {
   return envelope?.error.message?.toLowerCase() ?? '';
 }
@@ -91,6 +105,15 @@ export function capabilityFrom(envelope: ProviderErrorEnvelope | null, task?: Ai
   );
 }
 
+function mentionsContextLength(envelope: ProviderErrorEnvelope | null): boolean {
+  const message = providerMessage(envelope);
+  const code = envelope?.error.code;
+  return (
+    (typeof code === 'string' && code.toLowerCase().includes('context_length')) ||
+    CONTEXT_LENGTH_KEYWORDS.some((keyword) => message.includes(keyword))
+  );
+}
+
 function mentionsMissingModel(envelope: ProviderErrorEnvelope | null): boolean {
   const message = providerMessage(envelope);
   return MODEL_KEYWORDS.some((keyword) => message.includes(keyword));
@@ -132,7 +155,7 @@ function detailOf(context: RequestContext, extra: AiErrorDetail): AiErrorDetail 
  *
  * The distinctions matter: a 401 means the key, a 402 means the balance, a 404
  * means the model ID, a 400 means the request shape this model cannot honour,
- * and a 5xx means waiting.
+ * and a 408 or a 5xx means waiting.
  * Collapsing them into one "request failed" would make the settings screen
  * useless.
  */
@@ -163,6 +186,15 @@ export function mapHttpStatus(
   if (status === 404) {
     return aiError('model-not-found', task, 'The provider does not offer that exact model.', {
       cause: 'HTTP 404',
+      detail: detailOf(context, { status }),
+    });
+  }
+  if (status === 408) {
+    // The provider gave up waiting, which is a timeout like the client's own:
+    // the same request can succeed, so it is retried rather than read as a
+    // request shape the model cannot honour.
+    return aiError('timeout', task, 'The provider did not answer in time.', {
+      cause: 'HTTP 408',
       detail: detailOf(context, { status }),
     });
   }
@@ -198,6 +230,17 @@ export function mapHttpStatus(
         cause: `HTTP ${String(status)}`,
         detail: detailOf(context, { status }),
       });
+    }
+    if (mentionsContextLength(envelope)) {
+      return aiError(
+        'context-budget-exceeded',
+        task,
+        'The request was larger than the model accepts.',
+        {
+          cause: `HTTP ${String(status)}`,
+          detail: detailOf(context, { status }),
+        },
+      );
     }
     const capability = capabilityFrom(envelope, task);
     return aiError(

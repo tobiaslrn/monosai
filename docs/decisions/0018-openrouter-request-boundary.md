@@ -126,6 +126,21 @@ budgets are sized from the batch rather than fixed, and translation and grammar
 review ask for minimal reasoning by default, so a reasoning model does not spend
 the reply budget on hidden tokens for a judgement pinned to temperature 0.1.
 
+### A status is classified by its cause (added 2026-11-21)
+
+Every 4xx without a more specific match used to become
+`capability-unsupported`, and the structured runner read every such failure as
+a refused schema. A provider timeout or an oversized prompt therefore recorded
+a permanent `json-contract` downgrade for a model that supports native
+schemas, and spent a recovery on a request whose shape was never the problem.
+
+A 408 is now a `timeout`, retried like the client's own. A 400 whose message
+names the context length is `context-budget-exceeded`, as a 413 already was.
+The runner remembers a downgrade at once only when the refusal names structured
+output. A refusal that names nothing still gets the one recovery, because some
+upstreams do not name `response_format`, but it is remembered only when that
+recovery succeeds.
+
 ### Fingerprints use a key generation, never the key
 
 Configuration tests are stored in ordinary settings rows. A fingerprint

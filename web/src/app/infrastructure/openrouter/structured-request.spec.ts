@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { openRouterHarness } from '../../../testing/ai-fakes';
+import { FakeCredentialRepository, openRouterHarness } from '../../../testing/ai-fakes';
 import { FAKE_OPENROUTER } from '../../../testing/openrouter-server';
 import { TRUNCATED_REPLY_ISSUE_CODE } from '../../domain/ai/ai-error';
 import type { StructuredOutputMode } from '../../domain/ai/model-test';
@@ -8,6 +8,7 @@ import type { TextTaskConfig } from '../../domain/ai/text-generation-provider';
 import type { GrammarReviewRequest } from '../../domain/ai/grammar-review-request';
 import { sentenceId } from '../../domain/shared/ids';
 import { OpenRouterEnricher } from './enrichment.adapter';
+import { OpenRouterClient } from './openrouter-client';
 
 const NATIVE: TextTaskConfig = {
   modelId: FAKE_OPENROUTER.textModel,
@@ -92,6 +93,60 @@ describe('StructuredTaskRunner structured-output memo', () => {
     expect(second.ok).toBe(true);
     // One more request, not two: the refusal was discovered once.
     expect(harness.server.callCount).toBe(3);
+  });
+});
+
+/** A provider that answers every request with one fixed error. */
+function rejectingClient(status: number, message: string): OpenRouterClient {
+  const fetchFn: typeof fetch = () =>
+    Promise.resolve(
+      new Response(JSON.stringify({ error: { code: status, message } }), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+  return new OpenRouterClient({
+    fetchFn,
+    credentials: new FakeCredentialRepository(),
+    isOnline: () => true,
+    sleep: () => Promise.resolve(),
+    random: () => 0.5,
+  });
+}
+
+describe('StructuredTaskRunner failures that are not about the schema', () => {
+  it.each([
+    [408, 'Request timed out'],
+    [
+      400,
+      "This endpoint's maximum context length is 8192 tokens. However, you requested about 9500 tokens.",
+    ],
+    [400, 'Invalid request for this model'],
+  ])(
+    'never remembers a downgrade the recovery did not prove (HTTP %i)',
+    async (status, message) => {
+      const memo = recordingMemo();
+      const enricher = new OpenRouterEnricher(rejectingClient(status, message), memo);
+
+      await enricher.reviewGrammar(REQUEST, NATIVE);
+
+      expect(memo.downgraded).toEqual([]);
+    },
+  );
+
+  it('remembers an unnamed refusal once the recovery without the schema succeeds', async () => {
+    const harness = openRouterHarness({
+      content: 'grammar-complete',
+      supportsJsonSchema: false,
+      jsonSchemaErrorParam: null,
+    });
+    const memo = recordingMemo();
+    const enricher = new OpenRouterEnricher(harness.client, memo);
+
+    const result = await enricher.reviewGrammar(REQUEST, NATIVE);
+
+    expect(result.ok).toBe(true);
+    expect(memo.downgraded).toEqual([FAKE_OPENROUTER.textModel]);
   });
 });
 

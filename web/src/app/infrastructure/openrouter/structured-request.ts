@@ -66,6 +66,9 @@ export class StructuredTaskRunner {
    *
    * A refusal of the schema parameter is remembered before the recovery runs,
    * so the second request is paid once per model rather than once per batch.
+   * A refusal that does not say what it refused is remembered only when the
+   * recovery succeeds. A timeout or an oversized request is not a refusal at
+   * all and returns at once, with nothing remembered.
    */
   async run<T>(request: StructuredRequest<T>): Promise<Result<T, AiError>> {
     const modelId = request.config.modelId;
@@ -80,10 +83,22 @@ export class StructuredTaskRunner {
     // A native-schema attempt has no other optional capability. Upstreams do
     // not consistently name `response_format` in 400 responses, so a generic
     // capability rejection is also eligible for the one bounded recovery.
-    const refusedSchema = first.error.code === 'capability-unsupported';
-    if (refusedSchema) {
-      this.memo?.rememberDowngrade(modelId);
-    } else if (first.error.code !== 'malformed-response') {
+    if (first.error.code === 'capability-unsupported') {
+      // Only a refusal that names structured output is remembered at once. A
+      // generic one is remembered only once the recovery has shown that the
+      // schema was the problem, so a refusal about something else never
+      // downgrades every later request to this model.
+      const namedSchema = first.error.detail?.capability === 'structured-output';
+      if (namedSchema) {
+        this.memo?.rememberDowngrade(modelId);
+      }
+      const recovered = await this.attempt(request, 'json-contract', false);
+      if (recovered.ok && !namedSchema) {
+        this.memo?.rememberDowngrade(modelId);
+      }
+      return recovered;
+    }
+    if (first.error.code !== 'malformed-response') {
       return first;
     }
 

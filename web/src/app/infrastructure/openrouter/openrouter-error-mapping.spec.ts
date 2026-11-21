@@ -20,6 +20,7 @@ describe('mapHttpStatus', () => {
     expect(codeFor(403)).toBe('authentication');
     expect(codeFor(402)).toBe('credit-exhausted');
     expect(codeFor(404)).toBe('model-not-found');
+    expect(codeFor(408)).toBe('timeout');
     expect(codeFor(413)).toBe('context-budget-exceeded');
     expect(codeFor(429)).toBe('rate-limited');
     expect(codeFor(500)).toBe('provider-unavailable');
@@ -37,6 +38,7 @@ describe('mapHttpStatus', () => {
     { status: 402, code: 'credit-exhausted' },
     { status: 403, code: 'authentication' },
     { status: 404, code: 'model-not-found' },
+    { status: 408, code: 'timeout' },
     { status: 413, code: 'context-budget-exceeded' },
     { status: 429, code: 'rate-limited' },
     { status: 500, code: 'provider-unavailable' },
@@ -69,6 +71,17 @@ describe('mapHttpStatus', () => {
     expect(codeFor(400, envelope('No endpoints found for the requested model'))).toBe(
       'model-not-found',
     );
+  });
+
+  it('reads a context-length refusal as a request that is too large', () => {
+    expect(
+      codeFor(
+        400,
+        envelope(
+          "This endpoint's maximum context length is 8192 tokens. However, you requested about 9500 tokens.",
+        ),
+      ),
+    ).toBe('context-budget-exceeded');
   });
 
   it('treats any other 4xx as a capability the model lacks', () => {
