@@ -187,6 +187,8 @@ export class ReadingJobLifecycle<
   private controller: AbortController | null = null;
   /** The full plan/process lifetime, so destructive maintenance can join it. */
   private activeRun: Promise<void> | null = null;
+  /** The reading `activeRun` is working, which is the only one a start may join. */
+  private activeReading: ReadingId | null = null;
   /** The row write that ends a parked run the learner stopped, until it settles. */
   private parkedClose: Promise<void> | null = null;
   private yieldFlag = false;
@@ -252,16 +254,21 @@ export class ReadingJobLifecycle<
   /**
    * Runs the reading's outstanding work under the current settings.
    *
-   * Joins a run already in flight rather than racing it, so pressing the
-   * action twice continues one job.
+   * Joins a run already in flight for the same reading rather than racing it,
+   * so pressing the action twice continues one job. A run for another reading
+   * is waited out, never joined: this reading's work was asked for, and
+   * resolving as if it had been done would leave the press doing nothing.
    */
   async start(readingId: ReadingId): Promise<void> {
     if (this.parkedClose !== null) {
       await this.parkedClose;
     }
-    if (this.activeRun !== null) {
+    while (this.activeRun !== null) {
+      const joined = this.activeReading === readingId;
       await this.activeRun;
-      return;
+      if (joined) {
+        return;
+      }
     }
     // Created before the first await, so a Stop pressed while configuration
     // is still being read stops the run rather than being ignored.
@@ -272,11 +279,13 @@ export class ReadingJobLifecycle<
     this.stopRequested = false;
     const run = this.run({ readingId, controller, signal: controller.signal });
     this.activeRun = run;
+    this.activeReading = readingId;
     try {
       await run;
     } finally {
       if (this.activeRun === run) {
         this.activeRun = null;
+        this.activeReading = null;
         this.controller = null;
       }
     }

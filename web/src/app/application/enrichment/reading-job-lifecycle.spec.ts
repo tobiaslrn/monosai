@@ -265,6 +265,26 @@ describe('ReadingJobLifecycle', () => {
     expect(await rowStates(bed.db)).toEqual(['complete']);
   });
 
+  it('does not swallow a start for another reading while one reading is running', async () => {
+    const held = gate();
+    bed.processGate = held.opened;
+
+    const first = bed.lifecycle.start(bed.reading);
+    await vi.waitFor(() => {
+      expect(bed.lifecycle.progress().kind).toBe('running');
+    });
+    const second = bed.lifecycle.start(bed.other);
+    bed.processGate = null;
+    held.open();
+    await Promise.all([first, second]);
+
+    // The second reading's work was asked for, so it is planned and run too,
+    // rather than the press resolving as if it had been done.
+    expect(bed.plans).toBe(2);
+    expect(bed.processed).toBe(2);
+    expect(bed.lifecycle.progressFor(bed.other).kind).toBe('complete');
+  });
+
   it('closes the row without processing it when stopped while preparing', async () => {
     const held = gate();
     bed.planGate = held.opened;
