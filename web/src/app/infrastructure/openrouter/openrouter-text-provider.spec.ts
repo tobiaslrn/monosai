@@ -99,4 +99,24 @@ describe('OpenRouterTextProvider when its code cannot be loaded', () => {
     expect(first.ok && second.ok).toBe(true);
     expect(loads).toBe(2);
   });
+
+  it('answers cancelled and sends nothing when cancelled while the code loads', async () => {
+    const context = openRouterHarness({ content: 'story' });
+    const provider = new OpenRouterTextProvider(
+      new OpenRouterTextModelTester(context.client),
+      () => new Promise<never>(() => undefined),
+      chunkFailure,
+    );
+    const controller = new AbortController();
+
+    const pending = provider.generateStory(REQUEST, NATIVE, controller.signal);
+    controller.abort();
+    const result = await pending;
+
+    expect(!result.ok && result.error).toMatchObject({
+      code: 'cancelled',
+      task: 'story-generation',
+    });
+    expect(context.server.callCount).toBe(0);
+  });
 });
