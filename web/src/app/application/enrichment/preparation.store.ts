@@ -519,6 +519,8 @@ export class PreparationStore {
    * The reading to work next: the one the learner has open, then the rest in
    * the order their rows were created. Once the open reading is done, a reading
    * the lane stepped aside from for it takes its place in that order again.
+   * The open reading can be among those, when the learner looked at another
+   * reading and came back, so it is looked for again before row order applies.
    */
   private pick(queue: readonly QueuedReading[], deferred: Set<ReadingId>): QueuedReading | null {
     const open = this.openReadingSignal();
@@ -529,7 +531,8 @@ export class PreparationStore {
       return opened;
     }
     this.returnToSteppedAside(deferred);
-    return eligible().at(0) ?? null;
+    const back = eligible();
+    return back.find((entry) => entry.readingId === open) ?? back.at(0) ?? null;
   }
 
   private block(readingId: ReadingId, layer: PreparationLayer): void {

@@ -518,6 +518,35 @@ describe('PreparationStore', () => {
       expect(runner.started).toEqual([FIRST, SECOND, FIRST, THIRD]);
     });
 
+    it('keeps the open reading first when the learner comes back to it', async () => {
+      // The other reading's rows are older, so row order alone would pick it.
+      await outstandingRow(beds.jobs, SECOND, 'english', NOW + 1);
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW + 2);
+      const runner = beds.runners.english;
+      const parked = new Set<ReadingId>();
+      const start = runner.start.bind(runner);
+      runner.start = (id: ReadingId) => {
+        runner.pauseOn = parked.has(id) ? null : id;
+        parked.add(id);
+        return start(id);
+      };
+      beds.store.setOpenReading(FIRST);
+      const first = runner.holdOpen();
+      const draining = beds.store.pump();
+      await first.started;
+
+      beds.store.setOpenReading(SECOND);
+      first.release();
+      const second = runner.holdOpen();
+      await second.started;
+
+      beds.store.setOpenReading(FIRST);
+      second.release();
+      await draining;
+
+      expect(runner.started.slice(0, 3)).toEqual([FIRST, SECOND, FIRST]);
+    });
+
     it('does not leave a reading parked when the opened reading has nothing to prepare', async () => {
       await outstandingRow(beds.jobs, FIRST, 'english', NOW + 1);
       const runner = beds.runners.english;
