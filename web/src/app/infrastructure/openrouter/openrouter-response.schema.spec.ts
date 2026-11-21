@@ -14,21 +14,14 @@ describe('request-specific provider JSON schemas', () => {
     expect(storyCandidateJsonSchema(7)).toMatchObject({
       schema: { properties: { sentences: { minItems: 1, maxItems: 7 } } },
     });
-    expect(storyBlueprintJsonSchema(4)).toMatchObject({
-      schema: { properties: { beatsEn: { minItems: 4, maxItems: 4 } } },
-    });
     expect(storySegmentJsonSchema(37)).toMatchObject({
       schema: { properties: { sentences: { minItems: 1, maxItems: 37 } } },
     });
-    expect(storyRepairPatchJsonSchema(3)).toMatchObject({
-      schema: { properties: { replacements: { minItems: 3, maxItems: 3 } } },
-    });
   });
 
-  it('puts batch cardinality into review and translation contracts', () => {
-    expect(exceptionDecisionsJsonSchema(6)).toMatchObject({
-      schema: { properties: { decisions: { minItems: 6, maxItems: 6 } } },
-    });
+  it('states exact counts in words in review, plan, and translation contracts', () => {
+    expect(JSON.stringify(exceptionDecisionsJsonSchema(6))).toContain('exactly 6 of them.');
+    expect(JSON.stringify(storyBlueprintJsonSchema(4))).toContain('exactly 4 of them.');
     // The enrichment contracts say their count in words. Strict Structured
     // Outputs rejects `minItems`/`maxItems`, and a rejected `response_format`
     // costs a second full-price request on every batch.
@@ -37,7 +30,13 @@ describe('request-specific provider JSON schemas', () => {
   });
 
   it('sends no array bounds in the contracts strict mode refuses', () => {
-    for (const contract of [grammarReviewJsonSchema(8), translationsJsonSchema(9)]) {
+    for (const contract of [
+      grammarReviewJsonSchema(8),
+      translationsJsonSchema(9),
+      exceptionDecisionsJsonSchema(6),
+      storyBlueprintJsonSchema(4),
+      storyRepairPatchJsonSchema(),
+    ]) {
       expect(JSON.stringify(contract)).not.toMatch(/minItems|maxItems/);
     }
   });

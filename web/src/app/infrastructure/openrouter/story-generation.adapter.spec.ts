@@ -165,6 +165,19 @@ describe('OpenRouterStoryGenerator story generation', () => {
     },
   );
 
+  it('plans a long story with no array bounds a strict provider would refuse', async () => {
+    const context = harness({ contentSequence: ['story-blueprint-100', 'story-segment-50'] });
+
+    await context.text.generateStory(
+      { ...REQUEST, form: 'long', requestedSentenceCount: 100 },
+      NATIVE,
+    );
+
+    const plan = bodyOf(context.server.requests[0]!).responseFormat;
+    expect(JSON.stringify(plan)).toContain('monosai_story_blueprint');
+    expect(JSON.stringify(plan)).not.toMatch(/minItems|maxItems/);
+  });
+
   it('reuses one content-free session id across a long-story run', async () => {
     const context = harness({
       contentSequence: ['story-blueprint-100', 'story-segment-50'],
@@ -395,6 +408,15 @@ describe('OpenRouterStoryGenerator repair', () => {
     expect(body.user).not.toContain('Repair attempt');
   });
 
+  it('repairs in one request when strict mode refuses array bounds', async () => {
+    const context = harness({ content: 'story-repair-patch', rejectsArrayBounds: true });
+
+    const result = await context.text.repairStory({ ...repair, structureIssues: [] }, NATIVE);
+
+    expect(result.ok).toBe(true);
+    expect(context.server.callCount).toBe(1);
+  });
+
   it('rewrites only the faulty sentences when nothing structural is wrong', async () => {
     const context = harness({ content: 'story-repair-patch' });
 
@@ -499,6 +521,15 @@ describe('OpenRouterStoryGenerator exception review', () => {
     ],
     promptVersion: 'exception-review/1',
   };
+
+  it('reviews in one request when strict mode refuses array bounds', async () => {
+    const context = harness({ content: 'decisions-approved', rejectsArrayBounds: true });
+
+    const result = await context.text.reviewExceptions(review, NATIVE);
+
+    expect(result.ok).toBe(true);
+    expect(context.server.callCount).toBe(1);
+  });
 
   it('returns one decision per candidate', async () => {
     const context = harness({ content: 'decisions-approved' });

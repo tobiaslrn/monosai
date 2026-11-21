@@ -234,7 +234,15 @@ export const storyRepairPatchSchema = z.object({
 
 export type StoryRepairPatchPayload = z.infer<typeof storyRepairPatchSchema>;
 
-export function storyRepairPatchJsonSchema(targetCount: number): Record<string, unknown> {
+/**
+ * The native schema for a scoped repair's patch.
+ *
+ * The array carries no bounds, like every exact-count contract: strict
+ * providers refuse `minItems` and `maxItems`, which would cost a second
+ * request on every repair. The targets are listed in the prompt, and
+ * `applyScopedRepair` refuses a patch that misses one or adds another.
+ */
+export function storyRepairPatchJsonSchema(): Record<string, unknown> {
   return {
     name: 'monosai_story_repair_patch',
     strict: true,
@@ -249,9 +257,7 @@ export function storyRepairPatchJsonSchema(targetCount: number): Record<string, 
         },
         replacements: {
           type: 'array',
-          minItems: targetCount,
-          maxItems: targetCount,
-          description: 'One entry per target index, and no entry for any other index.',
+          description: 'One entry per target sentence index, and no entry for any other index.',
           items: {
             type: 'object',
             additionalProperties: false,
@@ -281,6 +287,12 @@ export const storyBlueprintSchema = z.object({
     .max(Math.ceil(MAX_STORY_SENTENCES / MAX_STORY_SEGMENT_SENTENCES)),
 });
 
+/**
+ * The native schema for a long story's plan.
+ *
+ * No array bounds, for the same reason as the repair patch; the reader refuses
+ * a plan whose beat count differs from the segment plan.
+ */
 export function storyBlueprintJsonSchema(segmentCount: number): Record<string, unknown> {
   return {
     name: 'monosai_story_blueprint',
@@ -297,9 +309,7 @@ export function storyBlueprintJsonSchema(segmentCount: number): Record<string, u
         },
         beatsEn: {
           type: 'array',
-          minItems: segmentCount,
-          maxItems: segmentCount,
-          description: 'One beat per supplied segment, in the supplied order.',
+          description: `One beat per supplied segment, in the supplied order: exactly ${String(segmentCount)} of them.`,
           items: {
             type: 'string',
             description:
@@ -365,6 +375,13 @@ export const exceptionDecisionsSchema = z.object({
 
 export type ExceptionDecisionsPayload = z.infer<typeof exceptionDecisionsSchema>;
 
+/**
+ * The native schema for the exception review.
+ *
+ * No array bounds, for the same reason as the repair patch. `applyDecisions`
+ * discards an answer about a candidate that was not asked about, and a
+ * candidate left unanswered stays unapproved.
+ */
 export function exceptionDecisionsJsonSchema(candidateCount: number): Record<string, unknown> {
   return {
     name: 'monosai_exception_decisions',
@@ -376,9 +393,7 @@ export function exceptionDecisionsJsonSchema(candidateCount: number): Record<str
       properties: {
         decisions: {
           type: 'array',
-          minItems: candidateCount,
-          maxItems: candidateCount,
-          description: 'One entry per supplied candidate id, and no entry for any other id.',
+          description: `One entry per supplied candidate id, and no entry for any other id: exactly ${String(candidateCount)} of them.`,
           items: {
             type: 'object',
             additionalProperties: false,

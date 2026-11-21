@@ -112,6 +112,15 @@ translation and grammar batch pay the recovery. The counts are stated in the
 array descriptions, and enforced where they were always enforced — in
 `domain/ai` and `domain/enrichment`.
 
+The story contracts with an exact count followed on 2026-11-21: the long-story
+plan, the scoped repair patch, and the exception review send no array bounds
+either. The plan's reader refuses a beat count that differs from the segment
+plan, `applyScopedRepair` refuses a patch that misses a target or adds one, and
+`applyDecisions` discards an answer about a candidate that was not sent and
+leaves an unanswered one unapproved. The story and segment drafts keep their
+sentence bounds, because [ADR 0046](0046-length-is-a-guideline.md) makes
+the native schema the only place the requested upper bound is enforced.
+
 ### A reply cut off at the token limit is its own verdict (added 2026-09-06)
 
 `finish_reason: 'length'` used to reach the learner as `malformed-response`,

@@ -185,7 +185,7 @@ export class OpenRouterStoryGenerator {
       task: 'story-repair',
       config,
       prompt: buildScopedRepairPrompt(request, entries),
-      jsonSchema: storyRepairPatchJsonSchema(scopedRepairTargets(entries).length),
+      jsonSchema: storyRepairPatchJsonSchema(),
       maxTokens: config.storyTokenBudget ?? DEFAULT_STORY_TOKEN_BUDGET,
       read: scopedRepairReader(request.candidate, entries),
       ...(sessionId === undefined ? {} : { sessionId }),
