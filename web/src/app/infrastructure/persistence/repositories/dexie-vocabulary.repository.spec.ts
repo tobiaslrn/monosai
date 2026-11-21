@@ -1,4 +1,3 @@
-import Dexie from 'dexie';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fixedClock } from '../../../domain/shared/clock';
 import {
@@ -9,6 +8,7 @@ import {
 } from '../../../domain/shared/ids';
 import type { VocabularySource } from '../../../domain/vocabulary/vocabulary-source';
 import { createTestDatabase, destroyTestDatabase } from '../../../../testing/test-database';
+import { writeAfterFirstRead } from '../../../../testing/write-after-first-read';
 import {
   generatedStoryFixture,
   snapshotFixture,
@@ -37,59 +37,6 @@ function packageSourceFixture(id: VocabularySourceId): VocabularySource {
     lastSyncedAt: 1_700_000_000_000,
     automaticSync: false,
   };
-}
-
-/**
- * Starts `commit` the moment the first read of the vocabulary's snapshot or
- * items returns, outside whatever transaction that read belongs to, and holds
- * the read's answer back until the commit's own transaction has been asked
- * for. A read the loader makes after that therefore waits for the commit,
- * unless it belongs to the same read transaction as the first.
- *
- * Dexie builds its middleware stack when the database opens, so this reopens
- * it.
- */
-async function commitAfterFirstRead<T>(
-  db: MonosaiDatabase,
-  commit: () => Promise<T>,
-): Promise<{ readonly committed: Promise<T> }> {
-  let started: Promise<T> | null = null;
-  let resolveCommitted!: (value: Promise<T>) => void;
-  const committed = new Promise<T>((resolve) => {
-    resolveCommitted = resolve;
-  });
-  const afterRead = async <R>(read: Promise<R>): Promise<R> => {
-    const answer = await read;
-    if (started === null) {
-      started = Dexie.ignoreTransaction(commit);
-      resolveCommitted(started);
-      // Microtasks only: the read's transaction stays open, while the commit
-      // reaches the point where it asks for its own.
-      for (let tick = 0; tick < 50; tick += 1) await Promise.resolve();
-    }
-    return answer;
-  };
-  db.use({
-    stack: 'dbcore',
-    name: 'commit-after-first-read',
-    create: (down) => ({
-      ...down,
-      table: (name) => {
-        const table = down.table(name);
-        if (name !== 'vocabularySnapshots' && name !== 'vocabularyItems') return table;
-        return {
-          ...table,
-          get: (request) => afterRead(table.get(request)),
-          getMany: (request) => afterRead(table.getMany(request)),
-          query: (request) => afterRead(table.query(request)),
-          openCursor: (request) => afterRead(table.openCursor(request)),
-        };
-      },
-    }),
-  });
-  db.close();
-  await db.open();
-  return { committed };
 }
 
 describe('DexieVocabularyRepository', () => {
@@ -616,12 +563,14 @@ describe('DexieVocabularyRepository', () => {
       // Another tab, or this tab's automatic sync, commits as soon as the load
       // has had its first answer, so it lands before any later read the load
       // makes on its own.
-      const competing = await commitAfterFirstRead(db, () =>
-        repository.commitSnapshot(replacement),
+      const competing = await writeAfterFirstRead(
+        db,
+        ['vocabularySnapshots', 'vocabularyItems'],
+        () => repository.commitSnapshot(replacement),
       );
 
       const loaded = await repository.loadItems(first.snapshot.id);
-      const committed = await competing.committed;
+      const committed = await competing.written;
 
       expect(committed.ok).toBe(true);
       if (!loaded.ok || loaded.value === null) throw new Error('the items should load');

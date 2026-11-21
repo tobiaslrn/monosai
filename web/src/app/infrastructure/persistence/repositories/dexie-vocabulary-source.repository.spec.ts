@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { vocabularySourceId } from '../../../domain/shared/ids';
 import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
 import { createTestDatabase, destroyTestDatabase } from '../../../../testing/test-database';
+import { writeAfterFirstRead } from '../../../../testing/write-after-first-read';
 import type { MonosaiDatabase } from '../monosai-db';
 import { ROW_VERSION } from '../schemas/common.schema';
 import { DexieVocabularySourceRepository } from './dexie-vocabulary-source.repository';
@@ -105,6 +106,20 @@ describe('DexieVocabularySourceRepository', () => {
     if (toggled.ok) return;
     expect(toggled.error.code).toBe('not-found');
     expect(await db.vocabularySources.count()).toBe(0);
+  });
+
+  it('keeps a source removed while the include toggle reads it removed', async () => {
+    await repository.save(mapping());
+    // The learner removes the source, from another tab, just after the toggle
+    // has read it.
+    const removal = await writeAfterFirstRead(db, ['vocabularySources'], () =>
+      new DexieVocabularySourceRepository(db).remove(FIRST),
+    );
+
+    await repository.setEnabled(FIRST, false);
+
+    expect((await removal.written).ok).toBe(true);
+    expect(await db.vocabularySources.get(FIRST)).toBeUndefined();
   });
 
   it('removes a mapping and leaves the others alone', async () => {
