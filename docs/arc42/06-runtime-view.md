@@ -248,8 +248,10 @@ goal 3 is met at runtime.
 
 A learner can also ask to analyse a whole reading. That explicit action creates an
 `analyze-reading` job. The job captures the text-model configuration and immutable grammar profile
-once, includes the profile hash in its configuration fingerprint, and plans contiguous adaptive
-batches of at most 30 sentences and 12,000 estimated input tokens. Grammar is selective — at most
+once, from the learner's stored level even when nothing has read it yet, and refuses to start when
+that level cannot be read rather than fall back to the default one. It includes the profile hash in
+its configuration fingerprint, and plans contiguous adaptive batches of at most 30 sentences and
+12,000 estimated input tokens. Grammar is selective — at most
 one useful finding per sentence — so an ordinary short story fits one request. Long readings run
 three independent batches at a time. The provider adapter allows 4,096 response tokens and one
 bounded format recovery; it treats an empty findings array as a valid review. Each successful

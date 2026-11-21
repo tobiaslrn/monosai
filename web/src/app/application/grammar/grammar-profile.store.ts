@@ -132,8 +132,21 @@ export class GrammarProfileStore {
    * capture that already exists and the original `capturedAt` is kept rather
    * than being rewritten. Requires a loaded bundle: the preset prose and the
    * baseline version both come from it.
+   *
+   * Reads the stored level first when nothing has yet. Until then the
+   * selection is the default one, and a capture made from it would judge and
+   * key the reading against a level the learner never chose.
    */
   async captureProfile(): Promise<Result<GrammarProfileSnapshot, StorageError>> {
+    if (!this.loadedSignal()) {
+      await this.load();
+      if (!this.loadedSignal()) {
+        return err(
+          this.errorSignal() ??
+            storageError('unavailable', 'The grammar level could not be read. Try again.'),
+        );
+      }
+    }
     const preset = this.selectedPreset();
     const register = this.language.registerGuidance();
     const baselineVersion = this.language.versions()?.structuralBaselineVersion ?? null;

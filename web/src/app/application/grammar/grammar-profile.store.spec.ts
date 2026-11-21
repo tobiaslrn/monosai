@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GrammarRepository } from '../../domain/grammar/grammar-repository';
 import {
   DEFAULT_GRAMMAR_PRESET_ID,
@@ -272,6 +272,41 @@ describe('GrammarProfileStore', () => {
 
       expect(captured.ok).toBe(false);
       expect(store.lastError()?.code).toBe('transaction-aborted');
+    });
+
+    it('captures the stored level even when nothing has loaded the profile yet', async () => {
+      // The grammar run and the story context both capture straight away; neither
+      // waits for `load`, so the capture itself must not stand on the default.
+      repository.selection = {
+        presetId: 'mn-preset-everyday',
+        registerPreference: 'either',
+      };
+      const store = createStore();
+
+      const captured = await store.captureProfile();
+
+      expect(captured.ok).toBe(true);
+      if (!captured.ok) {
+        return;
+      }
+      expect(captured.value.presetId).toBe('mn-preset-everyday');
+      expect(captured.value.resolvedGuidance).toBe('Write at roughly N4 complexity.');
+    });
+
+    it('refuses to capture the default level when the stored one cannot be read', async () => {
+      repository.selection = {
+        presetId: 'mn-preset-everyday',
+        registerPreference: 'either',
+      };
+      vi.spyOn(repository, 'getSelection').mockResolvedValueOnce(
+        err(storageError('transaction-aborted', 'aborted')),
+      );
+      const store = createStore();
+
+      const captured = await store.captureProfile();
+
+      expect(captured.ok).toBe(false);
+      expect(repository.captures.size).toBe(0);
     });
   });
 });

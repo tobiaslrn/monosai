@@ -60,9 +60,10 @@ export class ReaderPreparationStore {
 
   constructor() {
     // The profile a reading's grammar is judged against, and the bundle that
-    // profile resolves against. Both are already started at bootstrap; asking
-    // again is idempotent and keeps a reading opened straight after startup
-    // from showing an unresolved profile.
+    // profile resolves against. The bundle is already started at bootstrap and
+    // asking again is idempotent; the profile is read here so a reading opened
+    // straight after startup does not show an unresolved one. A grammar run
+    // never relies on this: its capture reads the stored level itself.
     void this.grammarProfile.load();
     void this.language.initialize();
 
