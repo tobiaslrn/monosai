@@ -126,18 +126,19 @@ export class OpenRouterClient {
     return this.validate(json, request, schema);
   }
 
-  /** Sends a bounded GET request and validates its JSON response. */
+  /**
+   * Sends a bounded GET request and validates its JSON response.
+   *
+   * `maxBytes` is raised only for the model catalogue, the one answer that
+   * grows with OpenRouter rather than with the request.
+   */
   async getJson<T>(
     request: OpenRouterRequestContext,
     schema: z.ZodType<T>,
+    maxBytes: number = MAX_JSON_RESPONSE_BYTES,
   ): Promise<Result<T, AiError>> {
-    const json = await this.send(
-      request,
-      'GET',
-      undefined,
-      'application/json',
-      MAX_JSON_RESPONSE_BYTES,
-      (raw) => this.readJson(raw, request),
+    const json = await this.send(request, 'GET', undefined, 'application/json', maxBytes, (raw) =>
+      this.readJson(raw, request),
     );
     return this.validate(json, request, schema);
   }

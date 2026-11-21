@@ -20,6 +20,16 @@ export const AUDIO_SPEECH_PATH = '/audio/speech';
 /** Largest JSON body accepted, so a broken endpoint cannot exhaust memory. */
 export const MAX_JSON_RESPONSE_BYTES = 1024 * 1024;
 
+/**
+ * Largest model catalogue accepted.
+ *
+ * The catalogue arrives as one response that grows with every model OpenRouter
+ * adds: close to 1 MiB for about 480 text models in November 2026, growing by
+ * roughly 15 models a week. It gets its own cap, with years of room, so the
+ * picker keeps loading while every other answer stays under the tight one.
+ */
+export const MAX_CATALOG_RESPONSE_BYTES = 8 * 1024 * 1024;
+
 /** Largest audio body accepted. One test sentence is orders of magnitude smaller. */
 export const MAX_AUDIO_RESPONSE_BYTES = 8 * 1024 * 1024;
 

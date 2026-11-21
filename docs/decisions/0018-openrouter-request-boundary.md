@@ -172,6 +172,18 @@ used to read as an unreachable provider and was retried twice. The key dialog
 and the credential repository now refuse such a key on save, and the client
 reports a saved one as `authentication` without sending anything.
 
+### The model catalogue has its own size cap (added 2026-11-21)
+
+Every JSON answer is capped at 1 MiB so a broken endpoint cannot exhaust
+memory. The model catalogue is the one answer that grows with OpenRouter rather
+than with the request: about 480 text models came to just under 1 MiB in
+November 2026, and some fifteen models are added a week. At the shared cap the
+picker would have stopped loading within weeks, reported as a malformed answer.
+
+The catalogue request alone takes an 8 MiB cap, and a test keeps a catalogue
+four times that size loading. Every other answer keeps the 1 MiB cap.
+OpenRouter offers no narrower listing of the fields the picker reads.
+
 ### Fingerprints use a key generation, never the key
 
 Configuration tests are stored in ordinary settings rows. A fingerprint

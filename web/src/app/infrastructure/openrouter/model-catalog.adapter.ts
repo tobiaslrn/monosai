@@ -2,7 +2,7 @@ import type { AiError } from '../../domain/ai/ai-error';
 import type { ModelCapabilities, ModelCatalog } from '../../domain/ai/model-catalog';
 import { ok, type Result } from '../../domain/shared/result';
 import type { OpenRouterClient } from './openrouter-client';
-import { MODELS_PATH } from './openrouter-endpoints';
+import { MAX_CATALOG_RESPONSE_BYTES, MODELS_PATH } from './openrouter-endpoints';
 import {
   modelCatalogResponseSchema,
   type ModelCatalogResponse,
@@ -56,6 +56,7 @@ export class OpenRouterModelCatalog implements ModelCatalog {
         ...(signal === undefined ? {} : { signal }),
       },
       modelCatalogResponseSchema,
+      MAX_CATALOG_RESPONSE_BYTES,
     );
     return listed.ok ? ok(listed.value.data.map(capabilitiesOf)) : listed;
   }
