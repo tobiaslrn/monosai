@@ -495,6 +495,34 @@ describe('OpenRouterStoryGenerator repair', () => {
     ]);
   });
 
+  it('takes a long story title from the segment that was asked to write one', async () => {
+    const context = harness({ content: 'story-50' });
+    const sentences = Array.from({ length: 100 }, (_, index) => ({
+      index,
+      textJa: 'ねこがいます。',
+    }));
+
+    const result = await context.text.repairStory(
+      {
+        ...repair,
+        original: { ...REQUEST, form: 'long', requestedSentenceCount: 100 },
+        candidate: { titleJa: '', sentences },
+        unknownSpans: [],
+        structureIssues: [
+          { code: 'title-empty', severity: 'format', message: 'The title was empty.' },
+        ],
+      },
+      NATIVE,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.value.titleJa).toBe('ねこの長い旅');
+    expect(result.value.sentences).toHaveLength(100);
+  });
+
   it('reports its own task, so recovery copy can name what was being repaired', async () => {
     const context = harness({ status: 500 });
 

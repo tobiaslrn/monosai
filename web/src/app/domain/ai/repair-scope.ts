@@ -116,7 +116,7 @@ export function scopedRepairTargets(
  *
  * The patch has to answer exactly what was asked: every target rewritten, no
  * index that was not a target, none twice, and a title only when the title was
- * one. Anything else is a reply to a different question, and accepting the
+ * one. A blank title is read as no title. Anything else is a reply to a different question, and accepting the
  * usable part of it would silently leave a disallowed word in the story.
  */
 export function applyScopedRepair(
@@ -130,7 +130,11 @@ export function applyScopedRepair(
     targets.filter((target) => target.index !== TITLE_INDEX).map((target) => target.index),
   );
 
-  if (wantsTitle !== (patch.titleJa !== null && patch.titleJa.trim() !== '')) {
+  // A blank title counts as no title: models often send "" where the contract
+  // asks for null. Only a title that was a target can be changed, so a blank
+  // one never erases the story's title.
+  const patchTitle = patch.titleJa?.trim() ?? '';
+  if (wantsTitle !== (patchTitle !== '')) {
     return err('story-repair-title-mismatch');
   }
 
@@ -152,7 +156,7 @@ export function applyScopedRepair(
   }
 
   return ok({
-    titleJa: patch.titleJa === null ? candidate.titleJa : patch.titleJa.trim(),
+    titleJa: wantsTitle ? patchTitle : candidate.titleJa,
     sentences: byIndex(candidate).map((sentence) => ({
       index: sentence.index,
       textJa: replaced.get(sentence.index) ?? sentence.textJa,

@@ -336,7 +336,10 @@ export class OpenRouterStoryGenerator {
       if (!repaired.ok) {
         return repaired;
       }
-      if (plan.index === 0) {
+      // Title faults travel with segment 0, but a missing title is a structure
+      // issue and travels with the last segment, whose repair is then the one
+      // that writes the title.
+      if (plan.index === 0 || titleJa.trim() === '') {
         titleJa = repaired.value.titleJa;
       }
       const outputOffset = repairedSentences.length;

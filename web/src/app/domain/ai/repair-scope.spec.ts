@@ -132,12 +132,28 @@ describe('applyScopedRepair', () => {
     expect(result).toEqual({ ok: false, error: 'story-repair-title-mismatch' });
   });
 
+  it.each(['', '   '])(
+    'keeps the title when the patch sends %j for a title it was not asked about',
+    (blank) => {
+      const result = applyScopedRepair(CANDIDATE, entries, {
+        titleJa: blank,
+        replacements: [{ index: 2, textJa: 'ねこはこうえんへ行きます。' }],
+      });
+
+      expect(result.ok && result.value.titleJa).toBe(CANDIDATE.titleJa);
+    },
+  );
+
   it('requires a title when the title was the target', () => {
     const titleEntries = planScopedRepair(CANDIDATE, [{ sentenceIndex: null, surface: '一日' }]);
 
     expect(applyScopedRepair(CANDIDATE, titleEntries, { titleJa: null, replacements: [] })).toEqual(
       { ok: false, error: 'story-repair-title-mismatch' },
     );
+    expect(applyScopedRepair(CANDIDATE, titleEntries, { titleJa: ' ', replacements: [] })).toEqual({
+      ok: false,
+      error: 'story-repair-title-mismatch',
+    });
 
     const replaced = applyScopedRepair(CANDIDATE, titleEntries, {
       titleJa: 'ねこのあさ',
