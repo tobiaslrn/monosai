@@ -116,8 +116,9 @@ export function scopedRepairTargets(
  *
  * The patch has to answer exactly what was asked: every target rewritten, no
  * index that was not a target, none twice, and a title only when the title was
- * one. A blank title is read as no title. Anything else is a reply to a different question, and accepting the
- * usable part of it would silently leave a disallowed word in the story.
+ * one. A blank title is read as no title. Anything else is a reply to a
+ * different question, and accepting the usable part of it would silently leave
+ * a disallowed word in the story.
  */
 export function applyScopedRepair(
   candidate: StoryCandidate,

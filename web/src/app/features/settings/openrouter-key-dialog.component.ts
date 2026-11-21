@@ -30,8 +30,9 @@ export type OpenRouterKeyOutcome = 'saved' | 'delete';
  * one that is saved. It is the one place a key is typed.
  *
  * A key that is empty or only spaces, a key with a character no key has, and a
- * saved key OpenRouter refused are each one danger line under the field. Money and an outside account are at
- * stake, which is what the sentence above the field is for.
+ * saved key OpenRouter refused are each one danger line under the field. Money
+ * and an outside account are at stake, which is what the sentence above the
+ * field is for.
  */
 @Component({
   selector: 'mn-openrouter-key-dialog',
