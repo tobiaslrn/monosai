@@ -386,6 +386,12 @@ export class OpenRouterClient {
     accept: string,
     maxBytes: number,
   ): Promise<Result<RawResponse, AiError>> {
+    // Checked again after the key read: an abort while the key was being read
+    // has already fired, so the listener below would never hear it and the
+    // cancelled request would still be sent and billed.
+    if (request.signal?.aborted === true) {
+      return err(cancelled(request.task));
+    }
     const controller = new AbortController();
     // Whether the deadline passed is tracked here rather than read off the
     // rejection, because what `fetch` throws on abort differs between

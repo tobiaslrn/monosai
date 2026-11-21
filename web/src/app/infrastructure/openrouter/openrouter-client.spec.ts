@@ -133,6 +133,44 @@ describe('OpenRouterClient response validation', () => {
 });
 
 describe('OpenRouterClient transport handling', () => {
+  it('sends nothing when the caller cancels while the saved key is read', async () => {
+    const server = new FakeOpenRouterServer();
+    const controller = new AbortController();
+    const credentials = new FakeCredentialRepository();
+    // The real repository awaits an IndexedDB read here; the learner cancels
+    // during it.
+    const slowCredentials = {
+      getStatus: () => credentials.getStatus(),
+      replace: (apiKey: string) => credentials.replace(apiKey),
+      remove: () => credentials.remove(),
+      useApiKey: async <T>(use: (apiKey: string) => Promise<T>) => {
+        await Promise.resolve();
+        controller.abort();
+        return credentials.useApiKey(use);
+      },
+    };
+    const client = new OpenRouterClient({
+      fetchFn: server.fetch,
+      credentials: slowCredentials,
+      isOnline: () => true,
+      sleep: () => Promise.resolve(),
+    });
+
+    const result = await client.postJson(
+      {
+        path: CHAT_COMPLETIONS_PATH,
+        task: 'story-generation',
+        modelId: FAKE_OPENROUTER.textModel,
+        signal: controller.signal,
+        body: { model: FAKE_OPENROUTER.textModel },
+      },
+      chatCompletionSchema,
+    );
+
+    expect(server.callCount).toBe(0);
+    expect(!result.ok && result.error.code).toBe('cancelled');
+  });
+
   it('reports a timeout distinctly from a cancellation', async () => {
     const harness = openRouterHarness({ delayMs: 50, timeoutMs: 1 });
 
