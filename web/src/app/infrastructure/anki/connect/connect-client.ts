@@ -369,10 +369,12 @@ export class AnkiConnectClient {
    * Names an opaque `fetch` failure.
    *
    * The browser reports a refused connection and a rejected origin identically,
-   * so two things separate them: an origin outside AnkiConnect's default
-   * allowlist is refused by the add-on however healthy it is, and an endpoint
-   * that has answered before is plainly present. Only a local origin that has
-   * never had an answer is genuinely unreachable.
+   * so two things separate them. An endpoint that has answered this client
+   * already accepted this page's origin, since AnkiConnect lets only
+   * `requestPermission` through for an origin it does not allow, so a refusal
+   * after that means Anki quit or restarted mid-read. Before any answer, an
+   * origin outside AnkiConnect's default allowlist is refused by the add-on
+   * however healthy it is, and only a local origin is genuinely unreachable.
    */
   private describeTransportFailure(
     thrown: unknown,
@@ -390,11 +392,12 @@ export class AnkiConnectClient {
     }
     if (
       this.options.unreachableCode !== 'bridge-not-running' &&
-      (!isLocalPageOrigin(this.options.pageOrigin) || this.activeEndpoint !== null)
+      this.activeEndpoint === null &&
+      !isLocalPageOrigin(this.options.pageOrigin)
     ) {
-      // Either this page is served from an address AnkiConnect does not allow
-      // by default, or something answered here before and is now refusing the
-      // request. Both are the origin list, not an absent add-on.
+      // This page is served from an address AnkiConnect does not allow by
+      // default, and nothing has answered it yet: the origin list, not an
+      // absent add-on.
       return ankiError(
         'origin-not-allowed',
         'Anki refused a request from Monosai. Add this address to the AnkiConnect origin list and try again.',

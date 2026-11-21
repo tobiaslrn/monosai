@@ -214,24 +214,29 @@ describe('AnkiConnectClient', () => {
       expect(result.error.cause).toBe('https://example.github.io');
     });
 
-    it('reports a rejected origin once an endpoint has already answered', async () => {
-      let failing = false;
-      const server = new FakeAnkiConnectServer(CONTRACT_COLLECTION);
-      const client = clientWith(async (input, init) => {
-        if (failing) {
-          throw new TypeError('Failed to fetch');
-        }
-        return server.fetch(input, init);
-      });
+    it.each(['http://localhost:4200', 'https://example.github.io'])(
+      'reports desktop Anki as not running when it quits in the middle of a read from %s',
+      async (pageOrigin) => {
+        // AnkiConnect lets `requestPermission` through CORS for any origin and
+        // grants it only to an allowed one, so a page that has had an answer is
+        // already on the origin list. A refused request after that is Anki gone.
+        let running = true;
+        const server = new FakeAnkiConnectServer(CONTRACT_COLLECTION);
+        const client = clientWith(
+          async (input, init) => {
+            if (!running) throw new TypeError('Failed to fetch');
+            return server.fetch(input, init);
+          },
+          { pageOrigin },
+        );
 
-      await client.version();
-      failing = true;
+        expect((await client.requestPermission()).ok).toBe(true);
+        running = false;
+        const result = await client.findCards('"deck:Core Japanese"');
 
-      const result = await client.deckNames();
-      expect(result.ok).toBe(false);
-      if (result.ok) return;
-      expect(result.error.code).toBe('origin-not-allowed');
-    });
+        expect(!result.ok && result.error.code).toBe('not-running');
+      },
+    );
 
     it('reports an unsupported action distinctly from a query failure', async () => {
       const client = clientWith(

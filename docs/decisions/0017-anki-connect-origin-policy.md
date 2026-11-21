@@ -1,7 +1,16 @@
 # 0017 — What an opaque AnkiConnect failure is called
 
 Date: 2026-08-19
-Status: Accepted
+Status: Accepted; the rule for an endpoint that has already answered amended below
+
+> Amended on 2026-11-21. AnkiConnect lets `requestPermission` through CORS for
+> any origin and grants it only to an allowed one; every other action from an
+> origin it does not allow fails from the first request. A client that has had
+> an answer was therefore already accepted, and a refusal after that means Anki
+> quit or restarted in the middle of a read. That is now reported as
+> `not-running`, which the automatic sync treats as transient, instead of
+> telling the learner to edit an origin list that already holds this page. The
+> second bullet under Decision no longer applies.
 
 ## Context
 
