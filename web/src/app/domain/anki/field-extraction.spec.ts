@@ -80,6 +80,12 @@ describe('extractExpression', () => {
     expect(expression('<b>日本[にほん]</b>')).toEqual({ ok: true, value: '日本' });
   });
 
+  it('reads a non-breaking space before a reading as a plain space, as Anki does', () => {
+    // Anki's editor writes `&nbsp;` where the learner typed the separating space.
+    expect(expression('私[わたし]の&nbsp;名前[なまえ]')).toEqual({ ok: true, value: '私の名前' });
+    expect(expression('食[た]べ\u00a0物[もの]')).toEqual({ ok: true, value: '食べ物' });
+  });
+
   it('leaves a sound tag in place, as Anki does', () => {
     expect(expression('犬[sound:inu.mp3]')).toEqual({ ok: true, value: '犬[sound:inu.mp3]' });
   });

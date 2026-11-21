@@ -78,11 +78,20 @@ function unwrapClozes(text: string): string {
   }
 }
 
-/** Removes bracket readings; a `[sound:…]` tag is media, which Anki leaves alone too. */
+/**
+ * Removes bracket readings; a `[sound:…]` tag is media, which Anki leaves alone too.
+ *
+ * Anki's editor stores the space before a reading as `&nbsp;` whenever it would
+ * otherwise collapse, and the `kanji:` filter turns every `&nbsp;` into a plain
+ * space before matching. Markup has already become text here, so the same
+ * character is a non-breaking space.
+ */
 function dropBracketReadings(text: string): string {
-  return text.replace(BRACKET_READING, (match, base: string, reading: string) =>
-    reading.startsWith('sound:') ? match : base,
-  );
+  return text
+    .replace(/\u00a0/gu, ' ')
+    .replace(BRACKET_READING, (match, base: string, reading: string) =>
+      reading.startsWith('sound:') ? match : base,
+    );
 }
 
 /**

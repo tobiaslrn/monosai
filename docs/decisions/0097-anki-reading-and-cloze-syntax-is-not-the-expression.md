@@ -35,8 +35,10 @@ did not keep the learner's choice. It made a reviewed word silently count for no
   markup becomes text, so the samples shown while mapping lose the ruby reading too.
 - `extractExpression` reads the visible text, then unwraps each cloze to its answer, innermost
   first, and drops its hint. It then removes bracket readings with the pattern Anki's `kanji:`
-  filter uses, ` ?([^ >]+?)\[(.+?)\]`, keeping a `[sound:…]` tag as Anki does. A value that
-  becomes empty is rejected as `empty`.
+  filter uses, ` ?([^ >]+?)\[(.+?)\]`, keeping a `[sound:…]` tag as Anki does. Like that filter,
+  which first turns every `&nbsp;` into a space, it reads a non-breaking space as a plain one, so a
+  reading after `&nbsp;` is dropped with its separator. A value that becomes empty is rejected as
+  `empty`.
 - Meanings are still read with `extractVisibleText` and keep their brackets, because English
   glosses use brackets for their own notes. A pasted text list is still read without any markup
   handling.
