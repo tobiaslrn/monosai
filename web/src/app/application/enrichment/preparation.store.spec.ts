@@ -545,6 +545,73 @@ describe('PreparationStore', () => {
     });
   });
 
+  describe('a layer the learner starts', () => {
+    it('starts beside the layers already working that reading', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW);
+      beds.store.setOpenReading(FIRST);
+      const gate = beds.runners.english.holdOpen();
+      const draining = beds.store.pump();
+      await gate.started;
+
+      await outstandingRow(beds.jobs, FIRST, 'audio', NOW + 1);
+      const started = beds.store.startLayer(FIRST, 'audio');
+      await vi.waitFor(() => {
+        expect(beds.runners.audio.started).toEqual([FIRST]);
+      });
+      expect(beds.store.current()).toEqual({ readingId: FIRST, layers: ['english', 'audio'] });
+
+      gate.release();
+      await Promise.all([draining, started]);
+      expect(beds.runners.audio.started).toEqual([FIRST]);
+      const rows = await beds.db.assetJobs.toArray();
+      expect(rows.map((row) => row.state)).toEqual(['complete', 'complete']);
+    });
+
+    it('steps aside from another reading for the one the learner has open', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'english', NOW + 1);
+      beds.store.setOpenReading(SECOND);
+      const english = beds.runners.english;
+      const gate = english.holdOpen();
+      english.pauseOn = FIRST;
+      const draining = beds.store.pump();
+      await gate.started;
+
+      await outstandingRow(beds.jobs, SECOND, 'audio', NOW + 2);
+      const started = beds.store.startLayer(SECOND, 'audio');
+      await vi.waitFor(() => {
+        expect(english.yields).toBeGreaterThan(0);
+      });
+      gate.release();
+      await Promise.all([draining, started]);
+
+      expect(english.cancelled).toEqual([]);
+      expect(beds.runners.audio.started).toEqual([SECOND]);
+      expect(english.started).toEqual([FIRST, FIRST]);
+    });
+
+    it('leaves a reading another tab is preparing to that tab', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'audio');
+      await beds.jobs.claimReading(FIRST, 'another-tab', NOW);
+      beds.store.setOpenReading(FIRST);
+
+      await beds.store.startLayer(FIRST, 'audio');
+
+      expect(beds.runners.audio.enqueued).toEqual([FIRST]);
+      expect(beds.runners.audio.started).toEqual([]);
+    });
+
+    it('waits on its row while the learner has paused the lane', async () => {
+      await outstandingRow(beds.jobs, FIRST, 'audio');
+      beds.store.setOpenReading(FIRST);
+      beds.store.pause();
+
+      await beds.store.startLayer(FIRST, 'audio');
+
+      expect(beds.runners.audio.started).toEqual([]);
+      expect(beds.store.progressFor(FIRST, 'audio').kind).toBe('queued');
+    });
+  });
+
   describe('what holds the lane', () => {
     it('waits for a story that is still being written', async () => {
       await outstandingRow(beds.jobs, FIRST, 'english');

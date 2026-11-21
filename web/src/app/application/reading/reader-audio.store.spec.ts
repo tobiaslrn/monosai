@@ -6,6 +6,7 @@ import { readingId } from '../../domain/shared/ids';
 import { AudioPlaybackStore } from '../audio/audio-playback.store';
 import { AudioConfigurationService } from '../enrichment/audio-configuration.service';
 import { AudioJobStore } from '../enrichment/audio-job.store';
+import { PreparationStore } from '../enrichment/preparation.store';
 import { ReadingAudioMaintenanceStore } from '../enrichment/reading-audio-maintenance.store';
 import { TtsStore } from '../settings/tts.store';
 import { ReaderAudioStore } from './reader-audio.store';
@@ -21,6 +22,8 @@ describe('ReaderAudioStore', () => {
   let status: WritableSignal<string>;
   let prepare: ReturnType<typeof vi.fn>;
   let stopExpectingClips: ReturnType<typeof vi.fn>;
+  let startLayer: ReturnType<typeof vi.fn>;
+  let acknowledgeMaintenance: ReturnType<typeof vi.fn>;
 
   const settled = () => TestBed.inject(ApplicationRef).whenStable();
 
@@ -31,6 +34,8 @@ describe('ReaderAudioStore', () => {
     status = signal('idle');
     prepare = vi.fn(() => Promise.resolve());
     stopExpectingClips = vi.fn();
+    startLayer = vi.fn(() => Promise.resolve());
+    acknowledgeMaintenance = vi.fn();
 
     TestBed.configureTestingModule({
       providers: [
@@ -40,7 +45,11 @@ describe('ReaderAudioStore', () => {
           provide: AudioJobStore,
           useValue: { idleProgress: { kind: 'idle' }, progressFor: () => progress() },
         },
-        { provide: ReadingAudioMaintenanceStore, useValue: {} },
+        { provide: PreparationStore, useValue: { startLayer } },
+        {
+          provide: ReadingAudioMaintenanceStore,
+          useValue: { acknowledge: acknowledgeMaintenance },
+        },
         { provide: AudioConfigurationService, useValue: {} },
         { provide: AudioPlaybackStore, useValue: { prepare, stopExpectingClips, status } },
         { provide: TtsStore, useValue: { settings: voice } },
@@ -75,6 +84,17 @@ describe('ReaderAudioStore', () => {
       voice.set({ modelId: 'm', voiceId: 'other' });
       await settled();
       expect(prepare).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('asking for audio', () => {
+    // The lane claims the reading before anything is synthesized, so a second
+    // tab can never read the same sentences aloud at the same time.
+    it.each(['start', 'retry'] as const)('asks the preparation lane on %s', (action) => {
+      TestBed.inject(ReaderAudioStore)[action]();
+
+      expect(acknowledgeMaintenance).toHaveBeenCalledOnce();
+      expect(startLayer).toHaveBeenCalledExactlyOnceWith(ID, 'audio');
     });
   });
 

@@ -208,11 +208,22 @@ export class AudioJobStore {
   }
 
   /**
-   * Queues this reading without issuing a single request. The row covers the
-   * sentences with no clip at all, so changing the voice queues nothing.
+   * Queues this reading without issuing a single request. A reading's own
+   * declaration covers the sentences with no clip at all, so changing the voice
+   * queues nothing; the learner asking for audio covers every sentence with no
+   * clip in the current voice, as *Generate audio* promises.
    */
-  async enqueue(readingId: ReadingId): Promise<EnqueueOutcome> {
-    return enqueueOutcome(await this.plan(readingId, 'never-prepared', 'queued'));
+  async enqueue(
+    readingId: ReadingId,
+    intent: 'automatic' | 'explicit' = 'automatic',
+  ): Promise<EnqueueOutcome> {
+    return enqueueOutcome(
+      await this.plan(
+        readingId,
+        intent === 'explicit' ? 'current-configuration' : 'never-prepared',
+        'queued',
+      ),
+    );
   }
 
   /**

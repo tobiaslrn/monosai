@@ -101,6 +101,15 @@ export class PreparationStore {
    * it interrupted instead of leaving it parked until something else pumps.
    */
   private readonly steppedAside = new Set<ReadingId>();
+  /**
+   * Adds a layer to the group working a reading, while one is. A layer the
+   * learner asks for on the reading already claimed starts beside the others
+   * under that claim, rather than waiting for them to finish.
+   */
+  private joinGroup:
+    ((readingId: ReadingId, layer: PreparationLayer) => Promise<void> | null) | null = null;
+  /** Whether the running group has been asked to park, which no layer then joins. */
+  private groupYielding = false;
 
   /** Readings with outstanding work, the one being worked first. */
   readonly queue = this.queueSignal.asReadonly();
@@ -263,6 +272,35 @@ export class PreparationStore {
     await this.pump();
   }
 
+  /**
+   * Starts a layer the learner asked for on the reading they have open, under
+   * this lane's claim on it, so no other tab can prepare the same reading at
+   * the same time.
+   *
+   * The request is never dropped: it joins the group already working the
+   * reading, or the lane steps aside from another reading for it, or — while
+   * something holds the lane or another tab has the reading — it waits on its
+   * row like any other request.
+   */
+  async startLayer(readingId: ReadingId, layer: PreparationLayer): Promise<void> {
+    await this.request(readingId, layer);
+    const joined = this.joinGroup?.(readingId, layer) ?? null;
+    if (joined !== null) {
+      await joined;
+      return;
+    }
+    const current = this.currentSignal();
+    if (
+      current !== null &&
+      current.readingId !== readingId &&
+      readingId === this.openReadingSignal()
+    ) {
+      this.steppedAside.add(current.readingId);
+      this.yieldActiveLayers();
+    }
+    await this.pump();
+  }
+
   /** Drops a deleted reading from the queue and finalizes anything running. */
   async readingDeleted(readingId: ReadingId): Promise<void> {
     for (const layer of PREPARATION_ORDER) {
@@ -351,14 +389,8 @@ export class PreparationStore {
       // layers to finish the whole reading, which meant the last sentence's
       // English arrived before the first sentence's clip (ADR 0059).
       if (!this.canStartGroup()) return false;
-      this.currentSignal.set({ readingId, layers: eligible });
-      eligible.forEach((layer) => this.activeLayers.add(layer));
-      try {
-        await Promise.all(eligible.map((layer) => this.runners.runnerFor(layer).start(readingId)));
-      } finally {
-        eligible.forEach((layer) => this.activeLayers.delete(layer));
-      }
-      if (!this.handleGroupOutcome(readingId, eligible, deferred)) {
+      const worked = await this.workGroup(readingId, eligible);
+      if (!this.handleGroupOutcome(readingId, worked, deferred)) {
         return !this.pausedByLearnerSignal();
       }
       return true;
@@ -366,6 +398,54 @@ export class PreparationStore {
       this.currentSignal.set(null);
       await this.releaseClaim();
     }
+  }
+
+  /**
+   * Runs a reading's layers together until every one has settled, including
+   * any the learner asked for on this reading while the others ran. Returns
+   * every layer that ran.
+   */
+  private async workGroup(
+    readingId: ReadingId,
+    layers: readonly PreparationLayer[],
+  ): Promise<readonly PreparationLayer[]> {
+    const running = new Map<PreparationLayer, Promise<void>>();
+    const begin = (layer: PreparationLayer): Promise<void> => {
+      this.activeLayers.add(layer);
+      this.currentSignal.set({
+        readingId,
+        layers: PREPARATION_ORDER.filter((each) => each === layer || running.has(each)),
+      });
+      const started = this.runners.runnerFor(layer).start(readingId);
+      running.set(layer, started);
+      return started;
+    };
+    this.groupYielding = false;
+    for (const layer of layers) {
+      void begin(layer);
+    }
+    this.joinGroup = (requested, layer) => {
+      if (
+        requested !== readingId ||
+        this.groupYielding ||
+        this.currentHold() !== null ||
+        this.pausedByLearnerSignal()
+      ) {
+        return null;
+      }
+      return running.get(layer) ?? begin(layer);
+    };
+    try {
+      for (let settled = 0; settled < running.size;) {
+        const pending = [...running.values()];
+        await Promise.all(pending);
+        settled = pending.length;
+      }
+    } finally {
+      this.joinGroup = null;
+      running.forEach((_, layer) => this.activeLayers.delete(layer));
+    }
+    return PREPARATION_ORDER.filter((layer) => running.has(layer));
   }
 
   /** Checks holds before a group starts, preserving paid in-flight work. */
@@ -419,6 +499,7 @@ export class PreparationStore {
   }
 
   private yieldActiveLayers(): void {
+    this.groupYielding = true;
     for (const layer of this.activeLayers) {
       this.runners.runnerFor(layer).yieldAfterBatch();
     }

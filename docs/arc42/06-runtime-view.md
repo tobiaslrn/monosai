@@ -313,7 +313,9 @@ A reading declares the aid layers it should eventually contain
 four, turn that declaration into work: a layer is switched on, a generated story is saved with the
 layers chosen for it, a reader is opened, and an explicit _Prepare_, _Retry_, or _Prepare again_.
 Each queues a job row covering the sentences that have never been given that layer under **any**
-configuration, so changing the model queues nothing.
+configuration, so changing the model queues nothing. An explicit request is the exception: it covers
+whatever the current configuration has not yet produced, so _Generate audio_ after a voice change
+reads the reading again in the new voice.
 
 ```mermaid
 sequenceDiagram
@@ -342,7 +344,11 @@ sequenceDiagram
 
 The lane runs one reading at a time, the open one first. A reading it stepped aside from for the
 open one parks at a batch boundary and is picked back up once the open reading has nothing left to
-prepare, including when it had nothing to begin with. All three layers start together, and every
+prepare, including when it had nothing to begin with. A layer the learner asks for on the open
+reading, the player's _Generate audio_ included, also goes through the lane, so the reading is
+claimed before anything is requested: it joins the layers already working that reading, or the lane
+steps aside from another reading for it, and while a hold or another tab has the reading it waits on
+its row. All three layers start together, and every
 request they want to make takes its turn from one shared `PreparationPacer`: at most ten in flight
 across the three layers, granted to the lowest waiting `(sentence position, layer)`. The reading
 therefore fills front to back — sentence 1's English, grammar and clip before sentence 60's English —

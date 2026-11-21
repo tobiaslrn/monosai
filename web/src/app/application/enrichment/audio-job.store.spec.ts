@@ -383,6 +383,17 @@ describe('AudioJobStore', () => {
     });
   });
 
+  it('queues the sentences an earlier voice read when the learner asks for audio', async () => {
+    await bed.store.start(bed.draft.reading.id);
+    bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
+
+    const outcome = await bed.store.enqueue(bed.draft.reading.id, 'explicit');
+
+    expect(outcome.kind).toBe('queued');
+    const queued = (await bed.db.assetJobs.toArray()).filter((row) => row.state === 'queued');
+    expect(queued.map((row) => row.orderedSentenceIds.length)).toEqual([SENTENCE_COUNT]);
+  });
+
   it('requeues an invalid clip at its reading priority and then finishes', async () => {
     const order = japaneseInOrder(bed.draft);
     let firstAttempts = 0;

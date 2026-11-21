@@ -4,6 +4,7 @@ import type { ReadingId, SentenceId } from '../../domain/shared/ids';
 import { AudioPlaybackStore } from '../audio/audio-playback.store';
 import { AudioConfigurationService } from '../enrichment/audio-configuration.service';
 import { AudioJobStore, isAudioRunInProgress } from '../enrichment/audio-job.store';
+import { PreparationStore } from '../enrichment/preparation.store';
 import { ReadingAudioMaintenanceStore } from '../enrichment/reading-audio-maintenance.store';
 import { TtsStore } from '../settings/tts.store';
 import { LOGGER, NOOP_LOGGER, reportRejection, type Logger } from '../shared/diagnostics';
@@ -26,6 +27,7 @@ import { ReaderStore } from './reader.store';
 export class ReaderAudioStore {
   private readonly reader = inject(ReaderStore);
   private readonly job = inject(AudioJobStore);
+  private readonly lane = inject(PreparationStore);
   private readonly maintenance = inject(ReadingAudioMaintenanceStore);
   private readonly configuration = inject(AudioConfigurationService);
   readonly playback = inject(AudioPlaybackStore);
@@ -190,20 +192,22 @@ export class ReaderAudioStore {
 
   /**
    * Reads aloud everything in the reading that has no clip for the current
-   * voice. The only whole-reading audio request, and it starts here.
+   * voice. Asked of the preparation lane rather than the job itself, so the
+   * reading is claimed first and no other tab reads the same sentences aloud
+   * at the same time (ADR 0048).
    */
   start(): void {
     const id = this.readingId();
     if (id === null) return;
     this.maintenance.acknowledge();
-    void this.job.start(id);
+    this.lane.startLayer(id, 'audio').catch((error: unknown) => {
+      reportRejection(this.logger, error);
+    });
   }
 
+  /** Runs a failed audio run again, under the same claim as `start`. */
   retry(): void {
-    const id = this.readingId();
-    if (id === null) return;
-    this.maintenance.acknowledge();
-    void this.job.retry(id);
+    this.start();
   }
 
   /** Puts a settled report away without asking for the work again. */
