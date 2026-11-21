@@ -4,7 +4,11 @@ import {
   type PackageRequestMessage,
   type PackageResponseMessage,
 } from './package-protocol';
-import { PackageWorkerClient, type PackageWorkerChannel } from './package-worker.client';
+import {
+  PackageWorkerClient,
+  packageWorkerChannel,
+  type PackageWorkerChannel,
+} from './package-worker.client';
 
 interface Recorded {
   readonly channel: PackageWorkerChannel;
@@ -277,4 +281,49 @@ describe('PackageWorkerClient', () => {
     expect(result.error.code).toBe('malformed-response');
     expect(result.error.cause).toBe('discover: code: invalid_value');
   });
+});
+
+describe('packageWorkerChannel when the worker itself fails', () => {
+  /** Stands in for a `Worker`: an event target that records what was posted. */
+  function fakeWorker(): Worker & { posted: unknown[]; terminated: number } {
+    const target = new EventTarget() as Worker & { posted: unknown[]; terminated: number };
+    target.posted = [];
+    target.terminated = 0;
+    target.postMessage = (message: unknown) => {
+      target.posted.push(message);
+    };
+    target.terminate = () => {
+      target.terminated += 1;
+    };
+    return target;
+  }
+
+  it.each(['error', 'messageerror'])(
+    'settles a pending request with an error once the worker reports %s',
+    async (type) => {
+      const worker = fakeWorker();
+      const client = new PackageWorkerClient(packageWorkerChannel(worker, () => undefined));
+
+      const opening = client.open(new ArrayBuffer(8), 'wasm');
+      // The worker script failed to load, threw at top level, or was killed:
+      // nothing will ever answer the request that was just posted.
+      worker.dispatchEvent(new Event(type));
+
+      const outcome = await Promise.race([
+        opening,
+        new Promise<'still pending'>((resolve) =>
+          setTimeout(() => {
+            resolve('still pending');
+          }, 50),
+        ),
+      ]);
+      expect(outcome).not.toBe('still pending');
+      expect(outcome !== 'still pending' && !outcome.ok && outcome.error.code).toBe(
+        'package-unreadable',
+      );
+      expect(worker.terminated).toBe(1);
+      const later = await client.discover();
+      expect(!later.ok && later.error.code).toBe('package-unreadable');
+    },
+  );
 });

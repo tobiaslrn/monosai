@@ -20,7 +20,14 @@ import {
  */
 export interface PackageWorkerChannel {
   post(message: PackageRequestMessage, transfer?: readonly Transferable[]): void;
-  subscribe(listener: (data: unknown) => void): () => void;
+  /**
+   * Delivers every message, and reports a worker that can no longer answer.
+   *
+   * `onFailure` is how a worker that failed to load, threw outside a request,
+   * was killed for memory, or sent a message that could not be read says so:
+   * no response will ever arrive for what is pending.
+   */
+  subscribe(listener: (data: unknown) => void, onFailure?: () => void): () => void;
   terminate(): void;
 }
 
@@ -91,9 +98,14 @@ export class PackageWorkerClient {
     private readonly channel: PackageWorkerChannel,
     private readonly logger?: Logger,
   ) {
-    this.unsubscribe = channel.subscribe((data) => {
-      this.receive(data);
-    });
+    this.unsubscribe = channel.subscribe(
+      (data) => {
+        this.receive(data);
+      },
+      () => {
+        this.failed();
+      },
+    );
   }
 
   /**
@@ -110,6 +122,28 @@ export class PackageWorkerClient {
     this.disposed = true;
     this.unsubscribe();
     const stopped = ankiError('cancelled', 'The package worker was stopped.');
+    for (const [, request] of this.pending) {
+      request.settle(err(stopped));
+    }
+    this.pending.clear();
+    this.channel.terminate();
+  }
+
+  /**
+   * Settles everything pending once the worker can no longer answer.
+   *
+   * Nothing else would: the requests wait for responses that will never come,
+   * and the import would stay busy until the learner cancelled it. The worker
+   * is stopped as well, so later requests fail at once instead of being posted
+   * to a worker that is gone.
+   */
+  private failed(): void {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+    this.unsubscribe();
+    const stopped = ankiError('package-unreadable', 'The package worker stopped unexpectedly.');
     for (const [, request] of this.pending) {
       request.settle(err(stopped));
     }
@@ -288,13 +322,20 @@ export function packageWorkerChannel(worker: Worker, onError?: () => void): Pack
     post: (message, transfer) => {
       worker.postMessage(message, transfer === undefined ? [] : [...transfer]);
     },
-    subscribe: (listener) => {
+    subscribe: (listener, onFailure) => {
       const handler = (event: MessageEvent<unknown>): void => {
         listener(event.data);
       };
+      const failure = (): void => {
+        onFailure?.();
+      };
       worker.addEventListener('message', handler);
+      worker.addEventListener('error', failure);
+      worker.addEventListener('messageerror', failure);
       return () => {
         worker.removeEventListener('message', handler);
+        worker.removeEventListener('error', failure);
+        worker.removeEventListener('messageerror', failure);
       };
     },
     terminate: () => {
