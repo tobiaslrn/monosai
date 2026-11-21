@@ -107,6 +107,11 @@ export interface TranslationPartition {
  * and re-requesting the tenth, rather than throwing away nine requests the
  * learner already paid for.
  *
+ * A blank answer is an answer that settles nothing: its sentence is left
+ * unresolved for the second question, exactly as if it had been missing, and it
+ * still counts towards answering a sentence twice, which leaves that sentence
+ * unresolved too.
+ *
  * One case still voids the whole batch, and is reported by returning every
  * requested id as unresolved: an id that was never sent. A model returning an
  * id from nowhere has lost track of which request it is answering, so nothing
@@ -123,18 +128,20 @@ export function partitionTranslations(
   };
 
   const byId = new Map<SentenceId, TranslationResult>();
-  const duplicated = new Set<SentenceId>();
+  const seen = new Set<SentenceId>();
   for (const result of returned) {
     if (!requestedIds.has(result.id)) {
       return voided;
     }
-    if (byId.has(result.id) || duplicated.has(result.id)) {
+    if (seen.has(result.id)) {
       // A second answer for one sentence says the model was not tracking which
       // it had already done, so neither answer is preferred over the other.
+      // A blank first answer counts: an empty slot followed by a filled one is
+      // what a shifted reply looks like.
       byId.delete(result.id);
-      duplicated.add(result.id);
       continue;
     }
+    seen.add(result.id);
     if (result.textEn.trim() === '') {
       continue;
     }

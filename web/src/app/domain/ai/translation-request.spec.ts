@@ -97,6 +97,23 @@ describe('partitionTranslations', () => {
     expect(partition.unresolved).toEqual([sentenceId('s1')]);
   });
 
+  it('drops a sentence answered twice even when its first answer was blank', () => {
+    const returned = [
+      { id: sentenceId('s1'), textEn: 'One.' },
+      { id: sentenceId('s2'), textEn: '' },
+      { id: sentenceId('s2'), textEn: 'One.' },
+      { id: sentenceId('s3'), textEn: 'Three.' },
+    ];
+
+    const partition = partitionTranslations(requested, returned);
+
+    expect(partition.matched.map((result) => result.id)).toEqual([
+      sentenceId('s1'),
+      sentenceId('s3'),
+    ]);
+    expect(partition.unresolved).toEqual([sentenceId('s2')]);
+  });
+
   it('voids the whole reply when an id was never sent', () => {
     const returned = [
       { id: sentenceId('s1'), textEn: 'One.' },
