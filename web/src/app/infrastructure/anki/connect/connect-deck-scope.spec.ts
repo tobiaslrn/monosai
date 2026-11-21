@@ -49,6 +49,27 @@ async function expressions(
   return found.sort();
 }
 
+/**
+ * A deck with a subdeck and two filtered decks the learner built inside it,
+ * beside a top-level one. Each note is named for where its card lives and
+ * where it sits now.
+ */
+const NESTED_FILTERED: FixtureCollection = {
+  deckNames: ['Core', 'Core::Verbs', 'Core::Cram', 'Core::Verbs::Cram', 'Cram', 'Other'],
+  noteTypes: [{ name: 'Basic', fieldNames: ['Expression', 'Meaning'] }],
+  notes: [
+    note('core', 'Core'),
+    note('core-in-cram', 'Core', 'Cram'),
+    note('core-in-core-cram', 'Core', 'Core::Cram'),
+    note('core-in-verbs-cram', 'Core', 'Core::Verbs::Cram'),
+    note('verbs', 'Core::Verbs'),
+    note('verbs-in-core-cram', 'Core::Verbs', 'Core::Cram'),
+    note('other', 'Other'),
+    note('other-in-core-cram', 'Other', 'Core::Cram'),
+    note('other-in-verbs-cram', 'Other', 'Core::Verbs::Cram'),
+  ],
+};
+
 describe.each(ENDPOINTS)('deck scope through the $name', (endpoint) => {
   it('reads an underscore in a deck name as itself, not as any character', async () => {
     // Anki's `_` matches any one character, so a search for `N5_vocab` would
@@ -62,6 +83,32 @@ describe.each(ENDPOINTS)('deck scope through the $name', (endpoint) => {
 
     expect(await expressions(endpoint, collection, mappingFor({ deckName: 'N5_vocab' }))).toEqual([
       'own',
+    ]);
+  });
+
+  it('keeps only the cards whose home is the deck itself under deck-only', async () => {
+    // A filtered deck built inside the mapped deck is one of its subdecks by
+    // name, so a search that subtracts the subdecks also subtracted the cards
+    // the learner is studying from it.
+    expect(await expressions(endpoint, NESTED_FILTERED, mappingFor({ deckName: 'Core' }))).toEqual([
+      'core',
+      'core-in-core-cram',
+      'core-in-cram',
+      'core-in-verbs-cram',
+    ]);
+  });
+
+  it('keeps only the cards whose home is in the deck tree under deck-and-subdecks', async () => {
+    // A filtered deck inside the tree can hold cards from anywhere; the deck
+    // such a card sits in says nothing about where it belongs.
+    const mapping = mappingFor({ deckName: 'Core', deckScope: 'deck-and-subdecks' });
+    expect(await expressions(endpoint, NESTED_FILTERED, mapping)).toEqual([
+      'core',
+      'core-in-core-cram',
+      'core-in-cram',
+      'core-in-verbs-cram',
+      'verbs',
+      'verbs-in-core-cram',
     ]);
   });
 });

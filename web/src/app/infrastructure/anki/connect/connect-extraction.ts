@@ -1,4 +1,4 @@
-import { ankiError } from '../../../domain/anki/anki-error';
+import { ankiError, type AnkiError } from '../../../domain/anki/anki-error';
 import type { AnkiExtractionEvent } from '../../../domain/anki/anki-provider';
 import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
 import type { AnkiConnectClient, ReviewsOfCards } from './connect-client';
@@ -22,6 +22,8 @@ import {
 } from '../../../domain/anki/practice-evidence';
 import type { CardInfo } from './connect-client';
 import { resolveIntroducedFirstReviews } from './introduced-first-review';
+import { matchCardPredicates } from './card-predicate-search';
+import { ok, type Result } from '../../../domain/shared/result';
 
 /** Ids per `cardsInfo` or `notesInfo` request when the endpoint states no limit. */
 export const DEFAULT_BATCH_SIZE = 200;
@@ -52,9 +54,11 @@ export interface ExtractionOptions {
    * Whether `cardsInfo` names the home deck of a card sitting in a filtered deck.
    *
    * The first-party bridge does, as `originalDeckName`. The desktop add-on
-   * reports only the deck a card currently sits in, so a card it places outside
-   * the mapping may still belong to it, and Anki's own `deck:filtered` search is
-   * asked which of those cards a filtered deck has moved.
+   * reports only the deck a card currently sits in, which for a filtered card
+   * says nothing about where it belongs: a filtered deck built inside the mapped
+   * deck can hold cards from anywhere. Anki's own `deck:filtered` search is
+   * asked which cards sit in a filtered deck, and a `did:` search by deck id
+   * which of those belong to the mapping.
    */
   readonly reportsHomeDeck?: boolean;
 }
@@ -68,11 +72,10 @@ export interface ExtractionOptions {
  * drop vocabulary the learner really has reviewed. Explicitly suspended cards
  * are the exception: the learner removed them from this vocabulary on purpose.
  *
- * Deck membership is confirmed against the `deckName` each card reports rather
- * than trusted from the query alone, so a provider whose search semantics
- * differ cannot widen a mapping's scope unnoticed. A card reported outside the
- * mapping by an endpoint that cannot name its home deck is kept only when Anki
- * confirms a filtered deck moved it there.
+ * Deck membership is confirmed against the home deck of each card rather than
+ * trusted from the query alone, so a provider whose search semantics differ
+ * cannot widen a mapping's scope unnoticed. Where the endpoint cannot name the
+ * home deck of a card sitting in a filtered deck, Anki is asked for it by id.
  */
 export async function* extractMapping(
   client: AnkiConnectClient,
@@ -107,9 +110,7 @@ export async function* extractMapping(
   // so one unsupported action costs one request rather than one per batch.
   let readsReviewHistory = options.readsReviewHistory ?? false;
   let warnedAboutReviews = false;
-  // Asked at most once, and only when a card actually needs it, so a mapping
-  // nobody is studying from a filtered deck costs no extra request.
-  let movedByFilteredDeck: ReadonlySet<number> | undefined;
+  const homes = new HomeDeckCheck(client, mapping, signal);
 
   for (const batch of batched(found.value, batchSize)) {
     if (signal?.aborted === true) {
@@ -124,28 +125,21 @@ export async function* extractMapping(
     }
 
     const reviewed = cards.value.filter((card) => isEligibleReviewedCard(card.reps, card.queue));
-    const unexplained = new Set(
-      reviewed
-        .filter(
-          (card) =>
-            options.reportsHomeDeck !== true &&
-            (card.originalDeckName ?? null) === null &&
-            !inScope(card, mapping),
-        )
-        .map((card) => card.cardId),
+    // A card reported in the mapped deck itself is at home there. Any other
+    // deck may be a filtered one, unless the endpoint named the home deck.
+    const unexplained = reviewed.filter(
+      (card) =>
+        options.reportsHomeDeck !== true &&
+        (card.originalDeckName ?? null) === null &&
+        card.deckName !== mapping.deckName,
     );
-    if (unexplained.size > 0 && movedByFilteredDeck === undefined) {
-      const moved = await client.findCards(`(${searchFor(mapping)}) deck:filtered`, signal);
-      if (!moved.ok) {
-        yield { kind: 'failed', error: moved.error };
-        return;
-      }
-      movedByFilteredDeck = new Set(moved.value);
+    const resolved = await homes.belonging(unexplained);
+    if (!resolved.ok) {
+      yield { kind: 'failed', error: resolved.error };
+      return;
     }
-    const eligible = reviewed.filter((card) =>
-      unexplained.has(card.cardId)
-        ? movedByFilteredDeck?.has(card.cardId) === true
-        : inScope(card, mapping),
+    const eligible = reviewed.filter(
+      (card) => resolved.value.get(card.cardId) ?? inScope(card, mapping),
     );
     eligibleCards.push(...eligible);
     // Counted by what was asked, so a card deleted during the read still
@@ -392,13 +386,88 @@ function observed(seen: boolean): EvidenceAvailability {
 }
 
 /**
+ * Decides which cards belong to a mapping when the endpoint names only the deck
+ * each card sits in.
+ *
+ * Anki's `deck:filtered` says which cards sit in a filtered deck; for every
+ * other card the reported deck is its home. A filtered card's home is asked
+ * with `did:`, which matches a card by the deck it sits in or by its home deck,
+ * without subdecks. Asked with the ids of the mapping's decks less the
+ * filtered decks these cards sit in, it can only match a card through its
+ * home. `deck:filtered` and the deck ids are asked at most once per mapping,
+ * and each only when a card needs it, so a mapping nobody studies from a
+ * filtered deck costs at most the one search.
+ */
+class HomeDeckCheck {
+  private moved: ReadonlySet<number> | undefined;
+  private deckIds: Readonly<Record<string, number>> | undefined;
+
+  constructor(
+    private readonly client: AnkiConnectClient,
+    private readonly mapping: SourceMapping,
+    private readonly signal: AbortSignal | undefined,
+  ) {}
+
+  /** Whether each card sitting in a filtered deck belongs; other cards are left out. */
+  async belonging(
+    cards: readonly CardInfo[],
+  ): Promise<Result<ReadonlyMap<number, boolean>, AnkiError>> {
+    const decisions = new Map<number, boolean>();
+    if (cards.length === 0) {
+      return ok(decisions);
+    }
+    if (this.moved === undefined) {
+      const moved = await this.client.findCards(
+        `(${searchFor(this.mapping)}) deck:filtered`,
+        this.signal,
+      );
+      if (!moved.ok) {
+        return moved;
+      }
+      this.moved = new Set(moved.value);
+    }
+    const moved = this.moved;
+    const filtered = cards.filter((card) => moved.has(card.cardId));
+    if (filtered.length === 0) {
+      return ok(decisions);
+    }
+    if (this.deckIds === undefined) {
+      const deckIds = await this.client.deckNamesAndIds(this.signal);
+      if (!deckIds.ok) {
+        return deckIds;
+      }
+      this.deckIds = deckIds.value;
+    }
+    const sittingIn = new Set(filtered.map((card) => card.deckName));
+    const homeIds = Object.entries(this.deckIds)
+      .filter(([name]) => !sittingIn.has(name) && inScope({ deckName: name }, this.mapping))
+      .map(([, id]) => id);
+    const belonging =
+      homeIds.length === 0
+        ? ok(new Set<number>())
+        : await matchCardPredicates(
+            this.client,
+            filtered.map((card) => ({ cardId: card.cardId, term: `did:${homeIds.join(',')}` })),
+            this.signal,
+          );
+    if (!belonging.ok) {
+      return belonging;
+    }
+    for (const card of filtered) {
+      decisions.set(card.cardId, belonging.value.has(card.cardId));
+    }
+    return ok(decisions);
+  }
+}
+
+/**
  * Confirms the card belongs to the mapping's deck by the deck it reports.
  *
  * A filtered deck moves a card without changing where it belongs, so its home
  * deck decides where the endpoint names it. Checking only the current deck would
  * drop exactly the cards the learner is studying right now, which is the
  * opposite of what recent practice is for; the caller asks Anki about the cards
- * whose home deck the endpoint does not name.
+ * sitting in a filtered deck whose home deck the endpoint does not name.
  */
 function inScope(
   card: Pick<CardInfo, 'deckName' | 'originalDeckName'>,

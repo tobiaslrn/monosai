@@ -7,6 +7,7 @@ import {
   cardIdListSchema,
   cardsInfoSchema,
   connectEnvelopeSchema,
+  deckIdsSchema,
   nameListSchema,
   notesInfoSchema,
   permissionSchema,
@@ -119,6 +120,18 @@ export class AnkiConnectClient {
 
   deckNames(signal?: AbortSignal): Promise<Result<readonly string[], AnkiError>> {
     return this.invoke('deckNames', {}, nameListSchema, 'deck-discovery-failed', signal);
+  }
+
+  /**
+   * Reads every deck's id. Only the desktop add-on serves this.
+   *
+   * Anki's `did:` search is the only one that tells the home deck of a card in a
+   * filtered deck apart from the deck it sits in, and it takes ids, not names.
+   */
+  deckNamesAndIds(
+    signal?: AbortSignal,
+  ): Promise<Result<Readonly<Record<string, number>>, AnkiError>> {
+    return this.invoke('deckNamesAndIds', {}, deckIdsSchema, 'query-failed', signal);
   }
 
   modelNames(signal?: AbortSignal): Promise<Result<readonly string[], AnkiError>> {

@@ -428,8 +428,11 @@ describe('AndroidConnectAdapter', () => {
  * Answers the way the desktop AnkiConnect add-on does: `cardsInfo` names the deck
  * a card currently sits in and nothing else. `findCards` is Anki's own search,
  * which matches a card in a filtered deck through its home deck, and
- * `deck:filtered` matches the cards sitting in any filtered deck.
+ * `deck:filtered` matches the cards sitting in any filtered deck. Every filtered
+ * card here belongs to `Core Japanese`, whose id `did:` asks about.
  */
+const CORE_DECK_ID = 1;
+
 function upstreamDesktopAnki(
   cardsInfo: (ids: readonly number[]) => unknown[],
   filteredCards: readonly number[] = [],
@@ -457,7 +460,7 @@ function upstreamDesktopAnki(
       case 'findCards':
         // The mapping's own search finds both cards; no activity or difficulty
         // search matches anything.
-        if (query.endsWith(' deck:filtered')) {
+        if (query.endsWith(' deck:filtered') || query.includes(` did:${String(CORE_DECK_ID)}`)) {
           result = [...filteredCards];
         } else {
           result = query.startsWith('"deck:') ? [1, 2] : [];
@@ -465,6 +468,9 @@ function upstreamDesktopAnki(
         break;
       case 'cardsInfo':
         result = cardsInfo(ids);
+        break;
+      case 'deckNamesAndIds':
+        result = { 'Core Japanese': CORE_DECK_ID, 'Filtered Deck 1': 2, 'Other Deck': 3 };
         break;
       case 'notesInfo':
         result = notesInfo(ids);

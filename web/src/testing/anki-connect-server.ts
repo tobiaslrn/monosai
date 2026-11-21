@@ -80,17 +80,19 @@ interface ServerCard {
 /**
  * A deterministic stand-in for a local AnkiConnect endpoint.
  *
- * It answers the same nine actions the real add-on does, over the same
+ * It answers the same actions the real add-on does, over the same
  * `{result, error}` envelope, so the adapters under test run their real request
  * and parsing paths. Its search implementation is intentionally literal about
- * Anki's semantics — `deck:` includes subdecks and is narrowed by subtracting
- * `deck::*` — because that is the behaviour the adapter's query is written
- * against.
+ * Anki's semantics — `deck:` includes subdecks and matches both the deck a card
+ * sits in and the home deck a filtered deck moved it from — because that is the
+ * behaviour the adapter's query is written against.
  */
 export class FakeAnkiConnectServer {
   readonly requests: { action: string; params: Record<string, unknown> }[] = [];
 
   private readonly cards: readonly ServerCard[];
+  /** Every deck the collection names or a card sits in, by a stable id. */
+  private readonly deckIds = new Map<string, number>();
 
   constructor(
     private readonly collection: FixtureCollection = PROTOCOL_COLLECTION,
@@ -124,6 +126,19 @@ export class FakeAnkiConnectServer {
       }
     }
     this.cards = cards;
+    const named = [
+      ...collection.deckNames,
+      ...cards.flatMap((card) => [card.deckName, card.filteredDeckName ?? card.deckName]),
+    ];
+    for (const name of named) {
+      if (!this.deckIds.has(name)) {
+        this.deckIds.set(name, 1_000 + this.deckIds.size);
+      }
+    }
+  }
+
+  private deckIdOf(name: string): number {
+    return this.deckIds.get(name) ?? 0;
   }
 
   /** Note ids are assigned in declaration order, mirroring `noteId` above. */
@@ -214,6 +229,11 @@ export class FakeAnkiConnectServer {
       }
       case 'deckNames':
         return [...this.collection.deckNames];
+      case 'deckNamesAndIds':
+        // The desktop add-on's action; the bridge does not implement it.
+        return this.options.cardShape === 'desktop'
+          ? Object.fromEntries(this.collection.deckNames.map((name) => [name, this.deckIdOf(name)]))
+          : undefined;
       case 'modelNames':
         return this.collection.noteTypes.map((noteType) => noteType.name);
       case 'modelFieldNames': {
@@ -302,41 +322,46 @@ export class FakeAnkiConnectServer {
   /**
    * Anki's search, reduced to what the adapter's queries use.
    *
-   * `deck:X` matches X and its descendants, `deck:filtered` the cards sitting in
-   * a filtered deck; a leading `-` negates a term; and `note:Y` matches the note
-   * type. Terms combine with AND. Per-card questions
-   * arrive as `(cid:1,2 term)` clauses joined by OR.
+   * Terms combine with AND, `OR` joins alternatives, parentheses group, and a
+   * leading `-` negates a term or a group. Quoted terms and bare ones both count:
+   * reading only the quoted half would silently drop every `rated:` term and
+   * answer the scope search instead, which is the same as claiming the learner
+   * answered their whole deck today.
    */
   private findCards(query: string): number[] {
-    const clauses = [...query.matchAll(/\(cid:([0-9,]+) ([^()]+)\)/gu)].map((match) => ({
-      ids: new Set(match[1]!.split(',').map(Number)),
-      term: match[2]!,
-    }));
-    if (clauses.length > 0) {
-      return this.cards
-        .filter((card) =>
-          clauses.some(
-            (clause) => clause.ids.has(card.cardId) && this.matchesTerm(card, clause.term),
-          ),
-        )
-        .map((card) => card.cardId);
-    }
-
-    // Quoted terms and bare ones both count. Reading only the quoted half would
-    // silently drop every `rated:` term and answer the scope search instead,
-    // which is the same as claiming the learner answered their whole deck today.
-    const terms = [...query.replace(/[()]/gu, ' ').matchAll(/(-?)("[^"]*"|\S+)/gu)].map(
-      (match) => ({ negated: match[1] === '-', term: unquote(match[2]!) }),
-    );
-
-    return this.cards
-      .filter((card) =>
-        terms.every(({ negated, term }) => {
-          const matched = this.matchesTerm(card, term);
-          return negated ? !matched : matched;
-        }),
-      )
-      .map((card) => card.cardId);
+    const tokens = query.match(/\(|\)|-|"(?:[^"\\]|\\.)*"|[^\s()"]+/gu) ?? [];
+    let position = 0;
+    const alternatives = (): ((card: ServerCard) => boolean) => {
+      const parts = [conjunction()];
+      while (tokens[position] === 'OR') {
+        position += 1;
+        parts.push(conjunction());
+      }
+      return (card) => parts.some((part) => part(card));
+    };
+    const conjunction = (): ((card: ServerCard) => boolean) => {
+      const parts: ((card: ServerCard) => boolean)[] = [];
+      while (position < tokens.length && tokens[position] !== ')' && tokens[position] !== 'OR') {
+        parts.push(unary());
+      }
+      return (card) => parts.every((part) => part(card));
+    };
+    const unary = (): ((card: ServerCard) => boolean) => {
+      const token = tokens[position++]!;
+      if (token === '-') {
+        const negated = unary();
+        return (card) => !negated(card);
+      }
+      if (token === '(') {
+        const group = alternatives();
+        position += 1;
+        return group;
+      }
+      const term = unquote(token);
+      return (card) => this.matchesTerm(card, term);
+    };
+    const matches = alternatives();
+    return this.cards.filter((card) => matches(card)).map((card) => card.cardId);
   }
 
   private matchesTerm(card: ServerCard, term: string): boolean {
@@ -345,12 +370,24 @@ export class FakeAnkiConnectServer {
       return card.filteredDeckName !== undefined;
     }
     if (term.startsWith('deck:')) {
-      // The home deck decides, as it does in Anki: a filtered deck moves a card
-      // for a while without changing which deck it belongs to. A matching deck
-      // brings its subdecks with it, which is how `deck:*` asks for the whole
-      // collection and `deck:X::*` for the subdecks without the parent.
-      const pattern = searchPattern(term.slice('deck:'.length));
-      return new RegExp(`^${pattern}(::.*)?$`, 'iu').test(card.deckName);
+      // Anki matches the deck a card sits in and, for a card a filtered deck has
+      // moved, its home deck as well. A matching deck brings its subdecks with
+      // it, which is how `deck:*` asks for the whole collection and `deck:X::*`
+      // for the subdecks without the parent.
+      const deck = new RegExp(`^${searchPattern(term.slice('deck:'.length))}(::.*)?$`, 'iu');
+      return [card.deckName, card.filteredDeckName].some(
+        (name) => name !== undefined && deck.test(name),
+      );
+    }
+    if (term.startsWith('did:')) {
+      // The same two decks by id, without subdecks.
+      const ids = new Set(term.slice('did:'.length).split(',').map(Number));
+      return [card.deckName, card.filteredDeckName].some(
+        (name) => name !== undefined && ids.has(this.deckIdOf(name)),
+      );
+    }
+    if (term.startsWith('cid:')) {
+      return term.slice('cid:'.length).split(',').map(Number).includes(card.cardId);
     }
     if (term.startsWith('note:')) {
       const pattern = searchPattern(term.slice('note:'.length));

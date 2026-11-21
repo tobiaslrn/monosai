@@ -41,10 +41,12 @@ describe('shared bridge wire fixtures', () => {
   };
   /**
    * Allowed of the desktop add-on, but deliberately not implemented by the
-   * bridge: AnkiDroid's content provider exposes no review log, so the fixture
-   * records the refusal the extraction path is written to fall back from.
+   * bridge. AnkiDroid's content provider exposes no review log, so the fixture
+   * records the refusal the extraction path is written to fall back from; and
+   * deck ids are asked only of the desktop add-on, because the bridge names a
+   * filtered card's home deck itself.
    */
-  const REFUSED_BY_BRIDGE = ['getReviewsOfCards'];
+  const REFUSED_BY_BRIDGE = ['deckNamesAndIds', 'getReviewsOfCards'];
   /**
    * Every card key the bridge can send. It sits outside the small collection the
    * fake replays, so it is checked against the schema rather than the fake.

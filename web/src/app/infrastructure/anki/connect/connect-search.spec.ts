@@ -5,7 +5,7 @@ import { ACTIVITY_SEARCHES, activitySearchFor, batched, searchFor } from './conn
 describe('searchFor', () => {
   it('asks for the deck and the note type', () => {
     expect(searchFor(mappingFor())).toBe(
-      '"deck:Core Japanese" "note:Basic" -"deck:Core Japanese::*"',
+      '"deck:Core Japanese" "note:Basic" (-"deck:Core Japanese::*" OR deck:filtered)',
     );
   });
 
@@ -23,7 +23,7 @@ describe('searchFor', () => {
   it('escapes the wildcards in deck and note type names, keeping the subdeck one', () => {
     // Unescaped, Anki reads `_` as any one character and `*` as any run of them.
     expect(searchFor(mappingFor({ deckName: 'N5_vocab*', noteTypeName: 'JP_Basic' }))).toBe(
-      '"deck:N5\\_vocab\\*" "note:JP\\_Basic" -"deck:N5\\_vocab\\*::*"',
+      '"deck:N5\\_vocab\\*" "note:JP\\_Basic" (-"deck:N5\\_vocab\\*::*" OR deck:filtered)',
     );
   });
 
@@ -49,7 +49,7 @@ describe('activity searches', () => {
   it('keeps the mapping scope escaped inside the group', () => {
     const query = activitySearchFor(mappingFor({ deckName: 'Grammar "notes"' }), 'rated:7:1');
     expect(query).toBe(
-      '("deck:Grammar \\"notes\\"" "note:Basic" -"deck:Grammar \\"notes\\"::*") rated:7:1',
+      '("deck:Grammar \\"notes\\"" "note:Basic" (-"deck:Grammar \\"notes\\"::*" OR deck:filtered)) rated:7:1',
     );
   });
 

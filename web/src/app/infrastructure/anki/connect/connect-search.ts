@@ -21,13 +21,19 @@ export function escapeTerm(value: string): string {
  * the one that needs expressing — by subtracting the descendants — rather than
  * the wider one. Getting this backwards would silently pull a learner's whole
  * deck tree into a mapping that named one deck.
+ *
+ * `deck:` matches a card in a filtered deck both by the deck it sits in and by
+ * its home deck, so the subtraction would also drop the deck's own cards while
+ * they sit in a filtered deck built inside it. Every filtered card under the
+ * deck is therefore kept in the search, and the caller decides by home deck
+ * which of them belong.
  */
 export function searchFor(mapping: SourceMapping): string {
   const deck = escapeTerm(mapping.deckName);
   const noteType = escapeTerm(mapping.noteTypeName);
   const terms = [`"deck:${deck}"`, `"note:${noteType}"`];
   if (mapping.deckScope === 'deck-only') {
-    terms.push(`-"deck:${deck}::*"`);
+    terms.push(`(-"deck:${deck}::*" OR deck:filtered)`);
   }
   return terms.join(' ');
 }

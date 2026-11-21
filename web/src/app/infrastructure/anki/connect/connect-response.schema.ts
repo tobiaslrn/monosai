@@ -38,6 +38,9 @@ export const nameListSchema = z.array(z.string());
 
 export const cardIdListSchema = z.array(z.number().int());
 
+/** `deckNamesAndIds`: every deck name, filtered ones included, with its id. */
+export const deckIdsSchema = z.record(z.string(), z.number().int().positive());
+
 /**
  * What AnkiConnect answers in place of a card or note that no longer exists.
  *

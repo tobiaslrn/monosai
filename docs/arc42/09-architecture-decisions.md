@@ -68,6 +68,7 @@ shared its number until it was given the next free one.
 | [0066](../decisions/0066-desktop-fsrs-difficulty-by-search.md)                   | Desktop FSRS difficulty uses the supported search language         |
 | [0067](../decisions/0067-recently-learned-is-a-focus-list.md)                    | Recently learned sends the newest words as an ordered focus list   |
 | [0097](../decisions/0097-anki-reading-and-cloze-syntax-is-not-the-expression.md) | Anki reading and cloze syntax is not part of the expression        |
+| [0098](../decisions/0098-a-filtered-card-belongs-to-its-home-deck.md)            | A filtered card belongs to its home deck                           |
 
 ### AI providers and generation
 

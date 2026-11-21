@@ -167,12 +167,12 @@ describe('recent practice from Anki', () => {
       .filter((request) => request.action === 'findCards')
       .map((request) => request.params['query']);
     expect(searches).toEqual([
-      '"deck:Core Japanese" "note:Basic" -"deck:Core Japanese::*"',
-      '("deck:Core Japanese" "note:Basic" -"deck:Core Japanese::*") rated:1',
-      '("deck:Core Japanese" "note:Basic" -"deck:Core Japanese::*") rated:3',
-      '("deck:Core Japanese" "note:Basic" -"deck:Core Japanese::*") rated:7',
-      '("deck:Core Japanese" "note:Basic" -"deck:Core Japanese::*") rated:7:1',
-      '("deck:Core Japanese" "note:Basic" -"deck:Core Japanese::*") rated:7:2',
+      '"deck:Core Japanese" "note:Basic" (-"deck:Core Japanese::*" OR deck:filtered)',
+      '("deck:Core Japanese" "note:Basic" (-"deck:Core Japanese::*" OR deck:filtered)) rated:1',
+      '("deck:Core Japanese" "note:Basic" (-"deck:Core Japanese::*" OR deck:filtered)) rated:3',
+      '("deck:Core Japanese" "note:Basic" (-"deck:Core Japanese::*" OR deck:filtered)) rated:7',
+      '("deck:Core Japanese" "note:Basic" (-"deck:Core Japanese::*" OR deck:filtered)) rated:7:1',
+      '("deck:Core Japanese" "note:Basic" (-"deck:Core Japanese::*" OR deck:filtered)) rated:7:2',
     ]);
   });
 

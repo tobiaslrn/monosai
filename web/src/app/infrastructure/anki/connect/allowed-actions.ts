@@ -6,7 +6,7 @@
  * typed as `AllowedAction`, so sending anything outside this list is a compile
  * error rather than something a review has to notice. Adding an entry here is
  * the only way to widen what Monosai can ask Anki to do, and every one of these
- * nine only reads.
+ * ten only reads.
  *
  * Never add an action that creates, changes, deletes, schedules, syncs, imports,
  * exports, stores media, or opens a window in the Anki UI.
@@ -15,6 +15,10 @@ export const ALLOWED_ACTIONS = [
   'version',
   'requestPermission',
   'deckNames',
+  // Deck ids for `did:` searches, which alone tell a filtered card's home deck
+  // from the filtered deck it sits in. Only the desktop adapter asks; the bridge
+  // names the home deck itself.
+  'deckNamesAndIds',
   'modelNames',
   'modelFieldNames',
   'findCards',
