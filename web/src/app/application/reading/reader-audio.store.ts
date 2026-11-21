@@ -101,6 +101,17 @@ export class ReaderAudioStore {
   readonly online = computed(() => this.network.isOnline());
 
   /**
+   * Whether this reading has a clip to delete: one saved before it opened, or
+   * one a running or parked run has saved since. A request that has produced
+   * nothing yet has nothing to delete; its stop is on the player.
+   */
+  readonly hasSavedAudio = computed(
+    () =>
+      (this.reader.reading()?.audioSummary.completed ?? 0) > 0 ||
+      this.playback.availableCount() > 0,
+  );
+
+  /**
    * Whether generation would be refused for want of a configuration.
    *
    * Resolved through the same service the job itself gates on rather than

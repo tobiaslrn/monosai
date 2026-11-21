@@ -151,7 +151,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
               @if (store.reading(); as reading) {
                 <mn-reader-menu
                   [rows]="actions.rows()"
-                  [hasAudio]="reading.audioSummary.completed > 0 || audio.running()"
+                  [hasAudio]="audio.hasSavedAudio()"
                   [savedLayers]="actions.savedTextLayers()"
                   [pending]="actions.pending()"
                   [error]="actions.error()"

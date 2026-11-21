@@ -361,7 +361,8 @@ there, or the lane steps aside from another reading for it, and while the lane i
 held or paused it waits on its row. The player reads audio's state from the lane, as Story options
 does, so a request waiting there offers _Stop generating audio_ rather than _Generate audio_, and
 with no clip yet the centre button stays busy as _Waiting to continue_ (_Waiting for connection_
-offline). While another tab has the
+offline). Story options offers _Delete audio…_ only once a clip is saved, since cancelling a
+request that has produced nothing is the player's stop, not a deletion. While another tab has the
 reading, the lane leaves it to that tab and the player offers _Generate audio_ again. All three
 layers start together, and every
 request they want to make takes its turn from one shared `PreparationPacer`: at most ten in flight

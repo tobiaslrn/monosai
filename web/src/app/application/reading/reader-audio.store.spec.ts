@@ -27,6 +27,7 @@ describe('ReaderAudioStore', () => {
   let laneProgress: WritableSignal<{ kind: string; readingId?: string }>;
   let online: WritableSignal<boolean>;
   let acknowledgeMaintenance: ReturnType<typeof vi.fn>;
+  let availableCount: WritableSignal<number>;
 
   const settled = () => TestBed.inject(ApplicationRef).whenStable();
 
@@ -41,6 +42,7 @@ describe('ReaderAudioStore', () => {
     laneProgress = signal({ kind: 'idle' });
     online = signal(true);
     acknowledgeMaintenance = vi.fn();
+    availableCount = signal(0);
 
     TestBed.configureTestingModule({
       providers: [
@@ -60,7 +62,10 @@ describe('ReaderAudioStore', () => {
           useValue: { acknowledge: acknowledgeMaintenance },
         },
         { provide: AudioConfigurationService, useValue: {} },
-        { provide: AudioPlaybackStore, useValue: { prepare, stopExpectingClips, status } },
+        {
+          provide: AudioPlaybackStore,
+          useValue: { prepare, stopExpectingClips, status, availableCount },
+        },
         { provide: TtsStore, useValue: { settings: voice } },
       ],
     });
@@ -133,6 +138,38 @@ describe('ReaderAudioStore', () => {
       online.set(false);
 
       expect(store.online()).toBe(false);
+    });
+  });
+
+  describe('whether there is audio to delete', () => {
+    const withSaved = (completed: number): Reading =>
+      ({ id: ID, audioSummary: { completed } }) as unknown as Reading;
+
+    // A request that has produced nothing would be "deleted" by cancelling it,
+    // which is the player's Stop, not a deletion.
+    it('has none while a request waits with no clip saved', () => {
+      const store = TestBed.inject(ReaderAudioStore);
+      reading.set(withSaved(0));
+      laneProgress.set({ kind: 'queued', readingId: ID });
+
+      expect(store.running()).toBe(true);
+      expect(store.hasSavedAudio()).toBe(false);
+    });
+
+    it('has the clips a parked run already saved', () => {
+      const store = TestBed.inject(ReaderAudioStore);
+      reading.set(withSaved(0));
+      progress.set({ kind: 'paused' });
+      availableCount.set(2);
+
+      expect(store.hasSavedAudio()).toBe(true);
+    });
+
+    it('has the clips the reading opened with', () => {
+      const store = TestBed.inject(ReaderAudioStore);
+      reading.set(withSaved(3));
+
+      expect(store.hasSavedAudio()).toBe(true);
     });
   });
 

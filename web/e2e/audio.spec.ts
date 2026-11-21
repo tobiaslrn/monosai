@@ -315,6 +315,13 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(
       audioPlayer(page).getByRole('button', { name: 'Stop generating audio' }),
     ).toBeVisible();
+    // Nothing is saved yet, so Story options offers nothing to delete.
+    await openReaderMenu(page);
+    const options = page.getByRole('dialog', { name: 'Story options', exact: true });
+    await expect(options.getByText('Waiting for connection')).toBeVisible();
+    await expect(options.getByRole('button', { name: 'Delete audio…' })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(options).toHaveCount(0);
 
     await context.setOffline(false);
     await expectAudioComplete(page);
