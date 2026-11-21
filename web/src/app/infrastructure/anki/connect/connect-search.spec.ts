@@ -20,6 +20,13 @@ describe('searchFor', () => {
     expect(query).toContain('"deck:Grammar \\"notes\\"\\\\old"');
   });
 
+  it('escapes the wildcards in deck and note type names, keeping the subdeck one', () => {
+    // Unescaped, Anki reads `_` as any one character and `*` as any run of them.
+    expect(searchFor(mappingFor({ deckName: 'N5_vocab*', noteTypeName: 'JP_Basic' }))).toBe(
+      '"deck:N5\\_vocab\\*" "note:JP\\_Basic" -"deck:N5\\_vocab\\*::*"',
+    );
+  });
+
   it('never asks Anki to filter by queue state', () => {
     // Eligibility is checked from cardsInfo: a card can be newly queued after
     // being forgotten, while a suspended card must be excluded.

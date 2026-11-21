@@ -1,15 +1,17 @@
 import type { SourceMapping } from '../../../domain/vocabulary/source-mapping';
 
 /**
- * Escapes a value for use inside a quoted Anki search term.
+ * Escapes a name for use inside a quoted Anki search term, so it matches only
+ * itself.
  *
- * Anki treats `"` and `\` specially inside quotes; everything else, including
- * spaces and `::`, is literal. Deck and note type names come from discovery, so
- * they are not attacker-controlled, but a deck called `Grammar "notes"` is
- * perfectly legal and would otherwise end the term early.
+ * Inside quotes Anki treats `"` and `\` specially, and reads `*` as any run of
+ * characters and `_` as any one; spaces and `::` are literal. Deck and note
+ * type names come from discovery, so they are not attacker-controlled, but a
+ * deck called `Grammar "notes"` would end the term early, and one called
+ * `N5_vocab` would also match the learner's `N5-vocab`.
  */
 export function escapeTerm(value: string): string {
-  return value.replace(/[\\"]/gu, (match) => `\\${match}`);
+  return value.replace(/[\\"*_]/gu, (match) => `\\${match}`);
 }
 
 /**

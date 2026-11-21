@@ -175,7 +175,8 @@ the same action ([ADR 0066](../decisions/0066-desktop-fsrs-difficulty-by-search.
 The bridge also names a filtered card's home deck; the desktop add-on reports
 only the deck a card sits in, so a reviewed card it places outside the mapping is
 kept when one `deck:filtered` search over the mapping confirms that a filtered
-deck moved it there.
+deck moved it there. Both adapters escape deck and note type names in every
+search, so Anki's `*` and `_` wildcards in a name match only themselves.
 The update boundary makes bounded HTTPS requests to GitHub only on app launch or
 explicit download and verifies the APK signer before system installation.
 The router also answers with the build's own identity — its release name and the

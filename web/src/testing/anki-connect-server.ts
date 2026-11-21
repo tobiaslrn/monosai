@@ -346,17 +346,15 @@ export class FakeAnkiConnectServer {
     }
     if (term.startsWith('deck:')) {
       // The home deck decides, as it does in Anki: a filtered deck moves a card
-      // for a while without changing which deck it belongs to.
-      const value = term.slice('deck:'.length);
-      // `*` is Anki's wildcard, which is how `deck:*` asks for the whole
+      // for a while without changing which deck it belongs to. A matching deck
+      // brings its subdecks with it, which is how `deck:*` asks for the whole
       // collection and `deck:X::*` for the subdecks without the parent.
-      if (value.includes('*')) {
-        return wildcard(value).test(card.deckName);
-      }
-      return card.deckName === value || card.deckName.startsWith(`${value}::`);
+      const pattern = searchPattern(term.slice('deck:'.length));
+      return new RegExp(`^${pattern}(::.*)?$`, 'iu').test(card.deckName);
     }
     if (term.startsWith('note:')) {
-      return card.noteTypeName === term.slice('note:'.length);
+      const pattern = searchPattern(term.slice('note:'.length));
+      return new RegExp(`^${pattern}$`, 'iu').test(card.noteTypeName);
     }
     if (term.startsWith('rated:')) {
       return this.wasRated(card, term.slice('rated:'.length));
@@ -421,11 +419,30 @@ function unquote(term: string): string {
   return term.startsWith('"') ? term.slice(1, -1) : term;
 }
 
-/** Anki's `*`, with every other character taken literally. */
-function wildcard(value: string): RegExp {
-  const pattern = value
-    .split('*')
-    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'))
-    .join('.*');
-  return new RegExp(`^${pattern}$`, 'u');
+/**
+ * Anki's search text as a regular expression.
+ *
+ * `*` stands for any run of characters and `_` for any one, as they do in
+ * Anki; a backslash makes the next character literal, so `\_` is an underscore.
+ */
+function searchPattern(value: string): string {
+  let pattern = '';
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index]!;
+    if (char === '\\' && index + 1 < value.length) {
+      index += 1;
+      pattern += literal(value[index]!);
+    } else if (char === '*') {
+      pattern += '.*';
+    } else if (char === '_') {
+      pattern += '.';
+    } else {
+      pattern += literal(char);
+    }
+  }
+  return pattern;
+}
+
+function literal(char: string): string {
+  return char.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
 }
