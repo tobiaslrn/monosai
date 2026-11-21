@@ -2,12 +2,6 @@ import type { Table } from 'dexie';
 import { ok, type Result } from '../../../domain/shared/result';
 import type { AssetId, ReadingId, SentenceId } from '../../../domain/shared/ids';
 import type { CompletionSummary, GrammarSummary } from '../../../domain/reading/summaries';
-import {
-  NO_GRAMMAR_REVIEW,
-  grammarComplete,
-  grammarPartial,
-} from '../../../domain/reading/summaries';
-import { concernCount } from '../../../domain/enrichment/grammar-normalization';
 import type {
   AudioMimeType,
   AudioAsset,
@@ -31,6 +25,7 @@ import {
   type TranslationRow,
   type TranslationPlanRow,
 } from '../schemas/enrichment.schema';
+import { coverageByKey, grammarCoverageByKey, storedCacheKeys } from './shared-aid-rows';
 import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage-operation';
 
 /**
@@ -434,7 +429,7 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     _readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<Result<GrammarSummary, StorageError>> {
-    return runStorage('grammarAnalyses.summarize', () => this.computeGrammarSummary(cacheKeys));
+    return runStorage('grammarAnalyses.summarize', () => grammarCoverageByKey(this.db, cacheKeys));
   }
 
   /**
@@ -535,35 +530,6 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     return [...cacheKeys.values()].filter((cacheKey) => stored.has(cacheKey)).length;
   }
 
-  /**
-   * Read by key, like every other count here: an analysis another reading
-   * wrote for the same sentence under the same key is this reading's too.
-   */
-  private async computeGrammarSummary(
-    cacheKeys: ReadonlyMap<SentenceId, string>,
-  ): Promise<GrammarSummary> {
-    if (cacheKeys.size === 0) {
-      return NO_GRAMMAR_REVIEW;
-    }
-    const rows = await this.db.grammarAnalyses
-      .where(':id')
-      .anyOf([...new Set(cacheKeys.values())])
-      .toArray();
-    const currentByKey = new Map(rows.map((row) => [row.cacheKey, row]));
-    let analyzedSentenceCount = 0;
-    let concern = 0;
-    for (const cacheKey of cacheKeys.values()) {
-      const row = currentByKey.get(cacheKey);
-      if (row !== undefined) {
-        analyzedSentenceCount += 1;
-        concern += concernCount(row.findings);
-      }
-    }
-    return analyzedSentenceCount === cacheKeys.size
-      ? grammarComplete(concern)
-      : grammarPartial(analyzedSentenceCount, concern);
-  }
-
   /** Fails the surrounding transaction when the reading was deleted meanwhile. */
   private async requireReading(readingId: ReadingId): Promise<void> {
     if ((await this.db.readings.where(':id').equals(readingId).count()) === 0) {
@@ -585,7 +551,7 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     readingId: ReadingId,
     cacheKeys: ReadonlyMap<SentenceId, string>,
   ): Promise<void> {
-    const summary = await this.computeGrammarSummary(cacheKeys);
+    const summary = await grammarCoverageByKey(this.db, cacheKeys);
     await this.db.readings.update(readingId, { grammarSummary: summary });
   }
 
@@ -606,8 +572,7 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
    * here, wherever its row says it was last written.
    */
   private async currentAudioCount(cacheKeys: ReadonlyMap<SentenceId, string>): Promise<number> {
-    const stored = await storedCacheKeys(this.db.audioAssets, cacheKeys);
-    return [...cacheKeys.values()].filter((cacheKey) => stored.has(cacheKey)).length;
+    return (await coverageByKey(this.db.audioAssets, cacheKeys)).completed;
   }
 
   private async refreshAudioSummary(
@@ -619,24 +584,6 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
       audioSummary: { total: cacheKeys.size, completed, failed: 0 },
     });
   }
-}
-
-/**
- * Which of these keys have a row, read through the primary key alone, so a
- * clip's bytes are never deserialized.
- */
-async function storedCacheKeys<Row>(
-  table: Table<Row, string>,
-  cacheKeys: ReadonlyMap<SentenceId, string>,
-): Promise<ReadonlySet<string>> {
-  if (cacheKeys.size === 0) {
-    return new Set();
-  }
-  const keys = await table
-    .where(':id')
-    .anyOf([...new Set(cacheKeys.values())])
-    .primaryKeys();
-  return new Set(keys);
 }
 
 /** Metadata for stored rows, validated and stripped of bytes and row version. */

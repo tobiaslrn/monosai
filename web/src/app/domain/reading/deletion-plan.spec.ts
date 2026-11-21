@@ -49,11 +49,18 @@ describe('describeDeletion', () => {
       }),
     );
     expect(plan.removes).toContain('12 saved translations');
-    expect(plan.removes).toContain('3 saved audio clips');
-    expect(plan.removes).toContain('Saved grammar analyses');
+    expect(plan.removes).toContain('Saved audio clips only this story uses');
+    expect(plan.removes).toContain('Saved grammar analyses only this story uses');
   });
 
-  it('uses the singular for a one-sentence reading and a single clip', () => {
+  it('gives no clip count, because clips another story with the same sentence uses are kept', () => {
+    const plan = describeDeletion(
+      reading({ audioSummary: { total: 12, completed: 3, failed: 0 } }),
+    );
+    expect(plan.removes.join(' ')).not.toMatch(/\d+ saved audio/);
+  });
+
+  it('uses the singular for a one-sentence reading', () => {
     const plan = describeDeletion(
       reading({
         sentenceCount: 1,
@@ -61,7 +68,6 @@ describe('describeDeletion', () => {
       }),
     );
     expect(plan.removes[0]).toBe('The text and 1 sentence');
-    expect(plan.removes).toContain('1 saved audio clip');
   });
 
   it('names a job that is running, so the learner knows what deleting stops', () => {

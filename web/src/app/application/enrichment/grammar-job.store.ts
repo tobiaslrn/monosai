@@ -8,7 +8,7 @@ import { remainingSentenceIds, type AssetJob, type JobState } from '../../domain
 import type { GrammarProfileSnapshot } from '../../domain/grammar/profile';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import { jobId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
-import type { Result } from '../../domain/shared/result';
+import { ok, type Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { GrammarProfileStore } from '../grammar/grammar-profile.store';
 import { LanguageStore } from '../language/language.store';
@@ -152,6 +152,39 @@ export class GrammarJobStore {
 
   acknowledge(readingId: ReadingId): void {
     this.lifecycle.acknowledge(readingId);
+  }
+
+  /**
+   * This reading's analysis key per sentence under the configured model and
+   * reading level, or null when no model is configured or the level cannot be
+   * captured yet, and so no analysis is current.
+   *
+   * What clearing the reading's grammar notes counts its summary by, the same
+   * keys a run stores under.
+   */
+  async currentCacheKeys(
+    readingId: ReadingId,
+  ): Promise<Result<ReadonlyMap<SentenceId, string> | null, StorageError>> {
+    await this.language.initialize();
+    const configured = this.textModel.configForTask('grammar');
+    if (configured === null) {
+      return ok(null);
+    }
+    const captured = await this.grammarProfile.captureProfile();
+    if (!captured.ok) {
+      return ok(null);
+    }
+    const refs = await this.readings.listSentenceRefs(readingId);
+    return refs.ok
+      ? ok(
+          this.keys.grammarKeys(
+            refs.value,
+            configured.modelId,
+            PROMPT_VERSIONS.grammar,
+            captured.value.profileHash,
+          ),
+        )
+      : refs;
   }
 
   /**

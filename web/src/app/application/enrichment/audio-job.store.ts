@@ -3,7 +3,7 @@ import { isAutomaticallyRetryable, type AiError } from '../../domain/ai/ai-error
 import { remainingSentenceIds, type AssetJob, type JobState } from '../../domain/enrichment/jobs';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import { jobId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
-import type { Result } from '../../domain/shared/result';
+import { ok, type Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
 import {
   CLOCK,
@@ -13,7 +13,7 @@ import {
 } from '../shared/repository-tokens';
 import { AudioConfigurationService, type ResolvedAudioConfig } from './audio-configuration.service';
 import { AudioSynthesisService, speechContextFor } from './audio-synthesis.service';
-import { EnrichmentKeysService } from './enrichment-keys.service';
+import { EnrichmentKeysService, type KeyableSentence } from './enrichment-keys.service';
 import { PreparationPacer, backOffOnRateLimit } from './preparation-pacer';
 import type { EnqueueOutcome, LayerCounts, LayerError } from './layer-progress';
 import {
@@ -291,6 +291,24 @@ export class AudioJobStore {
   }
 
   /**
+   * This reading's clip key per sentence under the configured voice, or null
+   * when no voice is configured and so no clip is current.
+   *
+   * What clearing the reading's audio counts its summary by, the same keys a
+   * run stores under.
+   */
+  async currentCacheKeys(
+    readingId: ReadingId,
+  ): Promise<Result<ReadonlyMap<SentenceId, string> | null, StorageError>> {
+    const config = this.audioConfig.resolve('tts-synthesis');
+    if (!config.ok) {
+      return ok(null);
+    }
+    const refs = await this.readings.listSentenceRefs(readingId);
+    return refs.ok ? ok(this.audioKeys(refs.value, config.value)) : refs;
+  }
+
+  /**
    * Resolves configuration, keys, and the job row this run will advance.
    *
    * A stored job whose `configFingerprint` no longer matches is closed rather
@@ -316,13 +334,7 @@ export class AudioJobStore {
     const context: JobContext = {
       readingId,
       config: config.value,
-      cacheKeys: this.keys.audioKeys(
-        refs.value,
-        config.value.modelId,
-        config.value.voiceId,
-        config.value.optionsFingerprint,
-        config.value.speechInstructions,
-      ),
+      cacheKeys: this.audioKeys(refs.value, config.value),
       total: refs.value.length,
       orderedSentenceIds: refs.value.map((ref) => ref.id),
     };
@@ -366,6 +378,19 @@ export class AudioJobStore {
     return created.ok
       ? { kind: 'planned', context, job: created.value }
       : unavailable({ source: 'storage', error: created.error });
+  }
+
+  private audioKeys(
+    refs: readonly KeyableSentence[],
+    config: ResolvedAudioConfig,
+  ): ReadonlyMap<SentenceId, string> {
+    return this.keys.audioKeys(
+      refs,
+      config.modelId,
+      config.voiceId,
+      config.optionsFingerprint,
+      config.speechInstructions,
+    );
   }
 
   /** Re-derives completion from stored clips, so a reload never over-reports. */

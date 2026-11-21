@@ -14,7 +14,7 @@ import {
 import { DexieEnrichmentRepository } from './repositories/dexie-enrichment.repository';
 import { DexieReadingRepository } from './repositories/dexie-reading.repository';
 import { DexieVocabularyRepository } from './repositories/dexie-vocabulary.repository';
-import { assetId, jobId } from '../../domain/shared/ids';
+import { assetId, jobId, type SentenceId } from '../../domain/shared/ids';
 import { DexieJobRepository } from './repositories/dexie-job.repository';
 import { uuid } from '../../../testing/persistence-fixtures';
 
@@ -965,7 +965,10 @@ describe('BrowserStorageMaintenance', () => {
       });
     }
 
-    const cleared = await maintenance.clearReadingAudio(target.reading.id);
+    const cleared = await maintenance.clearReadingAudio(
+      target.reading.id,
+      new Map([[target.sentences[0]!.id, 'target-audio']]),
+    );
 
     expect(cleared.ok).toBe(true);
     expect(await db.audioAssets.where('readingId').equals(target.reading.id).count()).toBe(0);
@@ -978,55 +981,156 @@ describe('BrowserStorageMaintenance', () => {
     expect(otherReading.ok && otherReading.value?.audioSummary.completed).toBe(1);
   });
 
-  it('keeps the clip and analysis another reading with the same sentence uses when one reading clears them', async () => {
-    const readings = new DexieReadingRepository(db, clock);
-    const enrichment = new DexieEnrichmentRepository(db);
+  describe('clearing one reading of two with the same sentences', () => {
     const target = importedReadingFixture({ seed: 33 });
     const twin = importedReadingFixture({ seed: 34 });
-    await readings.saveImportedReading(target);
-    await readings.saveImportedReading(twin);
-    const sentence = target.sentences[0]!;
-    await enrichment.storeAudio(
-      {
-        id: assetId(uuid(9450)),
-        sentenceId: sentence.id,
-        readingId: target.reading.id,
-        sourceContentHash: sentence.contentHash,
-        modelId: 'vendor/tts',
-        voiceId: 'voice-a',
-        optionsFingerprint: 'fingerprint',
-        mimeType: 'audio/mpeg',
-        byteLength: 2,
-        blob: new Blob([new Uint8Array([1, 2])], { type: 'audio/mpeg' }),
-        cacheKey: 'shared-audio',
-        createdAt: clock.now(),
-      },
-      new Map([[sentence.id, 'shared-audio']]),
-    );
-    await enrichment.storeGrammarAnalysis(
-      {
-        id: uuid(9451),
-        cacheKey: 'shared-grammar',
-        sentenceId: sentence.id,
-        readingId: target.reading.id,
-        sourceContentHash: sentence.contentHash,
-        profileHash: 'profile',
-        modelId: 'vendor/text',
-        promptVersion: 'v1',
-        findings: [],
-        createdAt: clock.now(),
-      },
-      new Map([[sentence.id, 'shared-grammar']]),
-    );
+    const readings = (): DexieReadingRepository => new DexieReadingRepository(db, clock);
+    const enrichment = (): DexieEnrichmentRepository => new DexieEnrichmentRepository(db);
 
-    expect((await maintenance.clearReadingAudio(target.reading.id)).ok).toBe(true);
-    expect((await maintenance.clearReadingAid(target.reading.id, 'grammar')).ok).toBe(true);
+    /** Every sentence keyed, the first one under `firstKey`, as a job would key them. */
+    function keysFor(
+      draft: typeof target,
+      firstKey: string,
+      kind: string,
+    ): ReadonlyMap<SentenceId, string> {
+      return new Map(
+        draft.sentences.map((sentence, index) => [
+          sentence.id,
+          index === 0 ? firstKey : `${kind}-${String(index)}`,
+        ]),
+      );
+    }
 
-    const twinSentence = twin.sentences[0]!.id;
-    expect((await db.audioAssets.get('shared-audio'))?.sentenceId).toBe(twinSentence);
-    expect((await db.grammarAnalyses.get('shared-grammar'))?.sentenceId).toBe(twinSentence);
-    const cleared = await readings.getReading(target.reading.id);
-    expect(cleared.ok && cleared.value?.audioSummary.completed).toBe(0);
+    async function storeFor(
+      draft: typeof target,
+      audioKey: string,
+      grammarKey: string,
+      seed: number,
+    ): Promise<void> {
+      const sentence = draft.sentences[0]!;
+      await enrichment().storeAudio(
+        {
+          id: assetId(uuid(seed)),
+          sentenceId: sentence.id,
+          readingId: draft.reading.id,
+          sourceContentHash: sentence.contentHash,
+          modelId: 'vendor/tts',
+          voiceId: 'voice-a',
+          optionsFingerprint: 'fingerprint',
+          mimeType: 'audio/mpeg',
+          byteLength: 2,
+          blob: new Blob([new Uint8Array([1, 2])], { type: 'audio/mpeg' }),
+          cacheKey: audioKey,
+          createdAt: clock.now(),
+        },
+        keysFor(draft, audioKey, 'audio'),
+      );
+      await enrichment().storeGrammarAnalysis(
+        {
+          id: uuid(seed + 1),
+          cacheKey: grammarKey,
+          sentenceId: sentence.id,
+          readingId: draft.reading.id,
+          sourceContentHash: sentence.contentHash,
+          profileHash: 'profile',
+          modelId: 'vendor/text',
+          promptVersion: 'v1',
+          findings: [],
+          createdAt: clock.now(),
+        },
+        keysFor(draft, grammarKey, 'grammar'),
+      );
+    }
+
+    async function clear(
+      draft: typeof target,
+      audioKey: string,
+      grammarKey: string,
+    ): Promise<void> {
+      expect(
+        (await maintenance.clearReadingAudio(draft.reading.id, keysFor(draft, audioKey, 'audio')))
+          .ok,
+      ).toBe(true);
+      expect(
+        (
+          await maintenance.clearReadingAid(
+            draft.reading.id,
+            'grammar',
+            keysFor(draft, grammarKey, 'grammar'),
+          )
+        ).ok,
+      ).toBe(true);
+    }
+
+    beforeEach(async () => {
+      await readings().saveImportedReading(target);
+      await readings().saveImportedReading(twin);
+    });
+
+    it('keeps the clip and analysis the other reading uses, and still counts them for the cleared one', async () => {
+      await storeFor(target, 'shared-audio', 'shared-grammar', 9450);
+
+      await clear(target, 'shared-audio', 'shared-grammar');
+
+      const twinSentence = twin.sentences[0]!.id;
+      expect((await db.audioAssets.get('shared-audio'))?.sentenceId).toBe(twinSentence);
+      expect((await db.grammarAnalyses.get('shared-grammar'))?.sentenceId).toBe(twinSentence);
+      // The cleared reading still has both under its current keys, so the
+      // reader still plays and shows them, and its summary says so.
+      const cleared = await readings().getReading(target.reading.id);
+      expect(cleared.ok && cleared.value?.audioSummary).toEqual({
+        total: target.sentences.length,
+        completed: 1,
+        failed: 0,
+      });
+      expect(cleared.ok && cleared.value?.grammarSummary).toEqual(
+        target.sentences.length === 1
+          ? { state: 'complete', concernCount: 0 }
+          : { state: 'partial', analyzedSentenceCount: 1, concernCount: 0 },
+      );
+    });
+
+    it('hands a row both readings use back and forth, and frees it only when audio is deleted for every story', async () => {
+      await storeFor(target, 'shared-audio', 'shared-grammar', 9460);
+
+      await clear(target, 'shared-audio', 'shared-grammar');
+      await clear(twin, 'shared-audio', 'shared-grammar');
+
+      expect((await db.audioAssets.get('shared-audio'))?.readingId).toBe(target.reading.id);
+      expect((await db.grammarAnalyses.get('shared-grammar'))?.readingId).toBe(target.reading.id);
+      for (const draft of [target, twin]) {
+        const stored = await readings().getReading(draft.reading.id);
+        expect(stored.ok && stored.value?.audioSummary.completed).toBe(1);
+      }
+
+      expect((await maintenance.clearAudioCache()).ok).toBe(true);
+      expect(await db.audioAssets.count()).toBe(0);
+    });
+
+    it('deletes a row the cleared reading no longer uses by key, rather than handing it to the other reading', async () => {
+      await storeFor(target, 'older-voice-audio', 'older-model-grammar', 9470);
+
+      await clear(target, 'current-audio', 'current-grammar');
+
+      expect(await db.audioAssets.get('older-voice-audio')).toBeUndefined();
+      expect(await db.grammarAnalyses.get('older-model-grammar')).toBeUndefined();
+      const cleared = await readings().getReading(target.reading.id);
+      expect(cleared.ok && cleared.value?.audioSummary.completed).toBe(0);
+      expect(cleared.ok && cleared.value?.grammarSummary).toEqual({ state: 'not-requested' });
+    });
+
+    it('keeps every row another reading has the sentence for when no configuration gives current keys', async () => {
+      await storeFor(target, 'shared-audio', 'shared-grammar', 9480);
+
+      expect((await maintenance.clearReadingAudio(target.reading.id, null)).ok).toBe(true);
+      expect((await maintenance.clearReadingAid(target.reading.id, 'grammar', null)).ok).toBe(true);
+
+      expect((await db.audioAssets.get('shared-audio'))?.readingId).toBe(twin.reading.id);
+      expect((await db.grammarAnalyses.get('shared-grammar'))?.readingId).toBe(twin.reading.id);
+      const cleared = await readings().getReading(target.reading.id);
+      expect(cleared.ok && cleared.value?.audioSummary.completed).toBe(0);
+      expect(cleared.ok && cleared.value?.grammarSummary).toEqual({ state: 'not-requested' });
+    });
   });
 
   it('clears one reading translation and its job without touching other aids', async () => {
@@ -1079,7 +1183,7 @@ describe('BrowserStorageMaintenance', () => {
       updatedAt: clock.now(),
     });
 
-    const cleared = await maintenance.clearReadingAid(draft.reading.id, 'english');
+    const cleared = await maintenance.clearReadingAid(draft.reading.id, 'english', null);
 
     expect(cleared.ok).toBe(true);
     expect(await db.translations.where('readingId').equals(draft.reading.id).count()).toBe(0);

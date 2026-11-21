@@ -1,5 +1,5 @@
 import type { Result } from '../shared/result';
-import type { ReadingId } from '../shared/ids';
+import type { ReadingId, SentenceId } from '../shared/ids';
 import type { PersistenceStatus } from './persistence-status';
 import type { StorageError } from './storage-error';
 
@@ -13,12 +13,29 @@ export interface StorageMaintenance {
   requestPersistence(): Promise<Result<PersistenceStatus, StorageError>>;
   /** Deletes audio blobs and audio jobs only. */
   clearAudioCache(): Promise<Result<void, StorageError>>;
-  /** Deletes audio blobs and audio jobs owned by one reading only. */
-  clearReadingAudio(readingId: ReadingId): Promise<Result<void, StorageError>>;
-  /** Deletes one reading's saved text aid and its resumable job atomically. */
+  /**
+   * Deletes one reading's clips and audio job, keeping a clip that is current
+   * for it and that another reading with the same sentence can use.
+   *
+   * `currentCacheKeys` are the reading's current clip keys, or null when no
+   * voice is configured. The reading's summary is counted again by them in the
+   * same transaction, so a kept clip it still plays keeps counting.
+   */
+  clearReadingAudio(
+    readingId: ReadingId,
+    currentCacheKeys: ReadonlyMap<SentenceId, string> | null,
+  ): Promise<Result<void, StorageError>>;
+  /**
+   * Deletes one reading's saved text aid and its resumable job atomically.
+   *
+   * For grammar, `currentCacheKeys` work as for audio: an analysis another
+   * reading with the same sentence uses is kept and still counted. A
+   * translation is never shared, so English takes null.
+   */
   clearReadingAid(
     readingId: ReadingId,
     layer: ClearableReadingAid,
+    currentCacheKeys: ReadonlyMap<SentenceId, string> | null,
   ): Promise<Result<void, StorageError>>;
   /**
    * Copies the stored rows into a JSON file, whatever schema version wrote them.

@@ -82,11 +82,14 @@ export function describeDeletion(
   if (reading.translationSummary.completed > 0) {
     removes.push(formatCountOf(reading.translationSummary.completed, 'saved translation'));
   }
+  // The audio and grammar summaries count by key, so they include clips and
+  // analyses another reading with the same sentence wrote or keeps. Those are
+  // handed on rather than deleted, so neither line gives a count.
   if (reading.audioSummary.completed > 0) {
-    removes.push(formatCountOf(reading.audioSummary.completed, 'saved audio clip'));
+    removes.push('Saved audio clips only this story uses');
   }
   if (reading.grammarSummary.state !== 'not-requested') {
-    removes.push('Saved grammar analyses');
+    removes.push('Saved grammar analyses only this story uses');
   }
 
   return {

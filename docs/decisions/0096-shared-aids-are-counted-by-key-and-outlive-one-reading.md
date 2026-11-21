@@ -36,12 +36,21 @@ is stored, so the store refreshes that reading's summary and not the one that wr
 
 **A deletion keeps a row another reading can use.** Deleting a reading, and clearing its grammar or
 audio, looks at the rows written for its sentences. When another reading has a sentence with the
-same content hash, the row is handed to that sentence and kept. Only the rest is deleted. The test is
-content, not the key, because the repository cannot compute another reading's current keys: they
-depend on settings. Content can over-keep, for a clip whose neighbouring sentences differ, or one
-made with a voice the other reading no longer uses. ADR 0072 plays such a clip as a fallback for the
-same text, so it is still useful. An analysis or a clip is never deleted while a sentence with the
-same text exists.
+same content hash, the row is handed to that sentence and kept. Only the rest is deleted.
+
+- **Deleting a reading** tests content, not the key, because the repository cannot compute another
+  reading's current keys: they depend on settings. Content can over-keep, for a clip whose
+  neighbouring sentences differ, or one made with a voice no reading uses any more. ADR 0072 plays
+  such a clip as a fallback for the same text, so it is still useful. A deleted reading's analysis
+  or clip is never deleted while a sentence with the same text exists.
+- **Clearing a reading's audio or grammar** passes the reading's current keys, and keeps only a
+  row that is current for it. Configuration is the same for every reading, so a row the cleared
+  reading no longer uses by key (an older voice or model) serves no other reading by key either,
+  and it is deleted. When no key can be computed (no voice or model is set up, or the profile
+  cannot be read), the clear falls back to the content test.
+- **After a clear**, the cleared reading's summary is counted by key in the same transaction, like
+  every other count. A row it shares with another reading still counts, and the reader still
+  plays or shows it, so the summary and the reader agree.
 
 **Storage.** Schema version 19 adds a `contentHash` index on `sentences`, which is how a deletion
 finds the twins. The browser builds the index inside the version-change transaction; no row is
@@ -63,8 +72,13 @@ at once, and the next deletion hands them on.
 
 - A reading's summary can count a row that another reading wrote, which is what makes a duplicate
   import cost nothing to prepare.
-- Clearing a reading's audio or grammar does not free a row that another reading with the same
-  sentence keeps. The cleared reading's summary is reset all the same. It may count the shared row
-  again on its next refresh.
+- Clearing a reading's audio or grammar deletes only what that reading alone uses, and the confirm
+  dialogs say so ("the audio only this story uses"). Neither they nor the deletion plan count or
+  promise space for a row another reading keeps.
+- Clearing two readings with the same sentence in turn moves a row that is current for both from
+  one to the other and back. That changes only the row's address: both readings keep counting and
+  playing it. Such a row is freed only by **Delete saved audio**, which deletes every clip of every
+  reading, or by deleting both readings. A row from an older voice or model never moves back,
+  because a clear deletes it.
 - A row's `readingId` and `sentenceId` now only say where a deletion starts looking. No query may
   use them to decide coverage.

@@ -82,7 +82,7 @@ import { HelpArticleComponent } from '../help-article.component';
           If this stops part of the way through, the same row offers <strong>Continue</strong> or
           <strong>Retry remaining</strong>. To remove a translation or notes, select
           <strong>Clear translation…</strong> or <strong>Clear grammar notes…</strong>. The Japanese
-          text stays as it is.
+          text stays as it is, and so do notes that another story with the same sentence uses.
         </p>
       </section>
 

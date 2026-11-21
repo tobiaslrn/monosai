@@ -193,7 +193,7 @@ export class ReaderContentActionsService {
     }
     const confirmed = await openConfirmDialog(this.dialog, {
       title: 'Delete audio for this story?',
-      message: 'This deletes all audio for this story.',
+      message: 'This deletes the audio only this story uses.',
       details: ['The story, translations, and grammar results stay saved.'],
       footnote: 'You can generate it again.',
       confirmLabel: 'Delete audio',
@@ -209,9 +209,13 @@ export class ReaderContentActionsService {
     if (this.textAidMaintenance.pending() !== null) return;
     const grammar = layer === 'grammar';
     const noun = grammar ? 'grammar notes' : 'translation';
+    // Grammar notes are shared by key with every story that has the same
+    // sentence, and a clear keeps those; a translation belongs to this story.
     const confirmed = await openConfirmDialog(this.dialog, {
       title: `Clear ${noun}?`,
-      message: `This deletes the saved ${noun}.`,
+      message: grammar
+        ? 'This deletes the grammar notes only this story uses.'
+        : 'This deletes the saved translation.',
       details: ['The Japanese text and its other reading aids stay saved.'],
       footnote: `You can add ${grammar ? 'them' : 'it'} again.`,
       confirmLabel: grammar ? 'Clear grammar notes' : 'Clear translation',

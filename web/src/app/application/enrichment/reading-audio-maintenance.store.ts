@@ -7,7 +7,10 @@ import { AudioJobStore } from './audio-job.store';
 
 export type ReadingAudioMaintenanceState = 'idle' | 'clearing' | 'cleared' | 'failed';
 
-/** Reader-scoped state for deleting only the open reading's generated audio. */
+/**
+ * Reader-scoped state for deleting the open reading's generated audio, except
+ * the clips another reading with the same sentence uses.
+ */
 @Injectable()
 export class ReadingAudioMaintenanceStore {
   private readonly maintenance = inject(STORAGE_MAINTENANCE);
@@ -27,7 +30,12 @@ export class ReadingAudioMaintenanceStore {
     this.errorSignal.set(null);
     await this.jobs.cancelAndWait(reading.id);
     this.playback.readingAudioCleared(reading.id);
-    const cleared = await this.maintenance.clearReadingAudio(reading.id);
+    // The summary is counted again by these keys, because a clip another
+    // reading with the same sentence uses stays and still plays here.
+    const keys = await this.jobs.currentCacheKeys(reading.id);
+    const cleared = keys.ok
+      ? await this.maintenance.clearReadingAudio(reading.id, keys.value)
+      : keys;
     if (!cleared.ok) {
       // The rows still exist, so restore availability from storage. Playback
       // stays stopped because deletion was explicitly requested.
