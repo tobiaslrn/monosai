@@ -234,10 +234,19 @@ export class TranslationJobStore {
     const batches = [...groups.values()];
     let counts = initialCounts;
     let firstError: AiError | null = null;
+    // A refusal of the whole setup: every batch still waiting would be refused
+    // the same way, so no worker sends another one (ADR 0048). A holder, so the
+    // value a worker sets is still visible once every worker has settled.
+    const setup: { refused: AiError | null } = { refused: null };
     let storage: StorageError | null = null;
     let next = 0;
     const worker = async (): Promise<void> => {
-      while (storage === null && !signal.aborted && !this.lifecycle.yieldRequested) {
+      while (
+        storage === null &&
+        setup.refused === null &&
+        !signal.aborted &&
+        !this.lifecycle.yieldRequested
+      ) {
         const batch = batches[next++];
         if (batch === undefined) {
           break;
@@ -279,21 +288,27 @@ export class TranslationJobStore {
           firstError ??= oversized;
           continue;
         }
-        const outcome = await this.withPermit(first.positionInReading, signal, () =>
-          this.translation.run(
-            batch,
-            context.readingId,
-            context.cacheKeys,
-            context.modelId,
-            plan.promptVersion,
-            context.taskConfig,
-            signal,
-            {
-              ...translationContextFor(plan, passage),
-              requestKind: 'tail',
-              skipCacheLookup: true,
-            },
-          ),
+        const outcome = await this.withPermit(
+          first.positionInReading,
+          signal,
+          () =>
+            this.translation.run(
+              batch,
+              context.readingId,
+              context.cacheKeys,
+              context.modelId,
+              plan.promptVersion,
+              context.taskConfig,
+              signal,
+              {
+                ...translationContextFor(plan, passage),
+                requestKind: 'tail',
+                skipCacheLookup: true,
+              },
+            ),
+          // A batch can wait a long time for its turn; the setup may have been
+          // refused while it did.
+          () => setup.refused !== null,
         );
         if (outcome === null) return;
         for (const record of outcome.records) {
@@ -331,7 +346,10 @@ export class TranslationJobStore {
             counts = { ...counts, failed: failed.value.failedItems.length };
           }
           firstError ??= error;
-          if (!isSentenceLocalTextFailure(error)) return;
+          if (!isSentenceLocalTextFailure(error)) {
+            setup.refused ??= error;
+            return;
+          }
         }
       }
     };
@@ -341,13 +359,14 @@ export class TranslationJobStore {
       ),
       run.controller,
     );
-    return { counts, error: firstError, storage };
+    return { counts, error: setup.refused ?? firstError, storage };
   }
 
   private async withPermit<T>(
     position: number,
     signal: AbortSignal,
     run: () => Promise<T>,
+    stopped: () => boolean = () => false,
   ): Promise<T | null> {
     let permit;
     try {
@@ -356,7 +375,7 @@ export class TranslationJobStore {
       return null;
     }
     try {
-      if (signal.aborted || this.lifecycle.yieldRequested) return null;
+      if (signal.aborted || this.lifecycle.yieldRequested || stopped()) return null;
       this.requestCount += 1;
       return await run();
     } finally {

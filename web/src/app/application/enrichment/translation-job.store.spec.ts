@@ -475,6 +475,38 @@ describe('TranslationJobStore', () => {
     expect(stored.ok && stored.value).toEqual([]);
   });
 
+  it('sends no further tail batch once the provider refuses the setup', async () => {
+    const draft = importedReadingFixture({
+      seed: 98,
+      paragraphTexts: [
+        Array.from({ length: 5 * MAX_TRANSLATION_BATCH }, (_value, index) => `鍵${String(index)}です。`),
+      ],
+    });
+    await bed.readings.saveImportedReading(draft);
+    let tailCalls = 0;
+    vi.spyOn(bed.provider, 'translate').mockImplementation(async (request) => {
+      const translations = translationTargets(request).map((sentence) => ({
+        id: sentence.id,
+        textEn: `EN ${sentence.textJa}`,
+      }));
+      if (request.kind === 'opening') return ok({ translations, glossary: [] });
+      tailCalls += 1;
+      if (tailCalls === 1) {
+        return err(aiError('authentication', 'translation', 'That key was rejected.'));
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return ok({ translations });
+    });
+
+    await bed.store.start(draft.reading.id);
+
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('failed');
+    // At most the two requests already in flight beside the refused one settle;
+    // no batch still waiting for its turn is sent with a refused key.
+    expect(tailCalls).toBeLessThanOrEqual(3);
+  });
+
   it('supplies every tail request the same frozen terminology and story context', async () => {
     await bed.store.start(bed.draft.reading.id);
 
