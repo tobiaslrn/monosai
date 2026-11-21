@@ -531,6 +531,45 @@ describe('DesktopConnectAdapter against the add-on answer shapes', () => {
     expect(collected.entries.map((entry) => entry.sourceNoteId).sort()).toEqual(['101', '102']);
   });
 
+  it('skips a card deleted in Anki between the search and the card read', async () => {
+    const adapter = desktopAdapterOver(
+      upstreamDesktopAnki((ids) =>
+        ids.map((id) => (id === 2 ? {} : upstreamCard(id, 'Core Japanese'))),
+      ),
+    );
+
+    const collected = await collectExtraction(adapter, [mapping]);
+
+    expect(collected.failure).toBeNull();
+    expect(collected.entries.map((entry) => entry.sourceNoteId)).toEqual(['101']);
+  });
+
+  it('skips a note deleted in Anki between the card read and the note read', async () => {
+    const adapter = desktopAdapterOver(
+      upstreamDesktopAnki(
+        (ids) => ids.map((id) => upstreamCard(id, 'Core Japanese')),
+        [],
+        (ids) =>
+          ids.map((noteId) =>
+            noteId === 102
+              ? {}
+              : {
+                  noteId,
+                  modelName: 'Basic',
+                  tags: [],
+                  fields: { Expression: { value: '猫', order: 0 } },
+                  cards: [],
+                },
+          ),
+      ),
+    );
+
+    const collected = await collectExtraction(adapter, [mapping]);
+
+    expect(collected.failure).toBeNull();
+    expect(collected.entries.map((entry) => entry.sourceNoteId)).toEqual(['101']);
+  });
+
   it('still drops a card outside the deck that no filtered deck explains', async () => {
     const adapter = desktopAdapterOver(
       upstreamDesktopAnki((ids) =>

@@ -148,7 +148,9 @@ export async function* extractMapping(
         : inScope(card, mapping),
     );
     eligibleCards.push(...eligible);
-    examined += cards.value.length;
+    // Counted by what was asked, so a card deleted during the read still
+    // moves progress to the total the search reported.
+    examined += batch.length;
 
     // Asked only for the cards that survived eligibility, and only inside this
     // batch, so the review log is never fetched for the whole collection.

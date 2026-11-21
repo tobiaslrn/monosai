@@ -39,6 +39,21 @@ export const nameListSchema = z.array(z.string());
 export const cardIdListSchema = z.array(z.number().int());
 
 /**
+ * What AnkiConnect answers in place of a card or note that no longer exists.
+ *
+ * `cardsInfo` and `notesInfo` answer an empty object for an id that was deleted
+ * after the search found it, which a long read over a live collection can meet
+ * whenever the learner edits in Anki at the same time. Only an exactly empty
+ * object counts, so a malformed element is still refused.
+ */
+const vanishedSchema = z.strictObject({}).transform(() => null);
+
+/** Drops the ids that vanished during the read; the rest of the batch stands. */
+function present<T>(items: readonly (T | null)[]): T[] {
+  return items.filter((item): item is T => item !== null);
+}
+
+/**
  * Only the card fields eligibility depends on.
  *
  * `reps` is the review evidence, `note` links the card to its note, and
@@ -46,42 +61,47 @@ export const cardIdListSchema = z.array(z.number().int());
  * returned rather than trusted from the search query alone. `queue` identifies
  * an explicitly suspended card, which is not vocabulary even if it has reps.
  */
-export const cardsInfoSchema = z.array(
-  z
-    .object({
-      cardId: z.number().int(),
-      note: z.number().int(),
-      reps: z.number().int().nonnegative(),
-      queue: z.number().int(),
-      /** Scheduling columns are absent from some Anki-compatible bridges. */
-      lapses: z.number().int().nonnegative().nullable().exactOptional(),
-      factor: z.number().int().nonnegative().nullable().exactOptional(),
-      /** Anki's `ivl`: positive days, or negative seconds while a card is learning. */
-      interval: z.number().int().nullable().exactOptional(),
-      /** Anki's card type code, which says whether the card is being learned. */
-      cardType: z.number().int().nullable().exactOptional(),
-      /** The desktop add-on's name for the same code; folded into `cardType` below. */
-      type: z.number().int().nullable().exactOptional(),
-      /** Raw FSRS memory-state difficulty, validated against its scale in the domain. */
-      fsrsDifficulty: z.number().nullable().exactOptional(),
-      /** Epoch milliseconds of the last answer. The bridge converts from seconds. */
-      lastReviewedAt: z.number().int().nullable().exactOptional(),
-      deckName: z.string(),
-      /**
-       * Home deck of a card currently in a filtered deck.
-       *
-       * A filtered deck moves a card without changing where it belongs, so deck
-       * scope has to be checked against this where it exists. Without it, studying
-       * from a filtered deck would silently drop a mapping's own cards.
-       */
-      originalDeckName: z.string().nullable().exactOptional(),
-    })
-    // AnkiConnect reports the card type as `type` and the first-party bridge as
-    // `cardType`. Reading only one would silently drop learning state for the
-    // other source, so both arrive at one field and the rest of the adapter
-    // never has to know which endpoint answered.
-    .transform(({ type, ...card }) => ({ ...card, cardType: card.cardType ?? type })),
-);
+export const cardsInfoSchema = z
+  .array(
+    z.union([
+      vanishedSchema,
+      z
+        .object({
+          cardId: z.number().int(),
+          note: z.number().int(),
+          reps: z.number().int().nonnegative(),
+          queue: z.number().int(),
+          /** Scheduling columns are absent from some Anki-compatible bridges. */
+          lapses: z.number().int().nonnegative().nullable().exactOptional(),
+          factor: z.number().int().nonnegative().nullable().exactOptional(),
+          /** Anki's `ivl`: positive days, or negative seconds while a card is learning. */
+          interval: z.number().int().nullable().exactOptional(),
+          /** Anki's card type code, which says whether the card is being learned. */
+          cardType: z.number().int().nullable().exactOptional(),
+          /** The desktop add-on's name for the same code; folded into `cardType` below. */
+          type: z.number().int().nullable().exactOptional(),
+          /** Raw FSRS memory-state difficulty, validated against its scale in the domain. */
+          fsrsDifficulty: z.number().nullable().exactOptional(),
+          /** Epoch milliseconds of the last answer. The bridge converts from seconds. */
+          lastReviewedAt: z.number().int().nullable().exactOptional(),
+          deckName: z.string(),
+          /**
+           * Home deck of a card currently in a filtered deck.
+           *
+           * A filtered deck moves a card without changing where it belongs, so deck
+           * scope has to be checked against this where it exists. Without it, studying
+           * from a filtered deck would silently drop a mapping's own cards.
+           */
+          originalDeckName: z.string().nullable().exactOptional(),
+        })
+        // AnkiConnect reports the card type as `type` and the first-party bridge as
+        // `cardType`. Reading only one would silently drop learning state for the
+        // other source, so both arrive at one field and the rest of the adapter
+        // never has to know which endpoint answered.
+        .transform(({ type, ...card }) => ({ ...card, cardType: card.cardType ?? type })),
+    ]),
+  )
+  .transform(present);
 
 /**
  * One entry per review, keyed by card id as a string.
@@ -96,10 +116,15 @@ export const reviewsOfCardsSchema = z.record(
   z.array(z.object({ id: z.number().int().positive(), ease: z.number().int() })),
 );
 
-export const notesInfoSchema = z.array(
-  z.object({
-    noteId: z.number().int(),
-    modelName: z.string(),
-    fields: z.record(z.string(), z.object({ value: z.string(), order: z.number().int() })),
-  }),
-);
+export const notesInfoSchema = z
+  .array(
+    z.union([
+      vanishedSchema,
+      z.object({
+        noteId: z.number().int(),
+        modelName: z.string(),
+        fields: z.record(z.string(), z.object({ value: z.string(), order: z.number().int() })),
+      }),
+    ]),
+  )
+  .transform(present);
