@@ -1,8 +1,8 @@
 import type { PlaybackFailure, PlaybackStatus } from '../../application/audio/audio-playback.store';
 import {
-  isAudioRunInProgress,
-  type AudioJobProgress,
-} from '../../application/enrichment/audio-job.store';
+  isReaderAudioInProgress,
+  type ReaderAudioProgress,
+} from '../../application/reading/reader-audio.store';
 import { PLAYBACK_RATES, type PlaybackRate } from '../../domain/settings/settings';
 import { defined } from '../../domain/shared/invariant';
 import type { IconName } from '../../shared-ui/icon/icon-set';
@@ -61,7 +61,7 @@ export interface CentreControl {
  * tested with a literal rather than with a store behind it.
  */
 export interface PlayerFacts {
-  readonly progress: AudioJobProgress;
+  readonly progress: ReaderAudioProgress;
   readonly status: PlaybackStatus;
   readonly failure: PlaybackFailure | null;
   readonly sentenceCount: number;
@@ -73,6 +73,7 @@ export interface PlayerFacts {
   readonly canPlayWholeReading: boolean;
   readonly hasStaleAudio: boolean;
   readonly modelConfigured: boolean;
+  readonly online: boolean;
 }
 
 /**
@@ -87,7 +88,7 @@ export function generationRail(facts: PlayerFacts): GenerationRail {
   if (progress.kind === 'deleted') {
     return 'none';
   }
-  if (isAudioRunInProgress(progress)) {
+  if (isReaderAudioInProgress(progress)) {
     return 'running';
   }
   if (facts.canPlayWholeReading) {
@@ -104,9 +105,21 @@ export function generationRail(facts: PlayerFacts): GenerationRail {
   return 'offer';
 }
 
-/** The run is parked between batches and will pick up on its own. */
+/**
+ * The run is parked between batches, or the request has not had its turn yet,
+ * and either picks up on its own.
+ */
 function isParked(facts: PlayerFacts): boolean {
-  return facts.progress.kind === 'paused';
+  return facts.progress.kind === 'paused' || facts.progress.kind === 'queued';
+}
+
+/**
+ * What a run in progress is doing, in the words the reader's story options
+ * use for the same run.
+ */
+function runState(facts: PlayerFacts): string {
+  if (!isParked(facts)) return 'Generating audio';
+  return facts.online ? 'Waiting to continue' : 'Waiting for connection';
 }
 
 /**
@@ -180,9 +193,7 @@ export function centreControl(facts: PlayerFacts): CentreControl {
       return {
         kind: 'generating',
         icon: 'generate',
-        // A parked run is waiting for its turn, in the words the reader's
-        // story options already use for it.
-        label: isParked(facts) ? 'Waiting to continue' : 'Generating audio',
+        label: runState(facts),
         disabled: false,
         busy: true,
       };
@@ -321,7 +332,7 @@ export function announcement(facts: PlayerFacts): string {
     );
   }
   if (rail === 'running') {
-    const state = isParked(facts) ? 'Waiting to continue' : 'Generating audio';
+    const state = runState(facts);
     const percent = coveragePercent(facts.availableCount, facts.sentenceCount);
     parts.push(`${state}, ${String(percent)}% of the reading ready.`);
   }

@@ -195,6 +195,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
             [progress]="audio.progress()"
             [selectedSentenceId]="audio.playerSentenceId()"
             [modelConfigured]="audio.hasModel()"
+            [online]="audio.online()"
             (generate)="audio.start()"
             (retryGeneration)="audio.retry()"
             (cancelGeneration)="actions.stop('audio')"

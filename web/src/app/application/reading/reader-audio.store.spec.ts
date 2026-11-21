@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Reading } from '../../domain/reading/reading';
 import { readingId } from '../../domain/shared/ids';
+import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { AudioPlaybackStore } from '../audio/audio-playback.store';
 import { AudioConfigurationService } from '../enrichment/audio-configuration.service';
 import { AudioJobStore } from '../enrichment/audio-job.store';
@@ -23,6 +24,8 @@ describe('ReaderAudioStore', () => {
   let prepare: ReturnType<typeof vi.fn>;
   let stopExpectingClips: ReturnType<typeof vi.fn>;
   let startLayer: ReturnType<typeof vi.fn>;
+  let laneProgress: WritableSignal<{ kind: string; readingId?: string }>;
+  let online: WritableSignal<boolean>;
   let acknowledgeMaintenance: ReturnType<typeof vi.fn>;
 
   const settled = () => TestBed.inject(ApplicationRef).whenStable();
@@ -35,6 +38,8 @@ describe('ReaderAudioStore', () => {
     prepare = vi.fn(() => Promise.resolve());
     stopExpectingClips = vi.fn();
     startLayer = vi.fn(() => Promise.resolve());
+    laneProgress = signal({ kind: 'idle' });
+    online = signal(true);
     acknowledgeMaintenance = vi.fn();
 
     TestBed.configureTestingModule({
@@ -45,7 +50,11 @@ describe('ReaderAudioStore', () => {
           provide: AudioJobStore,
           useValue: { idleProgress: { kind: 'idle' }, progressFor: () => progress() },
         },
-        { provide: PreparationStore, useValue: { startLayer } },
+        {
+          provide: PreparationStore,
+          useValue: { startLayer, progressFor: () => laneProgress() },
+        },
+        { provide: NETWORK_STATUS, useValue: { isOnline: online } },
         {
           provide: ReadingAudioMaintenanceStore,
           useValue: { acknowledge: acknowledgeMaintenance },
@@ -95,6 +104,35 @@ describe('ReaderAudioStore', () => {
 
       expect(acknowledgeMaintenance).toHaveBeenCalledOnce();
       expect(startLayer).toHaveBeenCalledExactlyOnceWith(ID, 'audio');
+    });
+  });
+
+  describe('what the player is told', () => {
+    // The lane's word for a request that has not had its turn, which is what
+    // Story options says about the same run: the player must not go on
+    // offering Generate audio after it was pressed.
+    it('reports a request still waiting for the lane as in progress', () => {
+      const store = TestBed.inject(ReaderAudioStore);
+      laneProgress.set({ kind: 'queued', readingId: ID });
+
+      expect(store.progress()).toEqual({ kind: 'queued', readingId: ID });
+      expect(store.running()).toBe(true);
+      expect(store.buttonLabel()).toBe('Audio, being generated');
+    });
+
+    it("reports the run's own progress once it has started", () => {
+      const store = TestBed.inject(ReaderAudioStore);
+      progress.set({ kind: 'running' });
+      laneProgress.set({ kind: 'running' });
+
+      expect(store.progress()).toEqual({ kind: 'running' });
+    });
+
+    it('says whether the connection is there', () => {
+      const store = TestBed.inject(ReaderAudioStore);
+      online.set(false);
+
+      expect(store.online()).toBe(false);
     });
   });
 

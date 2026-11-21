@@ -1,9 +1,7 @@
 import type { PlaybackFailure, PlaybackStatus } from '../../application/audio/audio-playback.store';
-import type {
-  AudioJobCounts,
-  AudioJobProgress,
-} from '../../application/enrichment/audio-job.store';
+import type { AudioJobCounts } from '../../application/enrichment/audio-job.store';
 import type { LayerError } from '../../application/enrichment/layer-progress';
+import type { ReaderAudioProgress } from '../../application/reading/reader-audio.store';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import type { PlaybackRate } from '../../domain/settings/settings';
 import { formatCountOf } from '../../domain/shared/locale';
@@ -47,7 +45,7 @@ export function playbackFailureMessage(failure: PlaybackFailure | null): string 
  * track and the ring alone; a count in words repeated what they showed.
  */
 export function stoppedRunLine(
-  progress: AudioJobProgress,
+  progress: ReaderAudioProgress,
   availableCount: number,
   sentenceCount: number,
 ): string {
@@ -57,6 +55,7 @@ export function stoppedRunLine(
     case 'idle':
     case 'complete':
     case 'deleted':
+    case 'queued':
     case 'preparing':
     case 'running':
     case 'paused':
@@ -113,7 +112,7 @@ function attemptLine(counts: AudioJobCounts): string {
 }
 
 /** Why a run failed, in the words the rest of the reader uses; null when it did not. */
-export function stoppedRunFailure(progress: AudioJobProgress): string | null {
+export function stoppedRunFailure(progress: ReaderAudioProgress): string | null {
   if (progress.kind !== 'failed') {
     return null;
   }

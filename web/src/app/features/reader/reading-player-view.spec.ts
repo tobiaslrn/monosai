@@ -20,6 +20,8 @@ const COUNTS = { total: 13, requested: 13, completed: 4, failed: 0 };
 const RUNNING: AudioJobProgress = { kind: 'running', readingId: READING, counts: COUNTS };
 const PAUSED: AudioJobProgress = { kind: 'paused', readingId: READING, counts: COUNTS };
 const CANCELLED: AudioJobProgress = { kind: 'cancelled', readingId: READING, counts: COUNTS };
+/** Asked for, and waiting on its row for the preparation lane. */
+const QUEUED = { kind: 'queued', readingId: READING } as const;
 
 function failed(canRetry: boolean): AudioJobProgress {
   return {
@@ -48,6 +50,7 @@ function facts(overrides: Partial<PlayerFacts> = {}): PlayerFacts {
     canPlayWholeReading: false,
     hasStaleAudio: false,
     modelConfigured: true,
+    online: true,
     ...overrides,
   };
 }
@@ -62,6 +65,10 @@ describe('generationRail', () => {
     );
     expect(generationRail(facts({ progress: RUNNING }))).toBe('running');
     expect(generationRail(facts({ progress: PAUSED }))).toBe('running');
+  });
+
+  it('reports a request still waiting for its turn as going', () => {
+    expect(generationRail(facts({ progress: QUEUED }))).toBe('running');
   });
 
   it('says nothing once the reading was deleted, whatever else is true', () => {
@@ -130,6 +137,23 @@ describe('centreControl', () => {
     });
   });
 
+  it('stays the busy Generate control while the request waits for the lane', () => {
+    expect(centreControl(facts({ progress: QUEUED }))).toEqual({
+      kind: 'generating',
+      icon: 'generate',
+      label: 'Waiting to continue',
+      disabled: false,
+      busy: true,
+    });
+    expect(centreControl(facts({ progress: QUEUED, online: false }))).toMatchObject({
+      label: 'Waiting for connection',
+      busy: true,
+    });
+    expect(centreControl(facts({ progress: PAUSED, online: false }))).toMatchObject({
+      label: 'Waiting for connection',
+    });
+  });
+
   it('is Pause while playing, whatever the run is doing', () => {
     expect(centreControl(facts({ status: 'playing', progress: RUNNING, ...PARTIAL }))).toEqual({
       kind: 'pause',
@@ -193,6 +217,14 @@ describe('auxAction', () => {
       label: 'Stop generating audio',
       tone: 'accent',
     });
+  });
+
+  it('is Stop while a request waits for the lane, and no longer offers Generate', () => {
+    expect(auxAction(facts({ progress: QUEUED }))).toMatchObject({
+      kind: 'cancel',
+      label: 'Stop generating audio',
+    });
+    expect(auxAction(facts({ progress: QUEUED, ...PARTIAL }))).toMatchObject({ kind: 'cancel' });
   });
 
   it('acknowledges a playback failure before offering anything else', () => {
@@ -272,6 +304,9 @@ describe('announcement', () => {
       'Generating audio, 31% of the reading ready.',
     );
     expect(announcement(facts({ progress: PAUSED, ...PARTIAL }))).toContain(
+      'Waiting to continue, 31% of the reading ready.',
+    );
+    expect(announcement(facts({ progress: QUEUED, ...PARTIAL }))).toContain(
       'Waiting to continue, 31% of the reading ready.',
     );
   });

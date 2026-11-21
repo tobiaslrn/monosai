@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AudioPlaybackStore } from '../../application/audio/audio-playback.store';
-import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
+import type { ReaderAudioProgress } from '../../application/reading/reader-audio.store';
 import type { SentenceId } from '../../domain/shared/ids';
 import { IconComponent } from '../../shared-ui/icon/icon.component';
 import { GenerationRingComponent } from './generation-ring.component';
@@ -416,11 +416,13 @@ import { ReadingTrackComponent } from './reading-track.component';
 export class ReadingPlayerComponent {
   protected readonly store = inject(AudioPlaybackStore);
 
-  readonly progress = input.required<AudioJobProgress>();
+  readonly progress = input.required<ReaderAudioProgress>();
   /** The sentence that was selected when the player was opened, for Start from here. */
   readonly selectedSentenceId = input<SentenceId | null>(null);
   /** Drives the setup link, since audio cannot be generated without a model. */
   readonly modelConfigured = input<boolean>(false);
+  /** Whether a waiting run is waiting for the connection rather than its turn. */
+  readonly online = input<boolean>(true);
 
   readonly generate = output<void>();
   readonly retryGeneration = output<void>();
@@ -441,6 +443,7 @@ export class ReadingPlayerComponent {
     canPlayWholeReading: this.store.canPlayWholeReading(),
     hasStaleAudio: this.store.hasStaleAudio(),
     modelConfigured: this.modelConfigured(),
+    online: this.online(),
   }));
 
   protected readonly setupRequired = computed(() => setupNeeded(this.facts()));

@@ -10,6 +10,7 @@ import {
   type PlaybackStatus,
 } from '../../application/audio/audio-playback.store';
 import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
+import type { ReaderAudioProgress } from '../../application/reading/reader-audio.store';
 import { aiError } from '../../domain/ai/ai-error';
 import type { PlaybackRate } from '../../domain/settings/settings';
 import { readingId, sentenceId, type SentenceId } from '../../domain/shared/ids';
@@ -120,6 +121,7 @@ class StubPlaybackStore {
     [progress]="progress()"
     [selectedSentenceId]="selected()"
     [modelConfigured]="modelConfigured()"
+    [online]="online()"
     (generate)="emitted.push('generate')"
     (retryGeneration)="emitted.push('retry')"
     (cancelGeneration)="emitted.push('cancel')"
@@ -127,9 +129,10 @@ class StubPlaybackStore {
   />`,
 })
 class HostComponent {
-  readonly progress = signal<AudioJobProgress>({ kind: 'idle' });
+  readonly progress = signal<ReaderAudioProgress>({ kind: 'idle' });
   readonly selected = signal<SentenceId | null>(null);
   readonly modelConfigured = signal(true);
+  readonly online = signal(true);
   readonly emitted: string[] = [];
 }
 
@@ -457,6 +460,34 @@ describe('ReadingPlayerComponent', () => {
       expect(button.getAttribute('aria-busy')).toBe('true');
       expect(button.getAttribute('aria-label')).toBe('Waiting to continue');
       expect(button.disabled).toBe(false);
+    });
+
+    /*
+     * A press the lane cannot start at once waits on its row. The button the
+     * learner pressed has to say so rather than go on offering Generate audio.
+     */
+    it('stays the same busy button while the request waits for the lane', () => {
+      store.total.set(13);
+      const fixture = attached();
+      const button = primary(fixture);
+      button.focus();
+      button.click();
+      fixture.componentInstance.progress.set({ kind: 'queued', readingId: READING });
+      fixture.detectChanges();
+
+      expect(primary(fixture)).toBe(button);
+      expect(document.activeElement).toBe(button);
+      expect(button.getAttribute('aria-busy')).toBe('true');
+      expect(button.getAttribute('aria-label')).toBe('Waiting to continue');
+      expect(button.disabled).toBe(false);
+      const element = fixture.nativeElement as HTMLElement;
+      expect(said(element)).toContain('Waiting to continue, 0% of the reading ready.');
+      control(element, 'Stop generating audio')?.click();
+      expect(fixture.componentInstance.emitted).toEqual(['generate', 'cancel']);
+
+      fixture.componentInstance.online.set(false);
+      fixture.detectChanges();
+      expect(button.getAttribute('aria-label')).toBe('Waiting for connection');
     });
 
     it('keeps its focus from Play to Pause and back', () => {

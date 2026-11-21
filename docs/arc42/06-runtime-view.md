@@ -354,11 +354,16 @@ sequenceDiagram
 The lane runs one reading at a time: the open one first, then the rest in the order their rows were
 created. A reading it stepped aside from for the open one parks at a batch boundary and takes its
 place in that order again as soon as the open reading is done, including when the open reading had
-nothing to prepare. A layer the learner asks for on the open
-reading, the player's _Generate audio_ included, also goes through the lane, so the reading is
-claimed before anything is requested: it starts beside the layers already working that reading,
-again if it already finished there, or the lane steps aside from another reading for it, and while a hold or another tab has the reading it waits on
-its row. All three layers start together, and every
+nothing to prepare. A layer the learner asks for on the open reading, the player's _Generate
+audio_ included, also goes through the lane, so the reading is claimed before anything is
+requested: it starts beside the layers already working that reading, again if it already finished
+there, or the lane steps aside from another reading for it, and while the lane is stepping aside,
+held or paused it waits on its row. The player reads audio's state from the lane, as Story options
+does, so a request waiting there offers _Stop generating audio_ rather than _Generate audio_, and
+with no clip yet the centre button stays busy as _Waiting to continue_ (_Waiting for connection_
+offline). While another tab has the
+reading, the lane leaves it to that tab and the player offers _Generate audio_ again. All three
+layers start together, and every
 request they want to make takes its turn from one shared `PreparationPacer`: at most ten in flight
 across the three layers, granted to the lowest waiting `(sentence position, layer)`. The reading
 therefore fills front to back — sentence 1's English, grammar and clip before sentence 60's English —

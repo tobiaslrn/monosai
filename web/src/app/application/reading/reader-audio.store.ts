@@ -3,12 +3,32 @@ import type { Reading } from '../../domain/reading/reading';
 import type { ReadingId, SentenceId } from '../../domain/shared/ids';
 import { AudioPlaybackStore } from '../audio/audio-playback.store';
 import { AudioConfigurationService } from '../enrichment/audio-configuration.service';
-import { AudioJobStore, isAudioRunInProgress } from '../enrichment/audio-job.store';
+import {
+  AudioJobStore,
+  isAudioRunInProgress,
+  type AudioJobProgress,
+} from '../enrichment/audio-job.store';
 import { PreparationStore } from '../enrichment/preparation.store';
 import { ReadingAudioMaintenanceStore } from '../enrichment/reading-audio-maintenance.store';
+import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { TtsStore } from '../settings/tts.store';
 import { LOGGER, NOOP_LOGGER, reportRejection, type Logger } from '../shared/diagnostics';
 import { ReaderStore } from './reader.store';
+
+/**
+ * The open reading's audio as the reader shows it: the run's own progress, or
+ * `queued` while a request waits on its row for the preparation lane.
+ */
+export type ReaderAudioProgress =
+  AudioJobProgress | { readonly kind: 'queued'; readonly readingId: ReadingId };
+
+/**
+ * Whether audio is on its way for the learner: a run going, parked between
+ * batches, or a request the lane has not started yet.
+ */
+export function isReaderAudioInProgress(progress: ReaderAudioProgress): boolean {
+  return progress.kind === 'queued' || isAudioRunInProgress(progress);
+}
 
 /**
  * Everything the reader knows about the open reading's audio.
@@ -30,6 +50,7 @@ export class ReaderAudioStore {
   private readonly lane = inject(PreparationStore);
   private readonly maintenance = inject(ReadingAudioMaintenanceStore);
   private readonly configuration = inject(AudioConfigurationService);
+  private readonly network = inject(NETWORK_STATUS);
   readonly playback = inject(AudioPlaybackStore);
   readonly tts = inject(TtsStore);
 
@@ -58,13 +79,26 @@ export class ReaderAudioStore {
   readonly maintenanceState = computed(() => this.maintenance.state());
   readonly maintenanceError = computed(() => this.maintenance.error());
 
-  readonly progress = computed(() => {
+  /**
+   * Read through the lane, the source Story options reads, so a request still
+   * waiting for its turn shows as waiting in both places rather than as an
+   * offer to generate on the player.
+   */
+  readonly progress = computed<ReaderAudioProgress>(() => {
     const id = this.readingIdSignal();
-    return id === null ? this.job.idleProgress : this.job.progressFor(id);
+    if (id === null) return this.job.idleProgress;
+    const lane = this.lane.progressFor(id, 'audio');
+    return lane.kind === 'queued' ? lane : this.job.progressFor(id);
   });
 
-  /** A run is in progress for the learner, including one parked between batches. */
-  readonly running = computed(() => isAudioRunInProgress(this.progress()));
+  /**
+   * A run is in progress for the learner, including one parked between batches
+   * and a request waiting for the lane.
+   */
+  readonly running = computed(() => isReaderAudioInProgress(this.progress()));
+
+  /** Whether a waiting run is waiting for the connection rather than its turn. */
+  readonly online = computed(() => this.network.isOnline());
 
   /**
    * Whether generation would be refused for want of a configuration.

@@ -297,7 +297,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(sentencePopover(page)).toBeVisible();
   });
 
-  test('a run pressed while offline says so, and Try again works once reconnected', async ({
+  test('a run pressed while offline waits for the connection, and goes on once reconnected', async ({
     page,
     context,
   }) => {
@@ -306,15 +306,17 @@ test.describe('scenario 13 — audio preparation and playback', () => {
 
     await context.setOffline(true);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expect(playerStatus(page)).toContainText('Offline', {
-      timeout: 15_000,
-    });
+    // The pressed button stays where it was, busy, and says what it waits for.
+    const waiting = audioPlayer(page).getByRole('button', { name: 'Waiting for connection' });
+    await expect(waiting).toHaveAttribute('aria-busy', 'true');
+    await expect(playerStatus(page)).toContainText(
+      'Waiting for connection, 0% of the reading ready.',
+    );
     await expect(
       audioPlayer(page).getByRole('button', { name: 'Stop generating audio' }),
-    ).toHaveCount(0);
+    ).toBeVisible();
 
     await context.setOffline(false);
-    await audioPlayer(page).getByRole('button', { name: 'Try again' }).click();
     await expectAudioComplete(page);
   });
 
