@@ -7,7 +7,9 @@ import { hashCanonical, type Hasher } from '../shared/hashing';
  * whole transformation. It exists so that two fields differing only in Unicode
  * composition are recognized as the same entry — it is not a place to change
  * lexical content, so half-width kana becoming full-width is intended while
- * splitting, stripping punctuation, or rewriting orthography is not.
+ * splitting, stripping punctuation, or rewriting orthography is not. Anki's
+ * reading and cloze syntax is removed before this, during extraction, because
+ * it was never part of the expression the learner sees.
  */
 export function canonicalizeExpression(visible: string): string {
   return visible.normalize('NFKC');

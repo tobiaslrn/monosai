@@ -3,7 +3,9 @@ import type { MarkupTextExtractor } from '../../domain/anki/markup-text';
 /**
  * Elements whose content is never visible text. Media elements are listed too:
  * a field holding an image or a sound tag contributes nothing readable, and
- * their attributes must not leak into the expression.
+ * their attributes must not leak into the expression. Ruby readings (`rt`) and
+ * their fallback parentheses (`rp`) are an annotation over the base text rather
+ * than part of it, so `<ruby>食<rt>た</rt></ruby>べる` reads as `食べる`.
  */
 const DROPPED_TAGS = new Set([
   'SCRIPT',
@@ -20,6 +22,8 @@ const DROPPED_TAGS = new Set([
   'IMG',
   'HEAD',
   'TITLE',
+  'RT',
+  'RP',
 ]);
 
 /**

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { canonicalizeExpression, expressionHashOf } from '../../domain/anki/canonical-expression';
 import { mergeEntries, type PreparedEntry } from '../../domain/anki/deduplication';
-import { extractVisibleText } from '../../domain/anki/field-extraction';
+import { extractExpression, extractVisibleText } from '../../domain/anki/field-extraction';
 import type { MarkupTextExtractor } from '../../domain/anki/markup-text';
 import { normalizeSchedulingSignals } from '../../domain/anki/scheduling-signals';
 import { ANALYZER_VERSION, NORMALIZATION_VERSION } from '../../domain/language/analyzer-version';
@@ -87,7 +87,7 @@ export class SnapshotBuilder {
       if (source?.kind === 'text-list') {
         visibleExpression = entry.rawValue?.trim();
       } else if (source !== undefined) {
-        const extracted = extractVisibleText(entry.rawValue, this.extractor);
+        const extracted = extractExpression(entry.rawValue, this.extractor);
         if (extracted.ok) {
           visibleExpression = extracted.value;
         }

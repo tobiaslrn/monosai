@@ -53,20 +53,21 @@ shared its number until it was given the next free one.
 
 ### Anki
 
-| ADR                                                                   | Decision                                                           |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| [0016](../decisions/0016-anki-package-parsing.md)                     | Anki package parsing                                               |
-| [0017](../decisions/0017-anki-connect-origin-policy.md)               | What an opaque AnkiConnect failure is called                       |
-| [0036](../decisions/0036-android-package-share-target.md)             | Android package sharing uses a service-worker inbox                |
-| [0055](../decisions/0055-anki-mapping-is-suggested-then-confirmed.md) | An Anki mapping is suggested from Japanese samples, then confirmed |
-| [0056](../decisions/0056-first-party-ankidroid-bridge.md)             | First-party read-only AnkiDroid bridge and shared wire contract    |
-| [0077](../decisions/0077-the-bridge-publishes-itself.md)              | The bridge publishes itself from a committed version               |
-| [0078](../decisions/0078-the-bridge-announces-a-contract.md)          | The bridge announces a contract the web app negotiates against     |
-| [0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)     | One Anki entry chosen by platform, and a page per source           |
-| [0061](../decisions/0061-anki-word-selection-signal-ladder.md)        | Anki word selection weights a ladder of scheduling evidence        |
-| [0065](../decisions/0065-ankidroid-first-review-study-day.md)         | AnkiDroid first review uses the supported search language          |
-| [0066](../decisions/0066-desktop-fsrs-difficulty-by-search.md)        | Desktop FSRS difficulty uses the supported search language         |
-| [0067](../decisions/0067-recently-learned-is-a-focus-list.md)         | Recently learned sends the newest words as an ordered focus list   |
+| ADR                                                                              | Decision                                                           |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [0016](../decisions/0016-anki-package-parsing.md)                                | Anki package parsing                                               |
+| [0017](../decisions/0017-anki-connect-origin-policy.md)                          | What an opaque AnkiConnect failure is called                       |
+| [0036](../decisions/0036-android-package-share-target.md)                        | Android package sharing uses a service-worker inbox                |
+| [0055](../decisions/0055-anki-mapping-is-suggested-then-confirmed.md)            | An Anki mapping is suggested from Japanese samples, then confirmed |
+| [0056](../decisions/0056-first-party-ankidroid-bridge.md)                        | First-party read-only AnkiDroid bridge and shared wire contract    |
+| [0077](../decisions/0077-the-bridge-publishes-itself.md)                         | The bridge publishes itself from a committed version               |
+| [0078](../decisions/0078-the-bridge-announces-a-contract.md)                     | The bridge announces a contract the web app negotiates against     |
+| [0057](../decisions/0057-one-anki-entry-and-a-page-per-source.md)                | One Anki entry chosen by platform, and a page per source           |
+| [0061](../decisions/0061-anki-word-selection-signal-ladder.md)                   | Anki word selection weights a ladder of scheduling evidence        |
+| [0065](../decisions/0065-ankidroid-first-review-study-day.md)                    | AnkiDroid first review uses the supported search language          |
+| [0066](../decisions/0066-desktop-fsrs-difficulty-by-search.md)                   | Desktop FSRS difficulty uses the supported search language         |
+| [0067](../decisions/0067-recently-learned-is-a-focus-list.md)                    | Recently learned sends the newest words as an ordered focus list   |
+| [0097](../decisions/0097-anki-reading-and-cloze-syntax-is-not-the-expression.md) | Anki reading and cloze syntax is not part of the expression        |
 
 ### AI providers and generation
 

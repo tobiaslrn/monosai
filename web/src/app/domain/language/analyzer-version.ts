@@ -12,8 +12,12 @@ export const ANALYZER_VERSION = 'analyzer/3';
 /** Bump when classification precedence or normalization rules change. */
 export const VALIDATOR_VERSION = 'validator/1';
 
-/** Bump when canonical expression or reading normalization changes. */
-export const NORMALIZATION_VERSION = 'normalization/1';
+/**
+ * Bump when expression extraction, canonical expression or reading
+ * normalization changes. Version 2 reads ruby, bracket readings and cloze
+ * markup as the expression they annotate.
+ */
+export const NORMALIZATION_VERSION = 'normalization/2';
 
 /** Bump when sentence segmentation rules change. */
 export const SEGMENTATION_RULES_VERSION = 'segmentation/1';

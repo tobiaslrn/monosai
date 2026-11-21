@@ -22,6 +22,13 @@ describe('DomMarkupTextExtractor', () => {
     expect(extractor.toVisibleText('[sound:x.mp3]<img src="y.png">魚')).toBe('[sound:x.mp3]魚');
   });
 
+  it('keeps the base of ruby and drops the reading written over it', () => {
+    expect(extractor.toVisibleText('<ruby>食<rt>た</rt></ruby>べる')).toBe('食べる');
+    expect(extractor.toVisibleText('<ruby>漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>')).toBe(
+      '漢字',
+    );
+  });
+
   it('does not execute an inline event handler or resolve its attributes', () => {
     expect(extractor.toVisibleText('<img src=x onerror="alert(1)">鳥')).toBe('鳥');
   });

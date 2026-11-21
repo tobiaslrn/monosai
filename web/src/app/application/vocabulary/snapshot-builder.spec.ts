@@ -188,6 +188,24 @@ describe('SnapshotBuilder', () => {
     expect(built.value.content.snapshot.sourceKinds).toEqual(['anki-package', 'text-list']);
   });
 
+  it('reads Anki readings and cloze markup as the expression they annotate', async () => {
+    const built = await build([
+      entry('<ruby>食<rt>た</rt></ruby>べる', 'n1'),
+      entry('食[た]べる', 'n2'),
+      entry('{{c1::食べる::to eat}}', 'n3'),
+    ]);
+
+    // All three are the word the reader shows, so they are one word.
+    expect(built.content.items.map((item) => item.visibleExpression)).toEqual(['食べる']);
+    expect(built.stats.duplicateOccurrences).toBe(2);
+  });
+
+  it('keeps a meaning written in brackets as the learner wrote it', async () => {
+    const built = await build([entry('食べる', 'n1', 'to eat[polite: 召し上がる]')]);
+
+    expect(built.content.items[0]!.meaning).toBe('to eat[polite: 召し上がる]');
+  });
+
   it('treats pasted-list values as literal text rather than Anki HTML', async () => {
     const built = await builder.build({
       entries: [{ sourceId: TEXT_SOURCE.id, rawValue: '<b>literal</b>' }],
