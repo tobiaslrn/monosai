@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { aiError, isAutomaticallyRetryable, type AiError } from '../../domain/ai/ai-error';
+import { aiError, type AiError } from '../../domain/ai/ai-error';
 import { estimateTokens } from '../../domain/ai/context-budget';
 import type { AssetJob } from '../../domain/enrichment/jobs';
 import {
@@ -18,6 +18,7 @@ import {
   ReadingJobLifecycle,
   countsFor,
   enqueueOutcome,
+  isSentenceLocalTextFailure,
   settleWorkers,
   type ReadingJobProgress,
   type ReadingJobRun,
@@ -330,7 +331,7 @@ export class TranslationJobStore {
             counts = { ...counts, failed: failed.value.failedItems.length };
           }
           firstError ??= error;
-          if (!isSentenceLocalFailure(error)) return;
+          if (!isSentenceLocalTextFailure(error)) return;
         }
       }
     };
@@ -362,10 +363,6 @@ export class TranslationJobStore {
       permit.release();
     }
   }
-}
-
-function isSentenceLocalFailure(error: AiError): boolean {
-  return isAutomaticallyRetryable(error) || error.code === 'malformed-response';
 }
 
 /** Whether a refusal is the run being stopped rather than a failure to report. */

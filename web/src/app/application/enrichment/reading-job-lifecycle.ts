@@ -1,5 +1,10 @@
 import { computed, signal } from '@angular/core';
-import { ALL_AI_ERROR_CODES, aiError, type AiError } from '../../domain/ai/ai-error';
+import {
+  ALL_AI_ERROR_CODES,
+  aiError,
+  isAutomaticallyRetryable,
+  type AiError,
+} from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import type { JobRepository } from '../../domain/enrichment/job-repository';
 import {
@@ -75,6 +80,17 @@ export function countsFor(total: number, job: AssetJob): LayerCounts {
     completed: job.completedSentenceIds.length,
     failed: job.failedItems.length,
   };
+}
+
+/**
+ * Whether a text layer's failure belongs to the sentences it asked about.
+ *
+ * Such a failure is recorded and the run goes on. Anything else — a refused
+ * key, no credit, a model that cannot do the task — would refuse every other
+ * request of the run as well, so it stops the run (ADR 0048).
+ */
+export function isSentenceLocalTextFailure(error: AiError): boolean {
+  return isAutomaticallyRetryable(error) || error.code === 'malformed-response';
 }
 
 /** A thrown value's kind only: never its message, which may carry content. */

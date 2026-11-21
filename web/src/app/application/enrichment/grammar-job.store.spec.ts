@@ -31,6 +31,7 @@ import {
 import { TextModelStore } from '../settings/text-model.store';
 import { GrammarAnalysisService } from './grammar-analysis.service';
 import { GrammarJobStore } from './grammar-job.store';
+import { PREPARATION_CONCURRENCY } from './preparation-pacer';
 
 const NOW = 1_700_700_000_000;
 const SENTENCE_COUNT = 61;
@@ -314,6 +315,43 @@ describe('GrammarJobStore', () => {
     expect(calls).toBe(3);
     expect(peak).toBe(3);
   });
+
+  it('sends no batch still waiting for its turn once the provider refuses the setup', async () => {
+    await destroyTestDatabase(bed.db);
+    // More batches than the pacer lets out at once, so some are still waiting
+    // for a turn when the refusal arrives.
+    const batchCount = PREPARATION_CONCURRENCY + 5;
+    bed = await configure(
+      importedReadingFixture({
+        seed: 7,
+        paragraphTexts: [
+          Array.from(
+            { length: batchCount * MAX_GRAMMAR_REVIEW_BATCH },
+            (_value, index) => `設定${String(index)}です。`,
+          ),
+        ],
+      }),
+    );
+    let calls = 0;
+    vi.spyOn(bed.provider, 'reviewGrammar').mockImplementation(() => {
+      calls += 1;
+      return Promise.resolve(
+        calls === 1
+          ? err(aiError('authentication', 'grammar-review', 'The provider rejected the key.'))
+          : ok({ findings: [] }),
+      );
+    });
+
+    await bed.store.start(bed.draft.reading.id);
+
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('failed');
+    if (progress.kind !== 'failed') return;
+    expect(progress.error).toMatchObject({ source: 'provider', error: { code: 'authentication' } });
+    // What was already in flight with the refused request may settle; nothing
+    // that was still waiting is sent with a key the provider has refused.
+    expect(calls).toBeLessThanOrEqual(PREPARATION_CONCURRENCY);
+  }, 30_000);
 
   it('leaves a timed-out request stopped with a retryable job', async () => {
     bed.provider.grammarQueue.push(

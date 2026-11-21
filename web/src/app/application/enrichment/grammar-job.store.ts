@@ -34,6 +34,7 @@ import {
   ReadingJobLifecycle,
   countsFor,
   enqueueOutcome,
+  isSentenceLocalTextFailure,
   settleWorkers,
   unavailable,
   type PlanOutcome,
@@ -360,10 +361,17 @@ export class GrammarJobStore {
       this.lifecycle.publish({ kind: 'running', readingId: context.readingId, counts, phase });
     };
     publish('requesting');
-    // A holder rather than two `let`s, so what one batch records is still
-    // visible to the checks that run after every batch has settled.
-    const outcome: { firstError: AiError | null; storage: StorageError | null } = {
+    // A holder rather than `let`s, so what one batch records is still visible
+    // to the checks that run after every batch has settled. `refused` is a
+    // failure of the whole setup: every batch still waiting would be refused
+    // the same way, so none of them is sent (ADR 0048).
+    const outcome: {
+      firstError: AiError | null;
+      refused: AiError | null;
+      storage: StorageError | null;
+    } = {
       firstError: null,
+      refused: null,
       storage: null,
     };
 
@@ -400,7 +408,12 @@ export class GrammarJobStore {
         // Checked here rather than before the permit: a batch can wait a long
         // time for its turn, and what stopped the run may have happened while
         // it did.
-        if (outcome.storage !== null || isAborted(signal) || this.lifecycle.yieldRequested) {
+        if (
+          outcome.storage !== null ||
+          outcome.refused !== null ||
+          isAborted(signal) ||
+          this.lifecycle.yieldRequested
+        ) {
           return;
         }
         publish('requesting');
@@ -451,6 +464,9 @@ export class GrammarJobStore {
       }
       backOffOnRateLimit(this.pacer, result.error);
       outcome.firstError ??= result.error;
+      if (!isSentenceLocalTextFailure(result.error)) {
+        outcome.refused ??= result.error;
+      }
       for (const sentence of batch) {
         const recorded = await this.jobs.recordFailure(job.id, {
           sentenceId: sentence.id,
@@ -475,7 +491,7 @@ export class GrammarJobStore {
       this.lifecycle.fail(context.readingId, outcome.storage, counts);
       return;
     }
-    await this.lifecycle.settle(job, counts, run, outcome.firstError);
+    await this.lifecycle.settle(job, counts, run, outcome.refused ?? outcome.firstError);
   }
 }
 
