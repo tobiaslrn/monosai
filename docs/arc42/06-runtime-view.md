@@ -257,7 +257,9 @@ analysis is stored before its job item advances. A failed batch is recorded with
 successful siblings; the job itself adds no retries beyond the provider client's bounded transport
 and format-recovery rules. After a reload, only a matching unfinished job resumes. A configuration
 mismatch closes the old job and starts work under the new fingerprint, while cancellation keeps
-every analysis already stored.
+every analysis already stored. A closed job row stays closed: a run that outlives it may still
+record what it stored, but never reopens the row or ends it a second time, so one reading never has
+two active rows for a layer.
 
 Every whole-reading layer — translation, grammar, and audio — reports that it has stopped only after
 cancellation is saved. Until then a stopped run is still storing what it already paid for, and its

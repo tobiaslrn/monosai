@@ -353,6 +353,44 @@ describe('GrammarJobStore', () => {
     expect(calls).toBeLessThanOrEqual(PREPARATION_CONCURRENCY);
   }, 30_000);
 
+  it('leaves a row closed by a new configuration closed while its old run unwinds', async () => {
+    await destroyTestDatabase(bed.db);
+    bed = await configure(waveSpanningReading());
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let calls = 0;
+    vi.spyOn(bed.provider, 'reviewGrammar').mockImplementation(async () => {
+      calls += 1;
+      await held;
+      return ok({ findings: [] });
+    });
+
+    const running = bed.store.start(bed.draft.reading.id);
+    // Every batch of this reading fits under the pacer's ceiling at once.
+    await vi.waitFor(() => {
+      expect(calls).toBe(Math.ceil(WAVE_SPANNING_SENTENCE_COUNT / MAX_GRAMMAR_REVIEW_BATCH));
+    });
+    const [oldRow] = await bed.db.assetJobs.toArray();
+
+    // The learner picks another level, and opening the reader queues for it.
+    bed.profile.set(profile('next-level-hash'));
+    await bed.store.enqueue(bed.draft.reading.id);
+    expect((await bed.db.assetJobs.get(oldRow!.id))?.state).toBe('cancelled');
+
+    release();
+    await running;
+
+    const rows = await bed.db.assetJobs.toArray();
+    // The row the new configuration closed stays closed: exactly one row is
+    // still active for the reading, the one planned for the new level.
+    expect(rows.find((row) => row.id === oldRow!.id)?.state).toBe('cancelled');
+    expect(rows.filter((row) => ['queued', 'running', 'paused'].includes(row.state))).toHaveLength(
+      1,
+    );
+  });
+
   it('leaves a timed-out request stopped with a retryable job', async () => {
     bed.provider.grammarQueue.push(
       err(aiError('timeout', 'grammar-review', 'The provider did not answer in time.')),

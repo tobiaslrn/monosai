@@ -231,7 +231,17 @@ export class DexieJobRepository implements JobRepository {
         if (!parsed.ok) {
           throw new StorageRuleViolation(parsed.error);
         }
-        const next = { ...project(toJob(parsed.value)), updatedAt: this.clock.now() };
+        const current = toJob(parsed.value);
+        const projected = project(current);
+        // A row that has ended stays ended. A run can outlive its row, closed
+        // under it by a new configuration or a stop, and may still record what
+        // it stored; it must never reopen that row or end it a second time,
+        // which would leave two active rows for one reading and layer.
+        const next = {
+          ...projected,
+          state: isTerminal(current.state) ? current.state : projected.state,
+          updatedAt: this.clock.now(),
+        };
         await this.db.assetJobs.put({ ...next, v: ROW_VERSION });
         return next;
       }),

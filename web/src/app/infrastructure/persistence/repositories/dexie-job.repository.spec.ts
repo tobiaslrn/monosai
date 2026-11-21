@@ -137,6 +137,21 @@ describe('DexieJobRepository', () => {
     expect(reconciled.ok && reconciled.value.state).toBe('cancelled');
   });
 
+  it('keeps a closed row closed when a run that outlived it writes late', async () => {
+    await repository.setState(job.id, 'cancelled');
+
+    for (const sentence of draft.sentences) {
+      await repository.recordCompletion(job.id, sentence.id);
+    }
+    const reopened = await repository.setState(job.id, 'paused');
+
+    // What the late run stored is still recorded, but the row stays ended.
+    expect(reopened.ok && reopened.value.state).toBe('cancelled');
+    expect(reopened.ok && reopened.value.completedSentenceIds).toHaveLength(draft.sentences.length);
+    const active = await repository.findActive(draft.reading.id, 'translate-reading');
+    expect(active.ok && active.value).toBeNull();
+  });
+
   it('reports a missing job instead of creating one', async () => {
     const missing = await repository.setState(jobId(uuid(8999)), 'cancelled');
 
