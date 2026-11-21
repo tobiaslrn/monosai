@@ -50,7 +50,7 @@ describe('describeDeletion', () => {
     );
     expect(plan.removes).toContain('12 saved translations');
     expect(plan.removes).toContain('Saved audio clips only this story uses');
-    expect(plan.removes).toContain('Saved grammar analyses only this story uses');
+    expect(plan.removes).toContain('Saved grammar notes only this story uses');
   });
 
   it('gives no clip count, because clips another story with the same sentence uses are kept', () => {

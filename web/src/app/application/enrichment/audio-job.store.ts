@@ -369,15 +369,9 @@ export class AudioJobStore {
       return unavailable({ source: 'storage', error: wanted.error });
     }
     // No row is written for a reading with nothing outstanding: an empty job
-    // could never complete itself, and the lane would pick it up forever. No
-    // clip is stored either, so the summary is counted here: a reading whose
-    // sentences another reading already read aloud would otherwise never
-    // count the clips it shares.
+    // could never complete itself, and the lane would pick it up forever.
     if (wanted.value.length === 0) {
-      const recounted = await this.audio.recountSummary(context.readingId, context.cacheKeys);
-      return recounted.ok
-        ? { kind: 'nothing-to-do', total: context.total }
-        : unavailable({ source: 'storage', error: recounted.error });
+      return this.countSharedClips(context, scope);
     }
 
     const created = await this.createJob(context, wanted.value, initialState);
@@ -397,6 +391,36 @@ export class AudioJobStore {
       config.optionsFingerprint,
       config.speechInstructions,
     );
+  }
+
+  /**
+   * Counts the clips a reading shares when there is nothing to request.
+   *
+   * No clip is stored then, so nothing else refreshes the summary: a reading
+   * whose sentences another reading already read aloud would never count the
+   * clips it shares. The count runs only when every sentence has a clip under
+   * its current key. Queueing also finds nothing to request when the clips
+   * were made with an earlier voice, and a count by the new keys would then
+   * say no audio is saved while the old clips are stored and still play.
+   */
+  private async countSharedClips(
+    context: JobContext,
+    scope: JobScope,
+  ): Promise<PlanOutcome<JobContext>> {
+    const missing =
+      scope === 'never-prepared'
+        ? await this.audio.missingSentenceIds(context.readingId, context.cacheKeys)
+        : ok([]);
+    if (!missing.ok) {
+      return unavailable({ source: 'storage', error: missing.error });
+    }
+    if (missing.value.length > 0) {
+      return { kind: 'nothing-to-do', total: context.total };
+    }
+    const recounted = await this.audio.recountSummary(context.readingId, context.cacheKeys);
+    return recounted.ok
+      ? { kind: 'nothing-to-do', total: context.total }
+      : unavailable({ source: 'storage', error: recounted.error });
   }
 
   /** Re-derives completion from stored clips, so a reload never over-reports. */

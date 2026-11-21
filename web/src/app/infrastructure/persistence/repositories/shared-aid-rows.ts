@@ -20,7 +20,8 @@ interface WrittenFor {
  * reading still uses.
  *
  * Grammar and audio keys name the Japanese and the configuration, never the
- * reading, so one row serves every sentence with the same text. The row says
+ * reading, so one row serves every sentence with the same text (for a clip
+ * read with speech instructions, the same neighbouring sentences too). The row says
  * only which sentence it was last written for. Deleting by that alone would
  * take the analysis or clip from every other reading with the same sentence,
  * while their summaries still counted it. Instead, a row whose sentence has a

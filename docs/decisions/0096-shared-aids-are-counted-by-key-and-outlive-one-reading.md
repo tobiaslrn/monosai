@@ -8,8 +8,11 @@ sentences) from one reading to the whole library.
 ## Context
 
 Grammar analyses and audio clips are content-addressed. Their cache keys name the sentence's
-Japanese and the configuration, never the reading. So two readings that contain the same sentence
-(a greeting, a repeated line, or a text imported twice) share one row. ADR 0024 already counted a
+Japanese and the configuration, never the reading. A clip's key also names the neighbouring
+sentences when the voice model takes speech instructions, because those shape how the line is
+read. So two readings that contain the same sentence (a greeting, a repeated line, or a text
+imported twice) share one row, and for audio with such a model, only where the neighbours match
+too. ADR 0024 already counted a
 repeated sentence *within* one reading by its key. Across readings, though, every per-reading
 query still went through the row's `readingId`, and that field names only the sentence the row was
 last written for:
@@ -34,8 +37,13 @@ whose current key already has a row, so a shared sentence is not queued on every
 A clip served from the cache is addressed to the sentence and reading that asked for it before it
 is stored, so the store refreshes that reading's summary and not the one that wrote it first.
 Preparation that finds nothing to request stores nothing, so it counts the reading's grammar or
-audio summary by key itself. A reading with no analysis under its current keys reads as never
-asked for, not as reviewed for no sentence.
+audio summary by key itself, but only when every sentence has a row under its current key. That is
+the reading whose sentences another reading already prepared. Queueing also finds nothing to
+request for a reading prepared under an earlier voice, model or reading level (ADR 0047). Its rows
+are still stored and still played or shown, so its summary is left as it is: a count by the new
+keys would say nothing is saved and hide the actions that delete those rows. A reading with no
+analysis under its current keys, which only a clear leaves, reads as never asked for, not as
+reviewed for no sentence.
 
 **A deletion keeps a row another reading can use.** Deleting a reading, and clearing its grammar or
 audio, looks at the rows written for its sentences. When another reading has a sentence with the
@@ -49,8 +57,13 @@ same content hash, the row is handed to that sentence and kept. Only the rest is
 - **Clearing a reading's audio or grammar** passes the reading's current keys, and keeps only a
   row that is current for it. Configuration is the same for every reading, so a row the cleared
   reading no longer uses by key (an older voice or model) serves no other reading by key either,
-  and it is deleted. When no key can be computed (no voice or model is set up, or the profile
-  cannot be read), the clear falls back to the content test.
+  and it is deleted. A row that is current for it is handed on by the content test, as a deletion
+  does. For a grammar row that twin uses the row by key. For a clip whose neighbouring sentences
+  differ in the twin, the twin's key differs, and it only plays the clip as the ADR 0072 fallback,
+  while the cleared reading still finds it under its own key. So such a clip survives the clear,
+  still counts for the cleared reading, and is not made again. When no key can be computed (no
+  voice or model is set up, or the profile cannot be read), the clear falls back to the content
+  test.
 - **After a clear**, the cleared reading's summary is counted by key in the same transaction, like
   every other count. A row it shares with another reading still counts, and the reader still
   plays or shows it, so the summary and the reader agree.

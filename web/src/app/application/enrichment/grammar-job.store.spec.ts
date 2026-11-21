@@ -194,6 +194,29 @@ describe('GrammarJobStore', () => {
     expect(new Set(rows.map((row) => row.configFingerprint)).size).toBe(2);
   });
 
+  /**
+   * Queueing finds nothing to request for a reading analysed at an earlier
+   * reading level, yet its notes are still stored and still shown, so they
+   * still count: the reader offers to clear them only while the summary says so.
+   */
+  it('keeps counting notes made for an earlier level when queueing finds nothing to request', async () => {
+    bed.provider.grammarQueue.push(
+      ok({ findings: [] }),
+      ok({ findings: [] }),
+      ok({ findings: [] }),
+    );
+    await bed.store.start(bed.draft.reading.id);
+    const analyses = await bed.db.grammarAnalyses.count();
+    bed.profile.set(profile('next-level-hash'));
+
+    const outcome = await bed.store.enqueue(bed.draft.reading.id);
+
+    expect(outcome.kind).toBe('nothing-to-do');
+    expect(await bed.db.grammarAnalyses.count()).toBe(analyses);
+    const row = await bed.readings.getReading(bed.draft.reading.id);
+    expect(row.ok && row.value?.grammarSummary.state).toBe('complete');
+  });
+
   describe('a reading whose sentences another reading already analysed', () => {
     // The same Japanese as the first reading, as a text imported twice has.
     const duplicate = longReading(5);

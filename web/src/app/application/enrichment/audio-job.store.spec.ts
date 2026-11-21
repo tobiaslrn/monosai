@@ -362,6 +362,27 @@ describe('AudioJobStore', () => {
     });
   });
 
+  /**
+   * Queueing finds nothing to request for a reading read aloud in an earlier
+   * voice, yet its clips are still stored and still play, so they still count:
+   * the reader offers to delete them only while the summary says so.
+   */
+  it('keeps counting clips made in an earlier voice when queueing finds nothing to request', async () => {
+    await bed.store.start(bed.draft.reading.id);
+    bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
+
+    const outcome = await bed.store.enqueue(bed.draft.reading.id);
+
+    expect(outcome.kind).toBe('nothing-to-do');
+    expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT);
+    const row = await bed.readings.getReading(bed.draft.reading.id);
+    expect(row.ok && row.value?.audioSummary).toEqual({
+      total: SENTENCE_COUNT,
+      completed: SENTENCE_COUNT,
+      failed: 0,
+    });
+  });
+
   it('requeues an invalid clip at its reading priority and then finishes', async () => {
     const order = japaneseInOrder(bed.draft);
     let firstAttempts = 0;

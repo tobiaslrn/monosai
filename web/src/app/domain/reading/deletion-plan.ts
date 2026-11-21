@@ -89,7 +89,7 @@ export function describeDeletion(
     removes.push('Saved audio clips only this story uses');
   }
   if (reading.grammarSummary.state !== 'not-requested') {
-    removes.push('Saved grammar analyses only this story uses');
+    removes.push('Saved grammar notes only this story uses');
   }
 
   return {
