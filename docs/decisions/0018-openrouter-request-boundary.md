@@ -150,13 +150,15 @@ output. A refusal that names nothing still gets the one recovery, because some
 upstreams do not name `response_format`, but it is remembered only when that
 recovery succeeds.
 
-A 403 whose body carries moderation metadata (`reasons` or `flagged_input`) is
-not a refused key. OpenRouter sends it when a model that requires moderation
+A 403 whose body carries moderation metadata (`reasons` or `flagged_input`),
+or whose message has OpenRouter's wording "requires moderation", is not a
+refused key. OpenRouter sends it when a model that requires moderation
 flags the input. It is a `capability-unsupported` naming the `moderation`
 capability, worded "OpenRouter flagged the text" with the usual next step of
 choosing a different model, and it spends no recovery: the same text in
-another shape meets the same check. A 403 without that metadata still means
-the key.
+another shape meets the same check. Any other 403 still means the key, even
+when its message says "flagged" or "moderation": that can be about the
+account.
 
 OpenRouter can also answer HTTP 200 with an error object, at the top level or
 on a choice that failed while generating, when the upstream fails after the

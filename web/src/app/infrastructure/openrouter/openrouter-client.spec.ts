@@ -624,6 +624,32 @@ describe('OpenRouterClient moderation refusals', () => {
     expect(calls()).toBe(1);
   });
 
+  it("names moderation from OpenRouter's wording when the metadata is missing", async () => {
+    const { client } = cannedClient([
+      {
+        status: 403,
+        body: {
+          error: { message: 'gpt-x requires moderation on OpenAI. Your input was flagged.' },
+        },
+      },
+    ]);
+
+    expect(expectError(await client.postJson(probe, chatCompletionSchema)).detail?.capability).toBe(
+      'moderation',
+    );
+  });
+
+  it.each(['This account has been flagged for review.', 'Key disabled pending moderation.'])(
+    'still blames the key for a 403 about the account: %s',
+    async (message) => {
+      const { client } = cannedClient([{ status: 403, body: { error: { message } } }]);
+
+      expect(expectError(await client.postJson(probe, chatCompletionSchema)).code).toBe(
+        'authentication',
+      );
+    },
+  );
+
   it('still reports a plain 403 as a refused key', async () => {
     const { client } = cannedClient([{ status: 403, body: { error: { message: 'Forbidden' } } }]);
 

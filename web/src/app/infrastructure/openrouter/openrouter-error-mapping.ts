@@ -123,17 +123,17 @@ function mentionsContextLength(envelope: ProviderErrorEnvelope | null): boolean 
  * Whether a 403 is a moderation refusal rather than a refused key.
  *
  * OpenRouter answers 403 when a model that requires moderation flags the input,
- * and says so with `reasons` or `flagged_input` in the error metadata. The key
- * worked; telling the learner to fix it sends them to the one setting that
- * cannot help.
+ * and says so with `reasons` or `flagged_input` in the error metadata and with
+ * "requires moderation" in the message. The key worked; telling the learner to
+ * fix it sends them to the one setting that cannot help. A 403 that only says
+ * "flagged" or "moderation" may be about the account, so it stays a refused key.
  */
 function flaggedByModeration(envelope: ProviderErrorEnvelope | null): boolean {
   const metadata = envelope?.error.metadata;
   if (typeof metadata === 'object' && metadata !== null) {
     if ('reasons' in metadata || 'flagged_input' in metadata) return true;
   }
-  const message = providerMessage(envelope);
-  return message.includes('moderation') || message.includes('flagged');
+  return providerMessage(envelope).includes('requires moderation');
 }
 
 function mentionsMissingModel(envelope: ProviderErrorEnvelope | null): boolean {
