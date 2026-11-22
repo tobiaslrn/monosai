@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ParagraphGesturesDirective,
+  SENTENCE_LONG_PRESS_MOVE_PX,
   SENTENCE_LONG_PRESS_MS,
   type SentenceSelection,
 } from './paragraph-gestures.directive';
@@ -224,6 +225,35 @@ describe('ParagraphGesturesDirective', () => {
     vi.advanceTimersByTime(SENTENCE_LONG_PRESS_MS + 1);
 
     expect(selections()).toHaveLength(1);
+  });
+
+  /** The hold is the platform's: 450 ms under the finger, with 10 CSS pixels of tremble. */
+  it('opens at the hold threshold and not a moment before', () => {
+    expect(SENTENCE_LONG_PRESS_MS).toBe(450);
+    pointer('pointerdown', paragraph(), 'touch', 50, 110);
+
+    vi.advanceTimersByTime(SENTENCE_LONG_PRESS_MS - 1);
+    expect(selections()).toHaveLength(0);
+
+    vi.advanceTimersByTime(1);
+    expect(selections()).toHaveLength(1);
+  });
+
+  it('keeps a press that moved exactly the tolerance', () => {
+    expect(SENTENCE_LONG_PRESS_MOVE_PX).toBe(10);
+    pointer('pointerdown', paragraph(), 'touch', 50, 110);
+    pointer('pointermove', paragraph(), 'touch', 56, 118);
+    vi.advanceTimersByTime(SENTENCE_LONG_PRESS_MS);
+
+    expect(selections()).toHaveLength(1);
+  });
+
+  it('cancels a press that moved just past the tolerance', () => {
+    pointer('pointerdown', paragraph(), 'touch', 50, 110);
+    pointer('pointermove', paragraph(), 'touch', 50, 110 + SENTENCE_LONG_PRESS_MOVE_PX + 0.5);
+    vi.advanceTimersByTime(SENTENCE_LONG_PRESS_MS);
+
+    expect(selections()).toHaveLength(0);
   });
 
   it('cancels the press when a second finger appears', () => {
