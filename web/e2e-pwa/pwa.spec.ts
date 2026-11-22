@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 import { configureTextModel, configureTts } from '../e2e/generation';
 import { stubOpenRouter } from '../e2e/openrouter';
 
@@ -353,37 +353,60 @@ test.describe('speech code that cannot be loaded', () => {
     }, chunk);
     expect(removed, 'the speech chunk was in the worker cache').toBeGreaterThan(0);
 
-    const synthesisBefore = calls.urls.filter((url) => url.includes('/audio/speech')).length;
+    const synthesisCount = (): number =>
+      calls.urls.filter((url) => url.includes('/audio/speech')).length;
+    const synthesisBefore = synthesisCount();
+    const chunkRequests: string[] = [];
     const chunkFailures: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().endsWith(`/${chunk}`)) {
+        chunkRequests.push(request.url());
+      }
+    });
     page.on('requestfailed', (request) => {
       if (request.url().endsWith(`/${chunk}`)) {
         chunkFailures.push(request.url());
       }
     });
+    const status = player.locator('[role="status"]');
+
+    // Offline, the request waits for the connection instead of starting a run
+    // that could only fail, so the chunk is not even asked for.
     await context.setOffline(true);
     await player.getByRole('button', { name: 'Generate audio' }).click();
+    await expect(player.getByRole('button', { name: 'Waiting for connection' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+    await expect(status).toContainText('Waiting for connection, 0% of the reading ready.');
+    expect(chunkRequests, 'nothing was loaded while offline').toHaveLength(0);
+
+    // Online again, the run starts on its own, and only the chunk cannot be had.
+    // Routed on the context, as above, so the worker's own fetch is the one that
+    // fails, the way it does when the server cannot be reached.
+    const chunkPattern = `**/${chunk}`;
+    const failChunk = (route: Route): Promise<void> => route.abort('internetdisconnected');
+    await context.route(chunkPattern, failChunk);
+    await context.setOffline(false);
 
     // The run is over: it says so, nothing is still being generated, and the
     // learner is offered another go.
-    await expect(player.locator('[role="status"]')).toContainText('Stopped. 0 of 3 sentences', {
-      timeout: 30_000,
-    });
-    // Offline is the true cause, so the offline wording is the right one.
-    await expect(player).toContainText('Offline');
+    await expect(status).toContainText('Stopped. 0 of 3 sentences', { timeout: 30_000 });
+    // The device is online, so the failure is not blamed on the connection.
+    await expect(player).toContainText(
+      'Something went wrong while reading this sentence aloud. Try again.',
+    );
+    await expect(player).not.toContainText('Offline');
     await expect(player.getByRole('button', { name: 'Stop generating audio' })).toHaveCount(0);
     await expect(player.getByRole('button', { name: 'Try again' })).toBeVisible();
     expect(chunkFailures, 'the chunk was asked for and could not be had').toHaveLength(1);
-    expect(
-      calls.urls.filter((url) => url.includes('/audio/speech')).length,
-      'the run never reached the provider',
-    ).toBe(synthesisBefore);
+    expect(synthesisCount(), 'the run never reached the provider').toBe(synthesisBefore);
 
-    // Back online the worker fetches the chunk again and the run completes.
-    await context.setOffline(false);
+    // Once the chunk can be had again, the worker fetches it and the run completes.
+    await context.unroute(chunkPattern, failChunk);
     await player.getByRole('button', { name: 'Try again' }).click();
-    await expect(player.locator('[role="status"]')).toHaveText('3 sentences ready', {
-      timeout: 60_000,
-    });
+    await expect(status).toHaveText('3 sentences ready', { timeout: 60_000 });
+    expect(synthesisCount(), 'every sentence was read aloud').toBe(synthesisBefore + 3);
   });
 });
 
