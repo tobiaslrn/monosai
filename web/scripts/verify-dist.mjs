@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { readFile, stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { readFile, readdir, stat } from 'node:fs/promises';
+import { extname, join } from 'node:path';
 
 const DIST_DIR = 'dist/monosai/browser';
 const BASE_PATH = '/monosai/';
@@ -21,6 +21,43 @@ const REQUIRED_FILES = [
   'icons/icon-maskable-512.png',
   'icons/apple-touch-icon-180.png',
 ];
+
+/**
+ * What every gallery component's selector starts with. The gallery is a
+ * development route (`core/routing/dev-routes.ts`); the shipped build must not
+ * contain it, and the service worker would otherwise prefetch it with every
+ * other script.
+ */
+const GALLERY_MARKER = 'mn-gallery-';
+const GALLERY_SOURCE = 'src/app/features/gallery/gallery-index.component.ts';
+
+/** Every emitted text file that could carry code or a reference to it. */
+async function textFiles(directory) {
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...(await textFiles(path)));
+    else if (['.js', '.html', '.json', '.webmanifest'].includes(extname(entry.name)))
+      files.push(path);
+  }
+  return files;
+}
+
+async function galleryFailures() {
+  const source = await readFile(GALLERY_SOURCE, 'utf8').catch(() => '');
+  if (!source.includes(`'${GALLERY_MARKER}index'`)) {
+    // Without this the check below would pass for a renamed gallery too.
+    return [`${GALLERY_SOURCE} no longer names its selector ${GALLERY_MARKER}index`];
+  }
+  const failures = [];
+  for (const file of await textFiles(DIST_DIR).catch(() => [])) {
+    if (file.startsWith(join(DIST_DIR, 'assets', 'language'))) continue;
+    if ((await readFile(file, 'utf8')).includes(GALLERY_MARKER)) {
+      failures.push(`${file} contains the development-only gallery (${GALLERY_MARKER}…)`);
+    }
+  }
+  return failures;
+}
 
 async function exists(path) {
   return (await stat(path).catch(() => null)) !== null;
@@ -117,13 +154,15 @@ async function main() {
     }
   }
 
+  failures.push(...(await galleryFailures()));
+
   if (failures.length > 0) {
     process.stderr.write(`dist verification failed:\n- ${failures.join('\n- ')}\n`);
     process.exitCode = 1;
     return;
   }
   process.stdout.write(
-    `dist verified: base path ${BASE_PATH}, PWA assets present and resolvable\n`,
+    `dist verified: base path ${BASE_PATH}, PWA assets present and resolvable, no gallery\n`,
   );
 }
 
