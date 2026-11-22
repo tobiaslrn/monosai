@@ -82,6 +82,8 @@ export default tseslint.config(
             'playwright.config.ts',
             'playwright.full.config.ts',
             'playwright.pwa.config.ts',
+            'playwright.shots.config.ts',
+            'playwright.visual.config.ts',
             'vitest.manual.config.ts',
           ],
         },
@@ -147,13 +149,20 @@ export default tseslint.config(
     rules: {},
   },
   {
-    files: ['e2e/**/*.ts', 'e2e-pwa/**/*.ts', '*.config.ts', 'scripts/**/*.{ts,mjs,js}'],
+    files: [
+      'e2e/**/*.ts',
+      'e2e-pwa/**/*.ts',
+      'e2e-visual/**/*.ts',
+      'e2e-shots/**/*.ts',
+      '*.config.ts',
+      'scripts/**/*.{ts,mjs,js}',
+    ],
     rules: {
       'no-console': 'off',
     },
   },
   {
-    files: ['e2e/**/*.ts', 'e2e-pwa/**/*.ts'],
+    files: ['e2e/**/*.ts', 'e2e-pwa/**/*.ts', 'e2e-visual/**/*.ts', 'e2e-shots/**/*.ts'],
     rules: {
       'no-restricted-syntax': [
         'error',
