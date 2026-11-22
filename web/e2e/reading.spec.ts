@@ -1257,6 +1257,8 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       '吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。「何でも薄暗いじめじめした所でニャーニャー泣いていた。」',
       'Sentence seam',
     );
+    // The reader renders after the route changes; probe once the sentences are on screen.
+    await expect(page.locator('.sentence', { hasText: '「' })).toBeVisible();
     // The seam 。|「, where one sentence ends and the next opens on the same line.
     const seam = await page.evaluate(() => {
       const glyph = (sentence: Element, which: 'first' | 'last'): DOMRect => {
