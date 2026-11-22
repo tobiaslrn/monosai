@@ -3,8 +3,7 @@ import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import stylelint from 'stylelint';
 import { globalStylesConfig, motionModuleConfig } from '../stylelint.config.mjs';
-import { checkComposition } from './composition-freeze.mjs';
-import { checkDesignRules } from './design-rules.mjs';
+import { cite } from './design-lint-rules.mjs';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const webRoot = resolve(scriptDirectory, '..');
@@ -90,39 +89,50 @@ function findForbiddenColors(filePath, source) {
     const value = match[0];
     warnings.push(
       `${relative(webRoot, filePath).replaceAll('\\', '/')}:${line}:${column} ` +
-        `Raw color ${value} is not allowed outside src/styles.`,
+        `${value} is a raw colour outside src/styles. Fix: use a colour token from ` +
+        `src/styles/_tokens.scss. ${cite('R39')}`,
     );
   }
 
   return warnings;
 }
 
-const files = (await collectFiles(appRoot)).sort();
-const warnings = [];
+/**
+ * Stylelint over the component styles in src/app (files and inline `styles:`)
+ * and the global partials in src/styles. With `paths` (web-relative), only those
+ * files are read. Returns one line per warning.
+ */
+export async function lintStyles(paths = null) {
+  const wanted = paths ? new Set(paths.map((path) => join(webRoot, path))) : null;
+  const pick = (files) => (wanted ? files.filter((file) => wanted.has(file)) : files);
+  const warnings = [];
 
-for (const filePath of files) {
-  const source = await readFile(filePath, 'utf8');
-  warnings.push(...findForbiddenColors(filePath, source));
+  for (const filePath of pick(await collectFiles(appRoot)).sort()) {
+    const source = await readFile(filePath, 'utf8');
+    warnings.push(...findForbiddenColors(filePath, source));
 
-  if (extname(filePath) === '.scss') {
-    warnings.push(...(await lintCode(source, filePath)));
-  } else if (extname(filePath) === '.ts') {
-    for (const inlineStyle of extractInlineStyles(filePath, source)) {
-      warnings.push(...(await lintCode(inlineStyle.code, inlineStyle.filePath)));
+    if (extname(filePath) === '.scss') {
+      warnings.push(...(await lintCode(source, filePath)));
+    } else if (extname(filePath) === '.ts') {
+      for (const inlineStyle of extractInlineStyles(filePath, source)) {
+        warnings.push(...(await lintCode(inlineStyle.code, inlineStyle.filePath)));
+      }
     }
   }
+
+  const styleFiles = (await collectFiles(stylesRoot)).filter((file) => extname(file) === '.scss');
+
+  for (const filePath of pick(styleFiles).sort()) {
+    warnings.push(...(await lintGlobalStyles(await readFile(filePath, 'utf8'), filePath)));
+  }
+
+  return warnings;
 }
 
-const styleFiles = (await collectFiles(stylesRoot)).filter((file) => extname(file) === '.scss');
-
-for (const filePath of styleFiles.sort()) {
-  warnings.push(...(await lintGlobalStyles(await readFile(filePath, 'utf8'), filePath)));
-}
-
-warnings.push(...(await checkComposition(webRoot)));
-warnings.push(...(await checkDesignRules(webRoot)));
-
-if (warnings.length > 0) {
-  console.error(warnings.join('\n'));
-  process.exitCode = 1;
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const warnings = await lintStyles();
+  if (warnings.length > 0) {
+    console.error(warnings.join('\n'));
+    process.exitCode = 1;
+  }
 }

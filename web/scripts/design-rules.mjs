@@ -1,33 +1,47 @@
-#!/usr/bin/env node
 // The design rulebook, `docs/design/rules.md`, is binding. This scan holds the
-// rules that can be checked cheaply and reliably, and fails citing the rule's
-// number. Call sites that later work will replace are on an exemption list that
-// may only shrink: a new use fails, an exemption whose use is gone fails until it
-// is removed, and an entry added since the base revision fails.
+// rules that a regular expression checks cheaply and reliably; the rules that
+// need a syntax tree are in design-lint-rules.mjs. Both fail with what is wrong,
+// the fix and the rule's number, and share one exemption list that may only
+// shrink: a new use fails, an exemption whose use is gone fails until it is
+// removed, and an entry added since the base revision fails, unless its rule
+// was not checked at the base revision (the commit that adds a check seeds it).
+// `npm run design:check` (design-check.mjs) runs this with every other check.
 
 import { readFile, readdir } from 'node:fs/promises';
-import { dirname, extname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { readBaseAllowlist, templatesOf } from './composition-freeze.mjs';
+import { extname, join, relative } from 'node:path';
+import { readBaseFile, templatesOf } from './composition-freeze.mjs';
+import { cite } from './design-lint-rules.mjs';
 
 export const EXEMPTIONS_PATH = 'scripts/design-rules-exemptions.json';
+export const CHECKS_PATH = 'scripts/design-checks.json';
 export const RULEBOOK = 'docs/design/rules.md';
 
 /** The three icon-size roles (inline, control, feature), in pixels. */
 export const ICON_SIZES = [16, 20, 24];
 
-/** What each guard enforces; the key is the rule number in the rulebook. */
+/** What each guard here finds, and its fix; the key is the rule number in the rulebook. */
 export const RULES = {
-  R20: 'uses a native <select>; every choice from a list is mn-select or the model picker dialog',
-  R35: `sets an mn-icon size outside the three icon-size roles (${ICON_SIZES.join(', ')})`,
-  R15: 'puts a button inside an <mn-settings-row>; a row never holds a button, field or pill',
-  R39: 'writes a colour literal outside _tokens.scss; use a colour token',
-  R40: 'scales on press; a press is a colour change and nothing moves',
-  R44: 'writes `transition: all`; motion lives in _motion.scss and names its properties',
+  R6:
+    'silences a check with an eslint-disable or stylelint-disable comment. Fix: meet the rule, ' +
+    'or report the conflict; features and core carry no disable comments',
+  R35:
+    `sets an mn-icon size outside the three icon-size roles (${ICON_SIZES.join(', ')}). Fix: ` +
+    'drop `size` for the control size, or use the inline or feature size',
+  R39:
+    'writes a colour literal outside _tokens.scss. Fix: use a colour token from ' +
+    'web/src/styles/_tokens.scss',
+  R40:
+    'scales on press. Fix: a press changes colour only; remove the scale and use the ' +
+    'state layer',
+  R44:
+    'writes `transition: all`. Fix: include a named motion from web/src/styles/_motion.scss, ' +
+    'which names its properties',
 };
 
 const SOURCE = /\.(ts|html|scss)$/;
 const COLOUR_LITERAL = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(/i;
+const DISABLE_COMMENT = /\b(?:eslint|stylelint)-disable\b/;
+const SCANNED_ROOTS = ['src/app', 'src/styles'];
 
 async function collect(directory, pattern = SOURCE) {
   const files = [];
@@ -90,22 +104,21 @@ export function violationsOf(path, source) {
   const found = new Set();
   const isTokens = /(^|\/)_tokens\.scss$/.test(path);
   const inApp = path.startsWith('src/app/');
+  const composed = /^src\/app\/(features|core)\//.test(path);
 
   for (const css of stylesOf(path, source)) {
     for (const rule of styleViolations(css)) found.add(rule);
     if (!isTokens && hasColourLiteral(css)) found.add('R39');
   }
 
+  if (composed && DISABLE_COMMENT.test(source)) found.add('R6');
+
   if (inApp && extname(path) !== '.scss') {
     for (const template of templatesOf(path, source)) {
-      if (/<select[\s>]/i.test(template)) found.add('R20');
       for (const tag of template.matchAll(/<mn-icon\b[^>]*>/g)) {
         for (const size of tag[0].matchAll(/(?:\[size\]|\bsize)\s*=\s*"(\d+)"/g)) {
           if (!ICON_SIZES.includes(Number(size[1]))) found.add('R35');
         }
-      }
-      for (const row of template.matchAll(/<mn-settings-row\b[\s\S]*?<\/mn-settings-row>/g)) {
-        if (/\bmnButton\b|<mn-button\b/.test(row[0])) found.add('R15');
       }
       for (const style of template.matchAll(/\sstyle\s*=\s*"([^"]*)"/g)) {
         if (COLOUR_LITERAL.test(style[1])) found.add('R39');
@@ -116,49 +129,133 @@ export function violationsOf(path, source) {
   return [...found].sort();
 }
 
-/** Every violation under src/app and src/styles, keyed by web-relative path. */
-export async function scan(webRoot) {
+/** Whether a web-relative path is one this scan reads. */
+export function isScanned(path) {
+  return (
+    SCANNED_ROOTS.some((root) => path.startsWith(`${root}/`)) &&
+    SOURCE.test(path) &&
+    !/\.spec\.ts$/.test(path)
+  );
+}
+
+/**
+ * Every violation under src/app and src/styles, keyed by web-relative path, as
+ * `{ [path]: { [rule]: [message, …] } }`. With `paths`, only those files are read.
+ */
+export async function scan(webRoot, paths = null) {
+  const files = paths
+    ? paths.filter(isScanned).map((path) => join(webRoot, path))
+    : (await Promise.all(SCANNED_ROOTS.map((root) => collect(join(webRoot, root))))).flat();
   const result = {};
-  for (const root of ['src/app', 'src/styles']) {
-    for (const file of await collect(join(webRoot, root))) {
-      const path = relative(webRoot, file).replaceAll('\\', '/');
-      const rules = violationsOf(path, await readFile(file, 'utf8'));
-      if (rules.length > 0) result[path] = rules;
+  for (const file of files) {
+    const path = relative(webRoot, file).replaceAll('\\', '/');
+    let source;
+    try {
+      source = await readFile(file, 'utf8');
+    } catch {
+      continue; // A changed file that was deleted.
+    }
+    const rules = violationsOf(path, source);
+    if (rules.length > 0) {
+      const where = (rule) => {
+        if (rule !== 'R6') return path;
+        const index = source.search(DISABLE_COMMENT);
+        return `${path}:${String(source.slice(0, index).split('\n').length)}`;
+      };
+      result[path] = Object.fromEntries(
+        rules.map((rule) => [rule, [`${where(rule)} ${RULES[rule]}. ${cite(rule)}`]]),
+      );
     }
   }
   return result;
 }
 
-/** Compares a scan with the exemptions and, when given, the exemptions at the base revision. */
-export function compare(found, exemptions, baseExemptions) {
+/** Adds the violations of `more` to `found`, both shaped as `scan` returns them. */
+export function merge(found, more) {
+  for (const [path, rules] of Object.entries(more)) {
+    found[path] ??= {};
+    for (const [rule, messages] of Object.entries(rules)) {
+      found[path][rule] = [...(found[path][rule] ?? []), ...messages];
+    }
+  }
+  return found;
+}
+
+/**
+ * Compares violations with the exemptions and, when given, the exemptions at the
+ * base revision. `found` maps a path to its rules, as a list or as `scan` returns
+ * them. An entry gained since the base fails unless its rule is not in
+ * `baseRules`, the rules checked at the base revision: the commit that adds a
+ * check may seed the list with today's uses, and from then on it only shrinks.
+ */
+export function compare(found, exemptions, baseExemptions, baseRules = null) {
   const errors = [];
+  const rulesOf = (path) => {
+    const rules = found[path];
+    return Array.isArray(rules) ? rules : Object.keys(rules ?? {});
+  };
   for (const [path, rules] of Object.entries(found)) {
-    for (const rule of rules) {
-      if (!exemptions[path]?.includes(rule)) {
-        errors.push(`${path} ${RULES[rule]}. See ${rule} in ${RULEBOOK}.`);
-      }
+    for (const rule of rulesOf(path)) {
+      if (exemptions[path]?.includes(rule)) continue;
+      const messages = Array.isArray(rules) ? [] : rules[rule];
+      errors.push(...(messages.length > 0 ? messages : [`${path} ${RULES[rule]}. ${cite(rule)}`]));
     }
   }
   for (const [path, rules] of Object.entries(exemptions)) {
     for (const rule of rules) {
-      if (!found[path]?.includes(rule)) {
-        errors.push(`${path} no longer breaks ${rule}: remove it from ${EXEMPTIONS_PATH}.`);
+      if (!rulesOf(path).includes(rule)) {
+        errors.push(
+          `${path} no longer breaks ${rule}. Fix: remove the entry from ${EXEMPTIONS_PATH}. ` +
+            cite('R6'),
+        );
       }
     }
   }
   if (baseExemptions) {
     for (const [path, rules] of Object.entries(exemptions)) {
       for (const rule of rules) {
-        if (!baseExemptions[path]?.includes(rule)) {
-          errors.push(
-            `${EXEMPTIONS_PATH} gained ${rule} for ${path}; the exemptions may only shrink. ` +
-              `See R6 in ${RULEBOOK}.`,
-          );
-        }
+        if (baseExemptions[path]?.includes(rule)) continue;
+        if (baseRules && !baseRules.has(rule)) continue;
+        errors.push(
+          `${EXEMPTIONS_PATH} gained ${rule} for ${path}; the exemptions may only shrink. ` +
+            `Fix: remove the entry and meet ${rule} in that file. ${cite('R6')}`,
+        );
       }
     }
   }
   return errors;
+}
+
+/** The rule numbers a design-checks.json text lists as checked. */
+export function checkedRules(checksText) {
+  return new Set(
+    JSON.parse(checksText)
+      .filter((entry) => entry.status === 'checked')
+      .map((entry) => entry.rule),
+  );
+}
+
+/**
+ * The rules checked at the base revision: from its design-checks.json, or, before
+ * that file existed, from the keys of its design-rules.mjs RULES map.
+ */
+export function readBaseRules(webRoot) {
+  const checks = readBaseFile(webRoot, CHECKS_PATH);
+  if (checks !== null) return checkedRules(checks);
+  const rules = readBaseFile(webRoot, 'scripts/design-rules.mjs');
+  if (rules === null) return new Set();
+  const map = /export const RULES = \{([\s\S]*?)\n\};/.exec(rules)?.[1] ?? '';
+  return new Set([...map.matchAll(/^\s+(R\d+):/gm)].map((match) => match[1]));
+}
+
+/** The exemptions at the base revision, or null when there is no base to compare with. */
+export function readBaseExemptions(webRoot) {
+  const text = readBaseFile(webRoot, EXEMPTIONS_PATH);
+  try {
+    return text === null ? null : JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 /** The rulebook exists and AGENTS.md points to it. */
@@ -167,30 +264,82 @@ export async function checkRulebook(repoRoot) {
   try {
     await readFile(join(repoRoot, RULEBOOK), 'utf8');
   } catch {
-    errors.push(`${RULEBOOK} is missing. See R1 in ${RULEBOOK}.`);
+    errors.push(`${RULEBOOK} is missing. Fix: restore it. ${cite('R1')}`);
   }
   try {
     const agents = await readFile(join(repoRoot, 'AGENTS.md'), 'utf8');
-    if (!agents.includes(RULEBOOK)) errors.push(`AGENTS.md must link ${RULEBOOK}.`);
+    if (!agents.includes(RULEBOOK)) {
+      errors.push(`AGENTS.md does not link ${RULEBOOK}. Fix: link it. ${cite('R1')}`);
+    }
   } catch {
-    errors.push('AGENTS.md is missing.');
+    errors.push(`AGENTS.md is missing. Fix: restore it. ${cite('R1')}`);
   }
   return errors;
 }
 
-export async function checkDesignRules(webRoot) {
-  const exemptions = JSON.parse(await readFile(join(webRoot, EXEMPTIONS_PATH), 'utf8'));
-  return [
-    ...(await checkRulebook(resolve(webRoot, '..'))),
-    ...compare(await scan(webRoot), exemptions, readBaseAllowlist(webRoot, EXEMPTIONS_PATH)),
-  ];
+/** The most lines each always-loaded guidance file may have, so it cannot regrow. */
+export const LINE_BUDGETS = { 'AGENTS.md': 90, [RULEBOOK]: 160 };
+
+/** Every always-loaded guidance file is within its line budget. */
+export async function checkLineBudgets(repoRoot, budgets = LINE_BUDGETS) {
+  const errors = [];
+  for (const [path, budget] of Object.entries(budgets)) {
+    let text;
+    try {
+      text = await readFile(join(repoRoot, path), 'utf8');
+    } catch {
+      continue; // checkRulebook reports a missing file.
+    }
+    const lines = text.replace(/\n$/, '').split('\n').length;
+    if (lines > budget) {
+      errors.push(
+        `${path} has ${String(lines)} lines, over its budget of ${String(budget)}. Fix: cut ` +
+          'or merge rules; move a checked rule into a check and retire it. ' +
+          cite('R5'),
+      );
+    }
+  }
+  return errors;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const errors = await checkDesignRules(resolve(dirname(fileURLToPath(import.meta.url)), '..'));
-  if (errors.length > 0) {
-    console.error(`Design rules (${RULEBOOK}):\n${errors.map((error) => `  ${error}`).join('\n')}`);
-    process.exit(1);
+/**
+ * Every rule a check cites is listed in design-checks.json, and every rule listed
+ * as checked exists in the rulebook as a bold "**Rn.**", or is listed as retired.
+ */
+export function checkCitations(rulebook, checks, citedByCode) {
+  const errors = [];
+  const listed = new Map(checks.map((entry) => [entry.rule, entry.status]));
+  const inRulebook = new Set([...rulebook.matchAll(/\*\*(R\d+)\.(?:\*\*| )/g)].map((m) => m[1]));
+  for (const rule of [...new Set(citedByCode)].sort()) {
+    if (!listed.has(rule)) {
+      errors.push(
+        `A check cites ${rule}, which ${CHECKS_PATH} does not list. Fix: add ${rule} with ` +
+          `what it says and which check enforces it. ${cite('R6')}`,
+      );
+    } else if (listed.get(rule) === 'retired') {
+      errors.push(
+        `A check cites ${rule}, which ${CHECKS_PATH} lists as retired. Fix: cite the rule ` +
+          `that covers it now. ${cite('R6')}`,
+      );
+    }
   }
-  console.log('Design rules: ok.');
+  for (const { rule, status } of checks) {
+    if (status === 'checked' && !inRulebook.has(rule)) {
+      errors.push(
+        `${CHECKS_PATH} checks ${rule}, but ${RULEBOOK} has no "**${rule}.**". Fix: restore ` +
+          `the rule, or mark it retired with what covers it now. ${cite('R5')}`,
+      );
+    }
+    if (status !== 'checked' && status !== 'retired') {
+      errors.push(
+        `${CHECKS_PATH} gives ${rule} the status "${String(status)}". Fix: use ` +
+          `"checked" or "retired". ${cite('R6')}`,
+      );
+    }
+  }
+  return errors;
+}
+
+export async function readExemptions(webRoot) {
+  return JSON.parse(await readFile(join(webRoot, EXEMPTIONS_PATH), 'utf8'));
 }

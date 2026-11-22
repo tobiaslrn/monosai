@@ -48,7 +48,7 @@ Styling is SCSS with CSS custom properties. There is no runtime CSS framework.
 | Convention                                                                                 | Where it is defined                                                                     |
 | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
 | Layer dependency rule, enforced by the linter                                              | `layerZones` in [`eslint.config.js`](../../eslint.config.js)                            |
-| Binding rules for every visual and interactive change                                      | [`docs/design/rules.md`](../design/rules.md), guarded by `web/scripts/design-rules.mjs` |
+| Binding rules for every visual and interactive change                                      | [`docs/design/rules.md`](../design/rules.md), guarded by `npm run design:check`         |
 | Design language behind those rules                                                         | [`docs/design/design-system.md`](../design/design-system.md)                            |
 | Values behind the design language                                                          | `web/src/styles/_tokens.scss` and `web/src/styles/_controls.scss`                       |
 | Commit message format, Conventional Commits with a required scope                          | [`AGENTS.md`](../../AGENTS.md)                                                          |
