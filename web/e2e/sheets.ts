@@ -28,3 +28,21 @@ export async function expectMotionSettled(page: Page): Promise<void> {
       ),
   );
 }
+
+/**
+ * Waits until a closed overlay has handed its history entry back.
+ *
+ * An open overlay holds an entry so that Back closes it; closed any other way,
+ * it steps back off that entry. A reload or a new address in that same instant
+ * would be cut short by the step, which no learner's next press is quick enough
+ * to meet.
+ */
+export async function expectOverlayEntryGone(page: Page): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (history.state as Record<string, unknown> | null)?.['monosaiOverlayEntry'],
+      ),
+    )
+    .toBeUndefined();
+}

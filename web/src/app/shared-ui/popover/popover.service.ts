@@ -19,6 +19,7 @@ import {
 } from '@angular/core';
 import { isPointerGestureConsumed } from '../../core/platform/pointer-gestures';
 import { ViewportService } from '../../core/platform/viewport.service';
+import { OverlayHistoryEntry } from '../dropdown/open-overlay-guard';
 
 /** What a floating surface is anchored to: an element, or a pointer position. */
 export type PopoverOrigin = FlexibleConnectedPositionStrategyOrigin;
@@ -35,10 +36,10 @@ export interface PopoverOptions {
   /** Called once, whether the popover was dismissed or closed by its content. */
   readonly onClosed?: () => void;
   /**
-   * A modal popover (the default) takes focus, dismisses on `Escape` or a click
-   * away, and docks as a sheet on a phone unless `mobileSheet` is false. A
-   * non-modal one is a hover preview: it never takes focus, never intercepts a
-   * pointer, and stays anchored.
+   * A modal popover (the default) takes focus, dismisses on `Escape`, a click
+   * away, or Back, and docks as a sheet on a phone unless `mobileSheet` is
+   * false. A non-modal one is a hover preview: it never takes focus, never
+   * intercepts a pointer, takes no history entry, and stays anchored.
    */
   readonly modal?: boolean;
   /** Whether a modal surface should dock to the bottom on a mobile viewport. */
@@ -157,8 +158,8 @@ const ABOVE_FIRST_POSITIONS: readonly ConnectedPosition[] = [
  * Exactly one is open at a time: opening a second closes the first, so a word
  * popover and a sentence menu can never both hover over the same text. The
  * service owns everything that is the same for both — positioning, `Escape`,
- * dismissal by clicking away, and returning focus — while `ReaderPopoverComponent`
- * owns the card and its focus trap.
+ * dismissal by clicking away, Back (`OverlayHistoryEntry`), and returning
+ * focus — while `ReaderPopoverComponent` owns the card and its focus trap.
  */
 @Injectable({ providedIn: 'root' })
 export class PopoverService {
@@ -224,6 +225,16 @@ export class PopoverService {
       });
     }
 
+    // Back closes a modal surface rather than leaving the page. One that
+    // replaces another takes its own entry once the old one's has come off.
+    const backEntry = modal
+      ? new OverlayHistoryEntry({
+          close: () => {
+            close();
+          },
+        })
+      : null;
+
     const close = (returnFocus = true): void => {
       if (this.overlayRef !== overlayRef) {
         return;
@@ -232,6 +243,7 @@ export class PopoverService {
       this.currentMode = null;
       this.closeCurrent = null;
       overlayRef.dispose();
+      backEntry?.stop();
       // Without `preventScroll` the browser scrolls the trigger back into view
       // as it takes focus, which on a phone undoes the clearance the sheet had
       // just made for it and jerks the reading under the reader's finger.
@@ -362,6 +374,7 @@ export class PopoverService {
     this.overlayRef = overlayRef;
     this.currentMode = { overlay: overlayRef, options, modal };
     this.closeCurrent = close;
+    backEntry?.start();
     this.syncViewportMode(overlayRef, options, modal);
     return {
       close: () => {

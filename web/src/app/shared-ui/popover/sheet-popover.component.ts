@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   Directive,
   ElementRef,
   inject,
@@ -11,8 +12,10 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { Router } from '@angular/router';
 import { ViewportService } from '../../core/platform/viewport.service';
 import { OverlayHeaderComponent } from '../dialog/overlay-header.component';
+import { OverlayHistoryEntry } from '../dropdown/open-overlay-guard';
 import { SheetHandleComponent } from '../sheet/sheet-handle.component';
 
 interface NativePopoverElement extends Omit<HTMLElement, 'hidePopover' | 'showPopover'> {
@@ -42,7 +45,8 @@ let nextOverlayId = 0;
  *
  * The native popover stays on the host so it light-dismisses, survives a file
  * chooser, keeps the accessible relationship with its trigger, and returns
- * focus to it. Focus moves in when it opens — to a `[data-overlay-focus]` control, else
+ * focus to it. While it is open it holds a history entry, so Back closes it
+ * before it leaves the page (`OverlayHistoryEntry`). Focus moves in when it opens — to a `[data-overlay-focus]` control, else
  * the close, or the handle when docked — and is held inside while it is open.
  * `[mn-dialog-pinned]` content sits above the body and stays put while it
  * scrolls; `[mn-dialog-action]` content is the footer.
@@ -164,6 +168,15 @@ export class SheetPopoverComponent {
   private readonly viewport = inject(ViewportService);
   private readonly handle = viewChild<SheetHandleComponent>('handle');
   private readonly openState = signal(false);
+  private readonly router = inject(Router, { optional: true });
+  private readonly backEntry = new OverlayHistoryEntry({
+    close: () => {
+      this.hide();
+    },
+    // A link inside it, or one a press outside reached, is taking the learner
+    // to another page: that page covers the entry.
+    leaving: () => this.router?.currentNavigation() != null,
+  });
 
   /** Whether it is showing, set before the first frame of showing. */
   readonly isOpen = this.openState.asReadonly();
@@ -176,6 +189,10 @@ export class SheetPopoverComponent {
 
   constructor() {
     this.trap.enabled = false;
+    // Removed while open (its page was left), it fires no `toggle`.
+    inject(DestroyRef).onDestroy(() => {
+      this.backEntry.stop();
+    });
   }
 
   /** The native popover element for the owning feature's open/close lifecycle. */
@@ -197,7 +214,11 @@ export class SheetPopoverComponent {
   }
 
   protected onBeforeToggle(event: Event): void {
-    this.openState.set((event as ToggleEvent).newState === 'open');
+    const open = (event as ToggleEvent).newState === 'open';
+    this.openState.set(open);
+    if (open) {
+      this.backEntry.start();
+    }
   }
 
   /**
@@ -213,6 +234,7 @@ export class SheetPopoverComponent {
       this.focusInside();
       this.opened.emit();
     } else {
+      this.backEntry.stop();
       this.closed.emit();
     }
   }

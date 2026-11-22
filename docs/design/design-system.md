@@ -899,7 +899,11 @@ not an overlay at all but a segmented control or a radio list in place.
 
 Modal surfaces use the CDK Dialog pattern or a native popover that behaves like
 it: focus moves into the surface, is held there while it is open, `Escape`
-dismisses it, and focus returns to the control that opened it. A confirmation
+dismisses it, and focus returns to the control that opened it. Back closes the
+top overlay before it leaves the page (R27): a menu, a dropdown, a popover-held
+task dialog, and the reader's word and sentence details each hold one history
+entry while open (`OverlayHistoryEntry`), which closing it any other way takes
+back off, so Back never costs a second press. A confirmation
 opens with its safe answer focused. A text field is one border: focused, 2px in the focus colour with no offset ring; wrong, 2px in the danger colour with or without focus. Footer buttons keep their natural width on every size, ghost at the start and primary at the end. A docked sheet lifts above the on-screen keyboard and is
 never taller than what can be seen, so a field in it, and the picker's list,
 stay in view.
@@ -909,8 +913,8 @@ rather than a CDK dialog, because Add words must stay open while a file chooser
 is up and Story options is opened from the reader's header. That is a mechanism,
 not a kind: on a wide screen each is a centred task dialog over a scrim like any
 other, its sub-steps take the back arrow in its header, and on a phone it is a
-docked sheet. Escape, the close, the handle, and a press on the scrim all put it
-away and return focus to what opened it.
+docked sheet. Escape, Back, the close, the handle, and a press on the scrim all
+put it away and return focus to what opened it.
 
 The reader has one exception, on the shared surface: a word's or a sentence's
 details stay **anchored to the word** on a wide screen, because the word is what
@@ -1031,6 +1035,7 @@ One gesture means one thing, and it is decided while it is being made.
 | Hold a sentence for 450ms    | Sentence details open, under the finger |
 | Hold the same sentence again | The details stay open                   |
 | Short tap on anything else   | Whatever is open is dismissed           |
+| Back                         | Whatever is open is dismissed           |
 | Drag on the reading          | The page scrolls; an open sheet stays   |
 
 The held press applies to words, furigana, punctuation, and the leading around

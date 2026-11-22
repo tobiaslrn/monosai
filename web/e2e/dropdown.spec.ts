@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { stubOpenRouter } from './openrouter';
-import { expectMotionSettled } from './sheets';
+import { expectMotionSettled, expectOverlayEntryGone } from './sheets';
 import { TTS_READY_STATE } from './state';
 
 /**
@@ -105,13 +105,7 @@ test.describe('a dropdown and the page around it', () => {
     await field.click();
     await page.locator('.mn-dropdown:popover-open [role="option"]').last().click();
     await expect(page.locator('.mn-dropdown:popover-open')).toHaveCount(0);
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () => (history.state as Record<string, unknown> | null)?.['monosaiOverlayEntry'],
-        ),
-      )
-      .toBeUndefined();
+    await expectOverlayEntryGone(page);
     await page.goBack();
     await expect(page).toHaveURL(/#\/library$/);
   });

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
-import { expectSheetAtRest } from './sheets';
+import { expectOverlayEntryGone, expectSheetAtRest } from './sheets';
 import { expectSettingPersisted } from './storage';
 import {
   countOwnedRows,
@@ -1048,6 +1048,86 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('button.token.is-selected')).toHaveCount(tinted);
   });
 
+  test('Back closes a reader sheet before it leaves the reader @mobile @smoke', async ({
+    page,
+  }) => {
+    await page.goto('./#/library');
+    await importReading(page, SAMPLE_TEXT);
+    const readerUrl = page.url();
+    const options = page.getByRole('dialog', { name: 'Story options', exact: true });
+
+    await openSentence(page);
+    await page.goBack();
+    await expect(page.locator('mn-sentence-popover')).toHaveCount(0);
+    await expect(page).toHaveURL(readerUrl);
+
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
+    await expect(options).toBeVisible();
+    await page.goBack();
+    await expect(options).toBeHidden();
+    await expect(page).toHaveURL(readerUrl);
+
+    // Each sheet took its entry with it: the next Back is the page's.
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/library$/);
+  });
+
+  test('a sheet put away or replaced leaves Back to the page @mobile @smoke', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'moving on to the next word in one press is a touch gesture');
+    await page.goto('./#/library');
+    await importReading(page, SAMPLE_TEXT);
+    const readerUrl = page.url();
+
+    // One word's details replacing another's still close on one Back.
+    await tap(page, page.getByRole('button', { name: new RegExp('猫') }).first());
+    await expect(wordDetails(page).locator('.surface')).toContainText('猫');
+    await tap(page, page.getByRole('button', { name: new RegExp('名前') }).first());
+    await expect(wordDetails(page).locator('.surface')).toContainText('名前');
+    await page.goBack();
+    await expect(wordDetails(page)).toHaveCount(0);
+    await expect(page).toHaveURL(readerUrl);
+
+    // Put away by a tap outside and by the handle, they leave nothing behind.
+    await openSentence(page);
+    await tap(page, page.locator('article.text'));
+    await expect(page.locator('mn-sentence-popover')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
+    await page.getByRole('button', { name: 'Close story options' }).click();
+    await expect(page.getByRole('dialog', { name: 'Story options', exact: true })).toBeHidden();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/library$/);
+  });
+
+  test('Back from a page a reader sheet led to returns to the reader in one press @mobile @smoke', async ({
+    page,
+  }) => {
+    await page.goto('./#/library');
+    await importReading(page, SAMPLE_TEXT);
+    const readerUrl = page.url();
+
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
+    await page.getByTestId('shared-setup').getByRole('link', { name: 'Open Settings' }).click();
+    await expect(page).toHaveURL(/#\/settings/);
+    await page.goBack();
+    await expect(page).toHaveURL(readerUrl);
+    await expect(page.getByRole('dialog', { name: 'Story options', exact: true })).toBeHidden();
+
+    await openSentence(page);
+    await page.getByRole('button', { name: 'Translate', exact: true }).click();
+    await page.locator('mn-sentence-popover').getByRole('link', { name: 'Open Settings' }).click();
+    await expect(page).toHaveURL(/#\/settings/);
+    await page.goBack();
+    await expect(page).toHaveURL(readerUrl);
+    await expect(page.locator('mn-sentence-popover')).toHaveCount(0);
+
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/library$/);
+  });
+
   test('holding a line opens its sentence, and holding again keeps it @mobile @smoke', async ({
     page,
     isMobile,
@@ -1418,6 +1498,8 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await furigana.uncheck();
     await expectSettingPersisted(page, 'reader-preferences', 'furigana', false);
     await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Story options', exact: true })).toBeHidden();
+    await expectOverlayEntryGone(page);
 
     await page.reload();
     await page.getByRole('button', { name: 'Story options', exact: true }).click();

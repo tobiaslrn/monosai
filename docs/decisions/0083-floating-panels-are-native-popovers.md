@@ -3,6 +3,11 @@
 Date: 2026-10-25
 Status: Accepted
 
+Amended for Back (R27): every panel here, the reader's `PopoverService` surfaces, and the
+popover-held task dialogs (`mn-sheet-popover`) take one history entry while open through the
+shared `OverlayHistoryEntry` (`shared-ui/dropdown/open-overlay-guard.ts`), so Back closes the
+top one before it leaves the page. A non-modal hover preview takes none.
+
 ## Context
 
 Four mechanisms put a panel under a control:

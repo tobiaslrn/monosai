@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
 import { countOwnedRows, importReading, openSentence, SAMPLE_TEXT } from './reading';
 import { stubOpenRouter, type ProviderCalls } from './openrouter';
-import { expectSheetAtRest } from './sheets';
+import { expectOverlayEntryGone, expectSheetAtRest } from './sheets';
 import { TEXT_MODEL_READY_STATE } from './state';
 
 /** Enough sentences for a whole-reading job to need more than one batch. */
@@ -544,6 +544,7 @@ test.describe('scenario 12b — a job belongs to one reading', () => {
       page.locator('[data-layer="english"]').getByRole('button', { name: 'Stop', exact: true }),
     ).toHaveCount(0);
     await page.keyboard.press('Escape');
+    await expectOverlayEntryGone(page);
 
     // Deleting the reading the job belongs to says so before it happens.
     const before = callCount(calls);
