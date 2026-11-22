@@ -37,7 +37,14 @@ import {
  */
 export interface LanguageWorkerChannel {
   post(message: LanguageRequestMessage): void;
-  subscribe(listener: (data: unknown) => void): () => void;
+  /**
+   * Delivers every message, and reports a worker that can no longer answer.
+   *
+   * `onFailure` is how a worker that failed to load, threw outside a request,
+   * was killed for memory, or sent a message that could not be read says so:
+   * no response will ever arrive for what is pending.
+   */
+  subscribe(listener: (data: unknown) => void, onFailure?: () => void): () => void;
   terminate(): void;
 }
 
@@ -102,19 +109,24 @@ function malformedError(operation: string, error: z.ZodError): LanguageError {
  * cooperative `cancel` messages, and drops any response whose request is no
  * longer pending, so a late answer from a cancelled analysis can never resolve a
  * newer request or reach the UI.
+ *
+ * A worker that stops answering (it failed to load, crashed, ran out of memory,
+ * or sent a message that could not be read) fails everything pending with
+ * `worker-terminated` and is dropped. The next request starts a fresh worker,
+ * which knows nothing yet: listeners registered with `onStateLost` are told so
+ * they initialize it again.
  */
 export class LanguageWorkerClient implements LanguageRuntime {
   private readonly pending = new Map<string, PendingRequest>();
-  private readonly unsubscribe: () => void;
+  private readonly stateLostListeners = new Set<() => void>();
+  private connection: { channel: LanguageWorkerChannel; unsubscribe: () => void } | null;
   private disposed = false;
 
   constructor(
-    private readonly channel: LanguageWorkerChannel,
+    private readonly openChannel: () => LanguageWorkerChannel,
     private readonly logger?: Logger,
   ) {
-    this.unsubscribe = channel.subscribe((data) => {
-      this.receive(data);
-    });
+    this.connection = this.connect();
   }
 
   dispose(): void {
@@ -122,13 +134,61 @@ export class LanguageWorkerClient implements LanguageRuntime {
       return;
     }
     this.disposed = true;
-    this.unsubscribe();
-    const terminated = languageError('worker-terminated', 'The language worker was stopped.');
-    for (const [, request] of this.pending) {
-      request.settle(err(terminated));
-    }
+    this.disconnect(languageError('worker-terminated', 'The language worker was stopped.'));
+    this.stateLostListeners.clear();
+  }
+
+  onStateLost(listener: () => void): () => void {
+    this.stateLostListeners.add(listener);
+    return () => {
+      this.stateLostListeners.delete(listener);
+    };
+  }
+
+  private connect(): { channel: LanguageWorkerChannel; unsubscribe: () => void } {
+    const channel = this.openChannel();
+    const unsubscribe = channel.subscribe(
+      (data) => {
+        this.receive(data);
+      },
+      () => {
+        this.failed(channel);
+      },
+    );
+    return { channel, unsubscribe };
+  }
+
+  /** Stops the current worker and fails what was waiting on it. */
+  private disconnect(reason: LanguageError): void {
+    const connection = this.connection;
+    this.connection = null;
+    connection?.unsubscribe();
+    const pending = [...this.pending.values()];
     this.pending.clear();
-    this.channel.terminate();
+    for (const request of pending) {
+      request.settle(err(reason));
+    }
+    connection?.channel.terminate();
+  }
+
+  /**
+   * Settles everything pending once the worker can no longer answer.
+   *
+   * Nothing else would: the requests wait for responses that will never come,
+   * and language support would stay busy until a reload. The dead worker is
+   * stopped and forgotten, so the next request starts a fresh one.
+   */
+  private failed(channel: LanguageWorkerChannel): void {
+    if (this.disposed || this.connection?.channel !== channel) {
+      return;
+    }
+    this.logger?.error('worker.failed', { worker: 'language' });
+    this.disconnect(
+      languageError('worker-terminated', 'The language worker stopped unexpectedly.'),
+    );
+    for (const listener of [...this.stateLostListeners]) {
+      listener();
+    }
   }
 
   initialize(
@@ -205,6 +265,8 @@ export class LanguageWorkerClient implements LanguageRuntime {
       return Promise.resolve(err(languageError('cancelled', 'The request was cancelled.')));
     }
 
+    this.connection ??= this.connect();
+    const { channel } = this.connection;
     const requestId = nextRequestId();
     this.logger?.debug('language.operation.started', { operation });
     return new Promise<Result<Value, LanguageError>>((resolve) => {
@@ -222,7 +284,7 @@ export class LanguageWorkerClient implements LanguageRuntime {
       const onAbort = (): void => {
         // The worker is told to stop, and the pending entry is dropped so its
         // eventual answer is ignored on arrival rather than resolving anything.
-        this.channel.post({
+        channel.post({
           protocolVersion: LANGUAGE_PROTOCOL_VERSION,
           requestId: nextRequestId(),
           request: { operation: 'cancel', payload: { targetRequestId: requestId } },
@@ -265,7 +327,7 @@ export class LanguageWorkerClient implements LanguageRuntime {
       });
 
       signal?.addEventListener('abort', onAbort, { once: true });
-      this.channel.post({
+      channel.post({
         protocolVersion: LANGUAGE_PROTOCOL_VERSION,
         requestId,
         request: { operation, payload } as LanguageRequest,
@@ -306,27 +368,28 @@ export class LanguageWorkerClient implements LanguageRuntime {
 }
 
 /** Wraps a real `Worker` as a channel. */
-export function workerChannel(worker: Worker, onError?: () => void): LanguageWorkerChannel {
-  if (onError !== undefined) {
-    worker.addEventListener('error', onError);
-  }
+export function workerChannel(worker: Worker): LanguageWorkerChannel {
   return {
     post: (message) => {
       worker.postMessage(message);
     },
-    subscribe: (listener) => {
+    subscribe: (listener, onFailure) => {
       const handler = (event: MessageEvent<unknown>): void => {
         listener(event.data);
       };
+      const failure = (): void => {
+        onFailure?.();
+      };
       worker.addEventListener('message', handler);
+      worker.addEventListener('error', failure);
+      worker.addEventListener('messageerror', failure);
       return () => {
         worker.removeEventListener('message', handler);
+        worker.removeEventListener('error', failure);
+        worker.removeEventListener('messageerror', failure);
       };
     },
     terminate: () => {
-      if (onError !== undefined) {
-        worker.removeEventListener('error', onError);
-      }
       worker.terminate();
     },
   };

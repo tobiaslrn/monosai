@@ -39,16 +39,22 @@ interface Harness {
   readonly saved: Partial<LanguageAssetSettings>[];
   readonly pruned: string[];
   readonly initializeCalls: () => number;
+  /** Behaves like a worker that crashed: the runtime lost everything it held. */
+  readonly loseState: () => void;
 }
 
 function setup(options: {
   manifest?: Result<LanguageAssetManifest, LanguageError>;
   initialize?: Result<LanguageRuntimeInfo, LanguageError>;
+  initializeWith?: () => Promise<Result<LanguageRuntimeInfo, LanguageError>>;
   settingsFail?: boolean;
 }): Harness {
   const saved: Partial<LanguageAssetSettings>[] = [];
   const pruned: string[] = [];
-  const initialize = vi.fn(() => Promise.resolve(options.initialize ?? ok(runtimeInfo())));
+  const initialize = vi.fn(
+    options.initializeWith ?? (() => Promise.resolve(options.initialize ?? ok(runtimeInfo()))),
+  );
+  const stateLost = new Set<() => void>();
 
   const source: LanguageAssetSource = {
     baseUrl: 'https://monosai.test/assets/language/1/',
@@ -59,7 +65,13 @@ function setup(options: {
     },
   };
 
-  const runtime = { initialize } as unknown as LanguageRuntime;
+  const runtime = {
+    initialize,
+    onStateLost: (listener: () => void) => {
+      stateLost.add(listener);
+      return () => stateLost.delete(listener);
+    },
+  } as unknown as LanguageRuntime;
 
   TestBed.configureTestingModule({
     providers: [
@@ -85,6 +97,11 @@ function setup(options: {
     saved,
     pruned,
     initializeCalls: () => initialize.mock.calls.length,
+    loseState: () => {
+      for (const listener of stateLost) {
+        listener();
+      }
+    },
   };
 }
 
@@ -164,5 +181,55 @@ describe('LanguageStore', () => {
     expect(harness.store.status()).toBe('failed');
     expect(harness.store.lastError()?.code).toBe('unknown');
     expect(harness.store.versions()).toBeNull();
+  });
+
+  describe('when the runtime loses its state', () => {
+    it('fails an attempt whose worker crashed, and a retry prepares a fresh one', async () => {
+      let crash = true;
+      const harness = setup({
+        initializeWith: () =>
+          Promise.resolve(
+            crash
+              ? err(languageError('worker-terminated', 'The language worker stopped unexpectedly.'))
+              : ok(runtimeInfo()),
+          ),
+      });
+
+      await expect(harness.store.initialize()).resolves.toBe(false);
+      expect(harness.store.status()).toBe('failed');
+      expect(harness.store.lastError()?.code).toBe('worker-terminated');
+
+      crash = false;
+      await expect(harness.store.initialize()).resolves.toBe(true);
+      expect(harness.store.status()).toBe('ready');
+    });
+
+    it('prepares the runtime again for the next caller once ready', async () => {
+      const harness = setup({});
+      await harness.store.initialize();
+
+      harness.loseState();
+
+      expect(harness.store.status()).toBe('idle');
+      await expect(harness.store.initialize()).resolves.toBe(true);
+      expect(harness.initializeCalls()).toBe(2);
+      expect(harness.store.status()).toBe('ready');
+    });
+
+    it('does not report ready when the state was lost after the runtime answered', async () => {
+      let harness: Harness | null = null;
+      harness = setup({
+        initializeWith: () => {
+          // The worker answers, then dies before the attempt finishes.
+          queueMicrotask(() => harness?.loseState());
+          return Promise.resolve(ok(runtimeInfo()));
+        },
+      });
+
+      await expect(harness.store.initialize()).resolves.toBe(false);
+
+      expect(harness.store.status()).toBe('failed');
+      expect(harness.store.lastError()?.code).toBe('worker-terminated');
+    });
   });
 });

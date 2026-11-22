@@ -99,4 +99,19 @@ describe('VocabularyClassificationService', () => {
 
     expect(compiled).toHaveLength(2);
   });
+
+  it('rebuilds the matcher once the runtime has lost its state', async () => {
+    const snapshot = await repository.commitSnapshot(snapshotFixture(1, 3));
+    if (!snapshot.ok) throw new Error('the commit should succeed');
+    active.set(snapshot.value.id);
+    const service = TestBed.inject(VocabularyClassificationService);
+    const sentences = [{ sentenceId: 'sentence-1', tokens: [] }];
+    await service.classify(sentences);
+
+    // The worker crashed; the fresh one has no matcher.
+    runtime.loseState();
+    await service.classify(sentences);
+
+    expect(compiled).toHaveLength(2);
+  });
 });

@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Logger } from '../../application/shared/diagnostics';
-import { LanguageWorkerClient, type LanguageWorkerChannel } from './language-worker.client';
+import {
+  LanguageWorkerClient,
+  workerChannel,
+  type LanguageWorkerChannel,
+} from './language-worker.client';
 import {
   LANGUAGE_PROTOCOL_VERSION,
   type LanguageRequestMessage,
@@ -73,7 +77,7 @@ function segmentResponse(requestId: string, text: string): LanguageResponseMessa
 describe('LanguageWorkerClient', () => {
   it('routes concurrent responses back to the request that asked for them', async () => {
     const channel = fakeChannel();
-    const client = new LanguageWorkerClient(channel);
+    const client = new LanguageWorkerClient(() => channel);
 
     const first = client.segment('一。');
     const second = client.segment('二。');
@@ -90,7 +94,7 @@ describe('LanguageWorkerClient', () => {
 
   it('cancels through the worker and ignores the late answer', async () => {
     const channel = fakeChannel();
-    const client = new LanguageWorkerClient(channel);
+    const client = new LanguageWorkerClient(() => channel);
     const controller = new AbortController();
 
     const pending = client.segment('長い段落。', controller.signal);
@@ -117,7 +121,7 @@ describe('LanguageWorkerClient', () => {
 
   it('fails immediately when the signal is already aborted', async () => {
     const channel = fakeChannel();
-    const client = new LanguageWorkerClient(channel);
+    const client = new LanguageWorkerClient(() => channel);
     const controller = new AbortController();
     controller.abort();
 
@@ -128,7 +132,7 @@ describe('LanguageWorkerClient', () => {
 
   it('reports a protocol mismatch carried by a response envelope', async () => {
     const channel = fakeChannel();
-    const client = new LanguageWorkerClient(channel);
+    const client = new LanguageWorkerClient(() => channel);
     const pending = client.segment('猫。');
     const requestId = channel.lastRequestId('segment');
 
@@ -146,7 +150,7 @@ describe('LanguageWorkerClient', () => {
 
   it('rejects a response that answers a different operation', async () => {
     const channel = fakeChannel();
-    const client = new LanguageWorkerClient(channel);
+    const client = new LanguageWorkerClient(() => channel);
     const pending = client.segment('猫。');
     const requestId = channel.lastRequestId('segment');
 
@@ -168,7 +172,7 @@ describe('LanguageWorkerClient', () => {
 
   it('ignores messages that are not valid responses', async () => {
     const channel = fakeChannel();
-    const client = new LanguageWorkerClient(channel);
+    const client = new LanguageWorkerClient(() => channel);
     const pending = client.segment('猫。');
     const requestId = channel.lastRequestId('segment');
 
@@ -182,7 +186,7 @@ describe('LanguageWorkerClient', () => {
 
   it('settles pending requests when the worker is disposed', async () => {
     const channel = fakeChannel();
-    const client = new LanguageWorkerClient(channel);
+    const client = new LanguageWorkerClient(() => channel);
     const pending = client.segment('猫。');
 
     client.dispose();
@@ -197,7 +201,7 @@ describe('LanguageWorkerClient', () => {
 
   it('refuses new work after disposal instead of hanging', async () => {
     const channel = fakeChannel();
-    const client = new LanguageWorkerClient(channel);
+    const client = new LanguageWorkerClient(() => channel);
     client.dispose();
 
     const result = await client.segment('猫。');
@@ -209,7 +213,7 @@ describe('LanguageWorkerClient', () => {
 
   it('passes a worker error through unchanged', async () => {
     const channel = fakeChannel();
-    const client = new LanguageWorkerClient(channel);
+    const client = new LanguageWorkerClient(() => channel);
     const pending = client.segment('猫。');
     const requestId = channel.lastRequestId('segment');
 
@@ -232,7 +236,7 @@ describe('LanguageWorkerClient', () => {
   it('rejects a well-formed envelope whose result value is malformed', async () => {
     const channel = fakeChannel();
     const { logger, error } = errorLogger();
-    const client = new LanguageWorkerClient(channel, logger);
+    const client = new LanguageWorkerClient(() => channel, logger);
     const pending = client.analyzeSentences(['猫。']);
     const requestId = channel.lastRequestId('analyze-sentences');
 
@@ -264,7 +268,7 @@ describe('LanguageWorkerClient', () => {
 
   it('rejects a worker error that is not a language error instead of hanging', async () => {
     const channel = fakeChannel();
-    const client = new LanguageWorkerClient(channel);
+    const client = new LanguageWorkerClient(() => channel);
     const pending = client.segment('猫。');
     const requestId = channel.lastRequestId('segment');
 
@@ -280,5 +284,77 @@ describe('LanguageWorkerClient', () => {
       expect(result.error.code).toBe('invalid-response');
       expect(result.error.cause).toBe('segment: code: invalid_value');
     }
+  });
+});
+
+describe('LanguageWorkerClient over a worker that fails', () => {
+  /** Stands in for a `Worker`: an event target that records what was posted. */
+  function fakeWorker(): Worker & { posted: LanguageRequestMessage[]; stopped: boolean } {
+    const target = new EventTarget() as Worker & {
+      posted: LanguageRequestMessage[];
+      stopped: boolean;
+    };
+    target.posted = [];
+    target.stopped = false;
+    target.postMessage = (message: LanguageRequestMessage) => {
+      target.posted.push(message);
+    };
+    target.terminate = () => {
+      target.stopped = true;
+    };
+    return target;
+  }
+
+  function answer(worker: Worker, message: LanguageRequestMessage, text: string): void {
+    worker.dispatchEvent(
+      new MessageEvent('message', { data: segmentResponse(message.requestId, text) }),
+    );
+  }
+
+  it.each([
+    ['reports an error', () => new Event('error')],
+    ['sends an answer that cannot be read', () => new MessageEvent('messageerror')],
+  ])('fails what is pending when the worker %s', async (_case, failure) => {
+    const worker = fakeWorker();
+    const client = new LanguageWorkerClient(() => workerChannel(worker));
+
+    const segmenting = client.segment('猫が寝ている。');
+    // A module that cannot load, or a worker that crashed, only says so here.
+    worker.dispatchEvent(failure());
+
+    const outcome = await segmenting;
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.error.code).toBe('worker-terminated');
+    }
+    expect(worker.stopped).toBe(true);
+  });
+
+  it('starts a fresh worker for the next request and says the old state is gone', async () => {
+    const workers: ReturnType<typeof fakeWorker>[] = [];
+    const client = new LanguageWorkerClient(() => {
+      const worker = fakeWorker();
+      workers.push(worker);
+      return workerChannel(worker);
+    });
+    const lost = vi.fn();
+    client.onStateLost(lost);
+
+    const first = client.segment('猫。');
+    workers[0]?.dispatchEvent(new Event('error'));
+    await first;
+    expect(lost).toHaveBeenCalledTimes(1);
+
+    const second = client.segment('犬。');
+    expect(workers).toHaveLength(2);
+    const fresh = workers[1];
+    const request = fresh?.posted[0];
+    if (fresh === undefined || request === undefined) throw new Error('nothing was posted');
+    answer(fresh, request, '犬。');
+    expect((await second).ok).toBe(true);
+
+    // The dead worker is no longer listened to.
+    workers[0]?.dispatchEvent(new Event('error'));
+    expect(lost).toHaveBeenCalledTimes(1);
   });
 });

@@ -13,7 +13,7 @@ function browserCaches(view: Window | null): CacheStorage | null {
  *
  * The worker module is created eagerly but does nothing until it is initialized,
  * so startup stays cheap: no asset is fetched until a feature asks for language
- * processing.
+ * processing. A worker that dies is replaced by a fresh one on the next request.
  */
 export function provideLanguage(): Provider[] {
   return [
@@ -30,20 +30,19 @@ export function provideLanguage(): Provider[] {
     },
     {
       provide: LANGUAGE_RUNTIME,
-      useFactory: () =>
-        (() => {
-          const logger = inject<Logger>(LOGGER);
-          const worker = new Worker(
-            new URL('../../../workers/language/language.worker', import.meta.url),
-            { type: 'module', name: 'monosai-language' },
-          );
-          return new LanguageWorkerClient(
-            workerChannel(worker, () => {
-              logger.error('worker.failed', { worker: 'language' });
-            }),
-            logger,
-          );
-        })(),
+      useFactory: () => {
+        const logger = inject<Logger>(LOGGER);
+        return new LanguageWorkerClient(
+          () =>
+            workerChannel(
+              new Worker(new URL('../../../workers/language/language.worker', import.meta.url), {
+                type: 'module',
+                name: 'monosai-language',
+              }),
+            ),
+          logger,
+        );
+      },
     },
   ];
 }

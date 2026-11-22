@@ -115,6 +115,20 @@ export class FakeLanguageRuntime implements LanguageRuntime {
     );
   }
 
+  private readonly stateLostListeners = new Set<() => void>();
+
+  onStateLost(listener: () => void): () => void {
+    this.stateLostListeners.add(listener);
+    return () => this.stateLostListeners.delete(listener);
+  }
+
+  /** Behaves like a worker that crashed: everything it held is gone. */
+  loseState(): void {
+    for (const listener of [...this.stateLostListeners]) {
+      listener();
+    }
+  }
+
   dispose(): void {
     // Nothing to release.
   }

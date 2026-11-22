@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { DestroyRef, Injectable, inject } from '@angular/core';
 import { languageError, type LanguageError } from '../../domain/language/language-error';
 import type { ClassificationResult, SentenceTokens } from '../../domain/language/language-runtime';
 import type { TokenStatusAssignment } from '../../domain/reading/validation';
@@ -50,6 +50,15 @@ export class VocabularyClassificationService {
   private compiled: CompiledMatcher | null = null;
   /** Moves on every `invalidate`, so a compile that was already running cannot claim to be current. */
   private generation = 0;
+
+  constructor() {
+    // A runtime that lost its state (its worker crashed) lost the matcher too.
+    inject(DestroyRef).onDestroy(
+      this.runtime.onStateLost(() => {
+        this.invalidate();
+      }),
+    );
+  }
 
   async classify(
     sentences: readonly SentenceTokens[],

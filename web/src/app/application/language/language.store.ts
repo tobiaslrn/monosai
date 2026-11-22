@@ -1,5 +1,5 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
-import type { LanguageError } from '../../domain/language/language-error';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { languageError, type LanguageError } from '../../domain/language/language-error';
 import type { LanguageAssetAttribution } from '../../domain/language/language-assets';
 import { allAttributions } from '../../domain/language/language-assets';
 import type { LanguageRuntimeInfo } from '../../domain/language/language-runtime';
@@ -37,6 +37,8 @@ export class LanguageStore {
   private readonly attributionsSignal = signal<readonly LanguageAssetAttribution[]>([]);
   private readonly errorSignal = signal<LanguageError | null>(null);
   private inFlight: Promise<boolean> | null = null;
+  /** Moves each time the runtime loses its state, so an attempt it outlived cannot claim success. */
+  private runtimeEpoch = 0;
 
   readonly status = this.statusSignal.asReadonly();
   readonly info = this.infoSignal.asReadonly();
@@ -70,6 +72,20 @@ export class LanguageStore {
     () => this.infoSignal()?.registerGuidance ?? null,
   );
 
+  constructor() {
+    // A runtime that lost its state (its worker crashed) is no longer ready,
+    // even though the bundle it was given still is: the next caller of
+    // `initialize` prepares the fresh one. An attempt that was running fails on
+    // its own and can be retried.
+    const unsubscribe = this.runtime.onStateLost(() => {
+      this.runtimeEpoch += 1;
+      if (this.statusSignal() === 'ready') {
+        this.statusSignal.set('idle');
+      }
+    });
+    inject(DestroyRef).onDestroy(unsubscribe);
+  }
+
   /**
    * Loads, verifies, and activates the language bundle. Concurrent callers share
    * one attempt; a failed attempt can be retried.
@@ -88,6 +104,7 @@ export class LanguageStore {
     this.logger.info('language.operation.started', { operation: 'initialize' });
     this.statusSignal.set('initializing');
     this.errorSignal.set(null);
+    const epoch = this.runtimeEpoch;
 
     const manifest = await this.source.loadManifest();
     if (!manifest.ok) {
@@ -118,6 +135,11 @@ export class LanguageStore {
         message: 'Japanese language support could not be prepared.',
         cause: safeErrorTypeOf(thrown),
       });
+    }
+    if (epoch !== this.runtimeEpoch) {
+      return this.reportFailure(
+        languageError('worker-terminated', 'The language worker stopped unexpectedly.'),
+      );
     }
     this.infoSignal.set(initialized.value);
     this.attributionsSignal.set(allAttributions(manifest.value));

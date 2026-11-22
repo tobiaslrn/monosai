@@ -82,6 +82,13 @@ export interface LanguageRuntime extends Tokenizer, Dictionary {
     sentences: readonly SentenceTokens[],
     signal?: AbortSignal,
   ): Promise<Result<ClassificationResult, LanguageError>>;
+  /**
+   * Tells `listener` when the runtime lost everything it held: its assets and
+   * its compiled snapshots. Whatever was pending has failed; the next request
+   * starts afresh, so the runtime has to be initialized again. Returns the
+   * unsubscribe.
+   */
+  onStateLost(listener: () => void): () => void;
   dispose(): void;
 }
 
