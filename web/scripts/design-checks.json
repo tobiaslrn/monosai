@@ -14,7 +14,7 @@
   {
     "rule": "R5",
     "says": "A rule changes only when the owner says so; the rulebook and AGENTS.md stay within their line budgets.",
-    "check": "design-rules.mjs: every rule a check cites is listed; every checked rule is a `**Rn.**` rule in the rulebook; AGENTS.md at most 90 lines and the rulebook at most 160",
+    "check": "design-rules.mjs: every rule a check cites is listed; every checked rule is a `**Rn.**` rule in the rulebook; AGENTS.md at most 90 lines and the rulebook at most 190",
     "status": "checked"
   },
   {

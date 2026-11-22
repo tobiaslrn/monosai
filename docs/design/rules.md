@@ -9,12 +9,18 @@ lists those checks and the retired rule numbers. Why the app looks this way: [RE
 ## Words used here
 
 - **Primitive**: a component in `web/src/app/shared-ui/`. Its doc comment is its spec.
-- **Row**: `mn-settings-row`, a label, an optional secondary line and one trailing end.
+- **Row**: `mn-settings-row`, a label, an optional secondary line and one trailing end. A
+  **shelf row** (`mn-list-row`) is a different role: an item on a list that leads somewhere.
 - **Card**: the raised surface holding rows or content. An **inset** is the one level inside it.
 - **Status line**: the one line under a card that reports its state (R29).
-- **Note**: a muted line under one row. A **notice** (`mn-notice`) is a boxed warning or caveat.
+- **Note**: a muted line under one row. A **notice** (`mn-notice`) is a boxed failure, warning,
+  result or fact beside what it is about. A **banner** is the app's own news, above the bar.
+- **Status pill**: a word on a shelf or plot that is never pressed and never sits in a row.
 - **Overlay**: anything floating over a page; one of the five kinds in R23.
-- **Sheet**: a task dialog or picker as it appears on a phone, docked to the bottom edge.
+- **Sheet**: an overlay docked to the bottom edge on a phone: a task dialog or picker (with a
+  handle), a confirmation (without), or the reader's word and sentence details.
+- **Danger ghost**: the text-only delete in a dialog footer. **Danger**: the outlined button that
+  confirms a loss.
 - **Action** (sage): the tone of "press this". **Highlight** (lavender): reader marks only.
 - **Tone**: action, success, warning, danger, setup, info (R45). One shared `Tone` type.
 
@@ -39,12 +45,14 @@ lists those checks and the retired rule numbers. Why the app looks this way: [RE
 - **R7.** Calm. A word, mark, control or motion that does no work is removed.
 - **R8.** Content first. Japanese is the content; everything else appears when needed. The
   reading surface carries only its own markers.
-- **R9.** One column, one measure at every width, no side panes. Only overlays change width.
+- **R9.** One column, one measure at every width, no side panes. Only overlays change width. One
+  bar per screen and no bottom navigation.
 - **R10.** Use the pattern an Android or iOS user already knows: a row with a summary, a switch
   that applies at once, a radio list, a confirmation before loss. Never invent a control.
 - **R12.** Accessible by default: everything scales with text size, targets meet
   `--touch-target`, focus is visible, colour never carries meaning alone, both themes work, and
-  200% text loses nothing.
+  200% text loses nothing. One target size at every width and pointer. Native elements first, and
+  every visible change of state is announced.
 - **R56.** One home. Each setting and action lives in exactly one place:
 
 | What                                    | Where                                             |
@@ -52,9 +60,12 @@ lists those checks and the retired rule numbers. Why the app looks this way: [RE
 | Reading appearance (furigana, text size) | Story options in the reader, applied at once     |
 | App-wide preferences, keys, models      | Settings, one `›` sub-page per topic              |
 | Known words and their sources           | Words; removing a source is on its own page       |
-| A story's actions (rename, delete)      | Its menu on the library card and in the reader    |
-| Creating a story                        | Generate, as steps                                |
-| How to use the app                      | Help, linked from the screen that needs it        |
+| A story's actions (rename, delete)      | Its menu on the library card                      |
+| Starting a story                        | The Library's two ways in: Write with AI, Paste   |
+| Help and Settings                       | The Library's bar only                            |
+| Audio: generate, stop, retry, speed     | The player; pace and speaking style in Settings › Voice |
+| The app's own news                      | A banner above the bar                            |
+| Version and update check                | About rows in Settings                            |
 
 ## 3. Rows and controls
 
@@ -71,7 +82,8 @@ lists those checks and the retired rule numbers. Why the app looks this way: [RE
 The row is the control: it never holds a field, button or pill (R15, checked).
 
 - **R16.** A setting's value is its secondary line; a fact's value sits at the end. Status that
-  needs attention leads the secondary line ("Not tested · Kore"), and a result replaces it.
+  needs attention leads the secondary line ("Not tested · Kore"), and a result replaces it. An
+  inherited setting shows the value that will apply, muted.
 - **R18.** A label never repeats its group or section title, and a group header never repeats
   its only row.
 - **R19.** A topic with its own groups, or more than about eight settings, is a sub-page shown on
@@ -95,7 +107,9 @@ The row is the control: it never holds a field, button or pill (R15, checked).
 | Filter above a list                  | Search field and a Filters button opening a task dialog    |
 | Multi-step task                      | Task dialog, or `mn-wizard-steps` on a page                |
 
-Named steps (Small, Medium, Large) are segmented, not a slider.
+Named steps (Small, Medium, Large) are segmented, not a slider. A filter sits in the toolbar or
+the Filters dialog, never both; sort is a menu on the result line; the dialog's footer is Reset at
+the start and Show N at the end.
 
 - **R21.** Lists hold only rows. Forms and dialogs hold only fields and buttons. Nothing is both.
 - **R22.** Buttons commit a form, dialog or step. One filled primary per surface, at the end. A
@@ -127,8 +141,14 @@ Named steps (Small, Medium, Large) are segmented, not a slider.
 - **R37.** One card surface, one overlay surface, one state layer. Grouping has two levels at most:
   a card and an inset; a card of rows has no inset.
 - **R42.** Pages switch instantly; nothing animates between a tap and the next page.
+- **R58.** An icon stands alone only on a control pressed again and again in a session (reader
+  header, audio transport, close, back, overflow), and on the Library's Help and Settings.
+  Anything rare, destructive or paid carries a visible label. An icon-only control has an
+  accessible name that states its state and a matching tooltip. One icon means one concept.
 - **R43.** Busy is `aria-busy`: the control keeps its place, label and size, and is never disabled
-  or swapped. A result's line is reserved when the work starts.
+  or swapped. A result's line is reserved when the work starts. Never a skeleton. Work longer than
+  a few seconds names its stage in the learner's words. Work the learner left keeps a row shaped
+  like its result, status first; a failure stays until dismissed.
 - **R45.** Each tone has one meaning app-wide: action (press this), success (it worked), warning
   (it may be wrong), danger (it failed), setup (set something up first), info (worth knowing).
   Highlight is not a tone: it marks reading, never status or something pressable. Never use a
@@ -146,6 +166,9 @@ Named steps (Small, Medium, Large) are segmented, not a slider.
   1–5, no sentence · button 1–3, verb first · field hint 0–8 · empty state title 2–5, body one
   sentence of 12 · error title 2–6, body one action sentence of 12 · dialog title a question of
   3–7 · toast 1–5. A sub-page title matches the row that opens it.
+- **R59.** An error says what is wrong without blame, and offers Retry only where retrying
+  unchanged could work; a place it names (Settings) is one of its actions. A link sits beside
+  what it unblocks, once per screen.
 - **R51.** One extra sentence only for lost data, money, an irreversible step or recovery, saying
   concretely what is safe or what it costs: "Your text is still here."
 - **R53.** An empty list has a plain title ("No stories yet") and its action; a body only when

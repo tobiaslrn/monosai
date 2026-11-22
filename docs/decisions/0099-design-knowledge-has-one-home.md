@@ -49,7 +49,7 @@ surface, for work the learner did not start.
 
 ## Consequences
 
-- An agent reads about 220 lines of rules and workflow instead of being sent to 2,000.
+- An agent reads about 250 lines of rules and workflow instead of being sent to 2,000.
 - Most rules fail loudly at `npm test` instead of depending on an agent remembering them.
 - Screen-level detail that only the old design system recorded is gone; the code and its tests
   are the record.

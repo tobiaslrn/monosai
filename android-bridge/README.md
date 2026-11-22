@@ -199,9 +199,9 @@ from the repository root after changing the mascot or the composition, and commi
 writes; `npm run bridge:verify` and CI check the committed resources against
 `scripts/bridge/icons.lock.json` without opening a browser.
 
-The screen is `docs/design/design-system.md` applied natively. `res/values/colors.xml`,
+The screen follows `docs/design/rules.md`, applied natively. `res/values/colors.xml`,
 `dimens.xml` and `styles.xml` transcribe the PWA's tokens under the same role names, with
-`values-night/` carrying the dark palette; a change to a token belongs in both places.
+`values-night/` carrying the dark palette; a change to a token belongs in both places, which `npm run design:check` verifies (R47).
 Every line of the screen is a label with its current value or its one control on the
 right. The AnkiDroid grant is requested on launch rather than offered as a button, since
 nothing works without it; an Allow control appears only after Android has refused, and

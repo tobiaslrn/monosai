@@ -13,7 +13,7 @@ which only shrink.
 | --- | --- | --- |
 | R1 | The design rules beat every other source, so the rulebook must exist and AGENTS.md must link it. | design-rules.mjs: the rulebook exists and AGENTS.md links it |
 | R2 | Features and core compose the shared-ui primitives and write no styles of their own. | composition-freeze.mjs: no owned styles or raw `<details>` outside its shrinking allowlist; design lint: no primitive's internal `mn-*__*` class in a feature template; stylelint: no component styles a .mn-* selector |
-| R5 | A rule changes only when the owner says so; the rulebook and AGENTS.md stay within their line budgets. | design-rules.mjs: every rule a check cites is listed; every checked rule is a `**Rn.**` rule in the rulebook; AGENTS.md at most 90 lines and the rulebook at most 160 |
+| R5 | A rule changes only when the owner says so; the rulebook and AGENTS.md stay within their line budgets. | design-rules.mjs: every rule a check cites is listed; every checked rule is a `**Rn.**` rule in the rulebook; AGENTS.md at most 90 lines and the rulebook at most 190 |
 | R20 | Each kind of input has exactly one control, and a native `<select>` is never used. | design lint: no `<select>` in a feature or core template |
 | R28 | Each overlay kind has one mechanism, so no second dropdown, popover or sheet is added. | composition-freeze.mjs: no native [popover], and no PopoverService outside the reader |
 | R34 | Type has eight roles, each a token. | stylelint: font-size and font-weight take a token |

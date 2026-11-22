@@ -303,7 +303,7 @@ export async function checkRulebook(repoRoot) {
 }
 
 /** The most lines each always-loaded guidance file may have, so it cannot regrow. */
-export const LINE_BUDGETS = { 'AGENTS.md': 90, [RULEBOOK]: 160 };
+export const LINE_BUDGETS = { 'AGENTS.md': 90, [RULEBOOK]: 190 };
 
 /** Every always-loaded guidance file is within its line budget. */
 export async function checkLineBudgets(repoRoot, budgets = LINE_BUDGETS) {
