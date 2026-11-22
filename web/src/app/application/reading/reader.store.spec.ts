@@ -378,6 +378,20 @@ describe('ReaderStore', () => {
       );
       expect(await reader.moveToSentence(sentenceId('missing'))).toBe(false);
     });
+
+    it('leaves the window alone when the move is no longer wanted once its place is read', async () => {
+      const rows = repository.add(buildReading({ id: 'r1', paragraphCount: 40 }));
+      const reader = store();
+      await reader.open(rows.reading.id);
+      const before = reader.paragraphs().map((paragraph) => paragraph.paragraph.position);
+      const far = rows.paragraphs.find((paragraph) => paragraph.position === 30)!;
+      const sentence = rows.sentences.find((candidate) => candidate.paragraphId === far.id)!;
+
+      const mounted = await reader.moveToSentence(sentence.id, () => false);
+
+      expect(mounted).toBe(false);
+      expect(reader.paragraphs().map((paragraph) => paragraph.paragraph.position)).toEqual(before);
+    });
   });
 
   describe('vocabulary changes under an open reading', () => {

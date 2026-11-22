@@ -248,7 +248,8 @@ component is composition and template:
   (reading the sheet's pane from the `PopoverRef` rather than querying the
   document), follows the sentence being read into the band between bar and
   player (first moving `ReaderStore`'s window to it with `moveToSentence` when
-  that sentence is not mounted, then jumping to it), and hands the title to the
+  that sentence is not mounted, then jumping to it, unless the learner scrolled
+  while it loaded), and hands the title to the
   bar once the heading is wholly beneath it, measuring the bar again whenever it
   changes height, as it does when a notice appears in it. The page passes it its elements with
   `connect`, and `mnDockedPlayer` attaches the player shell for exactly as long

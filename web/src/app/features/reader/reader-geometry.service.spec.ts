@@ -22,7 +22,9 @@ const playback = {
 const mobile = signal(true);
 /** A sentence the window holds beyond the two every test starts with. */
 const farSentence = signal<string | null>(null);
-const store = { moveToSentence: vi.fn<(id: string) => Promise<boolean>>() };
+const store = {
+  moveToSentence: vi.fn<(id: string, stillWanted?: () => boolean) => Promise<boolean>>(),
+};
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -303,7 +305,7 @@ describe('ReaderGeometryService', () => {
     playback.currentSentenceId.set(sentenceId('s9'));
     TestBed.tick();
     await vi.waitFor(() => {
-      expect(store.moveToSentence).toHaveBeenCalledWith('s9');
+      expect(store.moveToSentence.mock.calls[0]?.[0]).toBe('s9');
     });
     await fixture.whenStable();
     delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
@@ -311,6 +313,31 @@ describe('ReaderGeometryService', () => {
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
     expect(scrollIntoView.mock.contexts[0]).toBe(element('[data-sentence-id="s9"]'));
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'auto' });
+  });
+
+  it('stays where the learner scrolled while the part of the reading was loading', async () => {
+    const scrollIntoView = vi.fn();
+    Object.assign(HTMLElement.prototype, { scrollIntoView });
+    placeAt(element('header'), 0, 60);
+    const wanted: boolean[] = [];
+    store.moveToSentence.mockImplementation((id, stillWanted) => {
+      // The learner scrolls while its place is read: the store asks before it moves.
+      window.dispatchEvent(new Event('wheel'));
+      wanted.push(stillWanted?.() ?? true);
+      farSentence.set(id);
+      return Promise.resolve(true);
+    });
+
+    playback.currentSentenceId.set(sentenceId('s9'));
+    TestBed.tick();
+    await vi.waitFor(() => {
+      expect(store.moveToSentence.mock.calls[0]?.[0]).toBe('s9');
+    });
+    await fixture.whenStable();
+    delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
+
+    expect(wanted).toEqual([false]);
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 
   it('hands the title to the bar once the heading has gone beneath it', () => {

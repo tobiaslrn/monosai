@@ -224,10 +224,14 @@ export class ReaderStore {
    * Loads the window around a sentence wherever it is in the reading, so the
    * sentence being read aloud can be shown even when the learner was reading
    * far from it. True once the sentence is mounted; false when it is not in
-   * this reading, its place could not be read, or the reader was closed
-   * meanwhile.
+   * this reading, its place could not be read, the reader was closed
+   * meanwhile, or `stillWanted` says the move is no longer wanted once its
+   * place has been read (the learner scrolled away meanwhile).
    */
-  async moveToSentence(sentenceId: SentenceId): Promise<boolean> {
+  async moveToSentence(
+    sentenceId: SentenceId,
+    stillWanted: () => boolean = () => true,
+  ): Promise<boolean> {
     if (this.mounts(sentenceId)) {
       return true;
     }
@@ -237,7 +241,7 @@ export class ReaderStore {
     }
     const session = this.session;
     const position = await this.readings.paragraphPositionOf(reading.id, sentenceId);
-    if (session !== this.session || !position.ok || position.value === null) {
+    if (session !== this.session || !position.ok || position.value === null || !stillWanted()) {
       return false;
     }
     await this.moveTo(position.value);

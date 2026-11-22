@@ -379,15 +379,18 @@ export class ReaderGeometryService {
    * in when that is not mounted: a seek, a Next, or reading on can land far
    * from the paragraphs the learner was looking at. That part arrives in place
    * of the old one, so the page jumps to it rather than gliding through
-   * paragraphs that are not there.
+   * paragraphs that are not there. A scroll the learner makes while it loads
+   * ends following, and the page stays where they took it.
    */
   private follow(sentenceId: SentenceId): void {
     if (this.sentenceElement(sentenceId) !== null) {
       this.revealSentence(sentenceId);
       return;
     }
-    void this.store.moveToSentence(sentenceId).then((mounted) => {
-      if (!mounted || this.audio.playback.currentSentenceId() !== sentenceId) {
+    const stillWanted = (): boolean =>
+      this.scroll.following && this.audio.playback.currentSentenceId() === sentenceId;
+    void this.store.moveToSentence(sentenceId, stillWanted).then((mounted) => {
+      if (!mounted || !stillWanted()) {
         return;
       }
       afterNextRender(
