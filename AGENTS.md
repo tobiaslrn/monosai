@@ -55,8 +55,8 @@ It stores everything in the browser, only reads from Anki, and uses the learner'
 - Design: [the design rules](docs/design/rules.md) bind every visual, interactive and copy
   change and win over ADRs, existing code and the task; report a conflict instead of resolving
   it. Claude Code loads them automatically; other agents read them before UI work. Existing code
-  that breaks a rule is a defect, not an example. A primitive's doc comment is its spec, and the
-  gallery (`npm run build:gallery`) shows every primitive. Help also follows
-  [the help writing guide](docs/design/help-writing.md).
+  that breaks a rule is a defect, not an example. A primitive's doc comment is its spec; the
+  gallery (`npm start -- --configuration gallery`, then `#/gallery`) shows every primitive.
+  Help also follows [the help writing guide](docs/design/help-writing.md).
 - Never put internal issue IDs (`B6-16`, `H07`) or QA file names in code, docs, commits, or
   PRs. Describe the behaviour instead.

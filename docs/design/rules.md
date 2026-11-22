@@ -33,10 +33,10 @@ lists those checks and the retired rule numbers. Why the app looks this way: [RE
   or adds a primitive for every use, or is refused. The composition allowlist only shrinks.
 - **R3.** One look per role. Every instance of a role looks and behaves the same on every screen
   and size. A difference between two places is a defect, never a variant.
-- **R4.** Judge every visual change from screenshots you opened: `npm run shots` for the affected
-  screens and the gallery page of every primitive you touched, in light and dark, desktop and
-  phone, against the before shots ([visual review](visual-review.md)). Anything that looks worse
-  blocks the change, even when the task asked for it.
+- **R4.** Judge every visual change from screenshots you opened, in light and dark, desktop and
+  phone: `npm run shots` for the affected screens beside their before shots, and `npm run visual`
+  for every primitive you touched ([visual review](visual-review.md)). Anything that looks worse
+  blocks the change, even when the task asked for it. Only the owner updates baselines.
 - **R5.** A rule changes only when the owner says so: change this file, the checks and the code
   in the same commit.
 

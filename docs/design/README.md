@@ -43,7 +43,7 @@ not a form to complete.
 
 | To see or change                    | Look at                                                         |
 | ----------------------------------- | --------------------------------------------------------------- |
-| Every primitive in every state      | The gallery: `npm run build:gallery`, then `npm run visual`     |
+| Every primitive in every state      | The gallery: `npm start -- --configuration gallery`, then `#/gallery` |
 | A real screen, light and dark       | `npm run shots -- --grep <screen>` (from `web`)                 |
 | The rules agents follow             | [rules.md](rules.md)                                            |
 | What is checked automatically       | [checks.md](checks.md) (generated)                              |

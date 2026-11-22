@@ -7,11 +7,13 @@ this page.
 
 ## Capture
 
-1. Before changing anything: `npm run shots -- --grep <scenario>` (from `web`), then move
-   `test-results/shots` to `test-results/shots-before`.
-2. After the change, capture again, then `npm run shots:sheet` for the before/after sheet.
-3. For every primitive you touched, also open its gallery page (`npm run visual` shows any
-   change to it as a diff).
+1. Before changing anything, from `web`:
+   `MONOSAI_SHOTS_DIR=test-results/shots-before npm run shots -- --grep <scenario>`. Scenarios
+   are the test titles in `web/e2e-shots/`; add one when no scenario shows the screen.
+2. After the change, `npm run shots -- --grep <scenario>`, then `npm run shots:sheet` and open
+   `test-results/shots/index.html`, which puts each shot beside its before.
+3. If you touched a primitive, run `npm run visual` (needs Docker) and open the diffs in
+   `web/playwright-report/visual`. A diff is expected only on that primitive's gallery page.
 
 ## Judge, in this order
 

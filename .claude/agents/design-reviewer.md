@@ -12,8 +12,8 @@ show and what the diff says.
 2. Open every before and after screenshot you were given (light and dark, desktop and phone).
    If the after shots are missing, or there are no before shots for a changed screen, say so
    and stop: you cannot pass a change you could not see.
-3. For any primitive the change touched, compare with its gallery screenshots under
-   `web/e2e-visual/` (see `web/playwright.visual.config.ts` for where baselines live).
+3. For any primitive the change touched, compare with its gallery baselines in
+   `web/e2e-visual/__screenshots__/<project>/` and any diff images in `web/test-results/visual/`.
 4. Only then check the change against `docs/design/rules.md`, citing rule numbers.
 
 Report regressions and rule breaks only, ranked by how visible they are, each with the screen,
