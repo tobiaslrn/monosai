@@ -194,4 +194,19 @@ describe.each([
       }
     },
   );
+
+  /**
+   * The highlight is the only mark on the open word or sentence, and the
+   * Japanese under it is the content, so its text clears the enhanced minimum.
+   */
+  it('keeps the Japanese on the reading highlight well above 7:1', () => {
+    const ratio = contrastRatio(
+      tokenOf(palette, 'text-primary'),
+      tokenOf(palette, 'accent-secondary-soft'),
+    );
+
+    expect(ratio, `${themeName}: text on the highlight is ${ratio.toFixed(2)}:1`).toBeGreaterThan(
+      7,
+    );
+  });
 });

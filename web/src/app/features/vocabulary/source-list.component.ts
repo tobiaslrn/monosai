@@ -63,7 +63,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
             <span mn-list-row-meta>
               <mn-cluster [gap]="1">
                 @if (needsAttention(source)) {
-                  <mn-icon name="warning" tone="warning" [size]="14" />
+                  <mn-icon name="warning" tone="warning" [legacySize]="14" />
                 }
                 <span>{{ whereLine(source) }}</span>
               </mn-cluster>
@@ -97,7 +97,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
       } @else if (syncedLabel(); as synced) {
         <li>
           <mn-row testId="source-synced">
-            <mn-icon mn-row-leading name="synced" tone="success" [size]="22" />
+            <mn-icon mn-row-leading name="synced" tone="success" [legacySize]="22" />
             <span mn-row-meta>{{ synced }}</span>
             @if (canSyncAgain()) {
               <button
@@ -109,7 +109,7 @@ const SOURCE_ICONS: Readonly<Record<VocabularySource['kind'], IconName>> = {
                 (click)="syncAgain()"
                 data-testid="sync-again"
               >
-                <mn-icon name="sync" tone="accent" [size]="20" [spin]="syncing()" />
+                <mn-icon name="sync" tone="action" [spin]="syncing()" />
               </button>
             }
           </mn-row>

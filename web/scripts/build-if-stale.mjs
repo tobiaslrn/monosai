@@ -14,9 +14,14 @@ import { dirname, join } from 'node:path';
  * the build empties and the server exposes. Inputs are compared by size and
  * modification time: reading every language asset would cost more than it saves,
  * and a checkout that touches a file only causes a harmless rebuild.
+ *
+ * `--gallery` does the same for the gallery build the screenshot baselines are
+ * taken of, which has its own output and stamp.
  */
-const STAMP = 'dist/e2e-build-stamp.json';
-const INDEX = 'dist/monosai/browser/index.html';
+const GALLERY = process.argv.includes('--gallery');
+const STAMP = GALLERY ? 'dist/gallery-build-stamp.json' : 'dist/e2e-build-stamp.json';
+const INDEX = GALLERY ? 'dist/gallery/browser/index.html' : 'dist/monosai/browser/index.html';
+const BUILD = GALLERY ? 'npm run build:gallery' : 'npm run build:pages';
 const INPUTS = [
   'src',
   'public',
@@ -68,7 +73,7 @@ const current = index !== null && stamp?.inputs === inputs && stamp?.index === i
 if (current && !process.argv.includes('--force')) {
   process.stdout.write('build-if-stale: the build is current, skipping it\n');
 } else {
-  execSync('npm run build:pages', { stdio: 'inherit' });
+  execSync(BUILD, { stdio: 'inherit' });
   mkdirSync(dirname(STAMP), { recursive: true });
   writeFileSync(STAMP, JSON.stringify({ inputs, index: digestIndex() }));
 }

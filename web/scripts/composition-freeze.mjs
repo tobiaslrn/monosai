@@ -10,11 +10,21 @@ import { extname, join, relative } from 'node:path';
 
 export const ALLOWLIST_PATH = 'scripts/composition-allowlist.json';
 
+/** What each construct breaks: what is wrong, the fix, and the rule in docs/design/rules.md. */
 export const RULES = {
-  styles: 'owns styles (a `styles:` block, `styleUrl`, or a .scss file); compose shared-ui instead',
-  popover: 'uses a native `[popover]`; use mn-menu or mn-dialog',
-  details: 'uses a raw <details>; use a shared-ui disclosure',
-  'popover-service': 'uses PopoverService outside the reader; use mn-menu or mn-dialog',
+  styles:
+    'owns styles (a `styles:` block, `styleUrl`, or a .scss file). Fix: compose ' +
+    'web/src/app/shared-ui/ primitives; a missing visual need changes or adds a primitive ' +
+    'for every use. (R2 in docs/design/rules.md)',
+  popover:
+    'uses a native `[popover]`. Fix: use mn-menu for commands, mn-select for a value, or ' +
+    'mn-dialog for a task. (R28 in docs/design/rules.md)',
+  details:
+    'uses a raw <details>. Fix: use mn-disclosure from web/src/app/shared-ui/. ' +
+    '(R2 in docs/design/rules.md)',
+  'popover-service':
+    'uses PopoverService outside the reader. Fix: use mn-menu, mn-select or mn-dialog. ' +
+    '(R28 in docs/design/rules.md)',
 };
 
 const scannedRoots = ['src/app/features', 'src/app/core'];
@@ -60,15 +70,34 @@ async function collect(directory) {
   return files;
 }
 
-/** Every violation under features/ and core/, keyed by web-relative path. */
-export async function scan(webRoot) {
+/** Keeps the entries of a path-keyed object whose path is in `paths`; all of it when null. */
+export function only(object, paths) {
+  if (!object || !paths) return object;
+  return Object.fromEntries(Object.entries(object).filter(([path]) => paths.includes(path)));
+}
+
+/**
+ * Every violation under features/ and core/, keyed by web-relative path. With
+ * `paths` (web-relative), only those files are read.
+ */
+export async function scan(webRoot, paths = null) {
+  const files = paths
+    ? paths
+        .filter((path) => scannedRoots.some((root) => path.startsWith(`${root}/`)))
+        .filter((path) => /\.(ts|html|scss)$/.test(path) && !/\.spec\.ts$/.test(path))
+        .map((path) => join(webRoot, path))
+    : (await Promise.all(scannedRoots.map((root) => collect(join(webRoot, root))))).flat();
   const result = {};
-  for (const root of scannedRoots) {
-    for (const file of await collect(join(webRoot, root))) {
-      const path = relative(webRoot, file).replaceAll('\\', '/');
-      const rules = violationsOf(path, await readFile(file, 'utf8'));
-      if (rules.length > 0) result[path] = rules;
+  for (const file of files) {
+    const path = relative(webRoot, file).replaceAll('\\', '/');
+    let source;
+    try {
+      source = await readFile(file, 'utf8');
+    } catch {
+      continue; // A changed file that was deleted.
     }
+    const rules = violationsOf(path, source);
+    if (rules.length > 0) result[path] = rules;
   }
   return result;
 }
@@ -81,7 +110,7 @@ export function compare(found, allowlist, baseAllowlist) {
   const errors = [];
   for (const [path, rules] of Object.entries(found)) {
     for (const rule of rules) {
-      if (!allowlist[path]?.includes(rule)) errors.push(`${path} ${RULES[rule]}.`);
+      if (!allowlist[path]?.includes(rule)) errors.push(`${path} ${RULES[rule]}`);
     }
   }
   for (const [path, rules] of Object.entries(allowlist)) {
@@ -96,7 +125,8 @@ export function compare(found, allowlist, baseAllowlist) {
       for (const rule of rules) {
         if (!baseAllowlist[path]?.includes(rule)) {
           errors.push(
-            `${ALLOWLIST_PATH} gained "${rule}" for ${path}; the allowlist may only shrink.`,
+            `${ALLOWLIST_PATH} gained "${rule}" for ${path}; the allowlist may only shrink. ` +
+              'Fix: remove the entry and compose shared-ui instead. (R2 in docs/design/rules.md)',
           );
         }
       }
@@ -106,11 +136,11 @@ export function compare(found, allowlist, baseAllowlist) {
 }
 
 /**
- * The allowlist at the base revision: COMPOSITION_BASE_REF when set (CI),
- * otherwise the merge base with origin/main. Null when git cannot tell, or
- * when the base predates the allowlist.
+ * A file at the base revision: COMPOSITION_BASE_REF when set (CI), otherwise the
+ * merge base with origin/main. Null when git cannot tell, or when the file did
+ * not exist there. `path` is relative to web/.
  */
-export function readBaseAllowlist(webRoot, allowlistPath = ALLOWLIST_PATH) {
+export function readBaseFile(webRoot, path) {
   const git = (...args) =>
     execFileSync('git', args, {
       cwd: webRoot,
@@ -134,13 +164,28 @@ export function readBaseAllowlist(webRoot, allowlistPath = ALLOWLIST_PATH) {
     return null;
   }
   try {
-    return JSON.parse(git('show', `${base}:web/${allowlistPath}`));
+    return git('show', `${base}:web/${path}`);
   } catch {
     return null;
   }
 }
 
-export async function checkComposition(webRoot) {
+/** The allowlist at the base revision, or null when there is none to compare with. */
+export function readBaseAllowlist(webRoot, allowlistPath = ALLOWLIST_PATH) {
+  const text = readBaseFile(webRoot, allowlistPath);
+  try {
+    return text === null ? null : JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+/** The composition errors of the whole tree, or of `paths` (web-relative) only. */
+export async function checkComposition(webRoot, paths = null) {
   const allowlist = JSON.parse(await readFile(join(webRoot, ALLOWLIST_PATH), 'utf8'));
-  return compare(await scan(webRoot), allowlist, readBaseAllowlist(webRoot));
+  return compare(
+    await scan(webRoot, paths),
+    only(allowlist, paths),
+    only(readBaseAllowlist(webRoot), paths),
+  );
 }

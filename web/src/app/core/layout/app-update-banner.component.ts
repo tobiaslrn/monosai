@@ -21,7 +21,7 @@ import { ButtonDirective } from '../../shared-ui/button/button';
     @if (status.kind === 'superseded' || (!supersededOnly() && status.kind === 'failed')) {
       <mn-banner
         class="banner"
-        tone="error"
+        tone="danger"
         icon="warning"
         [attr.role]="status.kind === 'superseded' ? 'alert' : 'status'"
         [attr.aria-live]="status.kind === 'superseded' ? null : 'polite'"

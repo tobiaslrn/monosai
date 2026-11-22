@@ -5,7 +5,8 @@ import { createServer } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const DIST_DIR = 'dist/monosai/browser';
+/** What is served: the Pages build, or the gallery build for the screenshot baselines. */
+const DIST_DIR = process.env.DIST_DIR ?? 'dist/monosai/browser';
 
 /**
  * Where the build is mounted: `/monosai/` for the Pages build, `/` for the
@@ -98,7 +99,9 @@ export async function startServer(port) {
 async function main() {
   const indexExists = (await stat(join(DIST_DIR, 'index.html')).catch(() => null)) !== null;
   if (!indexExists) {
-    process.stderr.write(`${DIST_DIR}/index.html not found; run npm run build:pages first\n`);
+    process.stderr.write(
+      `${DIST_DIR}/index.html not found; run npm run build:pages (or build:gallery) first\n`,
+    );
     process.exitCode = 1;
     return;
   }

@@ -55,7 +55,7 @@ import { ReadingTrackComponent } from './reading-track.component';
  * There is **one** track, not two. Playback position and generation coverage
  * are measured over the same denominator, so they compose the way a buffered
  * bar does in any media player: a quiet fill for what has been generated, the
- * accent for how far playback has reached.
+ * action colour for how far playback has reached.
  *
  * It reads the root playback store directly rather than being handed its state,
  * because playback is application-wide and outlives the player being open.
@@ -122,7 +122,7 @@ import { ReadingTrackComponent } from './reading-track.component';
             [disabled]="!store.canGoPrevious()"
             (click)="previous()"
           >
-            <mn-icon name="skip-back" [size]="20" />
+            <mn-icon name="skip-back" />
           </button>
 
           <!--
@@ -143,7 +143,7 @@ import { ReadingTrackComponent } from './reading-track.component';
               aria-label="Set up audio"
               title="Set up audio"
             >
-              <mn-icon name="settings" [size]="20" />
+              <mn-icon name="settings" />
               <span>Set up audio</span>
             </a>
           } @else {
@@ -161,7 +161,7 @@ import { ReadingTrackComponent } from './reading-track.component';
               [attr.aria-busy]="centre().busy ? 'true' : null"
               (click)="pressCentre()"
             >
-              <mn-icon [name]="centre().icon" [size]="24" />
+              <mn-icon [name]="centre().icon" size="feature" />
             </button>
           }
 
@@ -173,7 +173,7 @@ import { ReadingTrackComponent } from './reading-track.component';
             [disabled]="!store.canGoNext()"
             (click)="next()"
           >
-            <mn-icon name="skip-forward" [size]="20" />
+            <mn-icon name="skip-forward" />
           </button>
 
           <!--
@@ -190,7 +190,7 @@ import { ReadingTrackComponent } from './reading-track.component';
             aria-label="Pause after each sentence"
             (click)="cycleMode()"
           >
-            <mn-icon name="pause-after" [size]="20" />
+            <mn-icon name="pause-after" />
           </button>
 
           <button
@@ -218,7 +218,7 @@ import { ReadingTrackComponent } from './reading-track.component';
               title="Start from this sentence"
               (click)="playFromSelection()"
             >
-              <mn-icon name="sentence-start" [size]="20" />
+              <mn-icon name="sentence-start" />
             </button>
           } @else {
             <span class="slot empty-slot" aria-hidden="true"></span>
@@ -235,7 +235,7 @@ import { ReadingTrackComponent } from './reading-track.component';
               @if (action.kind === 'cancel') {
                 <mn-generation-ring [fraction]="coverage() / 100" />
               }
-              <mn-icon [name]="action.icon" [size]="action.kind === 'cancel' ? 14 : 20" />
+              <mn-icon [name]="action.icon" [legacySize]="action.kind === 'cancel' ? 14 : null" />
             </button>
           } @else {
             <span class="slot empty-slot" aria-hidden="true"></span>
@@ -323,7 +323,7 @@ import { ReadingTrackComponent } from './reading-track.component';
       color: var(--action-primary);
     }
 
-    .tone-accent {
+    .tone-action {
       color: var(--action-primary);
     }
 

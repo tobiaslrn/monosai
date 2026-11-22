@@ -7,6 +7,11 @@ import { ChangeDetectionStrategy, Component, input, ViewEncapsulation } from '@a
  *     <button mnButton type="button" [attr.aria-pressed]="chosen">Mystery</button>
  *   </mn-chip-group>
  *
+ * A chip is a full touch-target toggle: a chosen one wears the soft selection
+ * tint, never the filled primary. The order never changes on selection; where
+ * the group offers them, Any leads, Custom ends, and a value the learner adds
+ * joins just before Custom and stays.
+ *
  * Unlike a cluster, a chip's own label may wrap: a custom value can be longer
  * than the row. Styles reach the projected buttons and are therefore global,
  * rooted at the element.

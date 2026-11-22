@@ -22,12 +22,12 @@ import { SectionComponent } from '../../shared-ui/section/section.component';
       />
 
       @if (!install.isStandalone() && install.canInstall()) {
-        <mn-settings-row label="Install Monosai" action="accent" (pressed)="installApp()" />
+        <mn-settings-row label="Install Monosai" action="action" (pressed)="installApp()" />
       }
 
       <mn-settings-row
         label="Copy diagnostics"
-        action="accent"
+        action="action"
         glyph="copy"
         testId="copy-diagnostics"
         [live]="true"

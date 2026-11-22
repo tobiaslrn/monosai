@@ -79,7 +79,7 @@ export interface UnknownWord {
       -->
       @if (copyStatus() === 'failed') {
         <section class="copy-fallback" aria-labelledby="mn-sentence-copy-fallback">
-          <p class="mn-notice mn-notice--error" id="mn-sentence-copy-fallback" role="alert">
+          <p class="mn-notice mn-notice--danger" id="mn-sentence-copy-fallback" role="alert">
             Could not copy. Select the text below.
           </p>
           <p class="copy-source" lang="ja">{{ sentenceText() }}</p>

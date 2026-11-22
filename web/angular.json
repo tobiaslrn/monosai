@@ -83,6 +83,16 @@
               "serviceWorker": "ngsw-config.json",
               "baseHref": "/monosai/"
             },
+            "gallery": {
+              "outputPath": "dist/gallery",
+              "serviceWorker": false,
+              "fileReplacements": [
+                {
+                  "replace": "src/app/core/routing/dev-routes.ts",
+                  "with": "src/app/core/routing/dev-routes.gallery.ts"
+                }
+              ]
+            },
             "development": {
               "optimization": false,
               "extractLicenses": false,
@@ -99,6 +109,9 @@
             },
             "development": {
               "buildTarget": "monosai:build:development"
+            },
+            "gallery": {
+              "buildTarget": "monosai:build:development,gallery"
             }
           },
           "defaultConfiguration": "development"

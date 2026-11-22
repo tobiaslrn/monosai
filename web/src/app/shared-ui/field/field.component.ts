@@ -34,7 +34,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     }
     @if (error(); as message) {
       <p class="mn-field-error" role="alert" [id]="errorId()">
-        <mn-icon name="warning" [size]="16" /><span>{{ message }}</span>
+        <mn-icon name="warning" size="inline" /><span>{{ message }}</span>
       </p>
     } @else if (hint(); as text) {
       <p class="mn-hint" [id]="hintId()">{{ text }}</p>

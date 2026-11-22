@@ -1,6 +1,5 @@
-import { mkdir } from 'node:fs/promises';
-import path from 'node:path';
-import { test, type Page } from '@playwright/test';
+import { test } from '@playwright/test';
+import { dismissFirstUse, saveIndexedDbState } from './first-use';
 import {
   buildSnapshot,
   configureTextModel,
@@ -14,31 +13,14 @@ import {
   TEXT_MODEL_READY_STATE,
   TTS_READY_STATE,
 } from './state';
-import { expectSettingPersisted } from './storage';
 
 test.beforeEach(async ({ page }) => {
-  // Settings rather than the Library: an empty Library's first steps carry the
-  // guide themselves and take the place of the offer this dismisses.
-  await page.goto('./#/settings');
-  await page
-    .getByRole('alertdialog', { name: 'Monosai is in alpha' })
-    .getByRole('button', {
-      name: 'Continue',
-    })
-    .click();
-  await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
-  await page.getByRole('button', { name: 'Dismiss' }).click();
-  await expectSettingPersisted(page, 'app', 'helpIntroSeen', true);
+  await dismissFirstUse(page);
 });
 
 test('creates a state with the first-use introduction dismissed @smoke', async ({ page }) => {
   await saveIndexedDbState(page, INTRO_SEEN_STATE);
 });
-
-async function saveIndexedDbState(page: Page, statePath: string): Promise<void> {
-  await mkdir(path.dirname(statePath), { recursive: true });
-  await page.context().storageState({ path: statePath, indexedDB: true });
-}
 
 test('creates a tested text-model state @smoke', async ({ page }) => {
   await stubOpenRouter(page);

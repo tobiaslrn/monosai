@@ -30,7 +30,14 @@ const FORM_LABELS: Readonly<Record<StoryForm, string>> = {
   long: 'Long',
 };
 
-/** A compact home row: title, opening line, character count, opened status, and actions. */
+/**
+ * A compact home row: title, opening line, character count, opened status, and actions.
+ *
+ * Only what is still new is marked: a story never opened wears the neutral
+ * Unread pill, and an opened one wears nothing. The origin is the icon, so the
+ * visible line does not repeat it; both stay in the accessible description.
+ * Opened is not completed.
+ */
 @Component({
   selector: 'mn-reading-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -72,7 +79,7 @@ const FORM_LABELS: Readonly<Record<StoryForm, string>> = {
         }
         @if (hasAudio()) {
           <mn-cluster [gap]="1" title="Audio">
-            <mn-icon name="audio" [size]="16" />
+            <mn-icon name="audio" size="inline" />
             <span class="mn-visually-hidden">Audio</span>
           </mn-cluster>
         }

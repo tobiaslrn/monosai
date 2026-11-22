@@ -6,6 +6,7 @@ import {
 import { PLAYBACK_RATES, type PlaybackRate } from '../../domain/settings/settings';
 import { defined } from '../../domain/shared/invariant';
 import type { IconName } from '../../shared-ui/icon/icon-set';
+import type { Tone } from '../../shared-ui/tone';
 import {
   offerLabel,
   playbackFailureMessage,
@@ -32,7 +33,7 @@ export interface AuxAction {
   readonly label: string;
   /** The long version, for a pointer that rests on it. */
   readonly title: string;
-  readonly tone: 'accent' | 'danger' | 'secondary';
+  readonly tone: Extract<Tone, 'action' | 'danger'> | 'secondary';
 }
 
 /**
@@ -235,7 +236,7 @@ export function auxAction(facts: PlayerFacts): AuxAction | null {
       icon: 'stop',
       label: 'Stop generating audio',
       title: 'Stop generating audio',
-      tone: 'accent',
+      tone: 'action',
     };
   }
   const playbackFailure = playbackFailureMessage(facts.failure);
@@ -276,7 +277,7 @@ export function auxAction(facts: PlayerFacts): AuxAction | null {
       icon: 'generate',
       label: 'Generate audio',
       title: `Generate audio — ${offerLabel(facts.availableCount, facts.sentenceCount)}`,
-      tone: 'accent',
+      tone: 'action',
     };
   }
   return null;

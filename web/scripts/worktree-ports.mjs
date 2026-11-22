@@ -3,11 +3,24 @@ import { lstatSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const BASE_PORTS = Object.freeze({ dev: 4200, e2e: 4210, pwa: 4300 });
+export const BASE_PORTS = Object.freeze({
+  dev: 4200,
+  e2e: 4210,
+  pwa: 4300,
+  visual: 4310,
+  shots: 4220,
+});
 
 const SLOT_COUNT = 3000;
 const FIRST_WORKTREE_PORT = 20_000;
 const PORTS_PER_SLOT = 3;
+/**
+ * The screenshot suites came later. Their ports sit in a range of their own,
+ * after every slot of the first, so adding them moved no existing worktree's
+ * development origin and the browser data stored under it.
+ */
+const FIRST_SCREENSHOT_PORT = FIRST_WORKTREE_PORT + SLOT_COUNT * PORTS_PER_SLOT;
+const SCREENSHOT_PORTS_PER_SLOT = 2;
 const CHECKOUT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
 /**
@@ -25,7 +38,14 @@ export function resolvePorts({ root, isLinkedWorktree, isCi, slotOverride }) {
   }
   const slot = slotOverride === undefined ? slotForPath(root) : parseSlot(slotOverride);
   const first = FIRST_WORKTREE_PORT + slot * PORTS_PER_SLOT;
-  return { dev: first, e2e: first + 1, pwa: first + 2 };
+  const screenshots = FIRST_SCREENSHOT_PORT + slot * SCREENSHOT_PORTS_PER_SLOT;
+  return {
+    dev: first,
+    e2e: first + 1,
+    pwa: first + 2,
+    visual: screenshots,
+    shots: screenshots + 1,
+  };
 }
 
 /** The ports of the checkout this module belongs to. */

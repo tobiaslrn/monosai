@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { IconComponent } from '../icon/icon.component';
 import type { IconName } from '../icon/icon-set';
+import type { StatusTone } from '../tone';
 
-export type NoticeTone = 'neutral' | 'info' | 'setup' | 'success' | 'warning' | 'error';
+/** Any status tone, or `neutral` for a fact that carries none. */
+export type NoticeTone = 'neutral' | StatusTone;
 
 /**
  * Something reported beside the thing it is about: a failure, a warning, a
@@ -10,7 +12,7 @@ export type NoticeTone = 'neutral' | 'info' | 'setup' | 'success' | 'warning' | 
  * optional action, or a pair of them, sits at its end as one block, moving
  * below the words only when they need the room.
  *
- *   <mn-notice tone="error" icon="warning" role="alert">
+ *   <mn-notice tone="danger" icon="warning" role="alert">
  *     <p>What happened.</p>
  *     <button mn-notice-action mnButton type="button">Retry</button>
  *   </mn-notice>
@@ -27,11 +29,11 @@ export type NoticeTone = 'neutral' | 'info' | 'setup' | 'success' | 'warning' | 
     '[class.mn-notice--setup]': "tone() === 'setup'",
     '[class.mn-notice--success]': "tone() === 'success'",
     '[class.mn-notice--warning]': "tone() === 'warning'",
-    '[class.mn-notice--error]': "tone() === 'error'",
+    '[class.mn-notice--danger]': "tone() === 'danger'",
   },
   template: `
     @if (glyph(); as name) {
-      <mn-icon [name]="name" [size]="18" />
+      <mn-icon [name]="name" [legacySize]="18" />
     }
     <div><ng-content /></div>
     <span class="mn-notice__actions"><ng-content select="[mn-notice-action]" /></span>
@@ -61,5 +63,5 @@ const TONE_GLYPH: Readonly<Record<NoticeTone, IconName | null>> = {
   setup: 'warning',
   success: 'synced',
   warning: 'warning',
-  error: 'warning',
+  danger: 'warning',
 };

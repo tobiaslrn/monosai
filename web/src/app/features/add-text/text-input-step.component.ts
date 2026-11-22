@@ -34,7 +34,7 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
       @if (isOverLimit()) {
         <!-- Over the limit, the count and what to do about it are one message. -->
         <p id="mn-import-count" class="mn-field-error" role="alert">
-          <mn-icon name="warning" [size]="16" />
+          <mn-icon name="warning" size="inline" />
           <span>{{ overLimitMessage() }}</span>
         </p>
       } @else if (counterVisible()) {
@@ -52,7 +52,7 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
     </div>
 
     @if (store.rejection(); as rejection) {
-      <mn-notice tone="error" role="alert">{{ rejection.message }}</mn-notice>
+      <mn-notice tone="danger" role="alert">{{ rejection.message }}</mn-notice>
     }
 
     <div class="mn-field">

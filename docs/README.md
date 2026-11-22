@@ -11,8 +11,10 @@ What is in this directory is for anyone changing the code.
 | --------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | [Architecture](arc42/README.md)               | The system as it is: layers, ports, persistence, deployment, quality goals               |
 | [Decisions](decisions/)                       | Why it is that way, one record per decision                                              |
-| [Design rules](design/rules.md)               | The binding, numbered rules every visual change follows; they win over the design system |
-| [Design system](design/design-system.md)      | The authority for structure, controls, colour, units, motion, voice, and state           |
+| [Design brief](design/README.md)              | How Monosai should look and feel, and how to change its design                           |
+| [Design rules](design/rules.md)               | The binding, numbered rules every visual, interactive and copy change follows            |
+| [Design checks](design/checks.md)             | What `npm run design:check` enforces, and the retired rule numbers (generated)           |
+| [Visual review](design/visual-review.md)      | How a visual change is judged from screenshots                                           |
 | [Help writing guide](design/help-writing.md)  | How Help is written: voice, sentences, terms, structure, steps, and accuracy             |
 | [Mascot](design/mascot.md)                    | The mark and how it is used                                                              |
 | [Android bridge](../android-bridge/README.md) | What the companion app is, how to install it, and how it is built                        |

@@ -33,6 +33,7 @@ npm-debug.log
 Thumbs.db
 /web/.asset-cache
 .claude/settings.local.json
+.claude/worktrees/
 
 # Android bridge build and local signing material
 /android-bridge/.gradle/

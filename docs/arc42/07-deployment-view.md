@@ -61,8 +61,9 @@ fixtures depend on Node's bundled SQLite and compression implementations, so a r
 verify or regenerate those fixtures in the same change. A floating major version would allow an
 unchanged checkout to fail the byte-for-byte reproducibility check after a runner update.
 
-Parallel local worktrees do not share a port. The main checkout and CI use 4200, 4210 and 4300 for
-the development server, the end-to-end suite and the PWA suite;
+Parallel local worktrees do not share a port. The main checkout and CI use 4200, 4210, 4300, 4310
+and 4220 for the development server, the end-to-end suite, the PWA suite, the visual suite and the
+screenshot scenarios;
 [`worktree-ports.mjs`](../../web/scripts/worktree-ports.mjs) gives each linked worktree a stable set
 derived from its path, and so a browser origin of its own. A local end-to-end run rebuilds only when
 [`build-if-stale.mjs`](../../web/scripts/build-if-stale.mjs) finds a changed input; CI still builds
@@ -74,6 +75,7 @@ flowchart LR
         static["static analysis"]
         unit["unit and integration tests"]
         build["production build"]
+        visual["visual baselines<br/>gallery build, pinned image"]
     end
     e2e["browser journeys<br/>sharded"]
     pwa["PWA and offline suite"]
@@ -84,23 +86,33 @@ flowchart LR
     build -->|the artifact| e2e
     build -->|the artifact| pwa
     e2e --> report
-    static & unit & build & e2e & pwa --> gate
+    static & unit & build & e2e & pwa & visual --> gate
     gate --> deploy
 ```
 
 | Stage                          | Responsibility                                                                                                                                                                                                                                                                                                                                                                   |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Static analysis**            | Formatting, linting including the layer zones, component style tokens and the composition allowlist (features and core may not gain styles, native popovers, raw `<details>`, or `PopoverService` outside the reader; the checked-in allowlist may only shrink against the base revision), type checking, generated assets and fixtures, icons, licences, and a dependency audit |
+| **Static analysis**            | Formatting, linting including the layer zones, the design checks of `npm run design:check` (component style tokens, the template and copy rules, the Android bridge colours, and the composition allowlist: features and core may not gain styles, native popovers, raw `<details>`, or `PopoverService` outside the reader; the checked-in exemption lists may only shrink against the base revision), type checking, generated assets and fixtures, icons, licences, and a dependency audit |
 | **Unit and integration tests** | The full unit suite, held to the coverage thresholds the build configuration declares                                                                                                                                                                                                                                                                                            |
-| **Production build**           | Produces the one artifact. Verifies that it contains everything a deployed Progressive Web App needs and that its base path is right, and holds it to the declared bundle budgets                                                                                                                                                                                                |
+| **Production build**           | Produces the one artifact. Verifies that it contains everything a deployed Progressive Web App needs, that its base path is right and that it holds nothing of the development-only gallery, and holds it to the declared bundle budgets                                                                                                                                                                                                |
 | **Browser journeys**           | Sharded across the desktop and Android lanes. A pull request runs the smoke lane; a push to the default branch runs the full regression lane                                                                                                                                                                                                                                     |
 | **PWA and offline suite**      | The same artifact, served locally with the service worker live                                                                                                                                                                                                                                                                                                                   |
+| **Visual baselines**           | Builds the development-only `gallery` configuration and compares a screenshot of every gallery page, and of each overlay open, with the committed baselines in `web/e2e-visual/__screenshots__/`: desktop and Android, light and dark. It runs inside the Playwright image the lockfile pins, the image the baselines were drawn in, and uploads the diff report on failure. Only the manual `Visual baselines` workflow redraws and commits baselines                                     |
 | **Gate**                       | Fails unless every listed stage succeeded. A stage blocks merging by joining the gate's dependency list, so branch protection never has to be edited                                                                                                                                                                                                                             |
 | **Deploy**                     | Runs on the default branch only, after the gate. Downloads the artifact and publishes it. It never builds                                                                                                                                                                                                                                                                        |
 
-Two rules keep this honest. Nothing except the build stage compiles the application; every test stage
+Two rules keep this honest. Nothing except the build stage compiles the shipped application; every test stage
 is told through `MONOSAI_PREBUILT_DIST=true` to serve the downloaded artifact rather than build its own. And a stage becomes blocking by
 joining the gate, which is why there is exactly one required status check.
+
+The visual stage is the one stage that compiles, and what it compiles never ships: the `gallery`
+configuration swaps `core/routing/dev-routes.ts` for a file that adds the primitive gallery, and the
+build stage's `verify-dist` fails if the Pages artifact contains any of it. The baselines only mean
+something in the image they were drawn in, so `npm run visual` runs the suite there through Docker
+on a workstation, and
+[`visual-baselines.yml`](../../.github/workflows/visual-baselines.yml), started by hand, is the only
+writer: it redraws every baseline in that image, proves they compare clean, and commits them to the
+branch it was started on.
 
 The independent `bridge` job uses Java 21 and the Gradle wrapper for JVM tests,
 debug APK assembly and a verified runtime licence report; it joins `gate` without

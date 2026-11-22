@@ -2,7 +2,7 @@
  * A short word that says where something stands — Ready, Unread, Test failed,
  * a word form. It is never pressable, so it never takes the action colour. It
  * is plain by default and the status pairs name success, warning and danger;
- * the lavender accent marks no status, so it is never a pill.
+ * the lavender highlight marks no status, so it is never a pill.
  */
 .mn-status-pill {
   --pill-soft: var(--surface-sunken);

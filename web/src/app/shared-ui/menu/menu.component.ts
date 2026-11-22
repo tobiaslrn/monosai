@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, Directive, inject, input } from '@angular/core';
 import { PopupDirective } from '../popup/popup.directive';
+import type { Tone } from '../tone';
 
 /**
  * A menu: a short list of commands or destinations that hangs from the control
@@ -79,7 +80,7 @@ export class MenuTriggerDirective {
 })
 export class MenuItemDirective {
   protected readonly panel = inject(MenuComponent, { optional: true });
-  readonly mnMenuItem = input<'' | 'danger'>('');
+  readonly mnMenuItem = input<'' | Extract<Tone, 'danger'>>('');
   /** For a menu that sets one value, such as an order: whether this is the one in force. */
   readonly checked = input<boolean | null>(null);
 }

@@ -6,7 +6,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
  * says why it did not arrive.
  *
  *   <mn-paging-status [loading]="store.loadingMore()" loadingLabel="Loading more stories…">
- *     <mn-notice tone="error" role="alert">…</mn-notice>
+ *     <mn-notice tone="danger" role="alert">…</mn-notice>
  *   </mn-paging-status>
  *
  * The line pulses rather than spinning: it says work is happening without

@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
       - uses: actions/setup-node@v7
         with:
@@ -146,12 +146,12 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npm run e2e -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         env:
-          MONOSAI_PREBUILT_DIST: "true"
+          MONOSAI_PREBUILT_DIST: 'true'
       - name: Full browser regression suite
         if: github.event_name != 'pull_request'
         run: npm run e2e:full -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         env:
-          MONOSAI_PREBUILT_DIST: "true"
+          MONOSAI_PREBUILT_DIST: 'true'
       - name: Upload this shard's partial report
         if: always()
         uses: actions/upload-artifact@v7
@@ -206,7 +206,7 @@ jobs:
       - name: Offline reload, installability, and base path
         run: npm run e2e:pwa
         env:
-          MONOSAI_PREBUILT_DIST: "true"
+          MONOSAI_PREBUILT_DIST: 'true'
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -215,12 +215,45 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # The gallery's screenshots against the committed baselines. It runs inside
+  # the image the baselines were drawn in, so the browser and its fonts are
+  # the same and any difference is the page's. It builds the `gallery`
+  # configuration, a development build that never ships, so the one-build
+  # rule for the Pages artifact is untouched. Only the manual Visual baselines
+  # workflow writes new baselines.
+  visual:
+    name: Visual baselines
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Build the gallery
+        run: npm run build:gallery
+        working-directory: web
+      - name: Compare the gallery with its baselines
+        run: npm run visual
+        working-directory: web
+        env:
+          MONOSAI_PREBUILT_DIST: 'true'
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-diff
+          path: |
+            web/playwright-report/visual
+            web/test-results/visual
+          retention-days: 7
+          if-no-files-found: ignore
+
   # One required status check for branch protection, so adding a job above
   # never means editing repository settings.
   gate:
     name: All checks
     if: always()
-    needs: [static, unit, build, bridge, e2e, e2e-pwa]
+    needs: [static, unit, build, bridge, e2e, e2e-pwa, visual]
     runs-on: ubuntu-latest
     steps:
       - name: Report each job's result
@@ -231,6 +264,7 @@ jobs:
           echo "bridge:  ${{ needs.bridge.result }}"
           echo "e2e:     ${{ needs.e2e.result }}"
           echo "e2e-pwa: ${{ needs.e2e-pwa.result }}"
+          echo "visual:  ${{ needs.visual.result }}"
       - name: Fail unless every job succeeded
         if: >-
           contains(needs.*.result, 'failure')

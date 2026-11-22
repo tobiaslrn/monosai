@@ -127,7 +127,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
               <p class="mn-hint">No definition found.</p>
             }
             @case ('failed') {
-              <p class="mn-notice mn-notice--error" role="alert">Dictionary unavailable.</p>
+              <p class="mn-notice mn-notice--danger" role="alert">Dictionary unavailable.</p>
             }
             @case ('found') {
               <ol class="senses">
@@ -213,7 +213,7 @@ export const NO_WORD_GRAMMAR: WordGrammarState = {
           <p role="status" class="mn-hint">Added to {{ label }}.</p>
         }
         @if (addFailure(); as failure) {
-          <p role="alert" class="mn-notice mn-notice--error">
+          <p role="alert" class="mn-notice mn-notice--danger">
             {{ failure }} Your word lists are unchanged.
           </p>
         }

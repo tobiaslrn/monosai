@@ -74,7 +74,7 @@ type AddMode = 'closed' | 'choices' | 'anki';
         data-testid="add-words"
         [mnOverlayTrigger]="menu"
       >
-        <mn-icon name="add" [size]="18" /> Add source
+        <mn-icon name="add" [legacySize]="18" /> Add source
       </button>
     </mn-cluster>
 
