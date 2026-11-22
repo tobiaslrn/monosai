@@ -124,6 +124,14 @@ jobs:
           name: pages-dist
           path: web/dist/monosai/browser
           retention-days: 7
+      # The same tree, packed for Pages. It is uploaded here, minutes before
+      # `deploy` runs, because deploy-pages looks the artifact up at once and
+      # GitHub can take a moment to list a new one. It also means re-running a
+      # failed deploy publishes this upload instead of adding a second one.
+      - if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: web/dist/monosai/browser
 
   e2e:
     name: Browser journeys ${{ matrix.shard }}/3
@@ -294,16 +302,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # No checkout and no build: the artifact below is the exact tree the
-      # browser and PWA suites passed against, already stamped with this SHA.
-      - uses: actions/download-artifact@v8
-        with:
-          name: pages-dist
-          path: web/dist/monosai/browser
+      # No checkout and no build: `build` uploaded the Pages artifact from the
+      # exact tree the browser and PWA suites passed against, stamped with this
+      # SHA.
       - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: web/dist/monosai/browser
       - id: deployment
         uses: actions/deploy-pages@v5
       - name: Post-deploy smoke test
