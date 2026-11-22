@@ -423,6 +423,28 @@ describe('TtsStore', () => {
     expect(settings.tts.lastTestFingerprint).toBe(original);
   });
 
+  it('does not count a test as passed for a key saved while it ran', async () => {
+    const store = await ready();
+    store.setDraft(CONFIGURED);
+    await store.save();
+    let release: () => void = () => undefined;
+    const answer = ok(ttsTest());
+    provider.testConfiguration = () =>
+      new Promise((resolve) => {
+        release = () => {
+          resolve(answer);
+        };
+      });
+
+    const running = store.test();
+    await new Promise((resolve) => setTimeout(resolve));
+    await TestBed.inject(CredentialStore).save('sk-or-v1-replacement');
+    release();
+    await running;
+
+    expect(store.readiness()).not.toBe('ready');
+  });
+
   it('surfaces a storage failure when the result cannot be stored', async () => {
     const store = await ready();
     store.setDraft(CONFIGURED);

@@ -430,6 +430,8 @@ export class TtsStore {
       return;
     }
 
+    // Taken before the request: a key saved while it is open was never measured.
+    const fingerprint = this.fingerprintFor(settings);
     const result = await this.provider.testConfiguration(
       {
         modelId: settings.modelId,
@@ -449,7 +451,7 @@ export class TtsStore {
 
     if (!result.ok) {
       this.testFailureSignal.set(result.error);
-      await this.persistTestFailure(result.error, this.fingerprintFor(settings));
+      await this.persistTestFailure(result.error, fingerprint);
       return;
     }
 
@@ -457,14 +459,22 @@ export class TtsStore {
     this.sampleSignal.set(result.value.sample);
     // What the provider honoured, written beside the configuration it was
     // measured for. The fingerprint covers the configuration alone, so storing
-    // a finding here cannot make the test that produced it look stale.
+    // a finding here cannot make the test that produced it look stale. When
+    // the configuration or key changed meanwhile, the pass marks nothing tested.
+    const stillCurrent = this.fingerprintFor(this.settingsSignal()) === fingerprint;
     const saved = await this.repository.updateTtsSettings({
-      speechInstructions: result.value.speechInstructionsApplied ? 'supported' : 'unsupported',
       failedTests: (this.settingsSignal().failedTests ?? []).filter(
-        (test) => test.fingerprint !== this.fingerprintFor(settings),
+        (test) => test.fingerprint !== fingerprint,
       ),
-      lastTestFingerprint: this.fingerprintFor(settings),
-      lastTestedAt: this.clock.now(),
+      ...(stillCurrent
+        ? {
+            speechInstructions: result.value.speechInstructionsApplied
+              ? ('supported' as const)
+              : ('unsupported' as const),
+            lastTestFingerprint: fingerprint,
+            lastTestedAt: this.clock.now(),
+          }
+        : {}),
     });
     if (saved.ok) {
       this.settingsSignal.set(saved.value);
@@ -486,6 +496,8 @@ export class TtsStore {
     this.testFailureSignal.set(null);
     this.testCancelledSignal.set(false);
     this.sampleSignal.set(null);
+    // Taken before the request, like `test`: the result vouches only for what was sent.
+    const fingerprint = this.fingerprintFor(preset);
     const result = await this.provider.testConfiguration(
       {
         modelId: preset.modelId,
@@ -505,13 +517,25 @@ export class TtsStore {
 
     if (!result.ok) {
       this.testFailureSignal.set(result.error);
-      await this.persistTestFailure(result.error, this.fingerprintFor(preset));
+      await this.persistTestFailure(result.error, fingerprint);
       return;
     }
 
+    const latest = this.settingsSignal().presets.find((item) => item.id === id);
+    if (latest === undefined || this.fingerprintFor(latest) !== fingerprint) {
+      // The preset or the key changed while the request was open. The pass
+      // clears this configuration's failure and marks nothing tested.
+      const saved = await this.repository.updateTtsSettings({
+        failedTests: (this.settingsSignal().failedTests ?? []).filter(
+          (test) => test.fingerprint !== fingerprint,
+        ),
+      });
+      if (saved.ok) this.settingsSignal.set(saved.value);
+      else this.storageFailureSignal.set(saved.error);
+      return;
+    }
     const speechInstructions = result.value.speechInstructionsApplied ? 'supported' : 'unsupported';
     const testedPreset = { ...preset, speechInstructions } as const;
-    const fingerprint = this.fingerprintFor(preset);
     const testedAt = this.clock.now();
     const presets = this.settingsSignal().presets.map((item) =>
       item.id === id

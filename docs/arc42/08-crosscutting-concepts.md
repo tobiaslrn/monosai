@@ -188,7 +188,9 @@ AI readiness distinguishes missing credentials from incomplete model configurati
 Text and speech settings keep up to twenty failed test attempts, with a configuration
 fingerprint, timestamp, typed failure code, and redacted reason. Matching failures
 survive reloads and take precedence over old successful tests; a successful retry
-removes that configuration's failure. Schema version 10 initializes this history
+removes that configuration's failure. A test's fingerprint is taken when its request
+is sent: if the model, effort, voice or key changes before the answer arrives, a pass
+marks nothing as tested. Schema version 10 initializes this history
 transactionally. Invalid settings abort the upgrade and reach the existing storage
 recovery screen with the original data retained.
 

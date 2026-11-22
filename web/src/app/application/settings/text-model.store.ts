@@ -515,8 +515,12 @@ export class TextModelStore {
       return;
     }
 
+    // The result describes what was sent, so its fingerprint is taken now: an
+    // effort or key changed while the request is open was never measured.
+    const reasoningEffort = this.settingsSignal().reasoningEffort;
+    const fingerprint = this.fingerprintForConfig(modelId, reasoningEffort);
     const result = await this.provider.testConfiguration(
-      { modelId, reasoningEffort: this.settingsSignal().reasoningEffort },
+      { modelId, reasoningEffort },
       controller.signal,
     );
 
@@ -529,17 +533,22 @@ export class TextModelStore {
 
     if (!result.ok) {
       this.testFailureSignal.set(result.error);
-      await this.persistTestFailure(result.error, this.fingerprintFor(modelId));
+      await this.persistTestFailure(result.error, fingerprint);
       return;
     }
 
+    const stillCurrent = this.fingerprintFor(this.settingsSignal().modelId) === fingerprint;
     const saved = await this.repository.updateTextModelSettings({
       failedTests: (this.settingsSignal().failedTests ?? []).filter(
-        (test) => test.fingerprint !== this.fingerprintFor(modelId),
+        (test) => test.fingerprint !== fingerprint,
       ),
-      lastTestFingerprint: this.fingerprintFor(modelId),
-      lastTestedAt: this.clock.now(),
-      structuredOutput: result.value.structuredOutput,
+      ...(stillCurrent
+        ? {
+            lastTestFingerprint: fingerprint,
+            lastTestedAt: this.clock.now(),
+            structuredOutput: result.value.structuredOutput,
+          }
+        : {}),
     });
     if (saved.ok) {
       this.settingsSignal.set(saved.value);
@@ -559,6 +568,8 @@ export class TextModelStore {
     this.controller = controller;
     this.actionSignal.set('testing');
     this.testFailureSignal.set(null);
+    // Taken before the request, like `test`: the result vouches only for what was sent.
+    const fingerprint = this.fingerprintForConfig(preset.modelId, preset.reasoningEffort);
     const result = await this.provider.testConfiguration(
       { modelId: preset.modelId, reasoningEffort: preset.reasoningEffort },
       controller.signal,
@@ -570,13 +581,25 @@ export class TextModelStore {
     this.actionSignal.set('idle');
     if (!result.ok) {
       this.testFailureSignal.set(result.error);
-      await this.persistTestFailure(
-        result.error,
-        this.fingerprintForConfig(preset.modelId, preset.reasoningEffort),
-      );
+      await this.persistTestFailure(result.error, fingerprint);
       return;
     }
-    const fingerprint = this.fingerprintForConfig(preset.modelId, preset.reasoningEffort);
+    const latest = this.settingsSignal().presets.find((item) => item.id === id);
+    if (
+      latest === undefined ||
+      this.fingerprintForConfig(latest.modelId, latest.reasoningEffort) !== fingerprint
+    ) {
+      // The preset, its effort or the key changed while the request was open.
+      // The pass clears this configuration's failure and marks nothing tested.
+      const saved = await this.repository.updateTextModelSettings({
+        failedTests: (this.settingsSignal().failedTests ?? []).filter(
+          (test) => test.fingerprint !== fingerprint,
+        ),
+      });
+      if (saved.ok) this.settingsSignal.set(saved.value);
+      else this.storageFailureSignal.set(saved.error);
+      return;
+    }
     const testedAt = this.clock.now();
     const presets = this.settingsSignal().presets.map((item) =>
       item.id === id

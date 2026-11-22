@@ -225,6 +225,76 @@ describe('TextModelStore', () => {
       expect(store.storageFailure()?.code).toBe('quota');
       expect(store.readiness()).toBe('untested');
     });
+
+    function holdTests(): { release: () => void; sent: { reasoningEffort: string | null }[] } {
+      let release: () => void = () => undefined;
+      const sent: { reasoningEffort: string | null }[] = [];
+      const answer = ok(modelTest(MODEL));
+      provider.testConfiguration = (config) => {
+        sent.push({ reasoningEffort: config.reasoningEffort ?? null });
+        return new Promise((resolve) => {
+          release = () => {
+            resolve(answer);
+          };
+        });
+      };
+      return {
+        release: () => {
+          release();
+        },
+        sent,
+      };
+    }
+
+    it('does not count a test as passed for an effort chosen while it ran', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      const held = holdTests();
+
+      const running = store.test();
+      await new Promise((resolve) => setTimeout(resolve));
+      await store.setReasoningEffort('high');
+      held.release();
+      await running;
+
+      expect(held.sent).toEqual([{ reasoningEffort: null }]);
+      expect(store.readiness()).not.toBe('ready');
+      expect(store.structuredOutput()).toBeNull();
+    });
+
+    it('does not count a test as passed for a key saved while it ran', async () => {
+      const store = await ready();
+      store.setDraftModelId(MODEL);
+      const held = holdTests();
+
+      const running = store.test();
+      await new Promise((resolve) => setTimeout(resolve));
+      await TestBed.inject(CredentialStore).save('sk-or-v1-replacement');
+      held.release();
+      await running;
+
+      expect(store.readiness()).not.toBe('ready');
+    });
+
+    it('does not count a preset as tested for a key saved while it ran', async () => {
+      const store = await ready();
+      await store.registerPreset({
+        id: 'story',
+        name: 'Story',
+        modelId: MODEL,
+        reasoningEffort: null,
+      });
+      const held = holdTests();
+
+      const running = store.testPreset('story');
+      await new Promise((resolve) => setTimeout(resolve));
+      await TestBed.inject(CredentialStore).save('sk-or-v1-replacement');
+      held.release();
+      await running;
+
+      expect(store.configForPreset('story')).toBeNull();
+      expect(store.readiness()).not.toBe('ready');
+    });
   });
 
   describe('save', () => {
