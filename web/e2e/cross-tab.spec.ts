@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectNoSeriousAccessibilityViolations } from './accessibility';
-import { importReading, SAMPLE_TEXT } from './reading';
+import { importReading, openSentence, SAMPLE_TEXT } from './reading';
 
 /**
  * Two tabs on one local database.
@@ -33,6 +33,39 @@ test.describe('two tabs on one library', () => {
     // No reload in the second tab: it must correct itself.
     await expect(second).toHaveURL(/#\/library/);
     await expect(second.getByRole('heading', { name: 'Cross-tab reading' })).toHaveCount(0);
+  });
+
+  test('a reading deleted in another tab while its sheet is open leaves Back on the library @smoke', async ({
+    context,
+  }) => {
+    const first = await context.newPage();
+    await importReading(first, SAMPLE_TEXT, 'Sheet reading');
+
+    // The other tab opens it from the library, so Back has a library to go to.
+    const second = await context.newPage();
+    await second.goto('./#/library');
+    await second
+      .locator('mn-reading-card')
+      .filter({ hasText: 'Sheet reading' })
+      .getByRole('link')
+      .first()
+      .click();
+    await expect(second).toHaveURL(/#\/reader\//);
+    await openSentence(second);
+
+    await first.goto('./#/library');
+    const card = first.locator('mn-reading-card').filter({ hasText: 'Sheet reading' });
+    await card.getByRole('button', { name: 'Actions for Sheet reading' }).click();
+    await card.getByRole('menuitem', { name: 'Delete' }).click();
+    await first.getByRole('button', { name: 'Delete' }).click();
+
+    await expect(second).toHaveURL(/#\/library$/);
+    await expect(second.locator('mn-sentence-popover')).toHaveCount(0);
+    // The reader it left is no longer in history: Back stays on the library.
+    await second.goBack();
+    await expect(second).toHaveURL(/#\/library$/);
+    await expect(second.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
+    await expect(second.getByText('no longer here')).toHaveCount(0);
   });
 
   test('a library in another tab drops the row without being reloaded', async ({ context }) => {

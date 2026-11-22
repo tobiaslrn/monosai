@@ -7,12 +7,8 @@ import {
 } from '@angular/core';
 import { provideServiceWorker } from '@angular/service-worker';
 import type { ApplicationConfig } from '@angular/core';
-import {
-  provideRouter,
-  withComponentInputBinding,
-  withHashLocation,
-  withInMemoryScrolling,
-} from '@angular/router';
+import { LocationStrategy } from '@angular/common';
+import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
 import { LanguageStore } from './application/language/language.store';
 import { AutomaticAnkiSyncCoordinator } from './application/vocabulary/automatic-anki-sync.coordinator';
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
@@ -23,6 +19,7 @@ import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
 import { NETWORK_STATUS } from './domain/platform/network-status.port';
 import { HOST_PLATFORM, detectHostPlatform } from './domain/platform/host-platform';
 import { APP_ROUTES } from './core/routing/app.routes';
+import { OverlayHistoryLocationStrategy } from './shared-ui/dropdown/overlay-history-location';
 import { provideAudioEncoding } from './infrastructure/audio/audio.providers';
 import { provideAnki } from './infrastructure/anki/anki.providers';
 import { provideDiagnosticsLogging } from './infrastructure/diagnostics/diagnostics.providers';
@@ -38,14 +35,15 @@ export const appConfig: ApplicationConfig = {
     provideDiagnosticsLogging(readBuildInfo()),
     provideRouter(
       APP_ROUTES,
-      // Hash routing keeps deep links reloadable on GitHub Pages without
-      // server rewrite configuration.
-      withHashLocation(),
       withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' }),
       // Route parameters reach components as signal inputs, so the reader takes
       // its reading id without injecting ActivatedRoute.
       withComponentInputBinding(),
     ),
+    // Hash routing keeps deep links reloadable on GitHub Pages without
+    // server rewrite configuration. Its writes to history step around the
+    // entries open overlays hold for Back.
+    { provide: LocationStrategy, useClass: OverlayHistoryLocationStrategy },
     // The shell owns the browser events; the application layer sees a signal.
     { provide: NETWORK_STATUS, useExisting: NetworkStatusService },
     // Decided once, at the edge, so nothing below reads `navigator` itself.

@@ -6,7 +6,12 @@ Status: Accepted
 Amended for Back (R27): every panel here, the reader's `PopoverService` surfaces, and the
 popover-held task dialogs (`mn-sheet-popover`) take one history entry while open through the
 shared `OverlayHistoryEntry` (`shared-ui/dropdown/open-overlay-guard.ts`), so Back closes the
-top one before it leaves the page. A non-modal hover preview takes none.
+top one before it leaves the page. A non-modal hover preview takes none. An entry no open overlay
+holds (one a page covered, one left as a Forward step, or one an earlier load of the page left
+behind: entry ids differ on every load) is passed over, so Back never costs a second press. The
+router writes history through `OverlayHistoryLocationStrategy`: its writes wait while an entry is
+coming off, and a replace made while an overlay's entry is on top replaces the page's own entry,
+so the address it replaces is not left under it for Back.
 
 ## Context
 

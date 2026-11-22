@@ -1128,6 +1128,37 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page).toHaveURL(/#\/library$/);
   });
 
+  test('after a reload with a sheet open, Back still closes a sheet and then leaves in one press @mobile @smoke', async ({
+    page,
+  }) => {
+    await page.goto('./#/library');
+    await importReading(page, SAMPLE_TEXT);
+    const readerUrl = page.url();
+    const sheet = page.locator('mn-sentence-popover');
+
+    // Reloaded, or restored by Android, with the sheet open.
+    await openSentence(page);
+    await page.reload();
+    await openSentence(page);
+    await page.goBack();
+    await expect(sheet).toHaveCount(0);
+    await expect(page).toHaveURL(readerUrl);
+
+    // A sheet put away another way after a reload leaves Back to the page.
+    await openSentence(page);
+    await page.reload();
+    await openSentence(page);
+    await page.keyboard.press('Escape');
+    await expect(sheet).toHaveCount(0);
+    await expectOverlayEntryGone(page);
+    // Forward onto an entry a closed sheet left behind changes nothing.
+    await page.goForward();
+    await expect(page).toHaveURL(readerUrl);
+    await expect(sheet).toHaveCount(0);
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/library$/);
+  });
+
   test('holding a line opens its sentence, and holding again keeps it @mobile @smoke', async ({
     page,
     isMobile,

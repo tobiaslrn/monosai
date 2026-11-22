@@ -78,7 +78,10 @@ same-origin, but it may be an older build or a partially written key.
   honest left to render, and the reader's own not-found screen offers exactly
   one action — back to the library — so the tab takes it rather than staging
   it. The URL is replaced, not pushed, so Back does not lead to a reader for a
-  reading that is gone.
+  reading that is gone. That holds with a sheet open too: the router's writes
+  to history step down past the entries open overlays hold for Back
+  (`OverlayHistoryLocationStrategy`, ADR 0083), so it is the reader's own entry
+  that is replaced.
 - **Nothing else subscribes.** Creation and enrichment leave other tabs correct,
   only slightly behind, and a shelf that reorders itself under a learner who
   did not act is worse than one that is a minute old.
