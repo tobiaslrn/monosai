@@ -137,6 +137,27 @@ describe('ReaderStore', () => {
         paragraphCount: 4,
       });
     });
+
+    it('stays closed when it is closed while the reading is still opening', async () => {
+      const rows = repository.add(buildReading({ id: 'r1', paragraphCount: 20 }));
+      const classifier = TestBed.inject(
+        VocabularyClassificationService,
+      ) as unknown as StubVocabularyClassificationService;
+      const reader = store();
+      classifier.hold();
+
+      const opening = reader.open(rows.reading.id);
+      await vi.waitFor(() => {
+        expect(classifier.pending).toBe(1);
+      });
+      reader.close();
+      classifier.release();
+      await opening;
+
+      expect(reader.status()).toBe('idle');
+      expect(reader.reading()).toBeNull();
+      expect(reader.paragraphs()).toEqual([]);
+    });
   });
 
   describe('window extension', () => {

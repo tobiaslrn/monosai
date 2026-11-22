@@ -57,6 +57,12 @@ export class ReaderStore {
   private reclassifying = false;
   /** The window move running now, for a move that has to follow it. */
   private windowLoad: Promise<unknown> | null = null;
+  /**
+   * Which open the store is serving. Every open and every close moves it on, so
+   * a read that comes back for an earlier one, after the reader was left or
+   * another reading was opened, writes nothing.
+   */
+  private session = 0;
 
   private readonly readingSignal = signal<Reading | null>(null);
   private readonly statusSignal = signal<ReaderStatus>('idle');
@@ -114,11 +120,14 @@ export class ReaderStore {
    * local read of immutable text plus locally computed status.
    */
   async open(id: ReadingId): Promise<void> {
+    const session = ++this.session;
+    const current = (): boolean => session === this.session;
     this.statusSignal.set('loading');
     this.errorSignal.set(null);
     this.languageErrorSignal.set(null);
 
     const reading = await this.readings.getReading(id);
+    if (!current()) return;
     if (!reading.ok) {
       this.fail(reading.error);
       return;
@@ -134,6 +143,7 @@ export class ReaderStore {
     await this.readings.markOpened(id, this.clock.now());
 
     const paragraphCount = await this.readings.countParagraphs(id);
+    if (!current()) return;
     if (!paragraphCount.ok) {
       this.fail(paragraphCount.error);
       return;
@@ -141,7 +151,7 @@ export class ReaderStore {
     this.totalParagraphsSignal.set(paragraphCount.value);
 
     const window = windowAround(0, paragraphCount.value);
-    const loaded = await this.loadWindow(id, window);
+    const loaded = await this.loadWindow(id, window, session);
     if (!loaded) {
       return;
     }
@@ -232,7 +242,7 @@ export class ReaderStore {
 
   private async loadMore(id: ReadingId, next: ParagraphWindowState): Promise<void> {
     this.loadingMoreSignal.set(true);
-    const load = this.loadWindow(id, next);
+    const load = this.loadWindow(id, next, this.session);
     this.windowLoad = load;
     try {
       await load;
@@ -244,18 +254,29 @@ export class ReaderStore {
 
   /** Releases the reading. */
   close(): void {
+    this.session += 1;
     this.readingSignal.set(null);
     this.paragraphsSignal.set([]);
     this.windowSignal.set({ first: 0, count: 0 });
     this.statusSignal.set('idle');
   }
 
-  /** Loads one window of text, its token analyses, and its vocabulary status. */
-  private async loadWindow(id: ReadingId, window: ParagraphWindowState): Promise<boolean> {
+  /**
+   * Loads one window of text, its token analyses, and its vocabulary status.
+   * It writes nothing and reports false once `session` is no longer the open
+   * one.
+   */
+  private async loadWindow(
+    id: ReadingId,
+    window: ParagraphWindowState,
+    session: number,
+  ): Promise<boolean> {
+    const current = (): boolean => session === this.session;
     const graph = await this.readings.loadGraph(id, {
       firstParagraphPosition: window.first,
       paragraphCount: window.count,
     });
+    if (!current()) return false;
     if (!graph.ok) {
       this.fail(graph.error);
       return false;
@@ -263,6 +284,7 @@ export class ReaderStore {
 
     const sentenceIds = graph.value.sentences.map((sentence) => sentence.id);
     const analyses = await this.readings.loadTokenAnalyses(sentenceIds);
+    if (!current()) return false;
     if (!analyses.ok) {
       this.fail(analyses.error);
       return false;
@@ -279,8 +301,11 @@ export class ReaderStore {
     }));
     this.classifiedRevision = this.history.active()?.revision ?? null;
     const vocabulary = await this.classification.classify(forClassification);
+    if (!current()) return false;
     if (vocabulary.ok) {
-      this.vocabularySignal.set(await this.withStoryEvidence(vocabulary.value, sentenceIds));
+      const status = await this.withStoryEvidence(vocabulary.value, sentenceIds);
+      if (!current()) return false;
+      this.vocabularySignal.set(status);
       this.languageErrorSignal.set(null);
     } else {
       // Markers are an aid, not the reading: a classification failure leaves the
