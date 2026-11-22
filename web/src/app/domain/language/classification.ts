@@ -44,7 +44,7 @@ function unmatchedValidation(mode: ClassificationMode): TokenValidation {
  * 2. longest exact or normalized reviewed phrase;
  * 3. exact single-token reviewed form;
  * 4. normalized or inflected reviewed form;
- * 5. structural baseline;
+ * 5. structural baseline, which also wins over a match by reading alone;
  * 6. deterministic recognized entity;
  * 7. candidate unknown.
  *
@@ -96,8 +96,13 @@ export function classifyTokens(
       continue;
     }
 
+    // A kana spelling that only sounds like a reviewed word is weaker evidence
+    // than grammar the baseline already names.
     const normalized = context.vocabulary.findNormalized(token);
-    if (normalized !== null) {
+    if (
+      normalized !== null &&
+      (normalized.basis !== 'reading' || context.baseline.match(token) === null)
+    ) {
       statuses.push({
         tokenId: token.id,
         validation: {

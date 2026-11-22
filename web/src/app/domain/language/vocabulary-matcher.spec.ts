@@ -80,4 +80,57 @@ describe('compileVocabularyMatcher', () => {
       expect(matcher.findNormalized(token('分', 'ふん'))).toBeNull();
     });
   });
+
+  describe('a match by reading alone', () => {
+    const tooth: VocabularyItem = {
+      id: vocabularyItemId('dddddddd-dddd-4ddd-8ddd-dddddddddddd'),
+      snapshotId: snapshotId('11111111-1111-4111-8111-111111111111'),
+      visibleExpression: '歯',
+      canonicalExpression: '歯',
+      expressionHash: 'hash-歯',
+      analyzedSequence: [{ surface: '歯', lemma: '歯', readingHiragana: 'は' }],
+    };
+    const god: VocabularyItem = {
+      id: vocabularyItemId('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'),
+      snapshotId: snapshotId('11111111-1111-4111-8111-111111111111'),
+      visibleExpression: '神',
+      canonicalExpression: '神',
+      expressionHash: 'hash-神',
+      analyzedSequence: [{ surface: '神', lemma: '神', readingHiragana: 'かみ' }],
+    };
+    const matcher = compileVocabularyMatcher([tooth, god]);
+
+    function token(fields: Partial<Token> & Pick<Token, 'surface'>): Token {
+      return {
+        id: `token-${fields.surface}`,
+        startUtf16: 0,
+        endUtf16: fields.surface.length,
+        dictionaryKeys: [],
+        isPunctuation: false,
+        ...fields,
+      };
+    }
+
+    it('never matches a word written in kanji', () => {
+      expect(
+        matcher.findNormalized(
+          token({ surface: '紙', lemma: '紙', readingHiragana: 'かみ', partOfSpeech: 'noun' }),
+        ),
+      ).toBeNull();
+    });
+
+    it('never matches a particle', () => {
+      expect(
+        matcher.findNormalized(token({ surface: 'は', lemma: 'は', partOfSpeech: 'particle' })),
+      ).toBeNull();
+    });
+
+    it('matches a kana spelling of a content word and says so', () => {
+      expect(
+        matcher.findNormalized(
+          token({ surface: 'カミ', readingHiragana: 'かみ', partOfSpeech: 'noun' }),
+        ),
+      ).toEqual({ vocabularyItemIds: [god.id], basis: 'reading' });
+    });
+  });
 });

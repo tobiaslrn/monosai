@@ -352,7 +352,7 @@ export class ReaderStore {
     const vocabulary = await this.classification.classify(forClassification);
     if (!current()) return false;
     if (vocabulary.ok) {
-      const status = await this.withStoryEvidence(vocabulary.value, sentenceIds);
+      const status = await this.withStoryEvidence(vocabulary.value, sentenceIds, tokensBySentence);
       if (!current()) return false;
       this.vocabularySignal.set(status);
       this.languageErrorSignal.set(null);
@@ -394,6 +394,9 @@ export class ReaderStore {
         const mounted = this.paragraphsSignal();
         const sentences = mounted.flatMap((paragraph) => paragraph.sentences);
         const sentenceIds = sentences.map((entry) => entry.sentence.id);
+        const tokensBySentence = new Map(
+          sentences.map((entry) => [entry.sentence.id, entry.tokens] as const),
+        );
         const result = await this.classification.classify(
           sentences.map((entry) => ({ sentenceId: entry.sentence.id, tokens: entry.tokens })),
         );
@@ -409,7 +412,7 @@ export class ReaderStore {
           this.languageErrorSignal.set(result.error);
           return;
         }
-        const next = await this.withStoryEvidence(result.value, sentenceIds);
+        const next = await this.withStoryEvidence(result.value, sentenceIds, tokensBySentence);
         if (replaced()) continue;
         if (this.paragraphsSignal() !== mounted) {
           // The window moved while classifying; go round again for the new one.
@@ -451,6 +454,7 @@ export class ReaderStore {
   private async withStoryEvidence(
     status: VocabularyStatus,
     sentenceIds: readonly SentenceId[],
+    tokensBySentence: ReadonlyMap<string, readonly Token[]>,
   ): Promise<VocabularyStatus> {
     if (status.kind !== 'classified' || this.readingSignal()?.kind !== 'generated') {
       return status;
@@ -464,7 +468,14 @@ export class ReaderStore {
     );
     const statusesBySentence = new Map<string, readonly TokenStatusAssignment[]>();
     for (const [id, statuses] of status.statusesBySentence) {
-      statusesBySentence.set(id, withFrozenEvidence(statuses, frozenBySentence.get(id) ?? []));
+      statusesBySentence.set(
+        id,
+        withFrozenEvidence(
+          statuses,
+          frozenBySentence.get(id) ?? [],
+          tokensBySentence.get(id) ?? [],
+        ),
+      );
     }
     return { ...status, statusesBySentence };
   }

@@ -1,7 +1,7 @@
 import type { VocabularyItemId } from '../shared/ids';
-import type { Token } from '../reading/token';
+import type { PartOfSpeech, Token } from '../reading/token';
 import type { VocabularyItem } from '../vocabulary/snapshot';
-import { normalizeLookupKey } from './kana';
+import { isKanaOnly, normalizeLookupKey } from './kana';
 
 /** How a normalized match was justified, shown to the learner as the basis. */
 export type NormalizedMatchBasis = 'normalized-form' | 'lemma' | 'reading';
@@ -72,7 +72,39 @@ function addToBucket(
   }
 }
 
-function normalizedTokenKeys(
+/**
+ * Grammar classes a reading never vouches for: a particle は is not the noun 歯,
+ * nor the particle て the noun 手, however often a deck holds the noun.
+ */
+const FUNCTION_WORD_CLASSES: ReadonlySet<PartOfSpeech> = new Set<PartOfSpeech>([
+  'particle',
+  'auxiliary',
+  'prefix',
+  'suffix',
+  'symbol',
+]);
+
+/**
+ * Whether a token may be matched by its reading alone.
+ *
+ * Only a content word spelled in kana: はし is a spelling of 橋 the learner can
+ * read, while 紙 is a different word from 神 although both are read かみ. A
+ * token written with kanji is matched by its written form or its base form,
+ * never by how it sounds.
+ */
+export function acceptsReadingMatch(token: Pick<Token, 'surface' | 'partOfSpeech'>): boolean {
+  return (
+    isKanaOnly(token.surface.normalize('NFKC')) &&
+    (token.partOfSpeech === undefined || !FUNCTION_WORD_CLASSES.has(token.partOfSpeech))
+  );
+}
+
+/**
+ * Keys a running-text token is compared with item forms under: its written
+ * form and its base form. A reading is no key of its own; it only matters for
+ * a kana spelling, whose written form already is one.
+ */
+function formKeys(
   token: Token,
 ): readonly { readonly key: string; readonly basis: NormalizedMatchBasis }[] {
   const keys: { key: string; basis: NormalizedMatchBasis }[] = [
@@ -80,9 +112,6 @@ function normalizedTokenKeys(
   ];
   if (token.lemma !== undefined && token.lemma.length > 0) {
     keys.push({ key: normalizeLookupKey(token.lemma), basis: 'lemma' });
-  }
-  if (token.readingHiragana !== undefined && token.readingHiragana.length > 0) {
-    keys.push({ key: normalizeLookupKey(token.readingHiragana), basis: 'reading' });
   }
   return keys;
 }
@@ -125,14 +154,19 @@ function longestMatch(
  * Compiles one vocabulary snapshot result into the matcher used by
  * classification.
  *
- * Three indexes are built: exact canonical surfaces, normalized single-token
- * forms (Unicode form, kana reading, and tokenizer lemma only), and a phrase
- * trie for entries of two or more tokens. Nothing here accepts synonyms, edit
- * distance, or shared kanji as evidence of known vocabulary.
+ * Four indexes are built: exact canonical surfaces, normalized single-token
+ * forms (Unicode form and tokenizer lemma), single-token readings, and a
+ * phrase trie for entries of two or more tokens. A token's written and base
+ * forms are looked up among the forms; only a kana spelling that
+ * `acceptsReadingMatch` allows is looked up among the readings, so neither a
+ * homophone nor a particle that sounds like a reviewed word counts as known.
+ * Nothing here accepts synonyms, edit distance, or shared kanji as evidence of
+ * known vocabulary.
  */
 export function compileVocabularyMatcher(items: readonly VocabularyItem[]): VocabularyMatcher {
   const exact = new Map<string, VocabularyItemId[]>();
-  const normalized = new Map<string, { ids: VocabularyItemId[]; basis: NormalizedMatchBasis }>();
+  const forms = new Map<string, VocabularyItemId[]>();
+  const readings = new Map<string, VocabularyItemId[]>();
   const exactPhrases = newNode();
   const normalizedPhrases = newNode();
 
@@ -143,9 +177,7 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
     // analyzed alone as several tokens (十分 as 十 + 分) can be one token in
     // running text (これで十分です), and its literal form is still exact evidence.
     addToBucket(exact, item.canonicalExpression, item.id);
-    const candidates: { key: string; basis: NormalizedMatchBasis }[] = [
-      { key: normalizeLookupKey(item.canonicalExpression), basis: 'normalized-form' },
-    ];
+    addToBucket(forms, normalizeLookupKey(item.canonicalExpression), item.id);
 
     if (sequence.length >= 2) {
       insert(
@@ -164,18 +196,10 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
     const tokenKeys = sequence.length === 1 ? sequence : [];
     for (const token of tokenKeys) {
       if (token.lemma !== undefined && token.lemma.length > 0) {
-        candidates.push({ key: normalizeLookupKey(token.lemma), basis: 'lemma' });
+        addToBucket(forms, normalizeLookupKey(token.lemma), item.id);
       }
       if (token.readingHiragana !== undefined && token.readingHiragana.length > 0) {
-        candidates.push({ key: normalizeLookupKey(token.readingHiragana), basis: 'reading' });
-      }
-    }
-    for (const candidate of candidates) {
-      const bucket = normalized.get(candidate.key);
-      if (bucket === undefined) {
-        normalized.set(candidate.key, { ids: [item.id], basis: candidate.basis });
-      } else if (!bucket.ids.includes(item.id)) {
-        bucket.ids.push(item.id);
+        addToBucket(readings, normalizeLookupKey(token.readingHiragana), item.id);
       }
     }
   }
@@ -193,7 +217,7 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
         };
       }
       const normalizedHit = longestMatch(normalizedPhrases, tokens, startIndex, (token) =>
-        normalizedTokenKeys(token).map((candidate) => candidate.key),
+        formKeys(token).map((candidate) => candidate.key),
       );
       if (normalizedHit !== null) {
         return {
@@ -209,10 +233,16 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
       return exact.get(token.surface) ?? [];
     },
     findNormalized(token) {
-      for (const candidate of normalizedTokenKeys(token)) {
-        const bucket = normalized.get(candidate.key);
+      for (const candidate of formKeys(token)) {
+        const bucket = forms.get(candidate.key);
         if (bucket !== undefined) {
-          return { vocabularyItemIds: bucket.ids, basis: candidate.basis };
+          return { vocabularyItemIds: bucket, basis: candidate.basis };
+        }
+      }
+      if (acceptsReadingMatch(token)) {
+        const bucket = readings.get(normalizeLookupKey(token.surface));
+        if (bucket !== undefined) {
+          return { vocabularyItemIds: bucket, basis: 'reading' };
         }
       }
       return null;

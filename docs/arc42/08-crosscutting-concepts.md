@@ -46,6 +46,13 @@ snapshot does not cover falls back to that frozen evidence: a policy exception, 
 the story was written, stays unmarked, while a word the learner has since reviewed stops being
 marked. The types live in `domain/reading/` and `domain/vocabulary/`.
 
+A token matches a reviewed word by its written form or its base form. Its reading alone counts only
+for a content word spelled in kana (はし for 橋), never for a word written in kanji (紙 is not 神)
+or a particle or auxiliary (は is not 歯), and the structural baseline wins over such a match. The
+reader, the word details and the check of a generated story all use this one matcher. Frozen
+evidence from before this rule is held to it when a story is read back: a match by reading that
+the rule refuses no longer counts.
+
 ## 8.2 Error handling
 
 Nothing throws across a boundary. Every operation that can fail returns a `Result`: either a value

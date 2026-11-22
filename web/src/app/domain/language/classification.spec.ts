@@ -178,6 +178,32 @@ describe('classification precedence', () => {
   });
 });
 
+describe('matches by reading alone', () => {
+  it('does not accept a kanji word because a reviewed word with other kanji reads the same', async () => {
+    // 神 (god) is reviewed; 紙 (paper) is also read かみ but is a different word.
+    const result = await classify('紙を買う', ['神'], 'generated');
+    expect(result[0]!.surface).toBe('紙');
+    expect(result[0]!.validation.category).toBe('unknown');
+  });
+
+  it('keeps the topic particle structural when a reviewed noun is read は', async () => {
+    const result = await classify('猫は寝ている', ['歯'], 'imported');
+    expect(result[1]!.surface).toBe('は');
+    expect(result[1]!.validation.category).toBe('structural-baseline');
+  });
+
+  it('keeps the te-form particle structural when a reviewed noun is read て', async () => {
+    const result = await classify('猫は寝ている', ['手'], 'imported');
+    expect(result[3]!.surface).toBe('て');
+    expect(result[3]!.validation.category).toBe('structural-baseline');
+  });
+
+  it('still accepts a kana spelling of a reviewed word, by its reading', async () => {
+    const result = await classify('はしを渡る', ['橋'], 'generated');
+    expect(result[0]!.validation).toMatchObject({ category: 'anki-normalized', basis: 'reading' });
+  });
+});
+
 describe('classifyAgainstSnapshot', () => {
   it('reports that vocabulary is not configured instead of marking everything unknown', async () => {
     const tokens = await analyzeSentence('猫が寝る');

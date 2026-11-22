@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { vocabularyItemId } from '../shared/ids';
 import { withFrozenEvidence } from './frozen-evidence';
+import type { PartOfSpeech, Token } from './token';
 import type { TokenStatusAssignment, TokenValidation } from './validation';
 
 function status(tokenId: string, validation: TokenValidation): TokenStatusAssignment {
@@ -21,25 +22,29 @@ const unresolved: TokenValidation = { category: 'unknown', reason: 'unresolved-a
 
 describe('withFrozenEvidence', () => {
   it('keeps a policy exception the current snapshot cannot cover', () => {
-    const merged = withFrozenEvidence([status('t0', notInSnapshot)], [status('t0', exception)]);
+    const merged = withFrozenEvidence([status('t0', notInSnapshot)], [status('t0', exception)], []);
 
     expect(merged).toEqual([status('t0', exception)]);
   });
 
   it('keeps a word the story was accepted on after it leaves the snapshot', () => {
-    const merged = withFrozenEvidence([status('t0', notInSnapshot)], [status('t0', known)]);
+    const merged = withFrozenEvidence([status('t0', notInSnapshot)], [status('t0', known)], []);
 
     expect(merged).toEqual([status('t0', known)]);
   });
 
   it('lets a word learned since the story was written stop being uncovered', () => {
-    const merged = withFrozenEvidence([status('t0', known)], [status('t0', unresolved)]);
+    const merged = withFrozenEvidence([status('t0', known)], [status('t0', unresolved)], []);
 
     expect(merged).toEqual([status('t0', known)]);
   });
 
   it('leaves a word uncovered when neither source covers it', () => {
-    const merged = withFrozenEvidence([status('t0', notInSnapshot)], [status('t0', unresolved)]);
+    const merged = withFrozenEvidence(
+      [status('t0', notInSnapshot)],
+      [status('t0', unresolved)],
+      [],
+    );
 
     expect(merged).toEqual([status('t0', notInSnapshot)]);
   });
@@ -48,6 +53,7 @@ describe('withFrozenEvidence', () => {
     const merged = withFrozenEvidence(
       [status('t0', notInSnapshot), status('t1', notInSnapshot)],
       [status('t0', exception)],
+      [],
     );
 
     expect(merged).toEqual([status('t0', exception), status('t1', notInSnapshot)]);
@@ -56,6 +62,55 @@ describe('withFrozenEvidence', () => {
   it('returns the current statuses unchanged without frozen evidence', () => {
     const current = [status('t0', notInSnapshot)];
 
-    expect(withFrozenEvidence(current, [])).toBe(current);
+    expect(withFrozenEvidence(current, [], [])).toBe(current);
+  });
+
+  describe('a match by reading alone', () => {
+    const byReading: TokenValidation = {
+      category: 'anki-normalized',
+      vocabularyItemIds: [vocabularyItemId('v1')],
+      basis: 'reading',
+    };
+    function token(surface: string, partOfSpeech: PartOfSpeech): Token {
+      return {
+        id: 't0',
+        startUtf16: 0,
+        endUtf16: surface.length,
+        surface,
+        partOfSpeech,
+        dictionaryKeys: [],
+        isPunctuation: false,
+      };
+    }
+
+    it('no longer covers a word written in kanji that only sounds like a reviewed word', () => {
+      const merged = withFrozenEvidence(
+        [status('t0', notInSnapshot)],
+        [status('t0', byReading)],
+        [token('紙', 'noun')],
+      );
+
+      expect(merged).toEqual([status('t0', notInSnapshot)]);
+    });
+
+    it('no longer covers a particle that only sounds like a reviewed word', () => {
+      const merged = withFrozenEvidence(
+        [status('t0', notInSnapshot)],
+        [status('t0', byReading)],
+        [token('は', 'particle')],
+      );
+
+      expect(merged).toEqual([status('t0', notInSnapshot)]);
+    });
+
+    it('still covers a kana spelling of a reviewed word', () => {
+      const merged = withFrozenEvidence(
+        [status('t0', notInSnapshot)],
+        [status('t0', byReading)],
+        [token('はし', 'noun')],
+      );
+
+      expect(merged).toEqual([status('t0', byReading)]);
+    });
   });
 });
