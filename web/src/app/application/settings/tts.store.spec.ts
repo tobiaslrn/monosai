@@ -461,6 +461,24 @@ describe('TtsStore', () => {
     ]);
   });
 
+  it('stops offering a preset whose latest test failed', async () => {
+    const store = await ready();
+    await store.registerPreset({ id: 'voice', name: 'Voice', ...CONFIGURED });
+    await store.testPreset('voice');
+    expect(store.configForPreset('voice')).not.toBeNull();
+
+    // The same configuration is tested again and the provider now refuses it.
+    provider.result = {
+      ok: false,
+      error: aiError('capability-unsupported', 'tts-test', 'The voice is no longer offered.'),
+    };
+    await store.testPreset('voice');
+
+    expect(store.readiness()).toBe('failed');
+    expect(store.configForPreset('voice')).toBeNull();
+    expect(store.compatiblePresets().map((preset) => preset.id)).not.toContain('voice');
+  });
+
   it('surfaces a storage failure when the result cannot be stored', async () => {
     const store = await ready();
     store.setDraft(CONFIGURED);

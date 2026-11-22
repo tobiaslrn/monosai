@@ -187,7 +187,8 @@ refuses with `not-found` otherwise. Nothing is left behind that no deletion woul
 AI readiness distinguishes missing credentials from incomplete model configuration.
 Text and speech settings keep up to twenty failed test attempts, with a configuration
 fingerprint, timestamp, typed failure code, and redacted reason. Matching failures
-survive reloads and take precedence over old successful tests; a successful retry
+survive reloads and take precedence over old successful tests, for a saved preset as
+for the active configuration, so neither is offered or used; a successful retry
 removes that configuration's failure. A test's fingerprint is taken when its request
 is sent: if the model, effort, voice or key changes before the answer arrives, a pass
 marks nothing as tested. A write that changes a list in these settings, such as the

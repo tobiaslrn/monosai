@@ -186,7 +186,8 @@ export class TtsStore {
       lastTestedAt: preset.lastTestedAt ?? null,
     };
     const saved = await this.repository.updateTtsSettings((current) => {
-      const becomesDefault = current.activePresetId === null && this.isPresetReady(registered);
+      const becomesDefault =
+        current.activePresetId === null && this.isPresetReady(registered, current.failedTests);
       return {
         presets: [...current.presets.filter((item) => item.id !== preset.id), registered],
         ...(becomesDefault
@@ -616,7 +617,19 @@ export class TtsStore {
     });
   }
 
-  private isPresetReady(preset: TtsPreset): boolean {
-    return preset.lastTestFingerprint === this.fingerprintFor(preset);
+  /**
+   * Whether the preset's stored test vouches for it. A recorded failure of the
+   * same configuration is newer than any pass, because a pass removes it, so it
+   * takes precedence, as it does for `readiness`.
+   */
+  private isPresetReady(
+    preset: TtsPreset,
+    failedTests = this.settingsSignal().failedTests,
+  ): boolean {
+    const fingerprint = this.fingerprintFor(preset);
+    return (
+      preset.lastTestFingerprint === fingerprint &&
+      !(failedTests ?? []).some((test) => test.fingerprint === fingerprint)
+    );
   }
 }
