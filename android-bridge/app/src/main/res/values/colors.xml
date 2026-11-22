@@ -3,10 +3,7 @@
   The roles this screen uses from Monosai's light palette, transcribed from
   web/src/styles/_tokens.scss.
   The bridge is a native app and cannot read the PWA's custom properties, so these
-  are the same roles under the same names, and docs/design/rules.md governs both: a
-  colour token changed there is changed here in the same commit (R47). Behaviour is not
-  copied: the controls are framework widgets, so text scaling, focus and touch stay the
-  device's.
+  are the same roles under the same names; docs/design/design-system.md governs both.
   values-night/colors.xml carries the dark half.
 -->
 <resources>

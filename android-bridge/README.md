@@ -92,7 +92,9 @@ Publishing is a version bump, not a tag push. `bridge-release.yml` runs on every
 exists but the APK's own sources or `protocol/` have changed since its tag, the run fails
 and names the files — a Releases page that quietly serves an older bridge than `main` is
 the failure the lane exists to prevent. Bundled licence notices are excluded from that
-comparison, because they follow the PWA's dependencies rather than the bridge's behaviour.
+comparison, because they follow the PWA's dependencies rather than the bridge's behaviour. A
+comment in `app/src/main` counts as a change too, so leave those files alone unless the bridge
+itself changes and its version is raised.
 
 ### Which number to raise
 
