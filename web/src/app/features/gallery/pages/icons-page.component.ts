@@ -23,9 +23,13 @@ import { SectionComponent } from '../../../shared-ui/section/section.component';
 
       <mn-section heading="Sizes">
         <mn-cluster>
-          <mn-cluster [gap]="2"><mn-icon name="info" size="inline" /><span>Inline</span></mn-cluster>
+          <mn-cluster [gap]="2"
+            ><mn-icon name="info" size="inline" /><span>Inline</span></mn-cluster
+          >
           <mn-cluster [gap]="2"><mn-icon name="info" /><span>Control</span></mn-cluster>
-          <mn-cluster [gap]="2"><mn-icon name="info" size="feature" /><span>Feature</span></mn-cluster>
+          <mn-cluster [gap]="2"
+            ><mn-icon name="info" size="feature" /><span>Feature</span></mn-cluster
+          >
         </mn-cluster>
       </mn-section>
 
