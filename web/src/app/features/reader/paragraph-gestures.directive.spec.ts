@@ -212,12 +212,7 @@ describe('ParagraphGesturesDirective', () => {
     longPress(second, 95, 110);
     longPress(second, 105, 110);
 
-    expect(selections().map((selection) => selection.sentenceId)).toEqual([
-      's1',
-      's2',
-      's1',
-      's2',
-    ]);
+    expect(selections().map((selection) => selection.sentenceId)).toEqual(['s1', 's2', 's1', 's2']);
   });
 
   it('does not repeat while the press is held', () => {

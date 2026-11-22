@@ -373,9 +373,9 @@ describe('ReaderStore', () => {
       const mounted = await reader.moveToSentence(sentence.id);
 
       expect(mounted).toBe(true);
-      expect(
-        reader.paragraphs().some((paragraph) => paragraph.paragraph.position === 30),
-      ).toBe(true);
+      expect(reader.paragraphs().some((paragraph) => paragraph.paragraph.position === 30)).toBe(
+        true,
+      );
       expect(await reader.moveToSentence(sentenceId('missing'))).toBe(false);
     });
   });
