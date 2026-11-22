@@ -392,6 +392,33 @@ describe('ReaderStore', () => {
       expect(mounted).toBe(false);
       expect(reader.paragraphs().map((paragraph) => paragraph.paragraph.position)).toEqual(before);
     });
+
+    it('leaves the window alone when the move stops being wanted while its part of the reading loads', async () => {
+      const rows = repository.add(buildReading({ id: 'r1', paragraphCount: 40 }));
+      const classifier = TestBed.inject(
+        VocabularyClassificationService,
+      ) as unknown as StubVocabularyClassificationService;
+      const reader = store();
+      await reader.open(rows.reading.id);
+      const before = reader.paragraphs().map((paragraph) => paragraph.paragraph.position);
+      const far = rows.paragraphs.find((paragraph) => paragraph.position === 30)!;
+      const sentence = rows.sentences.find((candidate) => candidate.paragraphId === far.id)!;
+      let wanted = true;
+
+      classifier.hold();
+      const moving = reader.moveToSentence(sentence.id, () => wanted);
+      await vi.waitFor(() => {
+        expect(classifier.pending).toBe(1);
+      });
+      // The learner scrolls while the far part of the reading is loading.
+      wanted = false;
+      classifier.release();
+
+      expect(await moving).toBe(false);
+      expect(reader.paragraphs().map((paragraph) => paragraph.paragraph.position)).toEqual(before);
+      expect(reader.window().first).toBe(before[0]);
+      expect(reader.loadingMore()).toBe(false);
+    });
   });
 
   describe('vocabulary changes under an open reading', () => {

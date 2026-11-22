@@ -45,6 +45,7 @@ const store = {
   window: signal<ParagraphWindowState>({ first: 3, count: 2 }),
   totalParagraphs: signal(10),
   paragraphs: signal<readonly ReaderParagraph[]>([paragraph(3), paragraph(4)]),
+  loadingMore: signal(false),
   moveTo: vi.fn(() => Promise.resolve()),
   cover: vi.fn(() => Promise.resolve()),
 };
@@ -95,6 +96,7 @@ describe('ReaderParagraphWindowDirective', () => {
     store.window.set({ first: 3, count: 2 });
     store.totalParagraphs.set(10);
     store.paragraphs.set([paragraph(3), paragraph(4)]);
+    store.loadingMore.set(false);
     store.moveTo.mockClear();
     store.cover.mockClear();
     scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
@@ -200,6 +202,44 @@ describe('ReaderParagraphWindowDirective', () => {
     scrollWindowTo(410);
 
     expect(store.cover).not.toHaveBeenCalled();
+  });
+
+  it('covers a screen that shows none of the mounted paragraphs, whichever way the learner scrolls', () => {
+    store.totalParagraphs.set(20);
+    layOutParagraphs(100);
+    vi.advanceTimersToNextFrame();
+    vi.advanceTimersToNextFrame();
+    // A part of the reading far below was loaded, and the learner scrolls on down above it.
+    store.window.set({ first: 12, count: 4 });
+    for (const element of (fixture.nativeElement as HTMLElement).querySelectorAll('p.paragraph')) {
+      Object.defineProperty(element, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ top: 1500, bottom: 1600, height: 100 }),
+      });
+    }
+    store.cover.mockClear();
+
+    scrollWindowTo(250);
+
+    expect(store.cover).toHaveBeenCalledWith(2, 6, 10);
+  });
+
+  it('covers the screen once a load that held the window has landed', () => {
+    layOutParagraphs(100);
+    vi.advanceTimersToNextFrame();
+    vi.advanceTimersToNextFrame();
+    store.loadingMore.set(true);
+    store.cover.mockClear();
+
+    // The store would drop a cover while it is loading another window.
+    scrollWindowTo(400);
+    expect(store.cover).not.toHaveBeenCalled();
+
+    store.loadingMore.set(false);
+    TestBed.tick();
+    vi.advanceTimersToNextFrame();
+
+    expect(store.cover).toHaveBeenCalledWith(4, 8, 9);
   });
 
   /** Lays the mounted paragraphs out from `top` on the screen, one after another. */

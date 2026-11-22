@@ -248,8 +248,9 @@ component is composition and template:
   (reading the sheet's pane from the `PopoverRef` rather than querying the
   document), follows the sentence being read into the band between bar and
   player (first moving `ReaderStore`'s window to it with `moveToSentence` when
-  that sentence is not mounted, then jumping to it, unless the learner scrolled
-  while it loaded), and hands the title to the
+  that sentence is not mounted, then jumping to it; a scroll while it loads
+  gives the move up before the new window replaces the mounted one, and the
+  page stays where the learner took it), and hands the title to the
   bar once the heading is wholly beneath it, measuring the bar again whenever it
   changes height, as it does when a notice appears in it. The page passes it its elements with
   `connect`, and `mnDockedPlayer` attaches the player shell for exactly as long
@@ -302,7 +303,9 @@ storage by position, a few at a time and asynchronously, around an anchor and
 within a bound ([ADR 0011](../decisions/0011-paragraph-window-bounds.md)); the
 shared list ranges over items it already holds by key. It widens, within that bound,
 when a screen shows more paragraphs than the usual window, so neither edge of the
-screen is a spacer. A new layout scrolls back to the passage that was at the middle of
+screen is a spacer. A screen that shows no mounted paragraph at all is covered
+whichever way the learner is scrolling, and a cover the screen needed while another
+load held the window is made once that load lands or is given up. A new layout scrolls back to the passage that was at the middle of
 the screen, and a focused word that leaves the window hands focus to a word on the screen.
 
 ### Whitebox: the shared virtual list

@@ -211,13 +211,18 @@ export class ReaderStore {
    *
    * This is a destination rather than a report of where the screen is, so a move
    * already running delays it instead of dropping it: dropped, Home or End
-   * pressed during a scroll's window move would never arrive.
+   * pressed during a scroll's window move would never arrive. A move that
+   * `stillWanted` says is no longer wanted, at any point before the new window
+   * would replace the mounted one, leaves the mounted one in place.
    */
-  async moveTo(anchorPosition: number): Promise<void> {
+  async moveTo(anchorPosition: number, stillWanted: () => boolean = () => true): Promise<void> {
     while (this.windowLoad !== null) {
       await this.windowLoad;
     }
-    await this.show(windowAround(anchorPosition, this.totalParagraphsSignal()));
+    if (!stillWanted()) {
+      return;
+    }
+    await this.show(windowAround(anchorPosition, this.totalParagraphsSignal()), stillWanted);
   }
 
   /**
@@ -225,8 +230,10 @@ export class ReaderStore {
    * sentence being read aloud can be shown even when the learner was reading
    * far from it. True once the sentence is mounted; false when it is not in
    * this reading, its place could not be read, the reader was closed
-   * meanwhile, or `stillWanted` says the move is no longer wanted once its
-   * place has been read (the learner scrolled away meanwhile).
+   * meanwhile, or `stillWanted` says the move is no longer wanted (the learner
+   * scrolled away meanwhile). It is asked after the place is read, while that
+   * part of the reading loads, and once it has, and a move no longer wanted
+   * before the load lands leaves the mounted paragraphs where they were.
    */
   async moveToSentence(
     sentenceId: SentenceId,
@@ -244,8 +251,8 @@ export class ReaderStore {
     if (session !== this.session || !position.ok || position.value === null || !stillWanted()) {
       return false;
     }
-    await this.moveTo(position.value);
-    return session === this.session && this.mounts(sentenceId);
+    await this.moveTo(position.value, stillWanted);
+    return session === this.session && stillWanted() && this.mounts(sentenceId);
   }
 
   private mounts(sentenceId: SentenceId): boolean {
@@ -261,7 +268,10 @@ export class ReaderStore {
     );
   }
 
-  private async show(next: ParagraphWindowState): Promise<void> {
+  private async show(
+    next: ParagraphWindowState,
+    stillWanted: () => boolean = () => true,
+  ): Promise<void> {
     const reading = this.readingSignal();
     if (reading === null || this.loadingMoreSignal()) {
       return;
@@ -271,12 +281,16 @@ export class ReaderStore {
       return;
     }
 
-    await this.loadMore(reading.id, next);
+    await this.loadMore(reading.id, next, stillWanted);
   }
 
-  private async loadMore(id: ReadingId, next: ParagraphWindowState): Promise<void> {
+  private async loadMore(
+    id: ReadingId,
+    next: ParagraphWindowState,
+    stillWanted: () => boolean = () => true,
+  ): Promise<void> {
     this.loadingMoreSignal.set(true);
-    const load = this.loadWindow(id, next, this.session);
+    const load = this.loadWindow(id, next, this.session, stillWanted);
     this.windowLoad = load;
     try {
       await load;
@@ -298,14 +312,15 @@ export class ReaderStore {
   /**
    * Loads one window of text, its token analyses, and its vocabulary status.
    * It writes nothing and reports false once `session` is no longer the open
-   * one.
+   * one, or once `stillWanted` says the window is no longer wanted.
    */
   private async loadWindow(
     id: ReadingId,
     window: ParagraphWindowState,
     session: number,
+    stillWanted: () => boolean = () => true,
   ): Promise<boolean> {
-    const current = (): boolean => session === this.session;
+    const current = (): boolean => session === this.session && stillWanted();
     const graph = await this.readings.loadGraph(id, {
       firstParagraphPosition: window.first,
       paragraphCount: window.count,

@@ -10,6 +10,7 @@ import {
   inject,
   input,
   linkedSignal,
+  untracked,
 } from '@angular/core';
 import { ReaderStore } from '../../application/reading/reader.store';
 import {
@@ -91,6 +92,8 @@ export class ReaderParagraphWindowDirective {
   private restoring: ReadingAnchor | null = null;
   /** What had focus inside the reading as the last window move took effect, if anything did. */
   private focusedBeforeMove: HTMLElement | null = null;
+  /** Whether the screen needed covering while another load held the window; it is looked at again once that lands. */
+  private coverAfterLoad = false;
 
   /** Space standing in for the paragraphs before and after the mounted window. */
   readonly spacers = computed(() =>
@@ -131,6 +134,20 @@ export class ReaderParagraphWindowDirective {
       });
       onCleanup(() => {
         cancelAnimationFrame(frame);
+      });
+    });
+
+    effect(() => {
+      // A load that has landed, or been given up, may have left the screen on a
+      // spacer it could not cover meanwhile: the screen is looked at again.
+      if (this.store.loadingMore()) {
+        return;
+      }
+      untracked(() => {
+        if (this.coverAfterLoad) {
+          this.coverAfterLoad = false;
+          this.scheduleWindowForScroll();
+        }
       });
     });
 
@@ -250,7 +267,11 @@ export class ReaderParagraphWindowDirective {
    * for, so neither edge of the screen is ever left blank.
    *
    * Never against the way the learner is scrolling: a stale estimate can place
-   * the far edge of the screen behind a window that is moving away.
+   * the far edge of the screen behind a window that is moving away. A screen
+   * that shows no mounted paragraph at all is covered whichever way, though: a
+   * window loaded elsewhere (a far seek the learner scrolled away from) would
+   * otherwise leave it blank for good. A cover asked for while another load
+   * holds the window waits for that load rather than being lost.
    */
   private placeWindow(direction: ScrollDirection | null): void {
     const documentTop = this.host.getBoundingClientRect().top + window.scrollY;
@@ -266,12 +287,31 @@ export class ReaderParagraphWindowDirective {
     const mounted = this.store.window();
     if (
       (direction !== 'backward' && last >= windowEnd(mounted)) ||
-      (direction !== 'forward' && first < mounted.first)
+      (direction !== 'forward' && first < mounted.first) ||
+      this.showsOnlySpacers()
     ) {
+      if (this.store.loadingMore()) {
+        this.coverAfterLoad = true;
+        return;
+      }
       void this.store.cover(first, paragraphAt(window.innerHeight / 2), last).then(() => {
         this.rememberFocus();
       });
     }
+  }
+
+  /**
+   * Whether the screen shows none of the mounted paragraphs, as laid out. When
+   * none is laid out yet, that cannot be told, and it is taken not to.
+   */
+  private showsOnlySpacers(): boolean {
+    const boxes = this.paragraphs()
+      .map((paragraph) => this.paragraphBox(paragraph))
+      .filter((box) => box.height > 0);
+    return (
+      boxes.length > 0 &&
+      boxes.every((box) => box.top >= window.innerHeight || box.top + box.height <= 0)
+    );
   }
 
   /**

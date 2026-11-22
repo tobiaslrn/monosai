@@ -996,6 +996,66 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(page.locator('.sentence.is-playing')).toBeInViewport();
   });
 
+  /**
+   * A seek far away loads that part of the reading, which on a slow phone takes
+   * a while. A learner who scrolls meanwhile has taken the page back: whatever
+   * the load does, the page they scrolled to shows the reading, never a blank
+   * stretch standing in for paragraphs that are not mounted.
+   */
+  test('a scroll while a far seek loads leaves the reading on the screen', async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 700 });
+    const paragraphs = 16;
+    await prepareReading(page, Array.from({ length: paragraphs }, () => TEXT).join('\n\n'));
+    await openAudioPlayer(page);
+    await audioPlayer(page).getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page, SENTENCE_COUNT * paragraphs);
+    const track = audioPlayer(page).getByRole('slider', { name: 'Position in this story' });
+    const far = String(Math.round(SENTENCE_COUNT * paragraphs * 0.62));
+    const cdp = await page.context().newCDPSession(page);
+    const sentencesOnScreen = (): Promise<number> =>
+      page.evaluate(() => {
+        const top = document.querySelector('.reader .bar')?.getBoundingClientRect().bottom ?? 0;
+        const bottom =
+          document.querySelector('.audio-player-shell')?.getBoundingClientRect().top ??
+          window.innerHeight;
+        return [...document.querySelectorAll('.sentence')].filter((sentence) => {
+          const box = sentence.getBoundingClientRect();
+          return box.height > 0 && box.bottom > top && box.top < bottom;
+        }).length;
+      });
+
+    for (const delay of [0, 60, 300]) {
+      await track.fill('1');
+      await expect(page.locator('.sentence.is-playing')).toBeInViewport();
+      await page.evaluate(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      });
+      await page.mouse.move(450, 300);
+
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
+      try {
+        await track.fill(far);
+        // The gap between the seek and the scroll is what each pass varies.
+        // eslint-disable-next-line no-restricted-syntax
+        await page.waitForTimeout(delay);
+        await page.mouse.wheel(0, 250);
+      } finally {
+        await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+      }
+
+      // Once the load has had time to land, and after scrolling on. A screen
+      // left blank shows nothing to wait on, so only elapsed time lets the
+      // abandoned load land before the check.
+      // eslint-disable-next-line no-restricted-syntax
+      await page.waitForTimeout(1_500);
+      await expect.poll(sentencesOnScreen).toBeGreaterThan(0);
+      await page.mouse.wheel(0, 300);
+      // eslint-disable-next-line no-restricted-syntax
+      await page.waitForTimeout(500);
+      await expect.poll(sentencesOnScreen).toBeGreaterThan(0);
+    }
+  });
+
   test('navigates to the next and previous sentence without wrapping', async ({ page }) => {
     await prepareReading(page);
     await openAudioPlayer(page);
