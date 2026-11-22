@@ -303,8 +303,11 @@ export async function checkLineBudgets(repoRoot, budgets = LINE_BUDGETS) {
 }
 
 /**
- * Every rule a check cites is listed in design-checks.json, and every rule listed
- * as checked exists in the rulebook as a bold "**Rn.**", or is listed as retired.
+ * Every rule a check cites is listed in design-checks.json. A rule listed as
+ * `checked` is also a bold "**Rn.**" in the rulebook, because judgment is needed
+ * beyond what its check sees. An `enforced` rule lives only in its check and on
+ * the checks page, so it must not reappear in the rulebook. A `retired` rule is
+ * covered by another rule or a primitive, and no check may cite it.
  */
 export function checkCitations(rulebook, checks, citedByCode) {
   const errors = [];
@@ -327,13 +330,19 @@ export function checkCitations(rulebook, checks, citedByCode) {
     if (status === 'checked' && !inRulebook.has(rule)) {
       errors.push(
         `${CHECKS_PATH} checks ${rule}, but ${RULEBOOK} has no "**${rule}.**". Fix: restore ` +
-          `the rule, or mark it retired with what covers it now. ${cite('R5')}`,
+          `the rule, or list it as enforced (the check is its only home) or retired. ${cite('R5')}`,
       );
     }
-    if (status !== 'checked' && status !== 'retired') {
+    if ((status === 'enforced' || status === 'retired') && inRulebook.has(rule)) {
+      errors.push(
+        `${CHECKS_PATH} lists ${rule} as ${status}, but ${RULEBOOK} still has "**${rule}.**". ` +
+          `Fix: remove it from the rulebook, or list it as checked. ${cite('R5')}`,
+      );
+    }
+    if (!['checked', 'enforced', 'retired'].includes(status)) {
       errors.push(
         `${CHECKS_PATH} gives ${rule} the status "${String(status)}". Fix: use ` +
-          `"checked" or "retired". ${cite('R6')}`,
+          `"checked", "enforced" or "retired". ${cite('R6')}`,
       );
     }
   }

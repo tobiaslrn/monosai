@@ -13,21 +13,39 @@
   },
   {
     "rule": "R5",
-    "says": "A rule changes only when the owner says so, so the always-loaded guidance stays short and every checked rule stays in the rulebook.",
-    "check": "design-rules.mjs: every checked rule is a `**Rn.**` heading in the rulebook; checkLineBudgets holds AGENTS.md to 90 lines and the rulebook to 160, once the short rulebook lands",
+    "says": "A rule changes only when the owner says so; the rulebook and AGENTS.md stay within their line budgets.",
+    "check": "design-rules.mjs: every rule a check cites is listed; every checked rule is a `**Rn.**` rule in the rulebook; AGENTS.md at most 90 lines and the rulebook at most 160",
     "status": "checked"
   },
   {
     "rule": "R6",
     "says": "The design checks run in npm test, and their exemption lists only shrink.",
     "check": "design-rules.mjs: no eslint-disable or stylelint-disable comment in features or core, exemptions only shrink, every cited rule is listed here; design-checks-doc.mjs --check: this page is current",
-    "status": "checked"
+    "status": "enforced"
+  },
+  {
+    "rule": "R11",
+    "says": "Show state; do not narrate it.",
+    "check": "R48 (cut first)",
+    "status": "retired"
+  },
+  {
+    "rule": "R13",
+    "says": "A row is a label, an optional secondary line and one trailing end, drawn by the primitive.",
+    "check": "the `mn-settings-row` primitive and its doc comment",
+    "status": "retired"
   },
   {
     "rule": "R15",
     "says": "A settings row never holds a button, a field, a pill or a boxed select; the row is the control.",
     "check": "design lint: no button, mnButton, input, textarea, select, mn-field, mn-search-field, mn-secret-field, mn-range-field or mn-status-pill inside mn-settings-row",
-    "status": "checked"
+    "status": "enforced"
+  },
+  {
+    "rule": "R17",
+    "says": "Status leads a row's secondary line, and a result replaces it.",
+    "check": "R16",
+    "status": "retired"
   },
   {
     "rule": "R20",
@@ -36,10 +54,40 @@
     "status": "checked"
   },
   {
+    "rule": "R24",
+    "says": "A dropdown hangs from its row at the card's width and never leaves the screen.",
+    "check": "the `mn-select` dropdown primitive and e2e/dropdown.spec.ts",
+    "status": "retired"
+  },
+  {
+    "rule": "R25",
+    "says": "A searched list is never a dropdown; it is the picker.",
+    "check": "R23 and the model picker primitive",
+    "status": "retired"
+  },
+  {
+    "rule": "R27",
+    "says": "Back, Escape and a press outside close the top overlay; focus returns to the opener.",
+    "check": "the overlay primitives and their e2e tests",
+    "status": "retired"
+  },
+  {
     "rule": "R28",
     "says": "Each overlay kind has one mechanism, so no second dropdown, popover or sheet is added.",
     "check": "composition-freeze.mjs: no native [popover], and no PopoverService outside the reader",
     "status": "checked"
+  },
+  {
+    "rule": "R32",
+    "says": "Standing prose only where money, network or data loss is at stake.",
+    "check": "R51",
+    "status": "retired"
+  },
+  {
+    "rule": "R33",
+    "says": "A field's error is one danger line under it, replacing its hint.",
+    "check": "the `mn-field` primitive",
+    "status": "retired"
   },
   {
     "rule": "R34",
@@ -51,7 +99,13 @@
     "rule": "R35",
     "says": "Icons have three sizes, by role: inline, control and feature.",
     "check": "design-rules.mjs: an mn-icon size is one of ICON_SIZES",
-    "status": "checked"
+    "status": "enforced"
+  },
+  {
+    "rule": "R36",
+    "says": "Spacing comes only from the layout tokens.",
+    "check": "R2 (features write no styles) and the token rules in stylelint",
+    "status": "retired"
   },
   {
     "rule": "R37",
@@ -63,37 +117,49 @@
     "rule": "R38",
     "says": "Radii are roles, and a shape uses its role's token.",
     "check": "stylelint: border-radius takes a token",
-    "status": "checked"
+    "status": "enforced"
   },
   {
     "rule": "R39",
-    "says": "No literal colour, size, radius, shadow or duration is written outside the tokens.",
+    "says": "No literal colour is written outside _tokens.scss; sizes, radii, shadows and durations are tokens or belong to the one primitive that owns them.",
     "check": "design-rules.mjs: no colour literal outside _tokens.scss; stylelint: colours, backgrounds, borders and shadows take a token, and no hex colour in a component",
-    "status": "checked"
+    "status": "enforced"
   },
   {
     "rule": "R40",
     "says": "A press is a colour change and nothing else.",
     "check": "design-rules.mjs: no scale in a :active rule or the press mixin",
-    "status": "checked"
+    "status": "enforced"
+  },
+  {
+    "rule": "R41",
+    "says": "Overlays fade with a little travel; none changes size.",
+    "check": "the named motions in `_motion.scss` (R44)",
+    "status": "retired"
   },
   {
     "rule": "R44",
     "says": "Motion lives only in _motion.scss, and `transition: all` is never used.",
     "check": "design-rules.mjs: no `transition: all`; stylelint: no hand-written transition, animation or @keyframes outside _motion.scss",
-    "status": "checked"
+    "status": "enforced"
+  },
+  {
+    "rule": "R46",
+    "says": "The lavender is not a tone.",
+    "check": "R45 (highlight is not a tone)",
+    "status": "retired"
   },
   {
     "rule": "R47",
     "says": "The Android bridge's colours match the colour tokens in both themes.",
     "check": "android-colours.mjs: values/colors.xml and values-night/colors.xml match the light and dark palettes of _tokens.scss",
-    "status": "checked"
+    "status": "enforced"
   },
   {
     "rule": "R52",
     "says": "A confirmation's confirm button repeats the verb of its question, never OK, Yes, Continue or Really.",
     "check": "design lint: a confirmLabel does not start with OK, Yes, Continue or Really",
-    "status": "checked"
+    "status": "enforced"
   },
   {
     "rule": "R54",

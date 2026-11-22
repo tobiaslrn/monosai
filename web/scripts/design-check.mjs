@@ -19,6 +19,7 @@ import { lintDesign } from './design-lint.mjs';
 import {
   RULEBOOK,
   checkCitations,
+  checkLineBudgets,
   checkRulebook,
   compare,
   merge,
@@ -87,7 +88,11 @@ export async function runDesignCheck(paths = null) {
     timed('composition', () => checkComposition(webRoot, paths)),
     timed('styles', () => lintStyles(paths)),
     timed('android colours', () => checkAndroidColours(repoRoot)),
-    timed('rulebook', async () => [...(await checkRulebook(repoRoot)), ...(await citations())]),
+    timed('rulebook', async () => [
+      ...(await checkRulebook(repoRoot)),
+      ...(await checkLineBudgets(repoRoot)),
+      ...(await citations()),
+    ]),
     timed('checks page', () => checkPage(webRoot)),
   ]);
 }

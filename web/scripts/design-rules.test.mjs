@@ -133,6 +133,20 @@ test('holds every cited rule to the rulebook or the retired list', () => {
   assert.match(checkCitations(rulebook, [{ rule: 'R2', status: 'maybe' }], [])[0], /"maybe"/);
 });
 
+test('an enforced rule lives only in its check, and a retired rule leaves the rulebook', () => {
+  const rulebook = '- **R2.** Compose.\n';
+  const enforced = [{ rule: 'R40', status: 'enforced' }];
+  assert.deepEqual(checkCitations(rulebook, enforced, ['R40']), []);
+  assert.match(
+    checkCitations(`${rulebook}- **R40.** Press.\n`, enforced, [])[0],
+    /lists R40 as enforced, but .* still has/,
+  );
+  assert.match(
+    checkCitations(`${rulebook}- **R30.** Pill.\n`, [{ rule: 'R30', status: 'retired' }], [])[0],
+    /lists R30 as retired/,
+  );
+});
+
 test('holds the always-loaded guidance to its line budget', async () => {
   const root = await mkdtemp(join(tmpdir(), 'design-rules-'));
   await writeFile(join(root, 'AGENTS.md'), 'a\nb\nc\n');
