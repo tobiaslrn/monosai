@@ -75,7 +75,17 @@ function axisDistance(value: number, start: number, end: number): number {
   return 0;
 }
 
-/** Reads the line boxes of every sentence rendered inside a paragraph. */
+/**
+ * Reads the line boxes of every sentence rendered inside a paragraph, cut back
+ * to its glyphs.
+ *
+ * A sentence's inline padding reaches past its first and last glyph so its
+ * tint is inset from the text, and an equal negative margin lays it over the
+ * neighbouring sentence. Measured with the padding, two sentences on one line
+ * would share that band and the earlier one would take a press on the later
+ * one's first character. Without it, every point on a line belongs to the
+ * sentence whose glyph is there.
+ */
 export function sentenceBoxesIn(paragraph: HTMLElement): readonly SentenceBox[] {
   const boxes: SentenceBox[] = [];
   for (const element of paragraph.querySelectorAll<HTMLElement>('[data-sentence-id]')) {
@@ -83,7 +93,25 @@ export function sentenceBoxesIn(paragraph: HTMLElement): readonly SentenceBox[] 
     if (id === undefined) {
       continue;
     }
-    boxes.push({ id, rects: [...element.getClientRects()] });
+    const style = getComputedStyle(element);
+    const start = parseFloat(style.paddingLeft) || 0;
+    const end = parseFloat(style.paddingRight) || 0;
+    boxes.push({
+      id,
+      // Every line fragment carries the padding, because the box decoration
+      // is cloned onto each one.
+      rects: [...element.getClientRects()].map((rect) => insetInline(rect, start, end)),
+    });
   }
   return boxes;
+}
+
+function insetInline(rect: HitRect, start: number, end: number): HitRect {
+  const left = rect.left + start;
+  const right = rect.right - end;
+  if (left <= right) {
+    return { top: rect.top, bottom: rect.bottom, left, right };
+  }
+  const middle = (rect.left + rect.right) / 2;
+  return { top: rect.top, bottom: rect.bottom, left: middle, right: middle };
 }

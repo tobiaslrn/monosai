@@ -294,11 +294,19 @@ export class ParagraphGesturesDirective {
     this.sentenceSelected.emit({ sentenceId, x: press.x, y: press.y, modality: 'touch' });
   }
 
-  /** Picks the pressed sentence from its target or from line geometry. */
+  /**
+   * Picks the pressed sentence from the word or punctuation under the finger,
+   * or else from line geometry.
+   *
+   * Only a token is trusted as a target. A sentence's own box reaches past its
+   * glyphs and, being later in the line, lies over the end of the sentence
+   * before it, so a press there would open the wrong one.
+   */
   private sentenceFor(target: HTMLElement | null, x: number, y: number): string | null {
     return (
-      target?.closest<HTMLElement>('[data-sentence-id]')?.dataset['sentenceId'] ??
-      sentenceAt(sentenceBoxesIn(this.element.nativeElement), { x, y })
+      target?.closest('.token')?.closest<HTMLElement>('[data-sentence-id]')?.dataset[
+        'sentenceId'
+      ] ?? sentenceAt(sentenceBoxesIn(this.element.nativeElement), { x, y })
     );
   }
 

@@ -193,6 +193,33 @@ describe('ParagraphGesturesDirective', () => {
     expect(activations.count()).toBe(0);
   });
 
+  it('gives a press at the end of a sentence to it, not to the one whose box lies over it', () => {
+    // Two sentences on one line, each box reaching 10px past its glyphs and
+    // over its neighbour, as the reader's inset tint lays them out.
+    const first = paragraph().querySelector<HTMLElement>('[data-sentence-id="s1"]')!;
+    const second = paragraph().querySelector<HTMLElement>('[data-sentence-id="s2"]')!;
+    for (const sentence of [first, second]) {
+      sentence.style.paddingLeft = '10px';
+      sentence.style.paddingRight = '10px';
+    }
+    layOut(first, [rect(100, 120, 0, 110)]);
+    layOut(second, [rect(100, 120, 90, 200)]);
+
+    // The later sentence is the target either side of the seam, because it
+    // paints on top; a mouse and a finger still agree on what is under them.
+    click(second, 95, 110);
+    click(second, 105, 110);
+    longPress(second, 95, 110);
+    longPress(second, 105, 110);
+
+    expect(selections().map((selection) => selection.sentenceId)).toEqual([
+      's1',
+      's2',
+      's1',
+      's2',
+    ]);
+  });
+
   it('does not repeat while the press is held', () => {
     pointer('pointerdown', paragraph(), 'touch', 50, 110);
     vi.advanceTimersByTime(SENTENCE_LONG_PRESS_MS * 4);

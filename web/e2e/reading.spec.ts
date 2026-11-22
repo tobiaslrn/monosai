@@ -1104,6 +1104,63 @@ test.describe('scenario 1 — paste, save, inspect', () => {
       .toBe('第0段の文です。');
   });
 
+  test('a press on a sentence edge opens the sentence whose character is under it @mobile @smoke', async ({
+    page,
+  }, info) => {
+    await importReading(
+      page,
+      '吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。「何でも薄暗いじめじめした所でニャーニャー泣いていた。」',
+      'Sentence seam',
+    );
+    // The seam 。|「, where one sentence ends and the next opens on the same line.
+    const seam = await page.evaluate(() => {
+      const glyph = (sentence: Element, which: 'first' | 'last'): DOMRect => {
+        const tokens = [...sentence.querySelectorAll('.token.is-plain, button.token')];
+        const token = which === 'first' ? tokens[0]! : tokens.at(-1)!;
+        const text = [...token.childNodes].find((node) => node.nodeType === Node.TEXT_NODE)!;
+        const at = which === 'first' ? 0 : text.textContent!.length - 1;
+        const range = document.createRange();
+        range.setStart(text, at);
+        range.setEnd(text, at + 1);
+        return range.getBoundingClientRect();
+      };
+      const sentences = [...document.querySelectorAll<HTMLElement>('.sentence')];
+      const index = sentences.findIndex((entry) => entry.textContent.trim().startsWith('「'));
+      const a = sentences[index - 1]!;
+      const b = sentences[index]!;
+      const last = glyph(a, 'last');
+      const first = glyph(b, 'first');
+      return {
+        a: a.dataset['sentenceId'],
+        b: b.dataset['sentenceId'],
+        sameLine: Math.abs(last.top - first.top) < 2,
+        y: last.top + last.height / 2,
+        endOfA: last.right - last.width * 0.15,
+        startOfB: first.left + first.width * 0.15,
+      };
+    });
+    expect(seam.sameLine).toBe(true);
+    const selected = () =>
+      page.evaluate(
+        () => document.querySelector<HTMLElement>('.sentence.is-selected')?.dataset['sentenceId'],
+      );
+
+    if (info.project.name === 'android-chrome') {
+      const client = await page.context().newCDPSession(page);
+      await client.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ x: seam.endOfA, y: seam.y }],
+      });
+      // eslint-disable-next-line no-restricted-syntax -- a long press is defined by how long it lasts
+      await page.waitForTimeout(700);
+      await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await expect.poll(selected).toBe(seam.a);
+    } else {
+      await page.mouse.click(seam.startOfB, seam.y);
+      await expect.poll(selected).toBe(seam.b);
+    }
+  });
+
   test('holding a word opens its sentence rather than the word @mobile @smoke', async ({
     page,
     isMobile,

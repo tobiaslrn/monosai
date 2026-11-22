@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sentenceAt, type SentenceBox } from './sentence-hit-testing';
+import { sentenceAt, sentenceBoxesIn, type SentenceBox } from './sentence-hit-testing';
 
 /**
  * Two sentences flowing across two lines, as they would be laid out in one
@@ -51,5 +51,37 @@ describe('sentenceAt', () => {
   it('has nothing to select in an empty paragraph', () => {
     expect(sentenceAt([], { x: 10, y: 10 })).toBeNull();
     expect(sentenceAt([{ id: 's1', rects: [] }], { x: 10, y: 10 })).toBeNull();
+  });
+});
+
+describe('sentenceBoxesIn', () => {
+  it('measures each sentence to its glyphs, so neighbours on a line do not share a band', () => {
+    const paragraph = document.createElement('p');
+    paragraph.innerHTML =
+      '<span data-sentence-id="s1">猫だ。</span><span data-sentence-id="s2">「犬」</span>';
+    const [first, second] = [...paragraph.querySelectorAll<HTMLElement>('span')];
+    const lines: Record<string, DOMRect[]> = {
+      s1: [new DOMRect(0, 100, 110, 20)],
+      s2: [new DOMRect(90, 100, 110, 20), new DOMRect(0, 140, 50, 20)],
+    };
+    for (const sentence of [first!, second!]) {
+      sentence.style.paddingLeft = '10px';
+      sentence.style.paddingRight = '10px';
+      sentence.getClientRects = () => lines[sentence.dataset['sentenceId']!] as never;
+    }
+    document.body.append(paragraph);
+
+    const boxes = sentenceBoxesIn(paragraph);
+    paragraph.remove();
+
+    expect(boxes.map((box) => box.rects.map((rect) => [rect.left, rect.right]))).toEqual([
+      [[10, 100]],
+      [
+        [100, 190],
+        [10, 40],
+      ],
+    ]);
+    expect(sentenceAt(boxes, { x: 97, y: 110 })).toBe('s1');
+    expect(sentenceAt(boxes, { x: 103, y: 110 })).toBe('s2');
   });
 });
