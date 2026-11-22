@@ -238,7 +238,9 @@ component is composition and template:
   resize, and Home/End — through `Renderer2`, so they go with the page. It tells
   the learner's scrolls from the reader's own, which is what turns playback
   following off, and hands each scroll, resize, and edge request to whichever
-  unit asked for it.
+  unit asked for it. Home and End are an edge request only when no control
+  handled them and focus is not in a dialog, popover, or sheet, so an overlay
+  keeps its own keys and the reading under it stays still.
 - `ReaderGeometryService` knows where the furniture is: it publishes the docked
   player's height, keeps a pressed word clear of the sheet that explains it
   (reading the sheet's pane from the `PopoverRef` rather than querying the

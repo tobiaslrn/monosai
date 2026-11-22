@@ -97,6 +97,34 @@ describe('ReaderScrollService', () => {
     expect(end.defaultPrevented).toBe(true);
   });
 
+  it('leaves Home and End to a dialog that has focus, and to a control that handled them', () => {
+    const edges: DocumentEdge[] = [];
+    service.onEdge((edge) => edges.push(edge));
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    const control = document.createElement('button');
+    dialog.append(control);
+    const popover = document.createElement('div');
+    popover.setAttribute('popover', 'auto');
+    const inPopover = document.createElement('button');
+    popover.append(inPopover);
+    document.body.append(dialog, popover);
+
+    const inDialog = new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true });
+    control.dispatchEvent(inDialog);
+    inPopover.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true }),
+    );
+    const handled = new KeyboardEvent('keydown', { key: 'Home', cancelable: true });
+    handled.preventDefault();
+    window.dispatchEvent(handled);
+    dialog.remove();
+    popover.remove();
+
+    expect(edges).toEqual([]);
+    expect(inDialog.defaultPrevented).toBe(false);
+  });
+
   it('stops calling a listener once it has unsubscribed', () => {
     const resizes: number[] = [];
     const unsubscribe = service.onResize(() => resizes.push(1));

@@ -152,9 +152,16 @@ export class ReaderScrollService {
     for (const listener of this.scrollListeners) listener(byLearner);
   }
 
+  /**
+   * Home and End move the reading only when nothing else took them: a control
+   * that handled them prevented their default, and an overlay that has focus
+   * (a dialog, a popover or a sheet) keeps them for itself, so the reading
+   * under it never moves.
+   */
   private keydown(event: KeyboardEvent): void {
     if (
       (event.key !== 'Home' && event.key !== 'End') ||
+      event.defaultPrevented ||
       event.altKey ||
       event.ctrlKey ||
       event.metaKey ||
@@ -166,7 +173,8 @@ export class ReaderScrollService {
       event.target instanceof HTMLInputElement ||
       event.target instanceof HTMLTextAreaElement ||
       event.target instanceof HTMLSelectElement ||
-      (event.target instanceof HTMLElement && event.target.isContentEditable)
+      (event.target instanceof HTMLElement &&
+        (event.target.isContentEditable || event.target.closest(OVERLAY) !== null))
     ) {
       return;
     }
@@ -175,6 +183,9 @@ export class ReaderScrollService {
     for (const listener of this.edgeListeners) listener(edge);
   }
 }
+
+/** Where a focused element belongs to an overlay rather than to the reading. */
+const OVERLAY = '[role="dialog"], [role="alertdialog"], [popover], .cdk-overlay-container';
 
 function subscribe<T>(listeners: T[], listener: T): () => void {
   listeners.push(listener);
