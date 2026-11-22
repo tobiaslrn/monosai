@@ -21,6 +21,25 @@ function overlayEntry(): unknown {
   return (history.state as Record<string, unknown> | null)?.['monosaiOverlayEntry'];
 }
 
+/**
+ * The current entry's state without where it sits, which entries carry for a
+ * browser without the Navigation API (jsdom has none).
+ */
+function pageState(): unknown {
+  const state = history.state as Record<string, unknown> | null;
+  if (state === null) {
+    return state;
+  }
+  return Object.fromEntries(Object.entries(state).filter(([key]) => key !== 'monosaiHistoryIndex'));
+}
+
+/** The router's push of a new address. */
+function openPage(page: string): void {
+  writePageHistory(false, () => {
+    history.pushState({ page }, '', `#/${page}`);
+  });
+}
+
 describe('OverlayHistoryEntry', () => {
   /** What the router would see: every `popstate` the module lets through. */
   const pageSaw = vi.fn();
@@ -97,22 +116,70 @@ describe('OverlayHistoryEntry', () => {
     entry.stop();
   });
 
-  it('leaves its entry to a page it is leaving for, and Back passes over it', async () => {
-    const entry = new OverlayHistoryEntry({ close: vi.fn(), leaving: () => true });
+  it('gives its entry up to a page opened from inside it, so Back and Forward each take one press', async () => {
+    const entry = new OverlayHistoryEntry({ close: vi.fn() });
     entry.start();
 
+    // A link inside the overlay: the router pushes the new page, then the old page goes.
+    openPage('settings');
     entry.stop();
-    writePageHistory(false, () => {
-      history.pushState({ page: 'settings' }, '', '#/settings');
-    });
     await settle();
+    expect(pageState()).toEqual({ page: 'settings' });
 
     await back();
-
-    // The page saw the Back to the reader, and the overlay's old entry was skipped.
-    expect(pageSaw).toHaveBeenCalledOnce();
-    expect(history.state).toEqual({ page: 'reader' });
     expect(location.hash).toBe('#/reader');
+    expect(history.state).toEqual({ page: 'reader' });
+    expect(pageSaw).toHaveBeenCalledOnce();
+
+    history.forward();
+    await settle();
+    expect(location.hash).toBe('#/settings');
+    expect(pageState()).toEqual({ page: 'settings' });
+    expect(pageSaw).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives its entry up to a page opened after it began to close', async () => {
+    const entry = new OverlayHistoryEntry({ close: vi.fn() });
+    entry.start();
+
+    // The overlay closes first and its entry is still coming off as the router pushes.
+    entry.stop();
+    openPage('settings');
+    await settle();
+    expect(pageState()).toEqual({ page: 'settings' });
+
+    await back();
+    expect(history.state).toEqual({ page: 'reader' });
+    history.forward();
+    await settle();
+    expect(location.hash).toBe('#/settings');
+    expect(pageSaw).toHaveBeenCalledTimes(2);
+  });
+
+  it('passes over an entry an earlier load left between two pages the way the learner went', async () => {
+    // A reader, an entry a sheet left there before a reload, and the page that sheet led to.
+    const push = (state: Record<string, unknown>, hash: string): void => {
+      history.pushState(state, '', hash);
+      history.replaceState({ ...state, monosaiHistoryIndex: history.length - 1 }, '', hash);
+    };
+    push({ page: 'reader' }, '#/reader');
+    push({ page: 'reader', monosaiOverlayEntry: 'earlier-load:1' }, '#/reader');
+    push({ page: 'settings' }, '#/settings');
+    // The router's own write as it settles on the page.
+    writePageHistory(true, () => {
+      history.replaceState({ page: 'settings' }, '', '#/settings');
+    });
+
+    await back();
+    expect(location.hash).toBe('#/reader');
+    expect(pageState()).toEqual({ page: 'reader' });
+    expect(pageSaw).toHaveBeenCalledOnce();
+
+    history.forward();
+    await settle();
+    expect(location.hash).toBe('#/settings');
+    expect(pageState()).toEqual({ page: 'settings' });
+    expect(pageSaw).toHaveBeenCalledTimes(2);
   });
 
   it('passes over an entry a closed overlay left, so Forward onto it changes nothing', async () => {
@@ -158,7 +225,7 @@ describe('OverlayHistoryEntry', () => {
     });
     entry.stop();
     await settle();
-    expect(history.state).toEqual({ page: 'library' });
+    expect(pageState()).toEqual({ page: 'library' });
     expect(location.hash).toBe('#/library');
 
     // The replaced address is not under it, and the overlay's old entry is no step forward.

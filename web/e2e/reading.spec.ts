@@ -1128,6 +1128,40 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page).toHaveURL(/#\/library$/);
   });
 
+  test('Forward returns in one press to a page a reader sheet led to @mobile @smoke', async ({
+    page,
+  }) => {
+    await page.goto('./#/library');
+    await importReading(page, SAMPLE_TEXT);
+    const readerUrl = page.url();
+
+    await openSentence(page);
+    await page.getByRole('button', { name: 'Translate', exact: true }).click();
+    await page.locator('mn-sentence-popover').getByRole('link', { name: 'Open Settings' }).click();
+    await expect(page).toHaveURL(/#\/settings\/text-models$/);
+    await page.goBack();
+    await expect(page).toHaveURL(readerUrl);
+    await page.goForward();
+    await expect(page).toHaveURL(/#\/settings\/text-models$/);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+    // The same from Story options, and Back from there still leaves the reader in two presses.
+    await page.goBack();
+    await expect(page).toHaveURL(readerUrl);
+    await page.getByRole('button', { name: 'Story options', exact: true }).click();
+    await page.getByTestId('shared-setup').getByRole('link', { name: 'Open Settings' }).click();
+    await expect(page).toHaveURL(/#\/settings/);
+    const settingsUrl = page.url();
+    await page.goBack();
+    await expect(page).toHaveURL(readerUrl);
+    await page.goForward();
+    await expect(page).toHaveURL(settingsUrl);
+    await page.goBack();
+    await expect(page).toHaveURL(readerUrl);
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/library$/);
+  });
+
   test('after a reload with a sheet open, Back still closes a sheet and then leaves in one press @mobile @smoke', async ({
     page,
   }) => {

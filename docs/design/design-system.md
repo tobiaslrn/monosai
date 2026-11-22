@@ -904,7 +904,8 @@ top overlay before it leaves the page (R27): a menu, a dropdown, a popover-held
 task dialog, and the reader's word and sentence details each hold one history
 entry while open (`OverlayHistoryEntry`), which closing it any other way takes
 back off, so Back never costs a second press, not even after a reload with one
-open. A confirmation
+open. A link inside one takes its entry off before the page it opens is added,
+so Forward back to that page is one press too. A confirmation
 opens with its safe answer focused. A text field is one border: focused, 2px in the focus colour with no offset ring; wrong, 2px in the danger colour with or without focus. Footer buttons keep their natural width on every size, ghost at the start and primary at the end. A docked sheet lifts above the on-screen keyboard and is
 never taller than what can be seen, so a field in it, and the picker's list,
 stay in view.

@@ -12,7 +12,6 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { Router } from '@angular/router';
 import { ViewportService } from '../../core/platform/viewport.service';
 import { OverlayHeaderComponent } from '../dialog/overlay-header.component';
 import { OverlayHistoryEntry } from '../dropdown/open-overlay-guard';
@@ -168,14 +167,10 @@ export class SheetPopoverComponent {
   private readonly viewport = inject(ViewportService);
   private readonly handle = viewChild<SheetHandleComponent>('handle');
   private readonly openState = signal(false);
-  private readonly router = inject(Router, { optional: true });
   private readonly backEntry = new OverlayHistoryEntry({
     close: () => {
       this.hide();
     },
-    // A link inside it, or one a press outside reached, is taking the learner
-    // to another page: that page covers the entry.
-    leaving: () => this.router?.currentNavigation() != null,
   });
 
   /** Whether it is showing, set before the first frame of showing. */
