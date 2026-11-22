@@ -447,6 +447,22 @@ describe('DexieReadingRepository', () => {
 
       expect(count.ok && count.value).toBe(3);
     });
+
+    it('finds the paragraph a sentence is in, and nothing for a sentence elsewhere', async () => {
+      const draft = importedReadingFixture({
+        paragraphTexts: [['一。'], ['二。', '三。'], ['四。']],
+      });
+      await repository.saveImportedReading(draft);
+      const third = draft.sentences.find((sentence) => sentence.japaneseText === '三。')!;
+
+      const found = await repository.paragraphPositionOf(draft.reading.id, third.id);
+      const missing = await repository.paragraphPositionOf(draft.reading.id, sentenceId('missing'));
+      const elsewhere = await repository.paragraphPositionOf(readingId('other'), third.id);
+
+      expect(found.ok && found.value).toBe(1);
+      expect(missing.ok && missing.value).toBeNull();
+      expect(elsewhere.ok && elsewhere.value).toBeNull();
+    });
   });
 
   describe('library queries', () => {

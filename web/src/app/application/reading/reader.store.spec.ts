@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLOCK, READING_REPOSITORY } from '../shared/repository-tokens';
 import { fixedClock } from '../../domain/shared/clock';
-import { readingId, snapshotId, vocabularyItemId } from '../../domain/shared/ids';
+import { readingId, sentenceId, snapshotId, vocabularyItemId } from '../../domain/shared/ids';
 import { err, ok, type Result } from '../../domain/shared/result';
 import { storageError } from '../../domain/storage/storage-error';
 import {
@@ -361,6 +361,22 @@ describe('ReaderStore', () => {
 
       expect(reader.paragraphs().at(-1)?.paragraph.position).toBe(199);
       expect(reader.loadingMore()).toBe(false);
+    });
+
+    it('loads the window around a sentence that is not mounted', async () => {
+      const rows = repository.add(buildReading({ id: 'r1', paragraphCount: 40 }));
+      const reader = store();
+      await reader.open(rows.reading.id);
+      const far = rows.paragraphs.find((paragraph) => paragraph.position === 30)!;
+      const sentence = rows.sentences.find((candidate) => candidate.paragraphId === far.id)!;
+
+      const mounted = await reader.moveToSentence(sentence.id);
+
+      expect(mounted).toBe(true);
+      expect(
+        reader.paragraphs().some((paragraph) => paragraph.paragraph.position === 30),
+      ).toBe(true);
+      expect(await reader.moveToSentence(sentenceId('missing'))).toBe(false);
     });
   });
 

@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, signal, viewChild } from '@angular/
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
+import { ReaderStore } from '../../application/reading/reader.store';
 import { ViewportService } from '../../core/platform/viewport.service';
 import { sentenceId } from '../../domain/shared/ids';
 import type { PopoverRef } from '../../shared-ui/popover/popover.service';
@@ -19,6 +20,9 @@ const playback = {
   currentSentenceId: signal<string | null>(null),
 };
 const mobile = signal(true);
+/** A sentence the window holds beyond the two every test starts with. */
+const farSentence = signal<string | null>(null);
+const store = { moveToSentence: vi.fn<(id: string) => Promise<boolean>>() };
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -30,6 +34,9 @@ const mobile = signal(true);
     <div #content>
       <span data-sentence-id="s1">一。</span>
       <span data-sentence-id="s2">二。</span>
+      @if (farSentence(); as id) {
+        <span [attr.data-sentence-id]="id">九。</span>
+      }
     </div>
     @if (playerOpen()) {
       <div mnDockedPlayer class="player">Player</div>
@@ -38,6 +45,7 @@ const mobile = signal(true);
 })
 class HostComponent {
   readonly playerOpen = signal(false);
+  readonly farSentence = farSentence;
   readonly bar = viewChild<ElementRef<HTMLElement>>('bar');
   readonly title = viewChild<ElementRef<HTMLElement>>('title');
   readonly content = viewChild<ElementRef<HTMLElement>>('content');
@@ -83,6 +91,8 @@ describe('ReaderGeometryService', () => {
     playback.explicitNavigation.set(0);
     playback.currentSentenceId.set(null);
     mobile.set(true);
+    farSentence.set(null);
+    store.moveToSentence.mockReset();
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -122,6 +132,7 @@ describe('ReaderGeometryService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: ReaderAudioStore, useValue: { playback } },
+        { provide: ReaderStore, useValue: store },
         {
           provide: ViewportService,
           useValue: { isMobile: mobile, prefersReducedMotion: signal(false) },
@@ -258,6 +269,30 @@ describe('ReaderGeometryService', () => {
     TestBed.tick();
     await Promise.resolve();
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads the part of the reading the sentence being read is in, then shows it', async () => {
+    // jsdom lays nothing out: the sentence the move mounts sits at the top,
+    // under the bar, which is outside the band it has to be shown in.
+    const scrollIntoView = vi.fn();
+    Object.assign(HTMLElement.prototype, { scrollIntoView });
+    placeAt(element('header'), 0, 60);
+    store.moveToSentence.mockImplementation((id) => {
+      farSentence.set(id);
+      return Promise.resolve(true);
+    });
+
+    playback.currentSentenceId.set(sentenceId('s9'));
+    TestBed.tick();
+    await vi.waitFor(() => {
+      expect(store.moveToSentence).toHaveBeenCalledWith('s9');
+    });
+    await fixture.whenStable();
+    delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView.mock.contexts[0]).toBe(element('[data-sentence-id="s9"]'));
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'auto' });
   });
 
   it('hands the title to the bar once the heading has gone beneath it', () => {

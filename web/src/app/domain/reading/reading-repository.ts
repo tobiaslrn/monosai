@@ -112,6 +112,15 @@ export interface ReadingRepository {
    * text of a reading it is about to render a few paragraphs of.
    */
   countParagraphs(id: ReadingId): Promise<Result<number, StorageError>>;
+  /**
+   * Where the paragraph holding a sentence is, so the reader can load the window
+   * around a sentence it has not mounted. Null when the reading has no such
+   * sentence.
+   */
+  paragraphPositionOf(
+    readingId: ReadingId,
+    sentenceId: SentenceId,
+  ): Promise<Result<number | null, StorageError>>;
   loadTokenAnalyses(
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly TokenAnalysis[], StorageError>>;

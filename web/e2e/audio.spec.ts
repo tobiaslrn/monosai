@@ -972,6 +972,30 @@ test.describe('scenario 13 — audio preparation and playback', () => {
       .toBe(true);
   });
 
+  /**
+   * Only a few paragraphs are mounted at a time, and the sentence a seek lands
+   * on can be far outside them: following has to bring that part of the reading
+   * in before it can show the sentence.
+   */
+  test('following brings a sentence outside the mounted paragraphs onto the page', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 900, height: 700 });
+    const paragraphs = 16;
+    await prepareReading(page, Array.from({ length: paragraphs }, () => TEXT).join('\n\n'));
+    await openAudioPlayer(page);
+    await audioPlayer(page).getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page, SENTENCE_COUNT * paragraphs);
+    const track = audioPlayer(page).getByRole('slider', { name: 'Position in this story' });
+
+    await track.fill('6');
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1);
+
+    await track.fill(String(SENTENCE_COUNT * paragraphs - 2));
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1);
+    await expect(page.locator('.sentence.is-playing')).toBeInViewport();
+  });
+
   test('navigates to the next and previous sentence without wrapping', async ({ page }) => {
     await prepareReading(page);
     await openAudioPlayer(page);

@@ -109,8 +109,12 @@ export class ReaderScrollService {
   }
 
   /** Scrolls an element into view without the scroll counting as the learner's. */
-  scrollIntoView(element: HTMLElement, options: ScrollIntoViewOptions): void {
-    this.guard('settled');
+  scrollIntoView(
+    element: HTMLElement,
+    options: ScrollIntoViewOptions,
+    release: ScrollRelease = 'settled',
+  ): void {
+    this.guard(release);
     element.scrollIntoView(options);
   }
 

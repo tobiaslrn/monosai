@@ -1,6 +1,16 @@
 import type { ElementRef, Signal } from '@angular/core';
-import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
+import {
+  DestroyRef,
+  Injectable,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
+import { ReaderStore } from '../../application/reading/reader.store';
 import { ViewportService } from '../../core/platform/viewport.service';
 import type { SentenceId } from '../../domain/shared/ids';
 import type { PopoverRef } from '../../shared-ui/popover/popover.service';
@@ -56,6 +66,8 @@ export class ReaderGeometryService {
   private readonly viewport = inject(ViewportService);
   private readonly scroll = inject(ReaderScrollService);
   private readonly audio = inject(ReaderAudioStore);
+  private readonly store = inject(ReaderStore);
+  private readonly injector = inject(Injector);
 
   private readonly elements = signal<ReaderElements | null>(null);
   private readonly bar = computed(() => this.elements()?.bar()?.nativeElement);
@@ -121,7 +133,7 @@ export class ReaderGeometryService {
       const sentenceId = this.audio.playback.currentSentenceId();
       if (sentenceId !== null && this.scroll.following) {
         queueMicrotask(() => {
-          this.revealSentence(sentenceId);
+          this.follow(sentenceId);
         });
       }
     });
@@ -348,12 +360,38 @@ export class ReaderGeometryService {
   }
 
   /**
+   * Shows the sentence being read, first loading the part of the reading it is
+   * in when that is not mounted: a seek, a Next, or reading on can land far
+   * from the paragraphs the learner was looking at. That part arrives in place
+   * of the old one, so the page jumps to it rather than gliding through
+   * paragraphs that are not there.
+   */
+  private follow(sentenceId: SentenceId): void {
+    if (this.sentenceElement(sentenceId) !== null) {
+      this.revealSentence(sentenceId);
+      return;
+    }
+    void this.store.moveToSentence(sentenceId).then((mounted) => {
+      if (!mounted || this.audio.playback.currentSentenceId() !== sentenceId) {
+        return;
+      }
+      afterNextRender(
+        {
+          write: () => {
+            this.revealSentence(sentenceId, 'auto');
+          },
+        },
+        { injector: this.injector },
+      );
+    });
+  }
+
+  /**
    * Brings the sentence being read into view, and only if it is not already.
    *
    * Scrolling a sentence that is already on screen would jerk the page on every
    * advance, which is exactly the behaviour that makes a follow-along player
-   * unusable. A sentence outside the mounted window has no element yet and is
-   * simply left alone.
+   * unusable.
    *
    * "On screen" is the band between the header and the player, not the window.
    * Measured against the window, a sentence sitting behind the docked player
@@ -361,7 +399,7 @@ export class ReaderGeometryService {
    * downwards stopped at the first sentence to reach the player and left the
    * learner watching a sentence they could not see.
    */
-  private revealSentence(sentenceId: SentenceId): void {
+  private revealSentence(sentenceId: SentenceId, behavior?: ScrollBehavior): void {
     const element = this.sentenceElement(sentenceId);
     if (element === null) {
       return;
@@ -371,10 +409,12 @@ export class ReaderGeometryService {
     if (box.top >= band.top && box.bottom <= band.bottom) {
       return;
     }
-    this.scroll.scrollIntoView(element, {
-      block: 'center',
-      behavior: this.viewport.prefersReducedMotion() ? 'auto' : 'smooth',
-    });
+    const jump = behavior === 'auto' || this.viewport.prefersReducedMotion();
+    this.scroll.scrollIntoView(
+      element,
+      { block: 'center', behavior: jump ? 'auto' : 'smooth' },
+      jump ? 'next-frame' : 'settled',
+    );
   }
 }
 

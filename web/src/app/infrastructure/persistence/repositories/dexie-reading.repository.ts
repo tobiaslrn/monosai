@@ -285,6 +285,36 @@ export class DexieReadingRepository implements ReadingRepository {
     );
   }
 
+  async paragraphPositionOf(
+    readingId: ReadingId,
+    sentenceId: SentenceId,
+  ): Promise<Result<number | null, StorageError>> {
+    const loaded = await runStorage('sentences.locate', () =>
+      this.db.transaction('r', [this.db.sentences, this.db.paragraphs], async () => {
+        const sentence = await this.db.sentences.get(sentenceId);
+        if (sentence === undefined) {
+          return null;
+        }
+        return { sentence, paragraph: await this.db.paragraphs.get(sentence.paragraphId) };
+      }),
+    );
+    if (!loaded.ok) {
+      return loaded;
+    }
+    if (loaded.value?.paragraph === undefined) {
+      return ok(null);
+    }
+    const sentence = parseRecord(sentenceRowSchema, loaded.value.sentence, 'sentences');
+    if (!sentence.ok) {
+      return sentence;
+    }
+    const paragraph = parseRecord(paragraphRowSchema, loaded.value.paragraph, 'paragraphs');
+    if (!paragraph.ok) {
+      return paragraph;
+    }
+    return ok(sentence.value.readingId === readingId ? paragraph.value.position : null);
+  }
+
   async loadTokenAnalyses(
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly TokenAnalysis[], StorageError>> {

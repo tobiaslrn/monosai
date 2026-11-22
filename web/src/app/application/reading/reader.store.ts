@@ -220,6 +220,36 @@ export class ReaderStore {
     await this.show(windowAround(anchorPosition, this.totalParagraphsSignal()));
   }
 
+  /**
+   * Loads the window around a sentence wherever it is in the reading, so the
+   * sentence being read aloud can be shown even when the learner was reading
+   * far from it. True once the sentence is mounted; false when it is not in
+   * this reading, its place could not be read, or the reader was closed
+   * meanwhile.
+   */
+  async moveToSentence(sentenceId: SentenceId): Promise<boolean> {
+    if (this.mounts(sentenceId)) {
+      return true;
+    }
+    const reading = this.readingSignal();
+    if (reading === null || this.statusSignal() !== 'ready') {
+      return false;
+    }
+    const session = this.session;
+    const position = await this.readings.paragraphPositionOf(reading.id, sentenceId);
+    if (session !== this.session || !position.ok || position.value === null) {
+      return false;
+    }
+    await this.moveTo(position.value);
+    return session === this.session && this.mounts(sentenceId);
+  }
+
+  private mounts(sentenceId: SentenceId): boolean {
+    return this.paragraphsSignal().some((paragraph) =>
+      paragraph.sentences.some((entry) => entry.sentence.id === sentenceId),
+    );
+  }
+
   /** Loads a bounded window holding every paragraph a screen shows. */
   async cover(firstVisible: number, middle: number, lastVisible: number): Promise<void> {
     await this.show(

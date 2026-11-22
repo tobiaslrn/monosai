@@ -307,6 +307,17 @@ export class FakeReadingRepository implements ReadingRepository {
     return Promise.resolve(ok(this.paragraphsOf(id).length));
   }
 
+  paragraphPositionOf(
+    readingId: ReadingId,
+    sentenceId: SentenceId,
+  ): Promise<Result<number | null, StorageError>> {
+    const sentence = this.sentences.find(
+      (candidate) => candidate.id === sentenceId && candidate.readingId === readingId,
+    );
+    const paragraph = this.paragraphs.find((candidate) => candidate.id === sentence?.paragraphId);
+    return Promise.resolve(ok(paragraph?.position ?? null));
+  }
+
   loadTokenAnalyses(
     sentenceIds: readonly SentenceId[],
   ): Promise<Result<readonly TokenAnalysis[], StorageError>> {
