@@ -61,9 +61,11 @@ interface NavigationHistory {
 
 /**
  * Part of every entry id, different on every load of the page, so an entry an
- * earlier load left in history is never taken for one this load pushed.
+ * earlier load left in history is never taken for one this load pushed. Drawn
+ * from crypto rather than Math.random, so loading this module takes nothing
+ * from a sequence a screenshot run seeds to pin what is drawn by chance.
  */
-const LOAD = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+const LOAD = crypto.randomUUID();
 /** The open overlays' entries, bottom first. */
 const open: HistoryEntry[] = [];
 let sequence = 0;
