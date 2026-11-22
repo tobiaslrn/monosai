@@ -18,6 +18,19 @@ test('a linked worktree gets three consecutive ports clear of the base ports', (
   assert.deepEqual([e2e, pwa], [dev + 1, dev + 2]);
 });
 
+test('the screenshot suites get two more ports, clear of every slot of the first three', () => {
+  const { visual, shots } = resolvePorts(WORKTREE);
+  assert.ok(visual >= 29_000 && shots < 35_000);
+  assert.equal(shots, visual + 1);
+  assert.deepEqual(resolvePorts({ ...WORKTREE, slotOverride: '2999' }), {
+    dev: 28_997,
+    e2e: 28_998,
+    pwa: 28_999,
+    visual: 34_998,
+    shots: 34_999,
+  });
+});
+
 test('the same path always gets the same ports', () => {
   assert.deepEqual(resolvePorts(WORKTREE), resolvePorts({ ...WORKTREE }));
 });
@@ -34,6 +47,8 @@ test('the override replaces the slot and rejects anything out of range', () => {
     dev: 20_003,
     e2e: 20_004,
     pwa: 20_005,
+    visual: 29_002,
+    shots: 29_003,
   });
   for (const slotOverride of ['-1', '3000', '1.5', 'x']) {
     assert.throws(() => resolvePorts({ ...WORKTREE, slotOverride }), /MONOSAI_PORT_SLOT/);

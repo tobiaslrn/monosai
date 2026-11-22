@@ -102,14 +102,14 @@ export const LUCIDE_ICON_DATA = {
     ],
   },
   CircleAlert: {
-    name: 'circle-alert',
+    name: 'circle-exclamation-point',
     size: 24,
     node: [
       ['circle', { cx: '12', cy: '12', r: '10', key: '1mglay' }],
       ['line', { x1: '12', x2: '12', y1: '8', y2: '12', key: '1pkeuh' }],
       ['line', { x1: '12', x2: '12.01', y1: '16', y2: '16', key: '4dfq90' }],
     ],
-    aliases: ['alert-circle'],
+    aliases: ['alert-circle', 'circle-alert'],
   },
   CircleCheck: {
     name: 'circle-check',
@@ -135,7 +135,7 @@ export const LUCIDE_ICON_DATA = {
     size: 24,
     node: [
       ['circle', { cx: '12', cy: '12', r: '10', key: '1mglay' }],
-      ['path', { d: 'M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3', key: '1u773s' }],
+      ['path', { d: 'M9 9.5a3 2.5 0 016 0c0 2-2 2-3 3.5', key: '1awbb0' }],
       ['path', { d: 'M12 17h.01', key: 'p32p05' }],
     ],
     aliases: ['help-circle', 'circle-help'],
@@ -568,7 +568,7 @@ export const LUCIDE_ICON_DATA = {
     aliases: ['trash-2'],
   },
   TriangleAlert: {
-    name: 'triangle-alert',
+    name: 'triangle-exclamation-point',
     size: 24,
     node: [
       [
@@ -581,7 +581,7 @@ export const LUCIDE_ICON_DATA = {
       ['path', { d: 'M12 9v4', key: 'juzpu7' }],
       ['path', { d: 'M12 17h.01', key: 'p32p05' }],
     ],
-    aliases: ['alert-triangle'],
+    aliases: ['alert-triangle', 'triangle-alert'],
   },
   Upload: {
     name: 'upload',

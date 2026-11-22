@@ -23,7 +23,7 @@ import type { IconName } from '../icon/icon-set';
   imports: [IconComponent, RouterLink],
   template: `
     <section class="mn-state" role="alert">
-      <span class="mn-state__mark" aria-hidden="true"><mn-icon [name]="icon()" [size]="20" /></span>
+      <span class="mn-state__mark" aria-hidden="true"><mn-icon [name]="icon()" /></span>
       <h2 class="mn-state__title">{{ heading() }}</h2>
       @for (line of explanation(); track line; let first = $first) {
         <p [class.mn-state__what]="first" [class.mn-state__next]="!first">{{ line }}</p>

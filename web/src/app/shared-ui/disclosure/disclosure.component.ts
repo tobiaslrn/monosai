@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, input, model, ViewEncapsulation } from '@angular/core';
 import { IconComponent } from '../icon/icon.component';
+import type { Tone } from '../tone';
 
-export type DisclosureTone = 'default' | 'quiet' | 'danger';
+export type DisclosureTone = 'default' | 'quiet' | Extract<Tone, 'danger'>;
 
 /**
  * A row that opens to show what it holds: the one disclosure in a card of rows.
@@ -16,6 +17,11 @@ export type DisclosureTone = 'default' | 'quiet' | 'danger';
  * `[flush]` is for a disclosure inside a padded card: the body
  * drops its side padding for content that needs the whole width, such as a
  * set of cards or chips, and the summary's words keep the card's content edge.
+ *
+ * A fold hides detail set once and rarely revisited, such as a mapping. It
+ * never hides a control the surface's main action depends on, and a closed one
+ * states its current value, so no fold has to be opened to read the page.
+ * Folds do not nest. A deep link that points inside a fold opens it.
  *
  * `quiet` is a secondary branch of the card; `danger` is a destructive one,
  * such as deleting everything.

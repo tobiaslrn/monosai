@@ -27,6 +27,9 @@ import { IconComponent } from '../icon/icon.component';
  * figures, and an item that wants them stated puts them in its detail on a
  * line marked `mn-entry-narrow`.
  *
+ * A figure is plain text: a difficulty is a fact, and the warning colour is for
+ * what may go wrong. A missing value draws nothing, never a dash per row.
+ *
  * Styles reach projected content and are therefore global, rooted at the
  * element.
  */

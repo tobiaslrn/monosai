@@ -1,4 +1,5 @@
 @../AGENTS.md
+@../docs/design/rules.md
 
 # Starting work
 

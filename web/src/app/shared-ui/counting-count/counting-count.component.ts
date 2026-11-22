@@ -21,7 +21,7 @@ function easeOut(progress: number): number {
 /**
  * A count that rises when it changes, rather than whenever it is rendered.
  *
- * Motion here does the one job the design system asks of it — saying that a
+ * Motion here does the one job motion has in Monosai — saying that a
  * value moved — so the first value of a launch is simply the number: nothing
  * moved yet, and a rise on arrival competed with the learner reading the
  * sentence it sits in. A later value rises from the one before it, which is the

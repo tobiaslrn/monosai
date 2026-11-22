@@ -68,7 +68,7 @@ import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.
         }
         @case ('failed') {
           <mn-card role="alert" data-testid="package-import-failed">
-            <mn-notice tone="error">
+            <mn-notice tone="danger">
               <p>{{ current.error.message }}</p>
               <p>
                 Your words are unchanged.

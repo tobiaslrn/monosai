@@ -1,9 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { IconComponent } from '../icon/icon.component';
 import type { IconName } from '../icon/icon-set';
-
-/** What the line says about its group; each tone has one meaning, app-wide. */
-export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'setup';
+import type { StatusTone } from '../tone';
 
 const ICONS: Record<StatusTone, IconName> = {
   success: 'synced',
@@ -36,7 +34,7 @@ const ICONS: Record<StatusTone, IconName> = {
     '[attr.role]': "tone() === 'danger' ? 'alert' : 'status'",
   },
   template: `
-    <mn-icon [name]="icon()" [size]="16" />
+    <mn-icon [name]="icon()" size="inline" />
     <span class="mn-status-line__words"
       ><ng-content /> <ng-content select="[mn-status-line-action]"
     /></span>

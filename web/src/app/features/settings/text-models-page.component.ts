@@ -19,10 +19,8 @@ import {
   type SelectValue,
 } from '../../shared-ui/select/select.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
-import {
-  StatusLineComponent,
-  type StatusTone,
-} from '../../shared-ui/status-line/status-line.component';
+import { StatusLineComponent } from '../../shared-ui/status-line/status-line.component';
+import type { StatusTone } from '../../shared-ui/tone';
 import { ModelCatalogView } from './model-catalog-view';
 import { modelRowWords } from './model-row';
 import { reasoningOptions } from './reasoning-options';

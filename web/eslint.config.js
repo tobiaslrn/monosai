@@ -82,6 +82,8 @@ export default tseslint.config(
             'playwright.config.ts',
             'playwright.full.config.ts',
             'playwright.pwa.config.ts',
+            'playwright.shots.config.ts',
+            'playwright.visual.config.ts',
             'vitest.manual.config.ts',
           ],
         },
@@ -103,6 +105,12 @@ export default tseslint.config(
       ],
       '@angular-eslint/prefer-on-push-component-change-detection': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
+      // New in strictTypeChecked. Angular and the CDK take option bags that are
+      // declared as classes (`SwRegistrationOptions`, `DialogConfig`,
+      // `OverlayConfig`) and document passing object literals, and some are
+      // abstract; test doubles for `TemplateRef` and the like are cast the same
+      // way. Neither is a defect, so the rule only adds casts.
+      '@typescript-eslint/no-unsafe-class-instance-assignment': 'off',
       // Already in strictTypeChecked; restated because `noUncheckedIndexedAccess`
       // makes `!` tempting. Guard the absent case, or use `defined()` from
       // domain/shared/invariant for an index the logic already proves.
@@ -147,13 +155,20 @@ export default tseslint.config(
     rules: {},
   },
   {
-    files: ['e2e/**/*.ts', 'e2e-pwa/**/*.ts', '*.config.ts', 'scripts/**/*.{ts,mjs,js}'],
+    files: [
+      'e2e/**/*.ts',
+      'e2e-pwa/**/*.ts',
+      'e2e-visual/**/*.ts',
+      'e2e-shots/**/*.ts',
+      '*.config.ts',
+      'scripts/**/*.{ts,mjs,js}',
+    ],
     rules: {
       'no-console': 'off',
     },
   },
   {
-    files: ['e2e/**/*.ts', 'e2e-pwa/**/*.ts'],
+    files: ['e2e/**/*.ts', 'e2e-pwa/**/*.ts', 'e2e-visual/**/*.ts', 'e2e-shots/**/*.ts'],
     rules: {
       'no-restricted-syntax': [
         'error',

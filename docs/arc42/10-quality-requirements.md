@@ -41,17 +41,23 @@ Each scenario names the gate that holds it. A gate that cannot be automated is l
 | Q10 | Maintainability | A screen imports a Dexie repository directly | ESLint fails on the layer zone. The build does not depend on a reviewer noticing | `layerZones` in [`eslint.config.js`](../../eslint.config.js) |
 | Q11 | Maintainability | Any change is merged | Coverage stays at or above the declared thresholds | `npm run test:coverage`, with the thresholds declared in the build configuration |
 | Q12 | Maintainability | The deployed build differs from the tested build | It cannot. One stage produces the artifact, every other stage consumes it, and the deployment publishes that same artifact | The artifact verification and reuse described in [chapter 7](07-deployment-view.md) |
+| Q13 | Usability, consistency | A change alters how a shared-ui primitive looks, on any page that uses it | The change is visible before it merges: a gallery page differs from its baseline, desktop or Android, light or dark, and the diff is attached to the run. A difference is approved only by redrawing the baselines on purpose | The `visual` job against the gallery build, in the pinned Playwright image |
 
 ## 10.3 Running the gates
 
 | Command | Covers |
 | --- | --- |
 | `npm run verify` | Exactly the blocking gates that CI runs: static analysis, coverage, and the production build with `verify-dist` |
-| `npm test` | The Vitest suite |
+| `npm test` | `npm run design:check`, then the Vitest suite |
+| `npm run design:check` | Every design check in a few seconds: the design rules, the template lint (`eslint.design.config.js`), the composition allowlist, the component style lint and the Android bridge colours. Each failure names what is wrong, the fix and the rule; [the checks page](../design/checks.md) lists them. CI runs it as `npm run stylelint` in static analysis. A Stop hook runs it on the files a branch changed |
 | `npm run test:coverage` | The suite with the thresholds from Q11 |
 | `npm run e2e` | The desktop and Android smoke lane. The default for ordinary work |
 | `npm run e2e:full` | The full browser regression lane. Use it when shared end-to-end code changes |
 | `npm run e2e:pwa` | The production build with the service worker live, which is Q1 |
+| `npm run visual` | The gallery's screenshots against the committed baselines, in the pinned Playwright image (through Docker outside CI). `npm run visual:update` redraws them locally to inspect; only the `Visual baselines` workflow commits them |
+| `npm run build:gallery` | The development-only gallery of every shared-ui primitive (`#/gallery`), which the visual suite photographs; `npm start -- --configuration gallery` serves it |
+| `npm run shots -- --grep <scenario>` | Not a gate: captures named scenarios of the real app, desktop and Android in light and dark, to `test-results/shots/`; `npm run shots:sheet` lays them out beside a before set |
 
 When a gate is added to `npm run verify`, it is added to CI in the same change, and the other way
-round.
+round. The visual job is the one exception: it needs the pinned image, so `npm run verify` leaves it
+to `npm run visual`.

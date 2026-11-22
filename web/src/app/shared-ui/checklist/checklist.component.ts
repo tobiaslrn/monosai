@@ -126,7 +126,7 @@ export class ChecklistComponent {
     <ng-template #body>
       <span class="mn-checklist-step__mark" aria-hidden="true">
         @if (state() === 'done') {
-          <mn-icon name="check" [size]="16" />
+          <mn-icon name="check" size="inline" />
         } @else {
           {{ number() }}
         }
@@ -141,7 +141,7 @@ export class ChecklistComponent {
         </span>
       </span>
       @if (state() !== 'waiting') {
-        <mn-icon class="mn-checklist-step__chevron" name="chevron-right" [size]="18" />
+        <mn-icon class="mn-checklist-step__chevron" name="chevron-right" [legacySize]="18" />
       }
     </ng-template>
 

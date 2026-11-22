@@ -40,7 +40,7 @@ function formatBytes(bytes: number | null): string {
       @if (storage.status().canRequest) {
         <mn-settings-row
           label="Protect storage"
-          action="accent"
+          action="action"
           testId="protect-storage"
           [disabled]="storage.action() !== 'idle' && storage.action() !== 'requesting-persistence'"
           [busy]="storage.action() === 'requesting-persistence'"
@@ -62,7 +62,7 @@ function formatBytes(bytes: number | null): string {
       @if (compression.running()) {
         <mn-settings-row
           label="Stop compressing"
-          action="accent"
+          action="action"
           testId="stop-compression"
           (pressed)="stopCompressing()"
         />

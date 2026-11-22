@@ -14,6 +14,11 @@ test.describe('alpha disclosure', () => {
     await expect(dialog).toContainText('Expect bugs and changes.');
     await expect(dialog.getByRole('button', { name: 'Continue' })).toBeFocused();
 
+    // Only its own answer puts it away: neither Escape nor a press on the scrim does.
+    await page.keyboard.press('Escape');
+    await page.mouse.click(4, 4);
+    await expect(dialog).toBeVisible();
+
     await dialog.getByRole('button', { name: 'Continue' }).click();
     await expectSettingPersisted(page, 'app', 'alphaNoticeSeen', true);
     await expect(page.getByRole('alertdialog')).toHaveCount(0);

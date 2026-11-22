@@ -248,7 +248,7 @@ const STRICTNESS_OPTIONS: readonly SelectOption<VocabularyStrictness>[] = (
             [attr.aria-describedby]="!canGenerate() ? 'mn-generate-disabled-reason' : null"
             (click)="generate.emit(shownStep)"
           >
-            <mn-icon name="generate" [size]="18" />
+            <mn-icon name="generate" [legacySize]="18" />
             <span>Generate story</span>
           </button>
         }

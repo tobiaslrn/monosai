@@ -13,10 +13,36 @@ const tokenList = new RegExp(`^(?:(?:${token}|${keyword})\\s*)+$`, 'i');
 // opposite of a guard, and case is ignored so `:HOVER` cannot slip past.
 const unguardedHover = /^(?![\s\S]*data-pointer=['"]?mouse\b)[\s\S]*:hover/i;
 
+/** The end of every design message: the rule in docs/design/rules.md. */
+const cite = (rule) => `(${rule} in docs/design/rules.md)`;
+
 const hoverGuardMessage = (selector) =>
-  `Unexpected unguarded :hover in "${selector}". Hover is a mouse-only state: prefix the ` +
-  `selector with :host-context(html[data-pointer='mouse']) in a component, or ` +
-  `:where(html[data-pointer='mouse']) in src/styles.`;
+  `"${selector}" uses :hover without the mouse guard, so a phone keeps the hover after a ` +
+  `tap. Fix: prefix the selector with :host-context(html[data-pointer='mouse']) in a ` +
+  `component, or :where(html[data-pointer='mouse']) in src/styles. ${cite('R37')}`;
+
+const handWrittenMotionMessage = (property) =>
+  `"${property}" is written by hand. Fix: include a named motion from ` +
+  `src/styles/_motion.scss (\`@include motion.enter;\`). ${cite('R44')}`;
+
+// Which token family each allow-listed property takes, and the rule behind it.
+const tokenFamilies = [
+  [/^(transition|animation)/, null],
+  [/^(background|background-color|border-color|color)$/, ['a colour token', 'R39']],
+  [/^border-radius$/, ['a radius role token (--radius-*)', 'R38']],
+  [/^box-shadow$/, ['a shadow token (--shadow-*)', 'R39']],
+  [/^font-(size|weight)$/, ['a type role token', 'R34']],
+];
+
+const tokenValueMessage = (property, value) => {
+  const family = tokenFamilies.find(([pattern]) => pattern.test(property))?.[1];
+  if (family === null) return handWrittenMotionMessage(property);
+  const [token, rule] = family ?? ['a token', 'R39'];
+  return (
+    `"${property}: ${String(value)}" is a literal value. Fix: use ${token} from ` +
+    `src/styles/_tokens.scss. ${cite(rule)}`
+  );
+};
 
 // Motion is defined once, in src/styles/_motion.scss: durations, curves, the
 // keyframes and the named motions built from them. Everywhere else a moving
@@ -26,15 +52,15 @@ const hoverGuardMessage = (selector) =>
 const handWrittenMotion = {
   'at-rule-disallowed-list': [
     ['keyframes'],
-    { message: () => 'Keyframes live in src/styles/_motion.scss; include a named motion.' },
+    {
+      message: () =>
+        `A component writes its own @keyframes. Fix: keyframes live in ` +
+        `src/styles/_motion.scss; include a named motion. ${cite('R44')}`,
+    },
   ],
   'declaration-property-value-allowed-list': [
     { '/^(transition|animation)(-[a-z-]+)?$/': ['none'] },
-    {
-      message: (property) =>
-        `Unexpected hand-written "${property}": include a named motion from ` +
-        `src/styles/_motion.scss instead.`,
-    },
+    { message: handWrittenMotionMessage },
   ],
 };
 
@@ -65,22 +91,32 @@ export default {
     // Prettier owns whitespace, and the existing UI deliberately uses BEM
     // names and browser-prefixed reading controls.
     'at-rule-empty-line-before': null,
-    'color-no-hex': true,
+    'color-no-hex': [
+      true,
+      {
+        message: (hex) =>
+          `${String(hex)} is a colour literal. Fix: use a colour token from ` +
+          `src/styles/_tokens.scss. ${cite('R39')}`,
+      },
+    ],
     'comment-empty-line-before': null,
     'declaration-block-no-redundant-longhand-properties': null,
     'declaration-empty-line-before': null,
     ...handWrittenMotion,
-    'declaration-property-value-allowed-list': {
-      '/^(transition|animation)(-[a-z-]+)?$/': ['none'],
-      background: [tokenValue],
-      'background-color': [tokenValue],
-      'border-color': [tokenValue],
-      'border-radius': [tokenList],
-      'box-shadow': [tokenList],
-      color: [tokenValue],
-      'font-size': [tokenValue],
-      'font-weight': [tokenValue],
-    },
+    'declaration-property-value-allowed-list': [
+      {
+        '/^(transition|animation)(-[a-z-]+)?$/': ['none'],
+        background: [tokenValue],
+        'background-color': [tokenValue],
+        'border-color': [tokenValue],
+        'border-radius': [tokenList],
+        'box-shadow': [tokenList],
+        color: [tokenValue],
+        'font-size': [tokenValue],
+        'font-weight': [tokenValue],
+      },
+      { message: tokenValueMessage },
+    ],
     'length-zero-no-unit': null,
     'media-feature-range-notation': null,
     'number-max-precision': null,
@@ -96,7 +132,8 @@ export default {
         message: (selector) =>
           unguardedHover.test(selector)
             ? hoverGuardMessage(selector)
-            : `Unexpected selector "${selector}": a component may not own a .mn-* primitive.`,
+            : `"${selector}" styles a .mn-* primitive from a component. Fix: change the ` +
+              `primitive in src/styles or web/src/app/shared-ui/ for every use. ${cite('R2')}`,
       },
     ],
     'selector-class-pattern': null,

@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { IconComponent } from '../icon/icon.component';
 import type { IconName } from '../icon/icon-set';
+import type { Tone } from '../tone';
 
-export type BannerTone = 'info' | 'warning' | 'error';
+export type BannerTone = Extract<Tone, 'info' | 'warning' | 'danger'>;
 
 /**
  * A notice about the application itself rather than the page under it — a new
@@ -28,12 +29,12 @@ export type BannerTone = 'info' | 'warning' | 'error';
   host: {
     'animate.leave': 'is-leaving',
     '[class.banner--warning]': "tone() === 'warning'",
-    '[class.banner--error]': "tone() === 'error'",
+    '[class.banner--danger]': "tone() === 'danger'",
   },
   template: `
     <div class="column">
       @if (icon(); as name) {
-        <mn-icon class="mn-lead" [name]="name" [size]="18" />
+        <mn-icon class="mn-lead" [name]="name" [legacySize]="18" />
       }
       <div class="words"><ng-content /></div>
       <div class="actions mn-trailing"><ng-content select="[mn-banner-action]" /></div>
@@ -68,7 +69,7 @@ export type BannerTone = 'info' | 'warning' | 'error';
       --banner-soft: var(--status-warning-soft);
     }
 
-    :host(.banner--error) {
+    :host(.banner--danger) {
       --banner-soft: var(--status-danger-soft);
       --banner-ink: var(--status-danger);
     }

@@ -1,5 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installOverlayHistory, OverlayHistoryEntry, writePageHistory } from './open-overlay-guard';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import {
+  installOverlayHistory,
+  OpenOverlayGuard,
+  OverlayHistoryEntry,
+  writePageHistory,
+} from './open-overlay-guard';
 
 /**
  * Waits until every traversal asked for so far has landed. A `popstate` the
@@ -254,5 +259,99 @@ describe('OverlayHistoryEntry', () => {
     expect(close).toHaveBeenCalledOnce();
     expect(history.state).toEqual({ page: 'reader', query: 'cleared' });
     expect(pageSaw).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * What every dropdown and menu owes the page while it is open: Back closes the
+ * list rather than leaving the page, and a press outside only closes it.
+ */
+describe('OpenOverlayGuard', () => {
+  /** What the router would see: every `popstate` the module lets through. */
+  const pageSaw = vi.fn();
+  let panel: HTMLElement;
+  let trigger: HTMLButtonElement;
+  let outside: HTMLButtonElement;
+  let close: Mock<() => void>;
+  let guard: OpenOverlayGuard;
+
+  beforeEach(async () => {
+    installOverlayHistory();
+    window.addEventListener('popstate', pageSaw);
+    history.pushState({ page: 'reader' }, '', '#/reader');
+    await settle();
+    pageSaw.mockClear();
+    panel = document.createElement('div');
+    trigger = document.createElement('button');
+    outside = document.createElement('button');
+    document.body.append(trigger, panel, outside);
+    close = vi.fn<() => void>();
+    guard = new OpenOverlayGuard({ panel, trigger: () => trigger, close });
+  });
+
+  afterEach(async () => {
+    guard.stop();
+    await settle();
+    window.removeEventListener('popstate', pageSaw);
+    panel.remove();
+    trigger.remove();
+    outside.remove();
+  });
+
+  it('takes one history entry while the list is open', () => {
+    const entries = history.length;
+
+    guard.start();
+
+    expect(history.length).toBe(entries + 1);
+    expect(overlayEntry()).toEqual(expect.any(String));
+  });
+
+  it('closes the list on Back, and nothing behind it sees that Back', async () => {
+    guard.start();
+
+    await back();
+
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(pageSaw).not.toHaveBeenCalled();
+    expect(history.state).toEqual({ page: 'reader' });
+  });
+
+  it('takes its entry back off when the list closes another way, and swallows that step', async () => {
+    guard.start();
+
+    guard.stop();
+    await settle();
+
+    expect(history.state).toEqual({ page: 'reader' });
+    expect(pageSaw).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('stops the click that ends a press outside, so it activates nothing', () => {
+    const activated = vi.fn();
+    outside.addEventListener('click', activated);
+    guard.start();
+
+    outside.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    outside.click();
+
+    expect(activated).not.toHaveBeenCalled();
+  });
+
+  it('leaves a press inside the list and on its own trigger alone', () => {
+    const chosen = vi.fn();
+    const toggled = vi.fn();
+    panel.addEventListener('click', chosen);
+    trigger.addEventListener('click', toggled);
+    guard.start();
+
+    panel.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    panel.click();
+    trigger.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    trigger.click();
+
+    expect(chosen).toHaveBeenCalledTimes(1);
+    expect(toggled).toHaveBeenCalledTimes(1);
   });
 });

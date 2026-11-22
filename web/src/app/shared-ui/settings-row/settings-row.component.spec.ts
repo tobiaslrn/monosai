@@ -11,7 +11,7 @@ import { SettingsRowComponent } from './settings-row.component';
     <mn-settings-row
       label="Keep data"
       labelId="keep-label"
-      action="accent"
+      action="action"
       testId="keep"
       (pressed)="presses = presses + 1"
     >
@@ -72,7 +72,7 @@ describe('SettingsRowComponent', () => {
 
     expect(button.getAttribute('aria-labelledby')).toBe('keep-label');
     expect(button.getAttribute('data-testid')).toBe('keep');
-    expect(row.classList.contains('mn-settings-row--accent')).toBe(true);
+    expect(row.classList.contains('mn-settings-row--action')).toBe(true);
     button.click();
     expect(fixture.componentInstance.presses).toBe(1);
   });

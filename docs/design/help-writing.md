@@ -1,9 +1,15 @@
+---
+paths:
+  - web/src/app/features/help/**
+---
+
 # Help writing guide
 
-How to write Help: the guide at `/help` and every topic under it. [The design rules](rules.md)
-are binding everywhere. R55 points here for Help prose, and the form rules of R54 (sentence
-case, British spelling, no "&", no em dashes) apply to it too. Every other string in the
-interface, from a button to an error, follows R48 to R54 and stays as short as they say.
+How to write Help: the guide at `/help` and every topic under it. Claude Code loads this file
+when it touches a Help file; other agents read it before changing Help. [The design
+rules](rules.md) bind here too: R54's form rules (sentence case, British spelling, no "&", no em
+dashes) apply to Help, while every other interface string follows R48 to R54 and stays as short
+as they say.
 
 Help is the one place where a learner sits down to read. They come with a question,
 often in the middle of a task and sometimes after something has gone wrong. A good page
@@ -135,7 +141,7 @@ Every topic page:
    pages.
 
 Topic titles are 1 to 4 words and are the same on the hub row, the page header and the
-pager. The summary on a hub row lists up to five words the reader would look for ("Anki,
+pager. A section heading is 2 to 8 words; a question on Common questions may run to 10. The summary on a hub row lists up to five words the reader would look for ("Anki,
 AnkiDroid, iPhone, lists").
 
 The hub opens with a lead of one or two sentences that says what Monosai does and where a
@@ -186,6 +192,8 @@ something, and use only two tones in Help.
   "Prices and names checked on Sep 17, 2026." When you change a page, recheck every dated
   fact on it and update the date.
 - Approximate honestly: "about", "under a cent", "a few cents".
+- Change a price, model name or version only from a source you opened while making the change,
+  and update the checked date only then. Never re-date a fact you did not check.
 
 ## 9. Accuracy
 

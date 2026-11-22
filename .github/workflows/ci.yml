@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
       - uses: actions/setup-node@v7
         with:
@@ -124,6 +124,14 @@ jobs:
           name: pages-dist
           path: web/dist/monosai/browser
           retention-days: 7
+      # The same tree, packed for Pages. It is uploaded here, minutes before
+      # `deploy` runs, because deploy-pages looks the artifact up at once and
+      # GitHub can take a moment to list a new one. It also means re-running a
+      # failed deploy publishes this upload instead of adding a second one.
+      - if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: web/dist/monosai/browser
 
   e2e:
     name: Browser journeys ${{ matrix.shard }}/3
@@ -146,12 +154,12 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npm run e2e -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         env:
-          MONOSAI_PREBUILT_DIST: "true"
+          MONOSAI_PREBUILT_DIST: 'true'
       - name: Full browser regression suite
         if: github.event_name != 'pull_request'
         run: npm run e2e:full -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         env:
-          MONOSAI_PREBUILT_DIST: "true"
+          MONOSAI_PREBUILT_DIST: 'true'
       - name: Upload this shard's partial report
         if: always()
         uses: actions/upload-artifact@v7
@@ -206,7 +214,7 @@ jobs:
       - name: Offline reload, installability, and base path
         run: npm run e2e:pwa
         env:
-          MONOSAI_PREBUILT_DIST: "true"
+          MONOSAI_PREBUILT_DIST: 'true'
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -215,12 +223,45 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # The gallery's screenshots against the committed baselines. It runs inside
+  # the image the baselines were drawn in, so the browser and its fonts are
+  # the same and any difference is the page's. It builds the `gallery`
+  # configuration, a development build that never ships, so the one-build
+  # rule for the Pages artifact is untouched. Only the manual Visual baselines
+  # workflow writes new baselines.
+  visual:
+    name: Visual baselines
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --ipc=host
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Build the gallery
+        run: npm run build:gallery
+        working-directory: web
+      - name: Compare the gallery with its baselines
+        run: npm run visual
+        working-directory: web
+        env:
+          MONOSAI_PREBUILT_DIST: 'true'
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-diff
+          path: |
+            web/playwright-report/visual
+            web/test-results/visual
+          retention-days: 7
+          if-no-files-found: ignore
+
   # One required status check for branch protection, so adding a job above
   # never means editing repository settings.
   gate:
     name: All checks
     if: always()
-    needs: [static, unit, build, bridge, e2e, e2e-pwa]
+    needs: [static, unit, build, bridge, e2e, e2e-pwa, visual]
     runs-on: ubuntu-latest
     steps:
       - name: Report each job's result
@@ -231,6 +272,7 @@ jobs:
           echo "bridge:  ${{ needs.bridge.result }}"
           echo "e2e:     ${{ needs.e2e.result }}"
           echo "e2e-pwa: ${{ needs.e2e-pwa.result }}"
+          echo "visual:  ${{ needs.visual.result }}"
       - name: Fail unless every job succeeded
         if: >-
           contains(needs.*.result, 'failure')
@@ -260,16 +302,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # No checkout and no build: the artifact below is the exact tree the
-      # browser and PWA suites passed against, already stamped with this SHA.
-      - uses: actions/download-artifact@v8
-        with:
-          name: pages-dist
-          path: web/dist/monosai/browser
+      # No checkout and no build: `build` uploaded the Pages artifact from the
+      # exact tree the browser and PWA suites passed against, stamped with this
+      # SHA.
       - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: web/dist/monosai/browser
       - id: deployment
         uses: actions/deploy-pages@v5
       - name: Post-deploy smoke test

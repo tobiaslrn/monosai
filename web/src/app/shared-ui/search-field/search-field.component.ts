@@ -18,7 +18,7 @@ import { IconComponent } from '../icon/icon.component';
   imports: [IconComponent],
   template: `
     <label>
-      <mn-icon class="icon" name="search" [size]="20" />
+      <mn-icon class="icon" name="search" />
       <input
         class="mn-control"
         type="search"

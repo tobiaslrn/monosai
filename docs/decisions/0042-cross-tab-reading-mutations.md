@@ -34,7 +34,7 @@ exists in one language.
 holds `APP_LOCALE` and the four formatters every screen uses — counts,
 count-with-noun, date, date and time, relative days — and nothing anywhere
 calls a `toLocale*` method with no locale argument. The rule is written into
-[the design system](../design/design-system.md) §8, which is the authority for
+[the design system](https://github.com/tobiaslrn/monosai/blob/40a24d2508da70967c9086142a02c5071176558d/docs/design/design-system.md) §8, which is the authority for
 how a format is used in two places.
 
 The alternative was to follow the browser for both. It was rejected because the

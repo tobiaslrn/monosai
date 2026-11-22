@@ -69,7 +69,7 @@ export class BlockerListComponent {
   host: { role: 'listitem' },
   template: `
     <div class="row">
-      <mn-icon class="mn-lead" name="warning" tone="warning" [size]="18" />
+      <mn-icon class="mn-lead" name="warning" tone="warning" [legacySize]="18" />
       <p><ng-content /></p>
       <div class="action"><ng-content select="[mn-blocker-action]" /></div>
     </div>

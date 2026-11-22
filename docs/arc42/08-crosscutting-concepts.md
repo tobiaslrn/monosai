@@ -282,16 +282,14 @@ the worker downloads a new version in the background, and the next page load use
 ## 8.9 User interface
 
 [`docs/design/rules.md`](../design/rules.md) holds the binding rules for every visual change and wins
-over everything else. [`docs/design-system.md`](../design/design-system.md) is the reasoning behind
-them: structure, controls, colour, units, motion, voice, and state. It holds rules and intent. The values live in
-`web/src/styles/_tokens.scss`, the form fields in `web/src/styles/_controls.scss`, and each shared
-primitive — button, card and inset, notice, status pill, facts, stack and actions, segmented control,
-list row, page frame, and icon badge — in its own file under
-`web/src/styles/components/`. The shared page-header component owns the title structure, while
-components compose the style classes and keep only placement in their own styles. The static style
-audit extracts Angular inline style blocks and applies the same token and primitive-ownership rules
-to them. A change that departs from the design system changes that document first, in the same
-commit.
+over everything else; [`docs/design/README.md`](../design/README.md) explains the intent behind them.
+Each piece of design knowledge has one home. Values live in `web/src/styles/` (`_tokens.scss`,
+`_motion.scss`, `_controls.scss`) and the style partials under `web/src/styles/components/`. Each
+shared-ui primitive's behaviour and use are documented in its own doc comment, and the gallery build
+renders every primitive, with screenshot baselines guarding them. Features and core compose the
+primitives and write no styles. `npm run design:check` enforces every rule that can be checked and
+names the fix; [`docs/design/checks.md`](../design/checks.md) lists those checks. A rule changes only
+when the owner decides, in the same commit as its checks and the code.
 
 Components compose the shared-ui primitives for controls instead of writing their markup: the
 segmented control, radio cards, switch row, settings row, and the popup (a native popover that
@@ -352,7 +350,10 @@ pressed word, punctuation, furigana, or line leading. That press is why the read
 surface — and only the reading surface, and only under a finger — gives up native text
 selection and the platform's long-press callout ([ADR 0058](../decisions/0058-one-gesture-per-meaning-on-touch.md)).
 A gesture that fired consumes its own release and click by pointer id, so the popover's
-outside-press rule cannot dismiss the surface that press just opened. Focus is set and
+outside-press rule cannot dismiss the surface that press just opened. Back, like a short
+tap on nothing, dismisses whatever details are open before it leaves the reader, because
+each open surface holds a history entry ([ADR 0083](../decisions/0083-floating-panels-are-native-popovers.md)).
+Focus is set and
 returned with `preventScroll`, and replacing one surface with another skips the
 intermediate focus return.
 Story titles carry Japanese language metadata in the Library and reader header.

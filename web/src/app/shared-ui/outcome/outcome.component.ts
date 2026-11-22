@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, ViewEncapsulation } from '@angular/core';
 import { IconComponent } from '../icon/icon.component';
+import type { Tone } from '../tone';
 
 let nextOutcomeId = 0;
 
@@ -35,7 +36,9 @@ let nextOutcomeId = 0;
   },
   template: `
     @if (mark() === 'success') {
-      <span class="mn-outcome__mark" aria-hidden="true"><mn-icon name="check" [size]="28" /></span>
+      <span class="mn-outcome__mark" aria-hidden="true"
+        ><mn-icon name="check" [legacySize]="28"
+      /></span>
     }
     @if (eyebrow(); as text) {
       <p class="mn-outcome__eyebrow">{{ text }}</p>
@@ -164,7 +167,7 @@ let nextOutcomeId = 0;
 })
 export class OutcomeComponent {
   readonly variant = input<'result' | 'progress'>('result');
-  readonly mark = input<'success' | null>(null);
+  readonly mark = input<Extract<Tone, 'success'> | null>(null);
   /** A short line above the heading saying what kind of outcome this is. */
   readonly eyebrow = input<string | null>(null);
   readonly heading = input<string | null>(null);

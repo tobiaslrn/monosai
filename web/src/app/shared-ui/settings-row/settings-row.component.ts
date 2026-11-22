@@ -2,10 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { RouterLink, type NavigationExtras, type Params } from '@angular/router';
 import { IconComponent } from '../icon/icon.component';
 import type { IconName } from '../icon/icon-set';
-import { StatusLeadComponent, type StatusTone } from '../status-lead/status-lead.component';
+import { StatusLeadComponent, type StatusLeadTone } from '../status-lead/status-lead.component';
+import type { Tone } from '../tone';
 
 /** What pressing a row does: a plain action, or one that destroys something. */
-export type SettingsRowAction = 'accent' | 'danger';
+export type SettingsRowAction = Extract<Tone, 'action' | 'danger'>;
 
 /**
  * What the row promises with its trailing end:
@@ -19,7 +20,7 @@ export type SettingsRowAction = 'accent' | 'danger';
 export type SettingsRowEnd = 'nothing' | 'nav' | 'choice' | 'control';
 
 /** Where a setting stands, as the tone of the mark and words that lead its summary. */
-export type SettingsRowStatus = StatusTone;
+export type SettingsRowStatus = StatusLeadTone;
 
 let nextSettingsRowId = 0;
 
@@ -36,7 +37,7 @@ let nextSettingsRowId = 0;
  * - A plain fact's value is at the end (`value`).
  * - A choice projects an `mn-select`, which is the row's
  *   own words and chevron.
- * - A row that does something is an `action` (`accent`, or `danger` when it
+ * - A row that does something is an `action` (`action`, or `danger` when it
  *   destroys), one button over the whole row that emits `pressed`. A `link` or an
  *   `end` of `nav` makes the whole row one link or button as well.
  *
@@ -50,7 +51,7 @@ let nextSettingsRowId = 0;
   imports: [IconComponent, RouterLink, StatusLeadComponent],
   host: {
     class: 'mn-settings-row',
-    '[class.mn-settings-row--accent]': "action() === 'accent'",
+    '[class.mn-settings-row--action]': "action() === 'action'",
     '[class.mn-settings-row--danger]': "action() === 'danger'",
     '[class.mn-settings-row--disabled]': 'disabled()',
     '[attr.aria-busy]': "busy() ? 'true' : null",
@@ -141,7 +142,7 @@ export class SettingsRowComponent {
   /** The id controls in the row point `aria-labelledby` at. */
   readonly labelId = input<string | null>(null);
   readonly end = input<SettingsRowEnd>('nothing');
-  /** The row does something now; it is drawn in the accent colour, or the danger colour. */
+  /** The row does something now; it is drawn in the action colour, or the danger colour. */
   readonly action = input<SettingsRowAction | null>(null);
   /** The page the whole row leads to. */
   readonly link = input<readonly unknown[] | string | null>(null);

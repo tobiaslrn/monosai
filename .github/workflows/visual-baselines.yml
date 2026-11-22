@@ -1,0 +1,63 @@
+name: Visual baselines
+
+# Redraws the gallery's screenshot baselines and commits them to the branch it
+# was started on. Only the owner starts it, after judging a visual change from
+# the diff CI's visual job reported: a baseline records what was approved, so
+# nothing else, and no agent, ever writes one.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: visual-baselines-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  baselines:
+    name: Redraw and commit the baselines
+    runs-on: ubuntu-latest
+    # The same image CI's visual job compares in; `scripts/visual.mjs` and its
+    # test hold both workflows to the version the lockfile pins.
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --ipc=host
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Build the gallery
+        run: npm run build:gallery
+        working-directory: web
+      - name: Redraw every baseline
+        # Removing them first drops the baselines of pages that no longer exist.
+        run: |
+          rm -rf e2e-visual/__screenshots__
+          npm run visual:update
+        working-directory: web
+        env:
+          MONOSAI_PREBUILT_DIST: 'true'
+      - name: Prove the new baselines compare clean
+        run: npm run visual
+        working-directory: web
+        env:
+          MONOSAI_PREBUILT_DIST: 'true'
+      - name: Commit the baselines
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git add -A web/e2e-visual/__screenshots__
+          if git diff --cached --quiet; then
+            echo "The baselines already match; nothing to commit."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "test(visual): redraw the gallery baselines"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-baselines-report
+          path: web/playwright-report/visual
+          retention-days: 7
+          if-no-files-found: ignore

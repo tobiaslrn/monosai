@@ -4,6 +4,7 @@ import type { Route, RedirectFunction, Routes } from '@angular/router';
 import { HELP_TOPICS, type HelpTopicSlug } from '../../features/help/help-topics';
 import { unsavedImportGuard } from '../../features/add-text/unsaved-import.guard';
 import { ModelCatalogView } from '../../features/settings/model-catalog-view';
+import { DEV_ROUTES } from './dev-routes';
 import { firstUseRedirect } from './first-use.resolver';
 import { wellFormedGenerationJobLink } from './generation-job-link.guard';
 import { wellFormedReadingLink } from './reading-link.guard';
@@ -228,6 +229,8 @@ export const APP_ROUTES: Routes = [
       },
     ],
   },
+  // Empty in the shipped build; the primitive gallery in a development build.
+  ...DEV_ROUTES,
   // Root always resolves to the Library, which shows its own way in when it is
   // empty.
   { path: '', pathMatch: 'full', canActivate: [firstUseRedirect], children: [] },

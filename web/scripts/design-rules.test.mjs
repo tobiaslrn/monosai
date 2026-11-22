@@ -1,42 +1,63 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
-import { compare, violationsOf } from './design-rules.mjs';
+import {
+  checkCitations,
+  checkIconSizes,
+  checkLineBudgets,
+  checkedRules,
+  compare,
+  merge,
+  violationsOf,
+} from './design-rules.mjs';
 
 const component = (body) => `@Component({ selector: 'mn-x', ${body} }) export class X {}`;
 const template = (html) => component(`template: \`${html}\``);
 const styles = (css) => component(`template: '', styles: \`${css}\``);
 const FEATURE = 'src/app/features/a.component.ts';
 
-test('finds a native select in a template', () => {
-  assert.deepEqual(violationsOf(FEATURE, template('<select><option>a</option></select>')), ['R20']);
-  assert.deepEqual(violationsOf(FEATURE, template('<mn-select></mn-select>')), []);
-});
-
-test('finds an icon size outside the three roles and ignores the others', () => {
+test('finds an icon sized outside the three roles and ignores the roles', () => {
   assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [size]="18" />')), ['R35']);
+  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [size]="20" />')), ['R35']);
   assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" size="14" />')), ['R35']);
-  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [size]="16" />')), []);
-  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [size]="20" />')), []);
-  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [size]="24" />')), []);
+  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" size="large" />')), ['R35']);
+  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [legacySize]="18" />')), [
+    'R35',
+  ]);
+  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" size="inline" />')), []);
+  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" size="control" />')), []);
+  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" size="feature" />')), []);
   assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [size]="size()" />')), []);
   assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" />')), []);
 });
 
-test('finds a button inside a settings row, not beside one', () => {
+test('finds a disable comment in features and core, not in shared-ui', () => {
+  const silenced = template('<!-- eslint-disable-next-line x --><p>a</p>');
+  assert.deepEqual(violationsOf(FEATURE, silenced), ['R6']);
+  assert.deepEqual(violationsOf('src/app/core/a.ts', '/* stylelint-disable a */'), ['R6']);
+  assert.deepEqual(violationsOf('src/app/shared-ui/a.component.ts', silenced), []);
+  assert.deepEqual(violationsOf(FEATURE, template('<p>a</p>')), []);
+});
+
+test('finds a glyph resized by a stylesheet', () => {
+  assert.deepEqual(violationsOf(FEATURE, styles('mn-icon svg { width: 1rem; }')), ['R35']);
+  assert.deepEqual(violationsOf('src/styles/_a.scss', '.a svg { block-size: 1rem; }'), ['R35']);
+  assert.deepEqual(violationsOf('src/styles/_a.scss', 'svg { max-width: 100%; }'), []);
+  assert.deepEqual(violationsOf('src/styles/_a.scss', '.a svg { fill: currentcolor; }'), []);
+});
+
+test('holds the icon component to the same three sizes', () => {
   assert.deepEqual(
-    violationsOf(
-      FEATURE,
-      template('<mn-settings-row label="a"><button mnButton>Go</button></mn-settings-row>'),
-    ),
-    ['R15'],
-  );
-  assert.deepEqual(
-    violationsOf(
-      FEATURE,
-      template('<mn-settings-row label="a"></mn-settings-row><button mnButton>Go</button>'),
-    ),
+    checkIconSizes('export const ICON_SIZES = { inline: 16, control: 20, feature: 24 } as const;'),
     [],
   );
+  assert.match(
+    checkIconSizes('export const ICON_SIZES = { inline: 14, control: 20, feature: 24 };')[0],
+    /R35/,
+  );
+  assert.match(checkIconSizes('')[0], /declares other icon sizes/);
 });
 
 test('finds transition: all in every spelling', () => {
@@ -84,8 +105,79 @@ test('finds a colour literal everywhere except the tokens', () => {
 test('holds the exemptions to a list that only shrinks', () => {
   const found = { 'a.ts': ['R35'] };
   assert.deepEqual(compare(found, { 'a.ts': ['R35'] }, null), []);
-  assert.match(compare(found, {}, null)[0], /R35 in docs\/design\/rules\.md/);
-  assert.match(compare({}, { 'a.ts': ['R35'] }, null)[0], /remove it/);
+  assert.match(compare(found, {}, null)[0], /\. Fix: .*\(R35 in docs\/design\/rules\.md\)$/);
+  assert.match(compare({}, { 'a.ts': ['R35'] }, null)[0], /no longer breaks R35\. Fix: remove/);
   assert.match(compare(found, { 'a.ts': ['R35'] }, {})[0], /may only shrink/);
   assert.deepEqual(compare(found, { 'a.ts': ['R35'] }, { 'a.ts': ['R35'] }), []);
+});
+
+test('lets the commit that adds a check seed its exemptions, and no later one', () => {
+  const found = { 'a.ts': ['R52'], 'b.ts': ['R35'] };
+  const exemptions = { 'a.ts': ['R52'], 'b.ts': ['R35'] };
+  // R52 was not checked at the base revision, so its entry may be new; R35 was.
+  const errors = compare(found, exemptions, {}, new Set(['R35']));
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /gained R35 for b\.ts/);
+  // Once the base checks R52, a new entry for it fails too.
+  assert.equal(compare(found, exemptions, {}, new Set(['R35', 'R52'])).length, 2);
+  assert.deepEqual(
+    checkedRules(
+      JSON.stringify([
+        { rule: 'R2', status: 'checked' },
+        { rule: 'R9', status: 'retired' },
+      ]),
+    ),
+    new Set(['R2']),
+  );
+});
+
+test('prints the messages a scan or the lint gave, merged by file and rule', () => {
+  const found = merge(
+    { 'a.ts': { R35: ['a.ts sets an icon size'] } },
+    { 'a.ts': { R15: ['a.ts:3:1 A button sits inside a row'] } },
+  );
+  assert.deepEqual(compare(found, { 'a.ts': ['R35'] }, null), [
+    'a.ts:3:1 A button sits inside a row',
+  ]);
+});
+
+test('holds every cited rule to the rulebook or the retired list', () => {
+  const rulebook = '**R2.** Compose.\n\n**R15. Rows.** The row is the control.\n';
+  const checks = [
+    { rule: 'R2', status: 'checked' },
+    { rule: 'R15', status: 'checked' },
+    { rule: 'R30', status: 'retired' },
+  ];
+  assert.deepEqual(checkCitations(rulebook, checks, ['R2', 'R15']), []);
+  assert.match(checkCitations(rulebook, checks, ['R7'])[0], /cites R7, which .* does not list/);
+  assert.match(checkCitations(rulebook, checks, ['R30'])[0], /lists as retired/);
+  assert.match(
+    checkCitations('**R2.** Compose.', checks, [])[0],
+    /checks R15, but docs\/design\/rules\.md has no "\*\*R15\.\*\*"/,
+  );
+  assert.match(checkCitations(rulebook, [{ rule: 'R2', status: 'maybe' }], [])[0], /"maybe"/);
+});
+
+test('an enforced rule lives only in its check, and a retired rule leaves the rulebook', () => {
+  const rulebook = '- **R2.** Compose.\n';
+  const enforced = [{ rule: 'R40', status: 'enforced' }];
+  assert.deepEqual(checkCitations(rulebook, enforced, ['R40']), []);
+  assert.match(
+    checkCitations(`${rulebook}- **R40.** Press.\n`, enforced, [])[0],
+    /lists R40 as enforced, but .* still has/,
+  );
+  assert.match(
+    checkCitations(`${rulebook}- **R30.** Pill.\n`, [{ rule: 'R30', status: 'retired' }], [])[0],
+    /lists R30 as retired/,
+  );
+});
+
+test('holds the always-loaded guidance to its line budget', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'design-rules-'));
+  await writeFile(join(root, 'AGENTS.md'), 'a\nb\nc\n');
+  await writeFile(join(root, 'rules.md'), 'a\n');
+  assert.deepEqual(await checkLineBudgets(root, { 'AGENTS.md': 3, 'rules.md': 1 }), []);
+  const errors = await checkLineBudgets(root, { 'AGENTS.md': 2, 'rules.md': 1 });
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /^AGENTS\.md has 3 lines, over its budget of 2\. Fix: .*\(R5 in/);
 });

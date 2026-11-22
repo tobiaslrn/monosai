@@ -127,7 +127,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
               Refresh automatically
             </mn-switch-row>
             <mn-settings-row
-              action="accent"
+              action="action"
               glyph="sync"
               label="Refresh now"
               testId="sync-now"
@@ -137,11 +137,11 @@ const STALE_REASONS: Record<StaleReason, string> = {
               (pressed)="syncNow(source)"
             />
             @if (manual.isSyncingSource(source.id)) {
-              <mn-settings-row action="accent" label="Cancel" (pressed)="manual.cancel()" />
+              <mn-settings-row action="action" label="Cancel" (pressed)="manual.cancel()" />
             }
           } @else if (source.kind === 'anki-package') {
             <mn-settings-row
-              action="accent"
+              action="action"
               label="Replace file"
               testId="replace-package"
               [disabled]="packageBusy()"
@@ -149,7 +149,7 @@ const STALE_REASONS: Record<StaleReason, string> = {
             />
           } @else {
             <mn-settings-row
-              action="accent"
+              action="action"
               label="Edit list"
               testId="edit-text-list"
               [disabled]="editing()"
