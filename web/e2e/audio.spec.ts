@@ -1071,6 +1071,36 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     expect(await storedClipCount(page)).toBe(SENTENCE_COUNT);
   });
 
+  test('the title tucks at the edge of a bar the audio notice made taller', async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 600 });
+    const paragraphs = Array.from({ length: 8 }, () => TEXT);
+    await prepareReading(page, paragraphs.join('\n\n'));
+    const bar = page.locator('.reader .bar');
+    const barBefore = await bar.evaluate((element) => element.getBoundingClientRect().height);
+    await openAudioPlayer(page);
+    await audioPlayer(page).getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page, SENTENCE_COUNT * paragraphs.length);
+    await audioButton(page).click();
+    await openReaderMenu(page);
+    await page.getByRole('button', { name: 'Delete audio…', exact: true }).click();
+    await page.getByRole('button', { name: 'Delete audio', exact: true }).click();
+    await expect(page.getByText('Audio deleted')).toBeVisible();
+    const barAfter = await bar.evaluate((element) => element.getBoundingClientRect().height);
+    expect(barAfter).toBeGreaterThan(barBefore);
+
+    // The heading's lower edge between the old and the new bottom of the bar,
+    // so it is wholly under the bar only as the bar now is.
+    await page.evaluate(
+      ({ oldBar, newBar }) => {
+        const bottom = document.querySelector('h1.title')!.getBoundingClientRect().bottom;
+        window.scrollBy({ top: bottom - (oldBar + newBar) / 2, behavior: 'instant' });
+      },
+      { oldBar: barBefore, newBar: barAfter },
+    );
+
+    await expect(page.locator('.bar-title.is-shown')).toHaveCount(1);
+  });
+
   /**
    * The widest destructive action in the application asks first, and asks in
    * the same words as the narrower per-reading one beside it. It used to delete

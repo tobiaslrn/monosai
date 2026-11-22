@@ -249,7 +249,8 @@ component is composition and template:
   document), follows the sentence being read into the band between bar and
   player (first moving `ReaderStore`'s window to it with `moveToSentence` when
   that sentence is not mounted, then jumping to it), and hands the title to the
-  bar. The page passes it its elements with
+  bar once the heading is wholly beneath it, measuring the bar again whenever it
+  changes height, as it does when a notice appears in it. The page passes it its elements with
   `connect`, and `mnDockedPlayer` attaches the player shell for exactly as long
   as the shell exists.
 - `mnReaderParagraphWindow`, on the element the reading renders in, keeps the

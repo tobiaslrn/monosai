@@ -53,7 +53,11 @@ class HostComponent {
 
 /** Observers jsdom does not have, each kept so a test can report a size. */
 const resizeCallbacks: (() => void)[] = [];
+/** The observers on the bar, kept apart so the player's and the sheet's are counted alone. */
+const barResizes: (() => void)[] = [];
 let intersection: ((entries: Partial<IntersectionObserverEntry>[]) => void) | null = null;
+/** The top margin of every intersection observer made, in order. */
+const intersectionMargins: (string | undefined)[] = [];
 
 function box(top: number, bottom: number): DOMRect {
   return {
@@ -87,7 +91,9 @@ describe('ReaderGeometryService', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     resizeCallbacks.length = 0;
+    barResizes.length = 0;
     intersection = null;
+    intersectionMargins.length = 0;
     playback.explicitNavigation.set(0);
     playback.currentSentenceId.set(null);
     mobile.set(true);
@@ -99,19 +105,31 @@ describe('ReaderGeometryService', () => {
         constructor(private readonly callback: () => void) {
           resizeCallbacks.push(callback);
         }
-        observe(): void {
+        observe(target: Element): void {
+          if (target.tagName === 'HEADER' && resizeCallbacks.includes(this.callback)) {
+            resizeCallbacks.splice(resizeCallbacks.indexOf(this.callback), 1);
+            barResizes.push(this.callback);
+          }
           this.callback();
         }
         disconnect(): void {
-          resizeCallbacks.splice(resizeCallbacks.indexOf(this.callback), 1);
+          for (const list of [resizeCallbacks, barResizes]) {
+            if (list.includes(this.callback)) {
+              list.splice(list.indexOf(this.callback), 1);
+            }
+          }
         }
       },
     );
     vi.stubGlobal(
       'IntersectionObserver',
       class {
-        constructor(callback: (entries: Partial<IntersectionObserverEntry>[]) => void) {
+        constructor(
+          callback: (entries: Partial<IntersectionObserverEntry>[]) => void,
+          options?: IntersectionObserverInit,
+        ) {
           intersection = callback;
+          intersectionMargins.push(options?.rootMargin);
         }
         observe(): void {
           // Reported by the test.
@@ -308,6 +326,29 @@ describe('ReaderGeometryService', () => {
       { isIntersecting: false, boundingClientRect: box(900, 940), rootBounds: box(60, 800) },
     ]);
     expect(geometry.titleTucked()).toBe(false);
+  });
+
+  it('measures the bar again when it grows, and tucks the title at its new edge', () => {
+    const bar = element('header');
+    TestBed.tick();
+    Object.defineProperty(bar, 'offsetHeight', { configurable: true, value: 60 });
+    for (const resized of barResizes) resized();
+    expect(intersectionMargins.at(-1)).toBe('-60px 0px 0px 0px');
+    const made = intersectionMargins.length;
+
+    Object.defineProperty(bar, 'offsetHeight', { configurable: true, value: 89 });
+    for (const resized of barResizes) resized();
+
+    expect(intersectionMargins).toHaveLength(made + 1);
+    expect(intersectionMargins.at(-1)).toBe('-89px 0px 0px 0px');
+    intersection?.([
+      { isIntersecting: false, boundingClientRect: box(30, 75), rootBounds: box(89, 800) },
+    ]);
+    expect(geometry.titleTucked()).toBe(true);
+
+    // The same height again builds nothing new.
+    for (const resized of barResizes) resized();
+    expect(intersectionMargins).toHaveLength(made + 1);
   });
 
   it('finds a mounted sentence and places details away from the nearer edge', () => {

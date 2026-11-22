@@ -140,27 +140,42 @@ export class ReaderGeometryService {
 
     effect((onCleanup) => {
       // The bar takes over the title once the heading is wholly beneath it.
-      // The bar is measured rather than assumed: a maintenance notice grows it.
+      // The bar is measured rather than assumed, and measured again whenever
+      // it changes height: a maintenance notice grows it while the page is open.
       const title = this.title();
       const bar = this.bar();
       if (title === undefined || bar === undefined) {
         return;
       }
-      const observer = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            // Gone above the bar, not merely out of view below the fold.
-            const barBottom = entry.rootBounds?.top ?? bar.offsetHeight;
-            this.titleTuckedSignal.set(
-              !entry.isIntersecting && entry.boundingClientRect.bottom <= barBottom,
-            );
-          }
-        },
-        { rootMargin: `-${String(bar.offsetHeight)}px 0px 0px 0px` },
-      );
-      observer.observe(title);
+      let observer: IntersectionObserver | null = null;
+      let observedHeight: number | null = null;
+      const observeBelow = (): void => {
+        const height = bar.offsetHeight;
+        if (height === observedHeight) {
+          return;
+        }
+        observedHeight = height;
+        observer?.disconnect();
+        observer = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              // Gone above the bar, not merely out of view below the fold.
+              const barBottom = entry.rootBounds?.top ?? height;
+              this.titleTuckedSignal.set(
+                !entry.isIntersecting && entry.boundingClientRect.bottom <= barBottom,
+              );
+            }
+          },
+          { rootMargin: `-${String(height)}px 0px 0px 0px` },
+        );
+        observer.observe(title);
+      };
+      observeBelow();
+      const resizes = new ResizeObserver(observeBelow);
+      resizes.observe(bar);
       onCleanup(() => {
-        observer.disconnect();
+        resizes.disconnect();
+        observer?.disconnect();
       });
     });
 
