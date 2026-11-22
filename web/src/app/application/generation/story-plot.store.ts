@@ -71,6 +71,8 @@ export class StoryPlotStore {
   private controller: AbortController | null = null;
   /** Cards that were sent as stories, dropped the next time the step drafts. */
   private readonly spent = new Set<PlotCard>();
+  /** Plots handed back while a draft was open, put back on offer when it lands. */
+  private handedBack: { plot: ChosenPlot; direction: StoryDirection; notes: string }[] = [];
   private cardCount = 0;
 
   readonly cards = this.cardsSignal.asReadonly();
@@ -202,6 +204,8 @@ export class StoryPlotStore {
    * The plot comes from the run rather than from this store, because the
    * learner may have drafted again since, or started another story, before
    * this one failed. Nothing else on offer is dropped to make room for it.
+   * An open draft was planned without it, so the plot is placed again, picked,
+   * when that draft lands.
    */
   restore(plot: ChosenPlot, direction: StoryDirection, notes: string): void {
     const text = plot.record.plotEn;
@@ -210,6 +214,31 @@ export class StoryPlotStore {
         this.spent.delete(card);
       }
     }
+    this.offer(plot, direction, notes);
+    if (this.isDrafting()) {
+      this.handedBack.push({ plot, direction, notes });
+    } else {
+      this.statusSignal.set('ready');
+      this.failureSignal.set(null);
+    }
+  }
+
+  /** Forgets every plot. */
+  clear(): void {
+    this.controller?.abort();
+    this.controller = null;
+    this.spent.clear();
+    this.handedBack = [];
+    this.basis = null;
+    this.cardsSignal.set([]);
+    this.selectedSignal.set(0);
+    this.statusSignal.set('idle');
+    this.failureSignal.set(null);
+  }
+
+  /** Puts a handed-back plot on offer, picked, unless the same text already is. */
+  private offer(plot: ChosenPlot, direction: StoryDirection, notes: string): void {
+    const text = plot.record.plotEn;
     const cards = this.cardsSignal();
     let index = cards.findIndex((card) => card.text.trim() === text);
     if (index < 0) {
@@ -232,22 +261,6 @@ export class StoryPlotStore {
       this.basis = this.basisFor(direction, notes);
     }
     this.selectedSignal.set(index);
-    if (!this.isDrafting()) {
-      this.statusSignal.set('ready');
-      this.failureSignal.set(null);
-    }
-  }
-
-  /** Forgets every plot. */
-  clear(): void {
-    this.controller?.abort();
-    this.controller = null;
-    this.spent.clear();
-    this.basis = null;
-    this.cardsSignal.set([]);
-    this.selectedSignal.set(0);
-    this.statusSignal.set('idle');
-    this.failureSignal.set(null);
   }
 
   /** Keeps the cards that pass, and the pick on the same card when it is kept. */
@@ -293,6 +306,7 @@ export class StoryPlotStore {
 
     if (kept.every((card) => card !== null)) {
       // Every plot is the learner's: there is nothing to ask for.
+      this.handedBack = [];
       this.statusSignal.set('ready');
       this.controller = null;
       return;
@@ -388,6 +402,10 @@ export class StoryPlotStore {
       }),
     );
     this.selectedSignal.update((index) => Math.min(index, kept.length - 1));
+    for (const { plot, direction: backDirection, notes: backNotes } of this.handedBack) {
+      this.offer(plot, backDirection, backNotes);
+    }
+    this.handedBack = [];
     this.statusSignal.set('ready');
     this.controller = null;
   }
@@ -399,6 +417,8 @@ export class StoryPlotStore {
 
   private fail(error: PlotFailure): void {
     this.controller = null;
+    // A handed-back plot is already on offer: a failed draft replaced nothing.
+    this.handedBack = [];
     this.logger.error('job.failed', {
       kind: 'plots',
       errorDomain: error.domain,

@@ -223,6 +223,28 @@ describe('StoryPlotStore', () => {
     expect(texts).toContain(`${PLOTS[0]} Edited.`);
   });
 
+  it('keeps a plot handed back while a fresh draft is still open', async () => {
+    bed.provider.plotQueue.push(ok(PLOTS), ok(['One.', 'Two.', 'Three.']));
+    await plots.prepare(EMPTY_STORY_DIRECTION, '');
+    plots.select(1);
+    const sent = plots.chosenPlot(EMPTY_STORY_DIRECTION);
+    if (sent === null) throw new Error('fixture');
+    plots.spend();
+
+    // The run fails and hands its plot back while the learner's new draft is open.
+    let handedBack = false;
+    bed.provider.beforeAnswer = () => {
+      if (handedBack) return;
+      handedBack = true;
+      plots.restore(sent.plot, EMPTY_STORY_DIRECTION, '');
+    };
+    await plots.prepare(toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Cozy'), '');
+
+    expect(handedBack).toBe(true);
+    expect(plots.cards().map((card) => card.text)).toContain(PLOTS[1]);
+    expect(plots.selected()?.text).toBe(PLOTS[1]);
+  });
+
   it('asks for nothing when every plot is the learner’s, and tells them what was chosen now', async () => {
     bed.provider.plotQueue.push(ok(PLOTS));
     await plots.prepare(toggleOption(EMPTY_STORY_DIRECTION, 'mood', 'Funny'), '');

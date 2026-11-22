@@ -130,7 +130,8 @@ same prerequisites a story does. Returning to the step with the same choices off
 changing a choice drafts again. A plot the learner edited is never discarded: Regenerate and a
 changed direction rewrite only the other cards, and the edited card's frame is brought up to date
 with the current choices. A started story spends its plot; a run that is cancelled or fails hands it
-back, picked, from its own record.
+back, picked, from its own record. A plot handed back while a draft is open is placed again, still
+picked, when that draft lands.
 
 Every input is captured before the first request, so changing a setting during a run cannot change
 what the running story is judged against. This includes vocabulary strictness: relaxed spends no
