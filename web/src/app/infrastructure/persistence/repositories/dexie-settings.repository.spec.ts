@@ -257,6 +257,21 @@ describe('DexieSettingsRepository', () => {
     expect(loaded.ok && loaded.value.storyTokenBudget).toBe(20_000);
   });
 
+  it('works out a list change from the row as stored when two changes overlap', async () => {
+    const [first, second] = await Promise.all([
+      repository.updateTextModelSettings((current) => ({
+        favoriteModelIds: [...(current.favoriteModelIds ?? []), 'vendor/first'],
+      })),
+      repository.updateTextModelSettings((current) => ({
+        favoriteModelIds: [...(current.favoriteModelIds ?? []), 'vendor/second'],
+      })),
+    ]);
+
+    expect(first.ok && second.ok).toBe(true);
+    const loaded = await repository.getTextModelSettings();
+    expect(loaded.ok && loaded.value.favoriteModelIds).toEqual(['vendor/first', 'vendor/second']);
+  });
+
   it('leaves the stored row untouched when an overlapping update is invalid', async () => {
     const [valid, invalid] = await Promise.all([
       repository.updateTextModelSettings({ modelId: 'vendor/model' }),

@@ -445,6 +445,22 @@ describe('TtsStore', () => {
     expect(store.readiness()).not.toBe('ready');
   });
 
+  it('keeps both of two preset edits that overlap', async () => {
+    const store = await ready();
+    await store.registerPreset({ id: 'one', name: 'One', ...CONFIGURED });
+    await store.registerPreset({ id: 'two', name: 'Two', ...CONFIGURED });
+
+    await Promise.all([
+      store.updatePreset('one', { speechStyle: 'very-clear' }),
+      store.updatePreset('two', { speechPace: 'slow' }),
+    ]);
+
+    expect(settings.tts.presets.map((preset) => [preset.speechStyle, preset.speechPace])).toEqual([
+      ['very-clear', 'natural'],
+      ['clear', 'slow'],
+    ]);
+  });
+
   it('surfaces a storage failure when the result cannot be stored', async () => {
     const store = await ready();
     store.setDraft(CONFIGURED);

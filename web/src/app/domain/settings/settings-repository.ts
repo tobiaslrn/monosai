@@ -11,6 +11,18 @@ import type {
 } from './settings';
 
 /**
+ * A change to one settings row: the fields to set, or a function that works
+ * them out from the row as it is stored at the moment of writing.
+ *
+ * The function form is for a change to a list in the row, such as the presets
+ * or the failed tests. Building the list from an in-memory copy would drop
+ * whatever another write saved after that copy was read; the function sees
+ * the latest stored row instead, inside the same transaction as the write.
+ * It must be synchronous and free of side effects.
+ */
+export type SettingsPatch<T> = Partial<T> | ((current: T) => Partial<T>);
+
+/**
  * Settings are separated by concern so a change to one area cannot invalidate
  * another through a single unvalidated JSON blob.
  */
@@ -30,11 +42,11 @@ export interface SettingsRepository {
 
   getTextModelSettings(): Promise<Result<TextModelSettings, StorageError>>;
   updateTextModelSettings(
-    patch: Partial<TextModelSettings>,
+    patch: SettingsPatch<TextModelSettings>,
   ): Promise<Result<TextModelSettings, StorageError>>;
 
   getTtsSettings(): Promise<Result<TtsSettings, StorageError>>;
-  updateTtsSettings(patch: Partial<TtsSettings>): Promise<Result<TtsSettings, StorageError>>;
+  updateTtsSettings(patch: SettingsPatch<TtsSettings>): Promise<Result<TtsSettings, StorageError>>;
 
   getExceptionPolicy(): Promise<Result<ExceptionPolicy, StorageError>>;
   updateExceptionPolicy(policy: ExceptionPolicy): Promise<Result<ExceptionPolicy, StorageError>>;

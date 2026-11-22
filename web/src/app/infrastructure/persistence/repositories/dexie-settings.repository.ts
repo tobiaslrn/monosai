@@ -1,7 +1,10 @@
 import type { ZodType } from 'zod';
 import type { Clock } from '../../../domain/shared/clock';
 import { ok, type Result } from '../../../domain/shared/result';
-import type { SettingsRepository } from '../../../domain/settings/settings-repository';
+import type {
+  SettingsPatch,
+  SettingsRepository,
+} from '../../../domain/settings/settings-repository';
 import {
   DEFAULT_APP_SETTINGS,
   DEFAULT_EXCEPTION_POLICY,
@@ -98,7 +101,7 @@ export class DexieSettingsRepository implements SettingsRepository {
   }
 
   updateTextModelSettings(
-    patch: Partial<TextModelSettings>,
+    patch: SettingsPatch<TextModelSettings>,
   ): Promise<Result<TextModelSettings, StorageError>> {
     return this.write(
       SETTINGS_KEYS.textModel,
@@ -113,7 +116,7 @@ export class DexieSettingsRepository implements SettingsRepository {
     return this.read(SETTINGS_KEYS.tts, ttsSettingsSchema, DEFAULT_TTS_SETTINGS);
   }
 
-  updateTtsSettings(patch: Partial<TtsSettings>): Promise<Result<TtsSettings, StorageError>> {
+  updateTtsSettings(patch: SettingsPatch<TtsSettings>): Promise<Result<TtsSettings, StorageError>> {
     return this.write(SETTINGS_KEYS.tts, ttsSettingsSchema, DEFAULT_TTS_SETTINGS, patch, false);
   }
 
@@ -178,13 +181,14 @@ export class DexieSettingsRepository implements SettingsRepository {
    * merge onto the same stored copy, and the second write would silently drop
    * whatever the first one had just saved. Overlapping writes to a row are rare
    * but entirely reachable — choosing a model runs a test that stores its
-   * result while the learner is already editing the next field.
+   * result while the learner is already editing the next field. A patch given
+   * as a function is worked out here, from the row as stored, for the same reason.
    */
   private write<T extends object>(
     key: SettingsKey,
     schema: ZodType<T>,
     fallback: T,
-    patch: Partial<T>,
+    patch: SettingsPatch<T>,
     touchUpdatedAt: boolean,
   ): Promise<Result<T, StorageError>> {
     return runStorageWithRules(`settings.write(${key})`, () =>
@@ -199,7 +203,7 @@ export class DexieSettingsRepository implements SettingsRepository {
 
         const merged: T = {
           ...current.value,
-          ...patch,
+          ...(typeof patch === 'function' ? patch(current.value) : patch),
           ...(touchUpdatedAt ? { updatedAt: this.clock.now() } : {}),
         };
 

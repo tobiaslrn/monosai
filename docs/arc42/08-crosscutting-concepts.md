@@ -190,9 +190,13 @@ fingerprint, timestamp, typed failure code, and redacted reason. Matching failur
 survive reloads and take precedence over old successful tests; a successful retry
 removes that configuration's failure. A test's fingerprint is taken when its request
 is sent: if the model, effort, voice or key changes before the answer arrives, a pass
-marks nothing as tested. Schema version 10 initializes this history
-transactionally. Invalid settings abort the upgrade and reach the existing storage
-recovery screen with the original data retained.
+marks nothing as tested. A write that changes a list in these settings, such as the
+presets, the favourites or the failed tests, works the list out from the row as
+stored, in the transaction that writes it, so it cannot undo a change saved
+meanwhile, such as a running story recording a structured-output downgrade.
+Schema version 10 initializes this history transactionally. Invalid settings abort
+the upgrade and reach the existing storage recovery screen with the original data
+retained.
 
 Every AI result is stored under a **configuration fingerprint**: a stable hash of everything that
 could change the answer. If the fingerprint matches, the stored result is used and no request is

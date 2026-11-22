@@ -177,7 +177,6 @@ export class TtsStore {
   }
 
   async registerPreset(preset: TtsPreset): Promise<boolean> {
-    const current = this.settingsSignal();
     const registered: TtsPreset = {
       ...preset,
       speechStyle: preset.speechStyle,
@@ -186,22 +185,23 @@ export class TtsStore {
       lastTestFingerprint: preset.lastTestFingerprint ?? null,
       lastTestedAt: preset.lastTestedAt ?? null,
     };
-    const presets = [...current.presets.filter((item) => item.id !== preset.id), registered];
-    const becomesDefault = current.activePresetId === null && this.isPresetReady(registered);
-    const saved = await this.repository.updateTtsSettings({
-      presets,
-      ...(becomesDefault
-        ? {
-            activePresetId: preset.id,
-            modelId: preset.modelId,
-            voiceId: preset.voiceId,
-            speechStyle: registered.speechStyle,
-            speechPace: registered.speechPace,
-            speechInstructions: registered.speechInstructions ?? 'unsupported',
-            lastTestFingerprint: registered.lastTestFingerprint ?? null,
-            lastTestedAt: registered.lastTestedAt ?? null,
-          }
-        : {}),
+    const saved = await this.repository.updateTtsSettings((current) => {
+      const becomesDefault = current.activePresetId === null && this.isPresetReady(registered);
+      return {
+        presets: [...current.presets.filter((item) => item.id !== preset.id), registered],
+        ...(becomesDefault
+          ? {
+              activePresetId: preset.id,
+              modelId: preset.modelId,
+              voiceId: preset.voiceId,
+              speechStyle: registered.speechStyle,
+              speechPace: registered.speechPace,
+              speechInstructions: registered.speechInstructions ?? 'unsupported',
+              lastTestFingerprint: registered.lastTestFingerprint ?? null,
+              lastTestedAt: registered.lastTestedAt ?? null,
+            }
+          : {}),
+      };
     });
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
@@ -253,11 +253,14 @@ export class TtsStore {
   }
 
   async toggleFavorite(modelId: string): Promise<boolean> {
-    const current = this.settingsSignal().favoriteModelIds ?? [];
-    const favoriteModelIds = current.includes(modelId)
-      ? current.filter((id) => id !== modelId)
-      : [...current, modelId];
-    const saved = await this.repository.updateTtsSettings({ favoriteModelIds });
+    const saved = await this.repository.updateTtsSettings((settings) => {
+      const current = settings.favoriteModelIds ?? [];
+      return {
+        favoriteModelIds: current.includes(modelId)
+          ? current.filter((id) => id !== modelId)
+          : [...current, modelId],
+      };
+    });
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
       return false;
@@ -267,14 +270,11 @@ export class TtsStore {
   }
 
   async removePreset(id: string): Promise<boolean> {
-    const current = this.settingsSignal();
-    const removed = current.presets.find((preset) => preset.id === id);
-    if (removed === undefined) {
+    if (!this.settingsSignal().presets.some((preset) => preset.id === id)) {
       return true;
     }
-    const presets = current.presets.filter((preset) => preset.id !== id);
-    const saved = await this.repository.updateTtsSettings({
-      presets,
+    const saved = await this.repository.updateTtsSettings((current) => ({
+      presets: current.presets.filter((preset) => preset.id !== id),
       ...(current.activePresetId === id
         ? {
             activePresetId: null,
@@ -287,7 +287,7 @@ export class TtsStore {
             lastTestedAt: null,
           }
         : {}),
-    });
+    }));
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
       return false;
@@ -310,33 +310,37 @@ export class TtsStore {
     id: string,
     patch: Partial<Pick<TtsPreset, 'voiceId' | 'speechStyle' | 'speechPace'>>,
   ): Promise<boolean> {
-    const current = this.settingsSignal();
-    const preset = current.presets.find((item) => item.id === id);
-    if (preset === undefined) {
+    if (!this.settingsSignal().presets.some((item) => item.id === id)) {
       return false;
     }
-    const updated = {
-      ...preset,
-      voiceId:
-        patch.voiceId === undefined
-          ? preset.voiceId
-          : resolveTtsVoice(preset.modelId, patch.voiceId),
-      speechStyle: patch.speechStyle ?? preset.speechStyle,
-      speechPace: patch.speechPace ?? preset.speechPace,
-      lastTestFingerprint: null,
-      lastTestedAt: null,
-    };
-    const saved = await this.repository.updateTtsSettings({
-      presets: current.presets.map((item) => (item.id === id ? updated : item)),
-      ...(current.activePresetId === id
-        ? {
-            voiceId: updated.voiceId,
-            speechStyle: updated.speechStyle,
-            speechPace: updated.speechPace,
-            lastTestFingerprint: null,
-            lastTestedAt: null,
-          }
-        : {}),
+    const saved = await this.repository.updateTtsSettings((current) => {
+      const preset = current.presets.find((item) => item.id === id);
+      if (preset === undefined) {
+        return {};
+      }
+      const updated = {
+        ...preset,
+        voiceId:
+          patch.voiceId === undefined
+            ? preset.voiceId
+            : resolveTtsVoice(preset.modelId, patch.voiceId),
+        speechStyle: patch.speechStyle ?? preset.speechStyle,
+        speechPace: patch.speechPace ?? preset.speechPace,
+        lastTestFingerprint: null,
+        lastTestedAt: null,
+      };
+      return {
+        presets: current.presets.map((item) => (item.id === id ? updated : item)),
+        ...(current.activePresetId === id
+          ? {
+              voiceId: updated.voiceId,
+              speechStyle: updated.speechStyle,
+              speechPace: updated.speechPace,
+              lastTestFingerprint: null,
+              lastTestedAt: null,
+            }
+          : {}),
+      };
     });
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
@@ -461,21 +465,19 @@ export class TtsStore {
     // measured for. The fingerprint covers the configuration alone, so storing
     // a finding here cannot make the test that produced it look stale. When
     // the configuration or key changed meanwhile, the pass marks nothing tested.
-    const stillCurrent = this.fingerprintFor(this.settingsSignal()) === fingerprint;
-    const saved = await this.repository.updateTtsSettings({
-      failedTests: (this.settingsSignal().failedTests ?? []).filter(
-        (test) => test.fingerprint !== fingerprint,
-      ),
-      ...(stillCurrent
+    const testedAt = this.clock.now();
+    const saved = await this.repository.updateTtsSettings((current) => ({
+      failedTests: (current.failedTests ?? []).filter((test) => test.fingerprint !== fingerprint),
+      ...(this.fingerprintFor(current) === fingerprint
         ? {
             speechInstructions: result.value.speechInstructionsApplied
               ? ('supported' as const)
               : ('unsupported' as const),
             lastTestFingerprint: fingerprint,
-            lastTestedAt: this.clock.now(),
+            lastTestedAt: testedAt,
           }
         : {}),
-    });
+    }));
     if (saved.ok) {
       this.settingsSignal.set(saved.value);
       this.storageFailureSignal.set(null);
@@ -521,52 +523,56 @@ export class TtsStore {
       return;
     }
 
-    const latest = this.settingsSignal().presets.find((item) => item.id === id);
-    if (latest === undefined || this.fingerprintFor(latest) !== fingerprint) {
-      // The preset or the key changed while the request was open. The pass
-      // clears this configuration's failure and marks nothing tested.
-      const saved = await this.repository.updateTtsSettings({
-        failedTests: (this.settingsSignal().failedTests ?? []).filter(
-          (test) => test.fingerprint !== fingerprint,
-        ),
-      });
-      if (saved.ok) this.settingsSignal.set(saved.value);
-      else this.storageFailureSignal.set(saved.error);
-      return;
-    }
     const speechInstructions = result.value.speechInstructionsApplied ? 'supported' : 'unsupported';
-    const testedPreset = { ...preset, speechInstructions } as const;
     const testedAt = this.clock.now();
-    const presets = this.settingsSignal().presets.map((item) =>
-      item.id === id
-        ? { ...testedPreset, lastTestFingerprint: fingerprint, lastTestedAt: testedAt }
-        : item,
-    );
-    const isDefault = this.settingsSignal().activePresetId === id;
-    const becomesDefault = this.settingsSignal().activePresetId === null;
-    const saved = await this.repository.updateTtsSettings({
-      failedTests: (this.settingsSignal().failedTests ?? []).filter(
+    // Set inside the write, which sees the row as stored.
+    let marked = false as boolean;
+    const saved = await this.repository.updateTtsSettings((current) => {
+      const failedTests = (current.failedTests ?? []).filter(
         (test) => test.fingerprint !== fingerprint,
-      ),
-      presets,
-      ...(isDefault || becomesDefault
-        ? {
-            activePresetId: id,
-            modelId: preset.modelId,
-            voiceId: preset.voiceId,
-            speechStyle: preset.speechStyle,
-            speechPace: preset.speechPace,
-            speechInstructions,
-            lastTestFingerprint: fingerprint,
-            lastTestedAt: testedAt,
-          }
-        : {}),
+      );
+      const latest = current.presets.find((item) => item.id === id);
+      if (latest === undefined || this.fingerprintFor(latest) !== fingerprint) {
+        // The preset or the key changed while the request was open. The pass
+        // clears this configuration's failure and marks nothing tested.
+        return { failedTests };
+      }
+      marked = true;
+      const isDefault = current.activePresetId === id;
+      const becomesDefault = current.activePresetId === null;
+      return {
+        failedTests,
+        presets: current.presets.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                speechInstructions,
+                lastTestFingerprint: fingerprint,
+                lastTestedAt: testedAt,
+              }
+            : item,
+        ),
+        ...(isDefault || becomesDefault
+          ? {
+              activePresetId: id,
+              modelId: latest.modelId,
+              voiceId: latest.voiceId,
+              speechStyle: latest.speechStyle,
+              speechPace: latest.speechPace,
+              speechInstructions,
+              lastTestFingerprint: fingerprint,
+              lastTestedAt: testedAt,
+            }
+          : {}),
+      };
     });
     if (saved.ok) {
       this.settingsSignal.set(saved.value);
-      this.instructionsAppliedSignal.set(result.value.speechInstructionsApplied);
-      this.sampleSignal.set(result.value.sample);
-      this.storageFailureSignal.set(null);
+      if (marked) {
+        this.instructionsAppliedSignal.set(result.value.speechInstructionsApplied);
+        this.sampleSignal.set(result.value.sample);
+        this.storageFailureSignal.set(null);
+      }
     } else {
       this.storageFailureSignal.set(saved.error);
     }
@@ -581,14 +587,10 @@ export class TtsStore {
   private async persistTestFailure(error: AiError, fingerprint: string): Promise<void> {
     this.failureFingerprint.set(fingerprint);
     if (error.code === 'cancelled') return;
-    const saved = await this.repository.updateTtsSettings({
-      failedTests: recordConfigurationFailure(
-        this.settingsSignal().failedTests,
-        fingerprint,
-        this.clock.now(),
-        error,
-      ),
-    });
+    const failedAt = this.clock.now();
+    const saved = await this.repository.updateTtsSettings((current) => ({
+      failedTests: recordConfigurationFailure(current.failedTests, fingerprint, failedAt, error),
+    }));
     if (saved.ok) this.settingsSignal.set(saved.value);
     else this.storageFailureSignal.set(saved.error);
   }

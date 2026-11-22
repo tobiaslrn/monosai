@@ -481,5 +481,38 @@ describe('TextModelStore', () => {
 
       await expect(store.save()).resolves.toBe(true);
     });
+
+    it('keeps a structured-output downgrade that lands while another preset is edited', async () => {
+      const store = await ready();
+      await store.registerPreset({
+        id: 'first',
+        name: 'First',
+        modelId: MODEL,
+        reasoningEffort: null,
+      });
+      await store.registerPreset({
+        id: 'second',
+        name: 'Second',
+        modelId: 'vendor/second',
+        reasoningEffort: null,
+      });
+      await store.testPreset('first');
+      expect(store.presets().find((preset) => preset.id === 'first')?.structuredOutput).toBe(
+        'native-schema',
+      );
+
+      // A running story downgrades the first preset while the learner edits the second.
+      await Promise.all([
+        store.recordStructuredOutputDowngrade(MODEL),
+        store.updatePreset('second', { reasoningEffort: 'high' }),
+      ]);
+
+      const stored = settings.textModel.presets;
+      expect(stored.find((preset) => preset.id === 'second')?.reasoningEffort).toBe('high');
+      expect(stored.find((preset) => preset.id === 'first')?.structuredOutput).toBe(
+        'json-contract',
+      );
+      expect(store.presets()).toEqual(stored);
+    });
   });
 });

@@ -36,7 +36,7 @@ import {
 } from '../app/domain/ai/translation-request';
 import type { CredentialStatus } from '../app/domain/settings/credential';
 import type { CredentialRepository } from '../app/domain/settings/credential-repository';
-import type { SettingsRepository } from '../app/domain/settings/settings-repository';
+import type { SettingsPatch, SettingsRepository } from '../app/domain/settings/settings-repository';
 import {
   DEFAULT_EXCEPTION_POLICY,
   DEFAULT_READER_PREFERENCES,
@@ -492,12 +492,15 @@ export class StubAiSettingsRepository implements AiSettingsSubset {
   }
 
   updateTextModelSettings(
-    patch: Partial<TextModelSettings>,
+    patch: SettingsPatch<TextModelSettings>,
   ): Promise<Result<TextModelSettings, StorageError>> {
     if (this.failWrites !== null) {
       return Promise.resolve(err(this.failWrites));
     }
-    this.textModel = { ...this.textModel, ...patch };
+    this.textModel = {
+      ...this.textModel,
+      ...(typeof patch === 'function' ? patch(this.textModel) : patch),
+    };
     return Promise.resolve(ok(this.textModel));
   }
 
@@ -505,11 +508,11 @@ export class StubAiSettingsRepository implements AiSettingsSubset {
     return Promise.resolve(this.failReads === null ? ok(this.tts) : err(this.failReads));
   }
 
-  updateTtsSettings(patch: Partial<TtsSettings>): Promise<Result<TtsSettings, StorageError>> {
+  updateTtsSettings(patch: SettingsPatch<TtsSettings>): Promise<Result<TtsSettings, StorageError>> {
     if (this.failWrites !== null) {
       return Promise.resolve(err(this.failWrites));
     }
-    this.tts = { ...this.tts, ...patch };
+    this.tts = { ...this.tts, ...(typeof patch === 'function' ? patch(this.tts) : patch) };
     return Promise.resolve(ok(this.tts));
   }
 

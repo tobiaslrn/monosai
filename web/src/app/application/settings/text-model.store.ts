@@ -148,27 +148,28 @@ export class TextModelStore {
   }
 
   async registerPreset(preset: TextModelPreset): Promise<boolean> {
-    const current = this.settingsSignal();
     const registered: TextModelPreset = {
       ...preset,
       lastTestFingerprint: preset.lastTestFingerprint ?? null,
       lastTestedAt: preset.lastTestedAt ?? null,
       structuredOutput: preset.structuredOutput ?? null,
     };
-    const presets = [...current.presets.filter((item) => item.id !== preset.id), registered];
-    const becomesDefault = current.activePresetId === null && this.isPresetReady(registered);
-    const saved = await this.repository.updateTextModelSettings({
-      presets,
-      ...(becomesDefault
-        ? {
-            activePresetId: preset.id,
-            modelId: preset.modelId,
-            reasoningEffort: preset.reasoningEffort,
-            structuredOutput: registered.structuredOutput ?? null,
-            lastTestFingerprint: registered.lastTestFingerprint ?? null,
-            lastTestedAt: registered.lastTestedAt ?? null,
-          }
-        : {}),
+    const saved = await this.repository.updateTextModelSettings((current) => {
+      const becomesDefault =
+        current.activePresetId === null && this.isPresetReady(registered, current.failedTests);
+      return {
+        presets: [...current.presets.filter((item) => item.id !== preset.id), registered],
+        ...(becomesDefault
+          ? {
+              activePresetId: preset.id,
+              modelId: preset.modelId,
+              reasoningEffort: preset.reasoningEffort,
+              structuredOutput: registered.structuredOutput ?? null,
+              lastTestFingerprint: registered.lastTestFingerprint ?? null,
+              lastTestedAt: registered.lastTestedAt ?? null,
+            }
+          : {}),
+      };
     });
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
@@ -270,7 +271,6 @@ export class TextModelStore {
       readonly reasoningEffort: string | null;
     } | null,
   ): Promise<boolean> {
-    const current = this.settingsSignal();
     const routeKey = task === 'grammar' ? 'grammarPresetId' : 'translationPresetId';
     if (model === null) {
       const saved = await this.repository.updateTextModelSettings({ [routeKey]: null });
@@ -282,21 +282,23 @@ export class TextModelStore {
       return true;
     }
     const id = `task-${task}`;
-    const prior = current.presets.find((preset) => preset.id === id);
-    const unchanged = prior?.modelId === model.modelId;
-    const preset: TextModelPreset = {
-      id,
-      name: model.name,
-      modelId: model.modelId,
-      reasoningEffort: model.reasoningEffort,
-      tokenBudget: unchanged ? (prior.tokenBudget ?? null) : null,
-      lastTestFingerprint: unchanged ? (prior.lastTestFingerprint ?? null) : null,
-      lastTestedAt: unchanged ? (prior.lastTestedAt ?? null) : null,
-      structuredOutput: unchanged ? (prior.structuredOutput ?? null) : null,
-    };
-    const saved = await this.repository.updateTextModelSettings({
-      presets: [...current.presets.filter((item) => item.id !== id), preset],
-      [routeKey]: id,
+    const saved = await this.repository.updateTextModelSettings((current) => {
+      const prior = current.presets.find((preset) => preset.id === id);
+      const unchanged = prior?.modelId === model.modelId;
+      const preset: TextModelPreset = {
+        id,
+        name: model.name,
+        modelId: model.modelId,
+        reasoningEffort: model.reasoningEffort,
+        tokenBudget: unchanged ? (prior.tokenBudget ?? null) : null,
+        lastTestFingerprint: unchanged ? (prior.lastTestFingerprint ?? null) : null,
+        lastTestedAt: unchanged ? (prior.lastTestedAt ?? null) : null,
+        structuredOutput: unchanged ? (prior.structuredOutput ?? null) : null,
+      };
+      return {
+        presets: [...current.presets.filter((item) => item.id !== id), preset],
+        [routeKey]: id,
+      };
     });
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
@@ -323,12 +325,11 @@ export class TextModelStore {
     if (preset === null || !isValidStoryTokenBudget(tokenBudget)) {
       return false;
     }
-    const current = this.settingsSignal();
-    const saved = await this.repository.updateTextModelSettings({
+    const saved = await this.repository.updateTextModelSettings((current) => ({
       presets: current.presets.map((item) =>
         item.id === preset.id ? { ...item, tokenBudget } : item,
       ),
-    });
+    }));
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
       return false;
@@ -368,11 +369,14 @@ export class TextModelStore {
   }
 
   async toggleFavorite(modelId: string): Promise<boolean> {
-    const current = this.settingsSignal().favoriteModelIds ?? [];
-    const favoriteModelIds = current.includes(modelId)
-      ? current.filter((id) => id !== modelId)
-      : [...current, modelId];
-    const saved = await this.repository.updateTextModelSettings({ favoriteModelIds });
+    const saved = await this.repository.updateTextModelSettings((settings) => {
+      const current = settings.favoriteModelIds ?? [];
+      return {
+        favoriteModelIds: current.includes(modelId)
+          ? current.filter((id) => id !== modelId)
+          : [...current, modelId],
+      };
+    });
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
       return false;
@@ -385,29 +389,30 @@ export class TextModelStore {
     id: string,
     patch: Pick<TextModelPreset, 'reasoningEffort'>,
   ): Promise<boolean> {
-    const current = this.settingsSignal();
-    const preset = current.presets.find((item) => item.id === id);
-    if (preset === undefined) {
+    if (!this.settingsSignal().presets.some((item) => item.id === id)) {
       return false;
     }
-    const updated = {
-      ...preset,
-      ...patch,
-      lastTestFingerprint: null,
-      lastTestedAt: null,
-      structuredOutput: null,
-    };
-    const saved = await this.repository.updateTextModelSettings({
-      presets: current.presets.map((item) => (item.id === id ? updated : item)),
+    const saved = await this.repository.updateTextModelSettings((current) => ({
+      presets: current.presets.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              ...patch,
+              lastTestFingerprint: null,
+              lastTestedAt: null,
+              structuredOutput: null,
+            }
+          : item,
+      ),
       ...(current.activePresetId === id
         ? {
-            reasoningEffort: updated.reasoningEffort,
+            reasoningEffort: patch.reasoningEffort,
             lastTestFingerprint: null,
             lastTestedAt: null,
             structuredOutput: null,
           }
         : {}),
-    });
+    }));
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
       return false;
@@ -417,14 +422,11 @@ export class TextModelStore {
   }
 
   async removePreset(id: string): Promise<boolean> {
-    const current = this.settingsSignal();
-    const removed = current.presets.find((preset) => preset.id === id);
-    if (removed === undefined) {
+    if (!this.settingsSignal().presets.some((preset) => preset.id === id)) {
       return true;
     }
-    const presets = current.presets.filter((preset) => preset.id !== id);
-    const saved = await this.repository.updateTextModelSettings({
-      presets,
+    const saved = await this.repository.updateTextModelSettings((current) => ({
+      presets: current.presets.filter((preset) => preset.id !== id),
       ...(current.activePresetId === id
         ? {
             activePresetId: null,
@@ -437,7 +439,7 @@ export class TextModelStore {
         : {}),
       ...(current.grammarPresetId === id ? { grammarPresetId: null } : {}),
       ...(current.translationPresetId === id ? { translationPresetId: null } : {}),
-    });
+    }));
     if (!saved.ok) {
       this.storageFailureSignal.set(saved.error);
       return false;
@@ -537,19 +539,17 @@ export class TextModelStore {
       return;
     }
 
-    const stillCurrent = this.fingerprintFor(this.settingsSignal().modelId) === fingerprint;
-    const saved = await this.repository.updateTextModelSettings({
-      failedTests: (this.settingsSignal().failedTests ?? []).filter(
-        (test) => test.fingerprint !== fingerprint,
-      ),
-      ...(stillCurrent
+    const testedAt = this.clock.now();
+    const saved = await this.repository.updateTextModelSettings((current) => ({
+      failedTests: (current.failedTests ?? []).filter((test) => test.fingerprint !== fingerprint),
+      ...(this.fingerprintForConfig(current.modelId, current.reasoningEffort) === fingerprint
         ? {
             lastTestFingerprint: fingerprint,
-            lastTestedAt: this.clock.now(),
+            lastTestedAt: testedAt,
             structuredOutput: result.value.structuredOutput,
           }
         : {}),
-    });
+    }));
     if (saved.ok) {
       this.settingsSignal.set(saved.value);
       this.storageFailureSignal.set(null);
@@ -584,50 +584,45 @@ export class TextModelStore {
       await this.persistTestFailure(result.error, fingerprint);
       return;
     }
-    const latest = this.settingsSignal().presets.find((item) => item.id === id);
-    if (
-      latest === undefined ||
-      this.fingerprintForConfig(latest.modelId, latest.reasoningEffort) !== fingerprint
-    ) {
-      // The preset, its effort or the key changed while the request was open.
-      // The pass clears this configuration's failure and marks nothing tested.
-      const saved = await this.repository.updateTextModelSettings({
-        failedTests: (this.settingsSignal().failedTests ?? []).filter(
-          (test) => test.fingerprint !== fingerprint,
-        ),
-      });
-      if (saved.ok) this.settingsSignal.set(saved.value);
-      else this.storageFailureSignal.set(saved.error);
-      return;
-    }
     const testedAt = this.clock.now();
-    const presets = this.settingsSignal().presets.map((item) =>
-      item.id === id
-        ? {
-            ...item,
-            lastTestFingerprint: fingerprint,
-            lastTestedAt: testedAt,
-            structuredOutput: result.value.structuredOutput,
-          }
-        : item,
-    );
-    const isDefault = this.settingsSignal().activePresetId === id;
-    const becomesDefault = this.settingsSignal().activePresetId === null && !id.startsWith('task-');
-    const saved = await this.repository.updateTextModelSettings({
-      failedTests: (this.settingsSignal().failedTests ?? []).filter(
+    const saved = await this.repository.updateTextModelSettings((current) => {
+      const failedTests = (current.failedTests ?? []).filter(
         (test) => test.fingerprint !== fingerprint,
-      ),
-      presets,
-      ...(isDefault || becomesDefault
-        ? {
-            activePresetId: id,
-            modelId: preset.modelId,
-            reasoningEffort: preset.reasoningEffort,
-            lastTestFingerprint: fingerprint,
-            lastTestedAt: testedAt,
-            structuredOutput: result.value.structuredOutput,
-          }
-        : {}),
+      );
+      const latest = current.presets.find((item) => item.id === id);
+      if (
+        latest === undefined ||
+        this.fingerprintForConfig(latest.modelId, latest.reasoningEffort) !== fingerprint
+      ) {
+        // The preset, its effort or the key changed while the request was open.
+        // The pass clears this configuration's failure and marks nothing tested.
+        return { failedTests };
+      }
+      const isDefault = current.activePresetId === id;
+      const becomesDefault = current.activePresetId === null && !id.startsWith('task-');
+      return {
+        failedTests,
+        presets: current.presets.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                lastTestFingerprint: fingerprint,
+                lastTestedAt: testedAt,
+                structuredOutput: result.value.structuredOutput,
+              }
+            : item,
+        ),
+        ...(isDefault || becomesDefault
+          ? {
+              activePresetId: id,
+              modelId: latest.modelId,
+              reasoningEffort: latest.reasoningEffort,
+              lastTestFingerprint: fingerprint,
+              lastTestedAt: testedAt,
+              structuredOutput: result.value.structuredOutput,
+            }
+          : {}),
+      };
     });
     if (saved.ok) {
       this.settingsSignal.set(saved.value);
@@ -714,22 +709,24 @@ export class TextModelStore {
    * verdict of `native-schema` is only ever produced by a test that asked.
    */
   async recordStructuredOutputDowngrade(modelId: string): Promise<void> {
-    const settings = this.settingsSignal();
-    const downgradesActive =
-      settings.modelId === modelId && settings.structuredOutput === 'native-schema';
-    const presets = settings.presets.map((preset) =>
-      preset.modelId === modelId && preset.structuredOutput === 'native-schema'
-        ? { ...preset, structuredOutput: 'json-contract' as const }
-        : preset,
-    );
-    const downgradesPreset = presets.some((preset, index) => preset !== settings.presets[index]);
-    if (!downgradesActive && !downgradesPreset) {
+    const downgrade = (settings: TextModelSettings): Partial<TextModelSettings> => {
+      const downgradesActive =
+        settings.modelId === modelId && settings.structuredOutput === 'native-schema';
+      const presets = settings.presets.map((preset) =>
+        preset.modelId === modelId && preset.structuredOutput === 'native-schema'
+          ? { ...preset, structuredOutput: 'json-contract' as const }
+          : preset,
+      );
+      const downgradesPreset = presets.some((preset, index) => preset !== settings.presets[index]);
+      return {
+        ...(downgradesPreset ? { presets } : {}),
+        ...(downgradesActive ? { structuredOutput: 'json-contract' as const } : {}),
+      };
+    };
+    if (Object.keys(downgrade(this.settingsSignal())).length === 0) {
       return;
     }
-    const saved = await this.repository.updateTextModelSettings({
-      ...(downgradesPreset ? { presets } : {}),
-      ...(downgradesActive ? { structuredOutput: 'json-contract' as const } : {}),
-    });
+    const saved = await this.repository.updateTextModelSettings(downgrade);
     if (saved.ok) {
       this.settingsSignal.set(saved.value);
     }
@@ -738,14 +735,10 @@ export class TextModelStore {
   private async persistTestFailure(error: AiError, fingerprint: string): Promise<void> {
     this.failureFingerprint.set(fingerprint);
     if (error.code === 'cancelled') return;
-    const saved = await this.repository.updateTextModelSettings({
-      failedTests: recordConfigurationFailure(
-        this.settingsSignal().failedTests,
-        fingerprint,
-        this.clock.now(),
-        error,
-      ),
-    });
+    const failedAt = this.clock.now();
+    const saved = await this.repository.updateTextModelSettings((current) => ({
+      failedTests: recordConfigurationFailure(current.failedTests, fingerprint, failedAt, error),
+    }));
     if (saved.ok) this.settingsSignal.set(saved.value);
     else this.storageFailureSignal.set(saved.error);
   }
@@ -767,9 +760,12 @@ export class TextModelStore {
     });
   }
 
-  private isPresetReady(preset: TextModelPreset): boolean {
+  private isPresetReady(
+    preset: TextModelPreset,
+    failedTests = this.settingsSignal().failedTests,
+  ): boolean {
     return (
-      !(this.settingsSignal().failedTests ?? []).some(
+      !(failedTests ?? []).some(
         (test) =>
           test.fingerprint === this.fingerprintForConfig(preset.modelId, preset.reasoningEffort),
       ) &&
