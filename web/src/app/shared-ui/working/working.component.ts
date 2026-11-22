@@ -18,8 +18,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2>
-      <span class="status-title">{{ heading() }}</span
-      ><span class="loading-dots" aria-hidden="true"
+      <span class="status-title">{{ heading() }}</span><span class="loading-dots" aria-hidden="true"
         ><span class="loading-dots__reveal">...</span></span
       >
     </h2>

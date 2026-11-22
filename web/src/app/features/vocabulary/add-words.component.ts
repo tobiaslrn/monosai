@@ -99,8 +99,9 @@ type AddMode = 'closed' | 'choices' | 'anki';
               <p class="mn-hint">
                 {{ paragraph.before }}
                 @if (paragraph.link; as link) {
-                  <a [href]="link.href" target="_blank" rel="noopener noreferrer">{{ link.text }}</a
-                  >{{ paragraph.after }}
+                  <a [href]="link.href" target="_blank" rel="noopener noreferrer">{{
+                    link.text
+                  }}</a>{{ paragraph.after }}
                 }
               </p>
             }
