@@ -65,6 +65,7 @@ async function testSqlModule(): Promise<{
   const wasm = readFileSync(WASM_PATH);
   const config = {
     wasmBinary: wasm.buffer.slice(wasm.byteOffset, wasm.byteOffset + wasm.byteLength),
+    useOldExtensionFunctions: false,
   };
   modulePromise ??= initSqlJs(config) as unknown as Promise<{
     Database: new (bytes: Uint8Array) => SqlJsDatabaseLike;

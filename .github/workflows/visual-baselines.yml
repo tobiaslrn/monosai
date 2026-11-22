@@ -21,7 +21,7 @@ jobs:
     # The same image CI's visual job compares in; `scripts/visual.mjs` and its
     # test hold both workflows to the version the lockfile pins.
     container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
       options: --ipc=host
     steps:
       - uses: actions/checkout@v7
