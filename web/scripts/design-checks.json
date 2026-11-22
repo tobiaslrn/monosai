@@ -97,8 +97,8 @@
   },
   {
     "rule": "R35",
-    "says": "Icons have three sizes, by role: inline, control and feature.",
-    "check": "design-rules.mjs: an mn-icon size is one of ICON_SIZES",
+    "says": "Icons take one of three role sizes: inline (beside small text), control (in a button or row, the default) and feature (the lead mark of an empty or error state).",
+    "check": "TypeScript: mn-icon `size` accepts only the three role names; design-rules.mjs: no numeric or legacy size in a template, no glyph sized by a stylesheet, and the icon component declares the same three sizes",
     "status": "enforced"
   },
   {

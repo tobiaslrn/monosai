@@ -16,7 +16,7 @@ lists those checks and the retired rule numbers. Why the app looks this way: [RE
 - **Overlay**: anything floating over a page; one of the five kinds in R23.
 - **Sheet**: a task dialog or picker as it appears on a phone, docked to the bottom edge.
 - **Action** (sage): the tone of "press this". **Highlight** (lavender): reader marks only.
-- **Tone**: action, success, warning, error, setup, info (R45).
+- **Tone**: action, success, warning, danger, setup, info (R45). One shared `Tone` type.
 
 ## 1. Authority
 
@@ -130,7 +130,7 @@ Named steps (Small, Medium, Large) are segmented, not a slider.
 - **R43.** Busy is `aria-busy`: the control keeps its place, label and size, and is never disabled
   or swapped. A result's line is reserved when the work starts.
 - **R45.** Each tone has one meaning app-wide: action (press this), success (it worked), warning
-  (it may be wrong), error (it failed), setup (set something up first), info (worth knowing).
+  (it may be wrong), danger (it failed), setup (set something up first), info (worth knowing).
   Highlight is not a tone: it marks reading, never status or something pressable. Never use a
   tone for decoration.
 - **R57.** A result appears where it was caused. The only app-wide surface is a toast, for work

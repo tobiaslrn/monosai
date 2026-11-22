@@ -27,7 +27,7 @@ not a form to complete.
 ## Colour, motion and voice
 
 - **Warm paper, sage for action, lavender for highlight.** The warmth is identity, not decoration.
-  Sage means "press this" and nothing else. Success, warning, error, setup and info each have one
+  Sage means "press this" and nothing else. Success, warning, danger, setup and info each have one
   meaning. Lavender only marks the open word or sentence in the reader.
 - **The reading surface is strictest.** It carries the two reading markers (drawn as squiggles as
   well as colours, so colour never carries meaning alone), the tint on the sentence read aloud and

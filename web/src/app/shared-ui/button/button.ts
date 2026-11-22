@@ -1,4 +1,5 @@
 import { Directive, ElementRef, HostAttributeToken, inject, input } from '@angular/core';
+import type { Tone } from '../tone';
 
 export type ButtonVariant = 'default' | 'primary' | 'ghost' | 'danger' | 'icon' | 'icon-primary';
 
@@ -45,7 +46,7 @@ export class ButtonDirective {
    * The danger tone of the ghost emphasis: a footer action that deletes
    * something and leads to a confirmation. Text only, like every ghost.
    */
-  readonly tone = input<'danger' | null>(null);
+  readonly tone = input<Extract<Tone, 'danger'> | null>(null);
 
   constructor() {
     const written = inject(new HostAttributeToken('mnButton'), { optional: true });

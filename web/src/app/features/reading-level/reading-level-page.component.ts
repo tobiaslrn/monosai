@@ -106,7 +106,7 @@ const FRAGMENT_TARGETS: readonly string[] = ['forms'];
         }
 
         @if (profile.lastError()) {
-          <p class="mn-notice mn-notice--error" role="alert">
+          <p class="mn-notice mn-notice--danger" role="alert">
             Could not save. Your level is unchanged.
           </p>
         }

@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, input, model, ViewEncapsulation } from '@angular/core';
 import { IconComponent } from '../icon/icon.component';
+import type { Tone } from '../tone';
 
-export type DisclosureTone = 'default' | 'quiet' | 'danger';
+export type DisclosureTone = 'default' | 'quiet' | Extract<Tone, 'danger'>;
 
 /**
  * A row that opens to show what it holds: the one disclosure in a card of rows.

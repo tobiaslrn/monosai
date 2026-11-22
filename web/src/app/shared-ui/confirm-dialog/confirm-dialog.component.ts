@@ -3,6 +3,7 @@ import type { Dialog } from '@angular/cdk/dialog';
 import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { ButtonDirective } from '../button/button';
 import { DialogComponent, openDialog, dialogResult } from '../dialog/dialog';
+import type { Tone } from '../tone';
 
 export interface ConfirmDialogData {
   readonly title: string;
@@ -12,7 +13,7 @@ export interface ConfirmDialogData {
   readonly footnote?: string;
   readonly confirmLabel: string;
   readonly cancelLabel: string;
-  readonly tone: 'danger' | 'neutral';
+  readonly tone: Extract<Tone, 'danger'> | 'neutral';
 }
 
 /**

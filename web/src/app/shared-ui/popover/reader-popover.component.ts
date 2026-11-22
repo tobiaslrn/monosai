@@ -61,7 +61,7 @@ import { SheetHandleComponent } from '../sheet/sheet-handle.component';
           aria-label="Close"
           (click)="closed.emit()"
         >
-          <mn-icon name="close" [size]="16" />
+          <mn-icon name="close" size="inline" />
         </button>
       }
       <div class="body">

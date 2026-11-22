@@ -10,7 +10,7 @@ import { describeEnrichmentFailure, enrichmentNeedsSettings } from './enrichment
   imports: [RouterLink],
   template: `
     @if (message(); as message) {
-      <div class="mn-notice mn-notice--error" role="alert">
+      <div class="mn-notice mn-notice--danger" role="alert">
         <div>
           <p>{{ message }}</p>
           <p>Your story is unchanged.</p>

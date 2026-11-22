@@ -61,7 +61,7 @@ import { ClusterComponent, StackComponent } from '../../shared-ui/layout/layout'
         [disabled]="disabled()"
         (click)="surprise()"
       >
-        <mn-icon name="random" [size]="18" />
+        <mn-icon name="random" [legacySize]="18" />
         <span>Surprise me</span>
       </button>
 
@@ -109,7 +109,7 @@ import { ClusterComponent, StackComponent } from '../../shared-ui/layout/layout'
                 [disabled]="disabled()"
                 (click)="toggleCustom(axis)"
               >
-                <mn-icon name="add" [size]="16" />
+                <mn-icon name="add" size="inline" />
                 <span>Custom</span>
               </button>
             </mn-chip-group>

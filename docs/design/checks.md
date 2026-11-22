@@ -29,7 +29,7 @@ says the fix.
 | --- | --- | --- |
 | R6 | The design checks run in npm test, and their exemption lists only shrink. | design-rules.mjs: no eslint-disable or stylelint-disable comment in features or core, exemptions only shrink, every cited rule is listed here; design-checks-doc.mjs --check: this page is current |
 | R15 | A settings row never holds a button, a field, a pill or a boxed select; the row is the control. | design lint: no button, mnButton, input, textarea, select, mn-field, mn-search-field, mn-secret-field, mn-range-field or mn-status-pill inside mn-settings-row |
-| R35 | Icons have three sizes, by role: inline, control and feature. | design-rules.mjs: an mn-icon size is one of ICON_SIZES |
+| R35 | Icons take one of three role sizes: inline (beside small text), control (in a button or row, the default) and feature (the lead mark of an empty or error state). | TypeScript: mn-icon `size` accepts only the three role names; design-rules.mjs: no numeric or legacy size in a template, no glyph sized by a stylesheet, and the icon component declares the same three sizes |
 | R38 | Radii are roles, and a shape uses its role's token. | stylelint: border-radius takes a token |
 | R39 | No literal colour is written outside _tokens.scss; sizes, radii, shadows and durations are tokens or belong to the one primitive that owns them. | design-rules.mjs: no colour literal outside _tokens.scss; stylelint: colours, backgrounds, borders and shadows take a token, and no hex colour in a component |
 | R40 | A press is a colour change and nothing else. | design-rules.mjs: no scale in a :active rule or the press mixin |

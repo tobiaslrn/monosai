@@ -17,8 +17,10 @@ import { checkComposition, only } from './composition-freeze.mjs';
 import { checkPage, readChecks } from './design-checks-doc.mjs';
 import { lintDesign } from './design-lint.mjs';
 import {
+  ICON_COMPONENT,
   RULEBOOK,
   checkCitations,
+  checkIconSizes,
   checkLineBudgets,
   checkRulebook,
   compare,
@@ -91,6 +93,7 @@ export async function runDesignCheck(paths = null) {
     timed('rulebook', async () => [
       ...(await checkRulebook(repoRoot)),
       ...(await checkLineBudgets(repoRoot)),
+      ...checkIconSizes(await readFile(join(webRoot, ICON_COMPONENT), 'utf8')),
       ...(await citations()),
     ]),
     timed('checks page', () => checkPage(webRoot)),
