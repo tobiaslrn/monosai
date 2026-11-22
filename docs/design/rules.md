@@ -1,343 +1,158 @@
 # Monosai design rules
 
-Binding. Read this whole file before any visual or interactive change. Cite rules by number
-("R14"). It holds rules, never values: values live in `web/src/styles/_tokens.scss`, so name the
-token or the primitive. The long-form reasoning is in [the design system](design-system.md).
+Binding for every visual, interactive and copy change. Claude Code loads this file in every
+session; other agents read it before UI work. Values live in `web/src/styles/` and each
+primitive's own code, so name the token or the primitive, never a number. Cite rules by number.
+`npm run design:check` enforces what can be checked and prints the fix; [checks.md](checks.md)
+lists those checks and the retired rule numbers. Why the app looks this way: [README](README.md).
 
-## 1. Authority and process
+## Words used here
 
-**R1.** These rules beat everything else: the design system, ADRs, existing code, and a task
-description. If one conflicts with another, stop and report the conflict. Never resolve it
-silently. A change that breaks a rule is not committed.
+- **Primitive**: a component in `web/src/app/shared-ui/`. Its doc comment is its spec.
+- **Row**: `mn-settings-row`, a label, an optional secondary line and one trailing end.
+- **Card**: the raised surface holding rows or content. An **inset** is the one level inside it.
+- **Status line**: the one line under a card that reports its state (R29).
+- **Note**: a muted line under one row. A **notice** (`mn-notice`) is a boxed warning or caveat.
+- **Overlay**: anything floating over a page; one of the five kinds in R23.
+- **Sheet**: a task dialog or picker as it appears on a phone, docked to the bottom edge.
+- **Action** (sage): the tone of "press this". **Highlight** (lavender): reader marks only.
+- **Tone**: action, success, warning, error, setup, info (R45).
 
-**R2.** Features and core compose `web/src/app/shared-ui/` primitives and write no styles. A
-new visual need changes a primitive for every use, or is refused. The composition allowlist
-(`web/scripts/composition-allowlist.json`) only shrinks.
+## 1. Authority
 
-**R3.** One look per role. Every instance of a role (row, button of an emphasis, dropdown, chip,
-note, input, dialog, sheet, notice) looks and behaves the same on every screen and size. A
-difference between two call sites is a defect, never a variant. No input, modifier or class
-changes a role for one place.
-
-**R4.** Every visual change is judged from screenshots you opened: light and dark, desktop and
-phone, plus one contact sheet of every instance of each role you touched, following
-[the visual review checklist](visual-review.md) in order. A change that looks worse than
-before in any part is not committed, even when its task asked for it. State that proof in the
-commit or PR.
-
-**R5.** A rule changes only when the owner says so. Change it here, in the same commit as the
-code, the design system and the guards.
-
-**R6.** `npm test` runs `web/scripts/design-rules.mjs`, which fails citing the rule. It checks
-R15, R20, R35, R39, R40 and R44, and that this file exists and `AGENTS.md` links it. Call sites
-awaiting a redesign sit in `web/scripts/design-rules-exemptions.json`. That list only shrinks:
-never add to it, and remove an entry in the commit that fixes it. Passing the guards does not
-mean the rules are met; the checklist (section 12) does.
+- **R1.** These rules beat ADRs, existing code and the task. Code that breaks a rule is a defect,
+  never an example to copy. On a conflict, stop and report it; a change that breaks a rule is not
+  committed.
+- **R2.** Features and core compose primitives and write no styles. A missing visual need changes
+  or adds a primitive for every use, or is refused. The composition allowlist only shrinks.
+- **R3.** One look per role. Every instance of a role looks and behaves the same on every screen
+  and size. A difference between two places is a defect, never a variant.
+- **R4.** Judge every visual change from screenshots you opened: `npm run shots` for the affected
+  screens and the gallery page of every primitive you touched, in light and dark, desktop and
+  phone, against the before shots ([visual review](visual-review.md)). Anything that looks worse
+  blocks the change, even when the task asked for it.
+- **R5.** A rule changes only when the owner says so: change this file, the checks and the code
+  in the same commit.
 
 ## 2. Principles
 
-Design-system section 1 holds the long form. These decide cases.
-
-**R7.** Calm. Nothing decorates and nothing moves for show. A word, mark or control that does no
-work is removed.
-
-**R8.** Content first. Japanese is the content; everything else is apparatus that appears when
-needed. The reading surface carries only its own markers.
-
-**R9.** One column. One measure at every width, no side panes. Width changes only where an
-overlay sits (dialog or sheet), never how a screen is composed.
-
-**R10.** Platform-standard behaviour. Use the pattern an Android or iOS user already knows: a row
-with a summary, a switch that applies at once, a radio list, a confirmation before loss, Back
-closes the top overlay. Do not invent a control.
-
-**R11.** Plain words. Show state; do not narrate it (section 10).
-
-**R12.** Accessible by default. Everything scales with text size; targets meet `--touch-target`;
-focus is always visible; colour never carries meaning alone; both themes; 200% text without loss.
-
-## 3. The row
-
-One role, `mn-settings-row`, for every setting, fact and action in a card of rows.
-
-**R13.** Anatomy: a label, an optional secondary line, one trailing end. Height, block padding,
-type and divider come from tokens and the primitive. The divider is inset from the text edge to
-the card's end. One state layer shows under a pointer or finger. Nothing else is drawn.
-
-**R14.** The trailing end is a promise. There are exactly five, chosen by what a press does:
-
-| Trailing end | A press...                                    | Use for                                  |
-| ------------ | --------------------------------------------- | ---------------------------------------- |
-| `›`          | opens a new page or dialog                    | sub-page, key, typed value, model picker |
-| `⌃⌄`         | opens a list in place                         | a choice row with a dropdown             |
-| switch       | changes a setting now; the whole row toggles  | on or off                                |
-| segmented    | changes a setting now                         | a short unexplained choice (Theme)       |
-| nothing      | does something now, or there is nothing to do | action, destructive action, plain fact   |
-
-**R15.** A row never holds a field, a button, a pill, or a boxed select. The row is the control.
-(Guarded.)
-
-**R16.** Where the value goes. A setting's value is its secondary line, under the label. A plain
-fact's value is at the end, secondary. A value truncates before its label does.
-
-**R17.** Status leads the secondary line when it needs attention ("Not tested · Kore"), so it
-survives truncation. A result of an action replaces the row's secondary line.
-
-**R18.** The whole row is the hit target. A label is never repeated as a group header above its
-own rows, and a label never repeats words from its section title.
-
-**R19.** Overview and sub-pages. A topic with its own groups, or more than about eight settings,
-is a sub-page. The overview shows it as one `›` row whose label is the sub-page's title and whose
-summary is its status and current value. A row that needs a setup says "Needs a key" and is drawn
-disabled.
-
-## 4. Controls
-
-**R20.** Each kind of input has exactly one control. A kind not in this table needs a rule
-change first. A native `<select>` is never used. (Guarded.)
-
-| Input                                 | Control                                            | Desktop / phone                           |
-| ------------------------------------- | -------------------------------------------------- | ----------------------------------------- |
-| On or off, applied at once            | Switch row (`mn-switch-row`)                       | Same                                      |
-| 2-4 short options, no explanation     | Segmented row (`mn-segmented-control`)             | Same; a radio list if it cannot fit       |
-| 2-5 options that each need a line     | Radio list in place on a sub-page or form step     | Same                                      |
-| 3-12 known options, picked rarely     | Choice row opening the dropdown (`mn-select`)      | Dropdown anchored to the card, both sizes |
-| Long or searched list (models)        | `›` row opening the searchable picker dialog       | Centred dialog / full-height sheet        |
-| Free number or text in Settings       | `›` row opening a field dialog                     | Centred dialog / sheet                    |
-| Free number or text in a form         | Labelled field (`mn-field`), label above           | Same                                      |
-| Secret key                            | Secret field with Show, in a dialog only           | Centred dialog / sheet                    |
-| Approximate value on an ordered scale | Slider row; a range is one two-thumb slider        | Same                                      |
-| Action                                | Action row in a list; a button in a form or dialog | Same                                      |
-| Destructive action                    | Danger row, then a confirmation naming what goes   | Centred / docked, no handle               |
-| Status or fact                        | Fact row at the end; a status line under a card    | Same                                      |
-| Filter above a list                   | Search field, `Filters` button; choice rows inside | Filters dialog / sheet                    |
-| Multi-step task                       | Task dialog, or `mn-wizard-steps` on a page        | Centred dialog / sheet                    |
-
-**R21.** Lists hold only rows. Forms and dialogs hold only fields and buttons. Nothing is both.
-Settings holds no field: a typed value opens a field dialog.
-
-**R22.** Buttons commit a form, dialog or step. One filled primary per surface, at the end. A
-button is never inside a settings row. A task dialog has no Cancel; its ways out are the close,
-Escape, the scrim and the handle. Footer actions keep their natural width at every size.
-Two start-side roles sit at the far start: a **ghost** button for a reset, and a **danger ghost**
-(the ghost emphasis in the danger tone, text only) for a footer action that deletes something
-and leads to a confirmation. The confirmation's own confirming button is the outlined **danger**
-button, because that one commits the loss.
-
-## 5. Overlays
-
-**R23.** Five kinds exist, chosen by what the learner does in them: a **menu** (commands), a
-**dropdown** (one value from a short list), a **task dialog** (a form or task: centred card, or a
-bottom sheet with a handle), the **searchable picker** (a task dialog with search pinned at the
-top and a fixed height `--picker-height`; choosing closes it), and a **confirmation** (a question
-with a safe answer: centred, or docked with no handle). All wear the one overlay surface.
-
-**R24.** A dropdown hangs from its row, not from its value. Its edge sits on the card's edge, its
-width is the card's up to `--dropdown-max-width`, and it opens below the row, or above when there
-is no room (visual viewport). It never leaves the column or screen. Same on every size.
-
-**R25.** A searched list is never a dropdown or popover on a phone. It uses the picker. Favourites
-form a group in it, the chosen option has a check, model IDs are monospace on one line.
-
-**R26.** Task dialogs and confirmations share the frame: header, body (the one scroller),
-footer. Footer actions end at the inline end, primary rightmost. A confirmation names what is
-lost, has a safe answer focused first, and its confirming button is a verb, never "OK".
-
-**R27.** Back closes the top overlay before leaving the page. A press outside only closes; it
-never activates what was under it. Escape closes. Focus returns to the opener.
-
-**R28.** One mechanism per kind. A second dropdown, popover or sheet mechanism is never added. A
-menu is never a form: a panel with a field is a task dialog.
-
-## 6. Status and notes
-
-**R29.** Status lives in one place per card: one line under the card, a tone icon, words, and at
-most one action as a link at the end. A row's own state is its secondary line. A failure that
-blocks the overview shows in that overview row's summary; the cause and fix are on the sub-page.
-
-**R30.** No pill that repeats a note, and no note that repeats a pill. No pills in settings rows.
-A status pill is never pressable; pills stay for shelves and plots.
-
-**R31.** At most one note under a row. No explanatory note where a description in the option
-itself fits: an option that needs a sentence carries its own muted line.
-
-**R32.** Standing prose exists only where money, network or data loss is at stake. Failures say
-what happened, what is unaffected, and what to do.
-
-**R33.** A field's error is one danger-coloured line under that field, replacing its hint.
-
-## 7. Type, icons, spacing, surfaces
-
-**R34.** Type has eight roles, each a token: h1 (`--text-page-title`), h2 (section), group
-label (small, semibold, secondary: `mn-group-title`), body (`--text-md`), secondary
-(`--text-sm`, `--text-secondary`), note (one secondary line), caption (`--text-xs`), display
-(`--text-display`, the Library hero only). Three heading ranks at most: if a fourth seems
-needed, the surface does too much. Sentence case; no capitals as rank.
-
-**R35.** Icons have three sizes, by role: **inline** (beside caption or secondary text, status
-marks), **control** (in a button, row, chevron or notice; the primitive's default) and **feature**
-(the lead mark of an empty or error state, an icon badge). The sizes are listed in
-`web/scripts/design-rules.mjs`. No other size. (Guarded.)
-
-**R36.** Spacing comes only from the layout tokens (`--page-gap`, `--group-gap`, `--stack-gap`,
-`--surface-inset`, `--row-*`, `--space-*`). A feature sets no margin or padding.
-
-**R37.** Surfaces: one card surface (`--surface-raised`), one floating surface
-(`--overlay-surface`) and one state layer (`--state-layer`) for hover and press. Grouping has two
-levels at most: a card, and an inset in it. A card of rows has no inset.
-
-**R38.** Radii are roles (`--radius-control`, `-row`, `-card`, `-sheet`, `-pill`, `-token`). A
-shape uses its role's token.
-
-**R39.** No literal values (colours, sizes, radii, shadows, durations) outside `_tokens.scss`.
-Colour literals are guarded. (Guarded.)
-
-## 8. Motion
-
-**R40.** A press is a colour change and nothing else. Nothing scales, bounces, shifts or changes
-size on press or release. (Guarded.)
-
-**R41.** Overlays fade with a few pixels of travel from their trigger; a centred dialog fades; a
-sheet rises from its edge. None changes size on the way, and none is cut in or out.
-
-**R42.** Pages switch instantly. No motion sits between a tap and the next page.
-
-**R43.** Busy is `aria-busy` only. A busy control keeps its place, label and size, breathes, and
-turns its work glyph. It never disappears, is swapped, or becomes disabled. A result's line is
-reserved when the work starts.
-
-**R44.** Motion lives only in `web/src/styles/_motion.scss`: durations, easings, keyframes and
-named motions. A feature includes a named motion and writes none. `transition: all` is never
-used; name the properties. Only paint properties animate. (Guarded.)
-
-## 9. Colour and tone
-
-**R45.** Each tone has exactly one meaning, app-wide: **accent** (action, "press this"),
-**success** (it worked), **warning** (it can go ahead but may be wrong), **error** (it failed),
-**setup** (something must be set up first), **info** (a fact worth knowing). Never use a tone for
-decoration. Never give one tone two meanings.
-
-**R46.** The lavender accent is not one of the tones: it marks no status and nothing pressable
-(a purple Unread badge or favourite star is a defect). The favourite star uses the action
-colour. The chosen segment is a neutral raised thumb, so the action colour keeps its one
-meaning.
-
-**R47.** When a colour token changes, update the Android bridge copy in
-`android-bridge/app/src/main/res/values/` and `values-night/` in the same commit.
-
-## 10. Copy
-
-R48 to R54 govern interface strings. Help prose follows R55 and [the help writing
-guide](help-writing.md); the form rules of R54 apply to it too.
-
-**R48. Cut first.** Every string must survive "what does the learner do differently if this is
-gone?". If nothing, delete it: delete rather than shorten. Start with less and add help text only
-when real use shows a need. If a screen needs explaining, change the screen. Say nothing twice on
-one screen, for example a heading echoed by a subline. A subline, hint or aside that restates its
-label, describes what a section obviously holds, reassures where nothing is at risk, sells the
-app, or explains privacy or setup is removed.
-
-**R49. Front-load, then stop.** The first word carries the meaning: a verb for an action, a noun
-for a label. One idea per string. No "you can", "in order to", "please", "simply", "just", "now",
-"currently", "will". An error title states the fact ("Wrong key"), not "You entered the wrong
-key". Plain copy at about grade 7. "Sorry" only when the app itself broke badly, never in
-validation. No internal jargon ("Uniform", "persistent storage", "policy", "language assets").
-
-**R50. Length budgets** (words, hard ceilings; most strings sit well under):
-
-| Role | Budget |
-|---|---|
-| Page title | 1 to 3, matches the row that opens it |
-| Section or group heading | 1 to 3 |
-| Row label | 1 to 4 |
-| Row secondary line or value | 1 to 5, one line, no sentence |
-| Button or link | 1 to 3, strong verb first; link text makes sense out of context |
-| Hint under a field | 0 by default; at most 8 |
-| Empty state title | 2 to 5 |
-| Empty state body | 0 by default; at most one sentence of 12 words |
-| Error title | 2 to 6 |
-| Error body | one action sentence, at most 12 words |
-| Dialog title | a question, 3 to 7 |
-| Dialog body | one sentence, plus the risk sentence if there is one |
-| Toast or status | 1 to 5, no full sentence needed |
-| Help topic title | 1 to 4, a task ("Add your words") or a noun phrase (R55) |
-| Help section heading | 2 to 8, a task, a noun phrase or a How/What/Why/If clause; a question on Common questions up to 10 (R55) |
-| Help prose | paragraphs of 1 to 4 whole sentences (R55) |
-
-**R51. One extra sentence only for real risk.** Lost data, money, an irreversible action, or
-recovery from a failure. Then it is one short sentence saying what is safe or what it costs, in
-the concrete: "Your text is still here." "OpenRouter bills your account per request." Never
-"Don't worry, nothing is lost". Never a risk sentence and a restated cause together.
-
-**R52. Errors and confirmations.** An error is a title (what is wrong, no blame) and at most one
-action; when data is untouched, one short safety sentence ("Nothing was saved."). A confirmation's
-title is the question ("Delete this story?"), its body names what goes ("This cannot be undone."
-once), its confirm button repeats the verb ("Delete"), its cancel is "Keep ..." or "Cancel". No
-"Really", no "Yes,". Do not confirm what can be undone. Do not toast what the screen already shows.
-
-**R53. Empty states and first run.** An empty list has a plain title ("No stories yet") and its
-action. A body appears only when the way to fill it is not obvious from the buttons present. The
-first run says what Monosai is in one line and gets out of the way: no subline, no reassurance
-foot, no "no setup needed" tag. A finished step wears a tick and no text; a waiting step says what
-it needs in 2 to 4 words.
-
-**R54. Form.** Sentence case everywhere. No full stop on a title, label, button, fragment hint or
-one-clause status; a full stop only where a string has two or more sentences or is a
-full-sentence error body. No em dashes in UI strings (use a full stop, or "·" in a metadata
-line), no exclamation marks, no "..." except "…" for work in progress. Spell words out: no "&".
-Optional fields say "(optional)"; required is the default and is not marked. A sub-page title
-matches the label of the row that opens it. Numbers and dates use the shared formatters.
-Spelling is British ("favourite", "recognised", "analysing"). Accessible names are the visible
-label or a short noun-led phrase ("Paste text", "Close"), never restating the role.
-
-**R55. Help is the one prose surface: write a guide, not a screen.** Help follows [the help
-writing guide](help-writing.md). Every sentence is complete, an imperative or a subject and a
-verb, with its articles; no colon-led fragments in running text. Address the reader as "you" and
-use common contractions. "You can" states a real option and "will" a later consequence; neither
-is padding there. Every topic opens with a lead of one or two sentences. Topic titles are a task
-("Add your words") or a noun phrase; a section heading is a task, a noun phrase or a clause such
-as "How the levels compare", never "-ing" first, and a question only on Common questions. A
-control is named in bold exactly as the screen spells it; a path uses ">" between places you
-open and "under" for a section heading. A term is defined on first use and then never varied. A
-task is numbered steps, one imperative action each. A notice holds a risk or a caveat, never a
-step. A fact lives on one page and the others link to it. A failure is looked up by the heading
-the screen shows. No history, motivation or philosophy. The hub opens with a short lead on what
-Monosai does and where to start, then the Topics shelf; a topic summary on it lists up to five
-words a reader would look for.
-
-## 11. Forbidden
-
-Never, because each is already a defect somewhere:
-
-- A native `<select>`, or a boxed field inside a list row (R15, R20, R21).
-- A pill or outline button inside a settings row (R15, R22).
-- A per-feature style, modifier or input on a shared role (R2, R3).
-- `transition: all` (R44). Scale on press (R40).
-- A second dropdown, popover or sheet mechanism (R28).
-- A status pill next to a note that says the same thing (R30).
-- An inline expanding danger zone: a destructive action is a row, then a confirmation (R20).
-- A new colour or literal value (R39). One tone for two meanings (R45).
-- An icon size other than the three roles (R35).
-- A searched list in a dropdown (R25). A group header that repeats its row's label (R18).
-
-## 12. Review checklist
-
-Answer yes to every line before committing a visual change.
-
-- [ ] I went through [the visual review checklist](visual-review.md) and every screen is the
-      same or better than before, in every part (R4).
-- [ ] I read this file and no rule is broken, or I reported the conflict (R1).
-- [ ] The feature writes no style and adds no variant (R2, R3).
-- [ ] The contact sheet shows every instance of each role I touched identical, in light and dark,
-      desktop and phone (R3, R4).
-- [ ] Each row has one of the five trailing ends and holds no field, button or pill (R14, R15).
-- [ ] A setting's value is under its label; a fact's is at the end (R16).
-- [ ] Each input uses the control the table names (R20).
-- [ ] Each overlay is one of the five kinds, on the shared mechanism, and Back and outside
-      presses behave as specified (R23, R27, R28).
-- [ ] Status is one line per card, with no duplicate pill or note (R29, R30).
-- [ ] Type, icon sizes, spacing and radii are role tokens, with no literal values (R34-R39).
-- [ ] Press is colour only; motion comes from `_motion.scss` (R40, R44).
-- [ ] Each tone has one meaning; bridge colours match (R45, R47).
-- [ ] Every interface string passes R48 (cut first) and the R50 budget; Help passes R55.
-- [ ] `npm test` passes, the exemption list did not grow (R6).
+- **R7.** Calm. A word, mark, control or motion that does no work is removed.
+- **R8.** Content first. Japanese is the content; everything else appears when needed. The
+  reading surface carries only its own markers.
+- **R9.** One column, one measure at every width, no side panes. Only overlays change width.
+- **R10.** Use the pattern an Android or iOS user already knows: a row with a summary, a switch
+  that applies at once, a radio list, a confirmation before loss. Never invent a control.
+- **R12.** Accessible by default: everything scales with text size, targets meet
+  `--touch-target`, focus is visible, colour never carries meaning alone, both themes work, and
+  200% text loses nothing.
+- **R56.** One home. Each setting and action lives in exactly one place:
+
+| What                                    | Where                                             |
+| --------------------------------------- | ------------------------------------------------- |
+| Reading appearance (furigana, text size) | Story options in the reader, applied at once     |
+| App-wide preferences, keys, models      | Settings, one `›` sub-page per topic              |
+| Known words and their sources           | Words; removing a source is on its own page       |
+| A story's actions (rename, delete)      | Its menu on the library card and in the reader    |
+| Creating a story                        | Generate, as steps                                |
+| How to use the app                      | Help, linked from the screen that needs it        |
+
+## 3. Rows and controls
+
+- **R14.** A row's trailing end promises what a press does:
+
+| End         | A press...                                   | Use for                           |
+| ----------- | -------------------------------------------- | --------------------------------- |
+| `›`         | opens a page or dialog                       | sub-page, key, typed value, model |
+| `⌃⌄`        | opens a list in place                        | a choice row with a dropdown      |
+| switch      | changes a setting now; the whole row toggles | on or off                         |
+| segmented   | changes a setting now                        | a short unexplained choice        |
+| nothing     | acts now, or there is nothing to do          | action, danger action, plain fact |
+
+The row is the control: it never holds a field, button or pill (R15, checked).
+
+- **R16.** A setting's value is its secondary line; a fact's value sits at the end. Status that
+  needs attention leads the secondary line ("Not tested · Kore"), and a result replaces it.
+- **R18.** A label never repeats its group or section title, and a group header never repeats
+  its only row.
+- **R19.** A topic with its own groups, or more than about eight settings, is a sub-page shown on
+  the overview as one `›` row: its title as the label, its status and value as the summary. A row
+  that needs setup first says "Needs a key" and is disabled.
+- **R20.** Each kind of input has exactly one control. A kind not listed needs a rule change.
+
+| Input                                | Control                                                    |
+| ------------------------------------ | ---------------------------------------------------------- |
+| On or off, applied at once           | Switch row                                                 |
+| 2–4 short named options              | Segmented row; a radio list if it cannot fit               |
+| 2–5 options that each need a line    | Radio list on a sub-page or form step                      |
+| 3–12 known options, picked rarely    | Choice row opening the dropdown (`mn-select`)              |
+| Long or searched list (models)       | `›` row opening the searchable picker                      |
+| Free text or number in Settings      | `›` row opening a field dialog                             |
+| Free text or number in a form        | Labelled field (`mn-field`), label above                   |
+| Secret key                           | Secret field with Show, in a dialog only                   |
+| Continuous value on a scale          | Slider row; a range is one two-thumb slider                |
+| Action                               | Action row in a list; a button in a form or dialog         |
+| Destructive action                   | Danger row or danger ghost, then a confirmation (R26)      |
+| Filter above a list                  | Search field and a Filters button opening a task dialog    |
+| Multi-step task                      | Task dialog, or `mn-wizard-steps` on a page                |
+
+Named steps (Small, Medium, Large) are segmented, not a slider.
+
+- **R21.** Lists hold only rows. Forms and dialogs hold only fields and buttons. Nothing is both.
+- **R22.** Buttons commit a form, dialog or step. One filled primary per surface, at the end. A
+  reset is a ghost at the far start; a footer action that deletes is a danger ghost there. A task
+  dialog has no Cancel: close, Escape, the scrim and the handle are its ways out.
+
+## 4. Overlays
+
+- **R23.** Five kinds, chosen by what the learner does: **menu** (commands), **dropdown** (one
+  value from a short list), **task dialog** (a form or task), **searchable picker** (a long list;
+  choosing closes it) and **confirmation** (a question with a safe answer). A searched list is
+  always the picker. A menu never holds a field.
+- **R26.** A confirmation names what is lost, focuses the safe answer first, and confirms with the
+  verb ("Delete"), never "OK", "Yes" or "Continue". One step only. Do not confirm what can be
+  undone.
+- **R28.** One mechanism per kind. Never add a second dropdown, popover, dialog or sheet.
+
+## 5. Status, type and surfaces
+
+- **R29.** Status lives in one place per card: one status line under it, with a tone icon, words
+  and at most one link. A row's own state is its secondary line. A blocking failure shows in the
+  overview row's summary; cause and fix are on the sub-page.
+- **R30.** A pill never repeats a note and a note never repeats a pill. No pills in rows; a status
+  pill is never pressable.
+- **R31.** At most one note under a row. An option that needs a sentence carries its own muted
+  line instead.
+- **R34.** Type has eight roles: page title, section, group label, body, secondary, note, caption,
+  and display (the Library hero only). At most three heading ranks. Sentence case.
+- **R37.** One card surface, one overlay surface, one state layer. Grouping has two levels at most:
+  a card and an inset; a card of rows has no inset.
+- **R42.** Pages switch instantly; nothing animates between a tap and the next page.
+- **R43.** Busy is `aria-busy`: the control keeps its place, label and size, and is never disabled
+  or swapped. A result's line is reserved when the work starts.
+- **R45.** Each tone has one meaning app-wide: action (press this), success (it worked), warning
+  (it may be wrong), error (it failed), setup (set something up first), info (worth knowing).
+  Highlight is not a tone: it marks reading, never status or something pressable. Never use a
+  tone for decoration.
+- **R57.** A result appears where it was caused. The only app-wide surface is a toast, for work
+  the learner did not start (a background refresh, an update).
+
+## 6. Copy
+
+- **R48.** Cut first. A string the learner would not miss is deleted. If a screen needs
+  explaining, change the screen. Say nothing twice on one screen.
+- **R49.** The first word carries the meaning: a verb for an action, a noun for a label. Plain
+  words at about grade 7, no blame, no "please", "simply", "just", "you can", "currently".
+- **R50.** Word budgets (ceilings): page title and heading 1–3 · row label 1–4 · secondary line
+  1–5, no sentence · button 1–3, verb first · field hint 0–8 · empty state title 2–5, body one
+  sentence of 12 · error title 2–6, body one action sentence of 12 · dialog title a question of
+  3–7 · toast 1–5. A sub-page title matches the row that opens it.
+- **R51.** One extra sentence only for lost data, money, an irreversible step or recovery, saying
+  concretely what is safe or what it costs: "Your text is still here."
+- **R53.** An empty list has a plain title ("No stories yet") and its action; a body only when
+  the way to fill it is not obvious.
+- **R54.** Sentence case. No full stop on a title, label, button or fragment. No em dashes,
+  exclamation marks, "&" or "...". British spelling. Optional fields say "(optional)". Numbers and
+  dates use the shared formatters.
+- **R55.** Help is the one prose surface and follows [the help writing guide](help-writing.md).
+  Help changes in the same commit as the behaviour it describes.
+  

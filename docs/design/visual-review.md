@@ -1,99 +1,49 @@
-# Visual review checklist
+# Visual review
 
-How to judge screenshots before a visual change is accepted. [The design rules](rules.md) say
-what is allowed. This list says whether the result is good. A change passes only when both
-are met. Meeting the task description is never enough: if a spec produces something that
-looks worse, the spec is wrong, so fix it and tell the owner.
+How to judge screenshots of a visual change. [The rules](rules.md) say what is allowed; this
+says whether the result is good. Both must pass. If a task's spec produces something that looks
+worse, the spec is wrong: fix it and tell the owner. The `design-reviewer` agent works from
+this page.
 
-Work through the passes in order. Write down a verdict per screen (better, same or worse)
-with the issues found, before checking any rule.
+## Capture
 
-## Pass 1: first impression (before any checklist)
+1. Before changing anything: `npm run shots -- --grep <scenario>` (from `web`), then move
+   `test-results/shots` to `test-results/shots-before`.
+2. After the change, capture again, then `npm run shots:sheet` for the before/after sheet.
+3. For every primitive you touched, also open its gallery page (`npm run visual` shows any
+   change to it as a diff).
 
-- Look at the whole screen for five seconds, at full size. Does it look like a polished,
-  calm, friendly app that a good designer would ship? If not, name the first thing that looks
-  off. That is the top issue.
-- Put the before and after side by side at the same scale. Which one would the owner rather
-  use? If the answer is "before" for any part of the screen, that part is a regression.
-- Squint, or look at a blurred view. Is there one clear focal point, with the primary action
-  easy to find? Do the blocks look balanced, without one side much heavier or emptier?
-- Does the screen still have its character? The mascot, the illustrations and the warmth are
-  part of the product. They must never shrink into a thumbnail, get cropped awkwardly, or be
-  squeezed to make room for text.
+## Judge, in this order
 
-## Pass 2: regressions
+Write down a verdict per screen (better, same or worse) before checking any rule.
 
-Compare every prominent element with the before shot, even ones the change was not about:
+1. **First impression.** Look at the whole screen at full size for five seconds. Does it look
+   like a calm, polished app a good designer would ship? Put before and after side by side: if
+   the owner would rather have "before" for any part, that part is a regression.
+2. **Regressions.** Compare every prominent element, even ones the change was not about:
+   imagery (size, crop, placement), hierarchy, white space, truncation and wrapping, and any
+   control that moved, resized or changed emphasis.
+3. **Character.** The mascot, illustrations and warmth never shrink into a thumbnail, get
+   cropped awkwardly or squeezed to make room for text.
+4. **Hierarchy.** One clear focal point and one filled primary. The reading order matches the
+   order of importance; a hint is quiet, an error stands out.
+5. **Layout.** Blocks line up with the column edges and text starts at the same inset on every
+   card. Gaps between the same kinds of block are the same everywhere. Buttons in a row share
+   a height and stack only when they do not fit.
+6. **Type and text.** Each text uses a type role and sizes step down clearly. No orphaned word
+   in a headline, no truncated label, button or number. Japanese breaks sensibly and furigana
+   does not collide.
+7. **Colour and dark mode.** Each tone means one thing. In dark mode surfaces read as layers,
+   nothing glows or looks like a hole, and contrast holds. Disabled stays readable.
+8. **Consistency.** Every instance of a touched role matches its gallery tile and the same role
+   on untouched screens (R3).
+9. **Sizes and states.** The narrowest phone, a common phone and desktop; the whole page, not
+   just the first screen; every state the change can show (empty, loading, long content, error,
+   focus). Loading never makes the layout jump. A leftover focus ring or hover from the script
+   is a capture artefact: recapture.
+10. **Rules.** Only now check the change against [the rules](rules.md).
 
-- Imagery: same or better size, crop, sharpness and placement.
-- Hierarchy: the most important thing is still the most prominent.
-- White space: no new dead areas, no new cramped areas.
-- Text: no new truncation, wrapping or orphaned words.
-- Controls: nothing moved, resized or changed emphasis without a reason.
+## Report
 
-A regression blocks the change, even when a spec asked for it.
-
-## Pass 3: hierarchy and proportion
-
-- The headline, the illustration and the actions are sized to each other, not just to fit
-  a line count. A smaller headline does not mean a smaller picture.
-- One filled primary action per surface. The secondary actions are visibly quieter.
-- The reading order matches the order of importance.
-- Each block has the visual weight its importance deserves: a hint is small and quiet, an
-  empty state invites, an error stands out.
-
-## Pass 4: layout, alignment and spacing
-
-- Every block lines up with the column edges. Text inside cards starts at the same inset on
-  every card. Nothing is indented for no reason.
-- Spacing follows the scale and keeps a steady rhythm: the same gap between the same kinds
-  of blocks everywhere.
-- Icons are optically centred with their text, and icon badges share one size.
-- Buttons in one row have the same height. They are side by side when they fit and stack
-  only when they do not.
-- On desktop, content keeps a sensible measure and does not stretch across the screen.
-
-## Pass 5: type and text
-
-- Each text uses one of the type roles. Sizes step down clearly from title to body to meta.
-- Headlines break into a few balanced lines: no single word on its own line, and no headline
-  taller than the picture beside it.
-- Truncation only appears where it is meant to (excerpts, long titles). It never cuts a
-  label, a button or a number.
-- Japanese text breaks at sensible points and keeps its line height. Furigana does not
-  collide.
-- Copy is short, plain, sentence case, and the same word is used for the same thing.
-
-## Pass 6: colour, tone and dark mode
-
-- Each tone means one thing. Colour alone never carries a meaning; an icon or word goes
-  with it.
-- In dark mode: surfaces read as layers, nothing glows or looks like a hole, text and
-  icons keep their contrast, and illustrations sit well on the dark background.
-- Disabled things look disabled but stay readable. Selected things are clearly selected.
-
-## Pass 7: consistency across the app
-
-- Put every instance of each role you touched on one contact sheet: light and dark, phone
-  and desktop. Anything that differs other than the text is a defect (R3).
-- Compare with the same role on other screens that were not touched: rows, buttons, pills,
-  dialogs, empty states, status lines.
-
-## Pass 8: sizes and states
-
-- Check the narrowest phone, a common phone and desktop. Check for horizontal overflow,
-  clipped focus rings, and touch targets below the rules' minimum.
-- Check the full-page shot, not just the first screen: the bottom of the page counts too.
-- Check every state the change can show: empty, loading, filled, long content, error,
-  disabled, focus. Loading must not make the layout jump.
-- A focus ring or hover left over from the test script is a capture artefact. Recapture
-  instead of judging through it.
-
-## Pass 9: rules
-
-Only now go through the [review checklist in the rules](rules.md#12-review-checklist).
-
-## Reporting
-
-For each screen, state the verdict and the issues, ranked by how visible they are. Never
-report "matches the spec" as a pass. Report what it looks like.
+For each screen: the verdict and the issues, ranked by how visible they are. Never report
+"matches the spec" as a pass; report what it looks like. State the result in the commit or PR.

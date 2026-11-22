@@ -46,7 +46,6 @@ decision — not when the code inside a building block changes.
 - **[Architecture decision records](../decisions/)** — the records that give the reason for each
   decision. These chapters link to them. They never repeat them.
 - **[Design rules](../design/rules.md)** — the binding rulebook; read it before you change anything
-  visual. **[Design system](../design/design-system.md)** — the reasoning behind it: structure,
-  controls, colour, units, motion, voice, and state.
+  visual. **[Design brief](../design/README.md)** — why the interface looks and behaves as it does.
 - **The in-app guide** — the documentation for users, not for architects. It lives in
   `web/src/app/features/help` and is described in [ADR 0079](../decisions/0079-help-is-a-hub-of-topics.md).

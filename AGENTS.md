@@ -20,21 +20,18 @@ It stores everything in the browser, only reads from Anki, and uses the learner'
 ## Verifying
 
 - Before committing: `npm test`. Browser-visible changes: also `npm run e2e`.
-- Judge visual changes only from screenshots you opened, in light and dark, at desktop and
-  Android size:
-  1. `npm run build:pages`
-  2. Add a throwaway `@smoke @mobile` spec in `web/e2e` that saves to `test-results/`.
-  3. From `web`: `MONOSAI_PREBUILT_DIST=true npx playwright test --grep @<tag>`
-  4. Delete the spec before committing.
-  5. Judge them with [the visual review checklist](docs/design/visual-review.md), first
-     impression first. Anything that looks worse than before blocks the change.
+- Visual, interactive or copy changes: run `npm run design:check`, then follow the
+  `design-review` skill ([.claude/skills/design-review](.claude/skills/design-review/SKILL.md)):
+  before/after shots with `npm run shots`, judged by the `design-reviewer` agent. Never update
+  screenshot baselines; only the owner's baseline workflow does.
 
 ## Committing and pushing
 
 - Format: `<type>(<scope>): <imperative summary>`; lowercase, no period, ≤ 72 characters.
 - Types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci`, `chore`, `revert`.
 - Scope is required; use `repo` for cross-cutting changes.
-- Update affected docs in the same commit.
+- Update affected docs in the same commit. Docs hold rules and structure, not descriptions of
+  screens: the code shows what a screen does.
 - Never rewrite history. Push only when asked.
 - After a push, watch CI and fix failures until `gate` is green.
 
@@ -55,17 +52,11 @@ It stores everything in the browser, only reads from Anki, and uses the learner'
   transactional upgrade when records change shape or meaning.
 - Never silently reset or lose local data; migration failures offer explicit recovery.
 - Validate external, stored, imported, and AI-generated data at runtime.
-- Before any visual or interactive change, read [the design rules](docs/design/rules.md). They
-  win over everything else, including the design system, ADRs, existing code and a task
-  description; a change that breaks one must not be committed. Report a conflict instead of
-  resolving it. The long form is [the design system](docs/design/design-system.md).
-- Help follows R55 and [the help writing guide](docs/design/help-writing.md); every other
-  string follows R48 to R54 of the design rules.
-- One look per role: never give one place its own variant of a shared control; change the
-  primitive for every place or not at all. Check a visual change against every other instance
-  of the same role before committing.
-- Features and core compose `web/src/app/shared-ui/` primitives and write no styles. A
-  missing visual need changes or adds a primitive first; the composition allowlist only
-  shrinks.
+- Design: [the design rules](docs/design/rules.md) bind every visual, interactive and copy
+  change and win over ADRs, existing code and the task; report a conflict instead of resolving
+  it. Claude Code loads them automatically; other agents read them before UI work. Existing code
+  that breaks a rule is a defect, not an example. A primitive's doc comment is its spec, and the
+  gallery (`npm run build:gallery`) shows every primitive. Help also follows
+  [the help writing guide](docs/design/help-writing.md).
 - Never put internal issue IDs (`B6-16`, `H07`) or QA file names in code, docs, commits, or
   PRs. Describe the behaviour instead.
