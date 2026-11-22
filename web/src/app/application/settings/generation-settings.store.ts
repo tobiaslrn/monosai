@@ -7,6 +7,7 @@ import {
 } from '../../domain/settings/settings';
 import { StorageFailure, type StorageError } from '../../domain/storage/storage-error';
 import { SETTINGS_REPOSITORY } from '../shared/repository-tokens';
+import { OptimisticRow } from './optimistic-row';
 
 /** Device-wide defaults captured by each generation when it starts. */
 @Injectable({ providedIn: 'root' })
@@ -14,6 +15,7 @@ export class GenerationSettingsStore {
   private readonly repository = inject(SETTINGS_REPOSITORY);
   private readonly settingsSignal = signal<GenerationSettings>(DEFAULT_GENERATION_SETTINGS);
   private readonly failureSignal = signal<StorageError | null>(null);
+  private readonly row = new OptimisticRow(this.settingsSignal);
 
   readonly settings = this.settingsSignal.asReadonly();
   readonly vocabularyStrictness = computed(() => this.settingsSignal().vocabularyStrictness);
@@ -30,38 +32,28 @@ export class GenerationSettingsStore {
       this.failureSignal.set(loaded.error);
       throw new StorageFailure(loaded.error);
     }
-    this.settingsSignal.set(loaded.value);
+    this.row.setStored(loaded.value);
     this.failureSignal.set(null);
   }
 
-  async setVocabularyStrictness(strictness: VocabularyStrictness): Promise<void> {
-    const previous = this.settingsSignal();
-    this.settingsSignal.set({ ...previous, vocabularyStrictness: strictness });
-
-    const saved = await this.repository.updateGenerationSettings({
-      vocabularyStrictness: strictness,
-    });
-    if (saved.ok) {
-      this.settingsSignal.set(saved.value);
-      this.failureSignal.set(null);
-    } else {
-      this.settingsSignal.set(previous);
-      this.failureSignal.set(saved.error);
-    }
+  setVocabularyStrictness(vocabularyStrictness: VocabularyStrictness): Promise<void> {
+    return this.save({ vocabularyStrictness });
   }
 
-  async setDefaultPreparationTargets(
+  setDefaultPreparationTargets(
     defaultPreparationTargets: GenerationSettings['defaultPreparationTargets'],
   ): Promise<void> {
-    const previous = this.settingsSignal();
-    this.settingsSignal.set({ ...previous, defaultPreparationTargets });
-    const saved = await this.repository.updateGenerationSettings({ defaultPreparationTargets });
-    if (saved.ok) {
-      this.settingsSignal.set(saved.value);
-      this.failureSignal.set(null);
-    } else {
-      this.settingsSignal.set(previous);
-      this.failureSignal.set(saved.error);
-    }
+    return this.save({ defaultPreparationTargets });
+  }
+
+  /**
+   * Shows a patch at once and takes it away again if the write fails, leaving
+   * what is stored and any other change still being written.
+   */
+  private async save(patch: Partial<GenerationSettings>): Promise<void> {
+    const saved = await this.row.write(patch, (change) =>
+      this.repository.updateGenerationSettings(change),
+    );
+    this.failureSignal.set(saved.ok ? null : saved.error);
   }
 }

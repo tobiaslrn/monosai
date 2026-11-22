@@ -12,6 +12,7 @@ import {
 } from '../../domain/settings/settings';
 import { StorageFailure, type StorageError } from '../../domain/storage/storage-error';
 import { SETTINGS_REPOSITORY } from '../shared/repository-tokens';
+import { OptimisticRow } from './optimistic-row';
 
 /**
  * Device-wide settings and reader aids.
@@ -26,8 +27,9 @@ export class AppSettingsStore {
   private readonly appSettings = signal<AppSettings>(DEFAULT_APP_SETTINGS);
   private readonly preferences = signal<ReaderPreferences>(DEFAULT_READER_PREFERENCES);
   private readonly failure = signal<StorageError | null>(null);
+  private readonly appSettingsRow = new OptimisticRow(this.appSettings);
+  private readonly preferencesRow = new OptimisticRow(this.preferences);
   private readerPreferenceWriteQueue = Promise.resolve();
-  private readerPreferenceWriteVersion = 0;
 
   readonly theme = computed(() => this.appSettings().theme);
   readonly helpIntroSeen = computed(() => this.appSettings().helpIntroSeen);
@@ -39,7 +41,7 @@ export class AppSettingsStore {
       this.failure.set(saved.error);
       return false;
     }
-    this.appSettings.set(saved.value);
+    this.appSettingsRow.setStored(saved.value);
     this.failure.set(null);
     return true;
   }
@@ -50,7 +52,7 @@ export class AppSettingsStore {
       this.failure.set(saved.error);
       return false;
     }
-    this.appSettings.set(saved.value);
+    this.appSettingsRow.setStored(saved.value);
     this.failure.set(null);
     return true;
   }
@@ -68,14 +70,14 @@ export class AppSettingsStore {
       this.failure.set(settings.error);
       throw new StorageFailure(settings.error);
     }
-    this.appSettings.set(settings.value);
+    this.appSettingsRow.setStored(settings.value);
 
     const preferences = await this.repository.getReaderPreferences();
     if (!preferences.ok) {
       this.failure.set(preferences.error);
       throw new StorageFailure(preferences.error);
     }
-    this.preferences.set(preferences.value);
+    this.preferencesRow.setStored(preferences.value);
   }
 
   /**
@@ -92,7 +94,7 @@ export class AppSettingsStore {
       this.failure.set(settings.error);
       return;
     }
-    this.appSettings.set(settings.value);
+    this.appSettingsRow.setStored(settings.value);
     this.failure.set(null);
   }
 
@@ -121,19 +123,15 @@ export class AppSettingsStore {
     await this.saveAppSettings({ recentFocusSize: size });
   }
 
-  /** Applies a patch optimistically and rolls it back if the write fails. */
+  /**
+   * Shows a patch at once and takes it away again if the write fails, leaving
+   * what is stored and any other change still being written.
+   */
   private async saveAppSettings(patch: Partial<Omit<AppSettings, 'updatedAt'>>): Promise<void> {
-    const previous = this.appSettings();
-    this.appSettings.set({ ...previous, ...patch });
-
-    const saved = await this.repository.updateAppSettings(patch);
-    if (saved.ok) {
-      this.appSettings.set(saved.value);
-      this.failure.set(null);
-    } else {
-      this.appSettings.set(previous);
-      this.failure.set(saved.error);
-    }
+    const saved = await this.appSettingsRow.write(patch, (change) =>
+      this.repository.updateAppSettings(change),
+    );
+    this.failure.set(saved.ok ? null : saved.error);
   }
 
   /**
@@ -146,27 +144,19 @@ export class AppSettingsStore {
     preference: K,
     value: ReaderPreferences[K],
   ): Promise<void> {
-    const previous = this.preferences();
-    const writeVersion = ++this.readerPreferenceWriteVersion;
-    this.preferences.set({ ...previous, [preference]: value });
-
-    const write = this.readerPreferenceWriteQueue.then(async () => {
-      const saved = await this.repository.updateReaderPreferences({ [preference]: value });
-      // A newer optimistic value owns the signal. The queue still lets this
-      // write finish before the next one reaches persistence, but its result
-      // must not repaint the UI with an older value.
-      if (writeVersion !== this.readerPreferenceWriteVersion) {
-        return;
-      }
-      if (saved.ok) {
-        this.preferences.set(saved.value);
-        this.failure.set(null);
-      } else {
-        this.preferences.set(previous);
-        this.failure.set(saved.error);
-      }
+    const patch: Partial<ReaderPreferences> = { [preference]: value };
+    const saved = await this.preferencesRow.write(patch, (change) => {
+      // Writes reach persistence one at a time, in the order they were made,
+      // so the last change made is the one left stored.
+      const write = this.readerPreferenceWriteQueue.then(() =>
+        this.repository.updateReaderPreferences(change),
+      );
+      this.readerPreferenceWriteQueue = write.then(
+        () => undefined,
+        () => undefined,
+      );
+      return write;
     });
-    this.readerPreferenceWriteQueue = write.catch(() => undefined);
-    await write;
+    this.failure.set(saved.ok ? null : saved.error);
   }
 }

@@ -185,3 +185,73 @@ describe('AppSettingsStore startup failure', () => {
     });
   });
 });
+
+describe('AppSettingsStore overlapping writes', () => {
+  it('shows what is stored after two quick changes that both fail to save', async () => {
+    const unavailable = err(storageError('unavailable', 'Unavailable'));
+    const repository = {
+      getAppSettings: vi.fn().mockResolvedValue(ok(DEFAULT_APP_SETTINGS)),
+      getReaderPreferences: vi.fn().mockResolvedValue(ok(DEFAULT_READER_PREFERENCES)),
+      updateAppSettings: vi.fn().mockResolvedValue(unavailable),
+      updateReaderPreferences: vi.fn().mockResolvedValue(unavailable),
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [{ provide: SETTINGS_REPOSITORY, useValue: repository }],
+    });
+    const store = TestBed.inject(AppSettingsStore);
+    await store.load();
+
+    // The second change starts while the first is still being written.
+    await Promise.all([store.setTheme('dark'), store.setAnkiWordPriorityMode('recent')]);
+    await Promise.all([
+      store.setReaderPreference('playbackRate', 0.9),
+      store.setReaderPreference('playbackRate', 0.8),
+    ]);
+
+    expect(store.lastFailure()?.code).toBe('unavailable');
+    expect(store.ankiWordPriorityMode()).toBe(DEFAULT_APP_SETTINGS.ankiWordPriorityMode);
+    expect(store.theme()).toBe(DEFAULT_APP_SETTINGS.theme);
+    expect(store.readerPreferences().playbackRate).toBe(DEFAULT_READER_PREFERENCES.playbackRate);
+  });
+
+  it('keeps showing a change still being written when an earlier one fails', async () => {
+    let finishSecond: (result: unknown) => void = () => undefined;
+    const update = vi
+      .fn()
+      .mockResolvedValueOnce(err(storageError('unavailable', 'Unavailable')))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishSecond = resolve;
+          }),
+      );
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: SETTINGS_REPOSITORY,
+          useValue: {
+            getAppSettings: vi.fn().mockResolvedValue(ok(DEFAULT_APP_SETTINGS)),
+            getReaderPreferences: vi.fn().mockResolvedValue(ok(DEFAULT_READER_PREFERENCES)),
+            updateAppSettings: update,
+          },
+        },
+      ],
+    });
+    const store = TestBed.inject(AppSettingsStore);
+    await store.load();
+
+    const first = store.setTheme('dark');
+    const second = store.setAnkiWordPriorityMode('recent');
+    await first;
+
+    expect(store.theme()).toBe(DEFAULT_APP_SETTINGS.theme);
+    expect(store.ankiWordPriorityMode()).toBe('recent');
+    expect(store.lastFailure()?.code).toBe('unavailable');
+
+    finishSecond(ok({ ...DEFAULT_APP_SETTINGS, ankiWordPriorityMode: 'recent' }));
+    await second;
+    expect(store.ankiWordPriorityMode()).toBe('recent');
+  });
+});

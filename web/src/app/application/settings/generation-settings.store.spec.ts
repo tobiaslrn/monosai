@@ -73,4 +73,18 @@ describe('GenerationSettingsStore', () => {
     expect(store.vocabularyStrictness()).toBe('standard');
     expect(store.failure()?.code).toBe('unavailable');
   });
+
+  it('shows what is stored after two quick changes that both fail to save', async () => {
+    await store.load();
+    repository.updateGenerationSettings = () =>
+      Promise.resolve(err(storageError('unavailable', 'Settings are unavailable.')));
+
+    await Promise.all([
+      store.setVocabularyStrictness('strict'),
+      store.setDefaultPreparationTargets(['english']),
+    ]);
+
+    expect(store.settings()).toEqual(DEFAULT_GENERATION_SETTINGS);
+    expect(store.failure()?.code).toBe('unavailable');
+  });
 });
