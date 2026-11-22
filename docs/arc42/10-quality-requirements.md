@@ -47,7 +47,8 @@ Each scenario names the gate that holds it. A gate that cannot be automated is l
 | Command | Covers |
 | --- | --- |
 | `npm run verify` | Exactly the blocking gates that CI runs: static analysis, coverage, and the production build with `verify-dist` |
-| `npm test` | The Vitest suite |
+| `npm test` | `npm run design:check`, then the Vitest suite |
+| `npm run design:check` | Every design check in a few seconds: the design rules, the template lint (`eslint.design.config.js`), the composition allowlist, the component style lint and the Android bridge colours. Each failure names what is wrong, the fix and the rule; [the checks page](../design/checks.md) lists them. CI runs it as `npm run stylelint` in static analysis. A Stop hook runs it on the files a branch changed |
 | `npm run test:coverage` | The suite with the thresholds from Q11 |
 | `npm run e2e` | The desktop and Android smoke lane. The default for ordinary work |
 | `npm run e2e:full` | The full browser regression lane. Use it when shared end-to-end code changes |
