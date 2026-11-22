@@ -484,6 +484,25 @@ describe('SentenceAidsStore', () => {
     expect([...store.aids().keys()]).toEqual(['s1']);
   });
 
+  it('keeps a held sentence’s aids and actions after the window moves past it', async () => {
+    const all = withSentences(sentences(3));
+    enrichment.translations = [translationFor(all[0]!, 'Sentence zero.')];
+    await mount(importedReading(), all.slice(0, 2));
+    const reads = enrichment.perSentenceQueries.translations.length;
+
+    store.hold(signal([all[0]!, all[1]!]));
+    await TestBed.inject(ApplicationRef).whenStable();
+    // Holding what is already mounted reads nothing again.
+    expect(enrichment.perSentenceQueries.translations).toHaveLength(reads);
+
+    await mount(importedReading(), [all[2]!]);
+    expect(store.aids().get(all[0]!.id)?.translation?.textEn).toBe('Sentence zero.');
+
+    await store.translateSentence(all[1]!.id);
+    expect(provider.generationCalls.translate).toBe(1);
+    expect(store.aids().get(all[1]!.id)?.translation?.textEn).toBe('EN: 文1。');
+  });
+
   it('reads the mounted sentences again when the live profile arrives after them', async () => {
     const window = withSentences(sentences(1));
     enrichment.grammarAnalyses = [analysisFor(window[0]!, LIVE_PROFILE_HASH)];

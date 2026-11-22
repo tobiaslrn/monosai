@@ -1,4 +1,12 @@
-import { DestroyRef, Injectable, computed, inject, resource, signal } from '@angular/core';
+import {
+  DestroyRef,
+  Injectable,
+  computed,
+  inject,
+  resource,
+  signal,
+  type Signal,
+} from '@angular/core';
 import { PROMPT_VERSIONS } from '../../domain/ai/prompt-versions';
 import { concernCount } from '../../domain/enrichment/grammar-normalization';
 import type {
@@ -124,15 +132,42 @@ export class SentenceAidsStore {
    */
   private readonly controller = new AbortController();
 
+  /** What a surface showing a sentence asks to keep, mounted or not. */
+  private readonly heldSignal = signal<Signal<readonly Sentence[]>>(signal([]));
+
   /** The open reading, whose aids these are. */
   readonly reading = this.reader.reading;
-  /** The sentences the reader has mounted, which bound every read here. */
-  readonly sentences = computed<readonly Sentence[]>(() =>
-    this.reader
-      .paragraphs()
-      .flatMap((paragraph) => paragraph.sentences.map((sentence) => sentence.sentence)),
+  /**
+   * The sentences the reader has mounted, and any a surface still shows, which
+   * bound every read here.
+   *
+   * Unchanged while what is held is already mounted, so opening and closing a
+   * surface over the page does not read the window again.
+   */
+  readonly sentences = computed<readonly Sentence[]>(
+    () => {
+      const mounted = this.reader
+        .paragraphs()
+        .flatMap((paragraph) => paragraph.sentences.map((sentence) => sentence.sentence));
+      const ids = new Set(mounted.map((sentence) => sentence.id));
+      const held = this.heldSignal()().filter((sentence) => !ids.has(sentence.id));
+      return held.length === 0 ? mounted : [...mounted, ...held];
+    },
+    { equal: sameSentences },
   );
   readonly lastError = this.errorSignal.asReadonly();
+
+  /**
+   * Keeps these sentences' aids, and the actions on them, while the window
+   * moves past them.
+   *
+   * A sheet stays open while the reading scrolls under it, so the sentence it
+   * describes can leave the mounted window with the sheet still showing its
+   * translation and offering to fetch one.
+   */
+  hold(sentences: Signal<readonly Sentence[]>): void {
+    this.heldSignal.set(sentences);
+  }
 
   constructor() {
     // A local read of the stored aids for exactly the sentences now mounted, so
@@ -365,7 +400,7 @@ export class SentenceAidsStore {
 
   /**
    * The reading and sentence an action applies to, or null when the sentence
-   * is no longer mounted or the same action is already running for it.
+   * is neither mounted nor held, or the same action is already running for it.
    */
   private actionable(
     sentenceId: SentenceId,
@@ -529,4 +564,9 @@ function groupBySentence<T extends { readonly sentenceId: SentenceId }>(
     }
   }
   return grouped;
+}
+
+/** Whether two lists hold the same sentences, in order. */
+function sameSentences(a: readonly Sentence[], b: readonly Sentence[]): boolean {
+  return a.length === b.length && a.every((sentence, index) => sentence === b[index]);
 }

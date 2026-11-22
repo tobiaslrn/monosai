@@ -211,7 +211,9 @@ this reading's clips. It is provided by the reader, so the player's open state d
 with the screen while playback, which is application-wide, outlives it. It also tells
 playback what playback cannot watch for itself: which clips to re-read as the job
 writes them, and when no more are coming. The page opens the reading its route names from
-`ngOnChanges`; `SentenceAidsStore` follows the mounted window, and
+`ngOnChanges`; `SentenceAidsStore` follows the mounted window, plus the sentence an
+open card shows, which `ReaderSelectionStore` holds so a sheet left open while the
+reading scrolls keeps its sentence, its aids and its actions, and
 `ReaderPreparationStore` re-reads the summaries while a job runs.
 
 The confirmation before clips are deleted is `ReaderContentActionsService`'s. The player card's measured height, which anything else docked to the

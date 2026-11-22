@@ -38,16 +38,28 @@ export class ReaderSelectionStore {
   private readonly audio = inject(ReaderAudioStore);
   private readonly inspector = inject(WordInspectorStore);
 
-  private readonly sentenceIdSignal = signal<SentenceId | null>(null);
+  private readonly sentenceSignal = signal<Sentence | null>(null);
 
   /** The open sentence, or null when no sentence card is showing. */
-  readonly sentenceId = this.sentenceIdSignal.asReadonly();
+  readonly sentenceId = computed(() => this.sentenceSignal()?.id ?? null);
 
   /** The aids stored for the open sentence, which is what its card renders. */
   readonly sentenceAids = computed(() => {
-    const id = this.sentenceIdSignal();
+    const id = this.sentenceId();
     return id === null ? NO_AIDS : (this.aids.aids().get(id) ?? NO_AIDS);
   });
+
+  constructor() {
+    // A card stays open while the reading scrolls under it, so what it shows
+    // and can still ask for must outlast the paragraph leaving the window.
+    this.aids.hold(
+      computed(() => {
+        const open = this.sentenceSignal();
+        const inspected = this.inspector.selected()?.sentence ?? null;
+        return [open, inspected].filter((sentence) => sentence !== null);
+      }),
+    );
+  }
 
   /** The aids stored for the sentence the open word belongs to. */
   readonly inspectedSentenceAids = computed(() => {
@@ -65,18 +77,18 @@ export class ReaderSelectionStore {
   readonly wordOpen = computed(() => this.inspector.isOpen());
 
   /** True while any detail surface owns the reader's attention. */
-  readonly anythingOpen = computed(() => this.wordOpen() || this.sentenceIdSignal() !== null);
+  readonly anythingOpen = computed(() => this.wordOpen() || this.sentenceSignal() !== null);
 
-  selectSentence(sentenceId: SentenceId): void {
-    this.sentenceIdSignal.set(sentenceId);
+  selectSentence(sentence: Sentence): void {
+    this.sentenceSignal.set(sentence);
   }
 
   clearSentence(): void {
-    this.sentenceIdSignal.set(null);
+    this.sentenceSignal.set(null);
   }
 
   isSelected(sentenceId: SentenceId): boolean {
-    return this.sentenceIdSignal() === sentenceId;
+    return this.sentenceId() === sentenceId;
   }
 
   /** Looks a word up locally. Nothing here reaches a provider. */
@@ -98,14 +110,14 @@ export class ReaderSelectionStore {
 
   /** Translates the open sentence, because it was asked for. */
   translateSentence(): void {
-    const id = this.sentenceIdSignal();
+    const id = this.sentenceId();
     if (id === null) return;
     void this.aids.translateSentence(id).then(() => this.reader.refreshSummaries());
   }
 
   /** Analyses the open sentence, because it was asked for. */
   analyzeSentence(): void {
-    const id = this.sentenceIdSignal();
+    const id = this.sentenceId();
     if (id === null) return;
     void this.aids.analyzeGrammar(id).then(() => this.reader.refreshSummaries());
   }
@@ -118,7 +130,7 @@ export class ReaderSelectionStore {
    * is real rather than a button that finds nothing.
    */
   synthesizeSentence(): void {
-    const id = this.sentenceIdSignal();
+    const id = this.sentenceId();
     if (id === null) return;
     void this.aids.synthesizeSentence(id).then(async () => {
       await this.reader.refreshSummaries();
@@ -131,7 +143,7 @@ export class ReaderSelectionStore {
 
   /** Plays the open sentence and stops at its end. */
   playSentence(): void {
-    const id = this.sentenceIdSignal();
+    const id = this.sentenceId();
     if (id !== null) {
       void this.audio.playback.playSentence(id);
     }

@@ -1,9 +1,8 @@
 import type { Signal, TemplateRef, ViewContainerRef } from '@angular/core';
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { ReaderSelectionStore } from '../../application/reading/reader-selection.store';
 import { ReaderStore, type ReaderSentence } from '../../application/reading/reader.store';
 import { WordInspectorStore } from '../../application/reading/word-inspector.store';
-import type { SentenceId } from '../../domain/shared/ids';
 import { PopoverService } from '../../shared-ui/popover/popover.service';
 import type { SentenceSelection } from './paragraph-gestures.directive';
 import { ReaderGeometryService } from './reader-geometry.service';
@@ -58,9 +57,25 @@ export class ReaderSurfacesService {
     return byId;
   });
 
+  /**
+   * The sentence the open card was opened for, as it was then.
+   *
+   * A card stays open while the reading scrolls under it, and the paragraph it
+   * describes can leave the window; the card keeps describing that sentence.
+   */
+  private readonly openedSentence = signal<ReaderSentence | null>(null);
+
+  /** The open sentence as mounted, which is the freshest, or as it was opened. */
   private readonly selectedSentence = computed(() => {
     const sentenceId = this.selection.sentenceId();
-    return sentenceId === null ? undefined : this.sentencesById().get(sentenceId);
+    if (sentenceId === null) {
+      return undefined;
+    }
+    const opened = this.openedSentence();
+    return (
+      this.sentencesById().get(sentenceId) ??
+      (opened?.sentence.id === sentenceId ? opened : undefined)
+    );
   });
 
   readonly selectedSentenceText = computed(
@@ -116,7 +131,7 @@ export class ReaderSurfacesService {
     }
     this.wordPreview.end();
     this.openSentence(
-      sentence.sentence.id,
+      sentence,
       this.geometry.sentenceElement(sentence.sentence.id) ?? { x: selection.x, y: selection.y },
       undefined,
       selection.y,
@@ -192,7 +207,7 @@ export class ReaderSurfacesService {
       return;
     }
     this.openSentence(
-      activation.sentence.sentence.id,
+      activation.sentence,
       this.geometry.sentenceElement(activation.sentence.sentence.id) ?? activation.origin,
       activation.origin,
     );
@@ -206,7 +221,7 @@ export class ReaderSurfacesService {
   }
 
   private openSentence(
-    sentenceId: SentenceId,
+    sentence: ReaderSentence,
     origin: { x: number; y: number } | HTMLElement,
     returnFocusTo?: HTMLElement | null,
     pressedAtY?: number,
@@ -215,11 +230,13 @@ export class ReaderSurfacesService {
     if (templates === null) {
       return;
     }
+    const sentenceId = sentence.sentence.id;
     // For the same reason as a word: the closing surface clears the selection,
     // so whatever is open goes first and the new sentence is set after it.
     // Without returning focus, because another surface is opening in its place.
     this.popover.close(false);
-    this.selection.selectSentence(sentenceId);
+    this.openedSentence.set(sentence);
+    this.selection.selectSentence(sentence.sentence);
     const surface = this.popover.open({
       origin,
       template: templates.sentence(),
@@ -231,6 +248,7 @@ export class ReaderSurfacesService {
       retargetSelector: WORD_TARGET,
       onClosed: () => {
         this.geometry.releaseSheet();
+        this.openedSentence.set(null);
         this.selection.clearSentence();
       },
     });

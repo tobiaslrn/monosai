@@ -41,8 +41,8 @@ describe('ReaderSurfacesService', () => {
   const selection = {
     sentenceId: openSentence,
     inspectedSentenceAids: signal({ grammar: null, grammarStale: false }),
-    selectSentence: vi.fn((id: string) => {
-      openSentence.set(id);
+    selectSentence: vi.fn((sentence: { id: string }) => {
+      openSentence.set(sentence.id);
     }),
     clearSentence: vi.fn(),
     openWord: vi.fn(),
@@ -55,18 +55,20 @@ describe('ReaderSurfacesService', () => {
     releaseSheet: vi.fn(),
   };
   const preview = { show: vi.fn(), end: vi.fn() };
+  const paragraphs = signal<readonly unknown[]>([]);
   let surfaces: ReaderSurfacesService;
 
   beforeEach(() => {
     vi.clearAllMocks();
     openSentence.set(null);
     openWord.set(null);
+    paragraphs.set([{ sentences: [sentenceEntry] }]);
     TestBed.configureTestingModule({
       providers: [
         ReaderSurfacesService,
         {
           provide: ReaderStore,
-          useValue: { paragraphs: signal([{ sentences: [sentenceEntry] }]) },
+          useValue: { paragraphs },
         },
         { provide: ReaderSelectionStore, useValue: selection },
         { provide: WordInspectorStore, useValue: { selected: openWord } },
@@ -121,8 +123,16 @@ describe('ReaderSurfacesService', () => {
   it('opens a sentence, and resolves its text', () => {
     surfaces.selectSentence(line('mouse'));
 
-    expect(selection.selectSentence).toHaveBeenCalledWith('s1');
+    expect(selection.selectSentence).toHaveBeenCalledWith(sentenceEntry.sentence);
     expect(popover.open).toHaveBeenCalledOnce();
+    expect(surfaces.selectedSentenceText()).toBe('猫です。');
+  });
+
+  it('keeps describing an open sentence after its paragraph leaves the window', () => {
+    surfaces.selectSentence(line('touch'));
+
+    paragraphs.set([]);
+
     expect(surfaces.selectedSentenceText()).toBe('猫です。');
   });
 

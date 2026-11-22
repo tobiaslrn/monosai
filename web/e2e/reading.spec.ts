@@ -1070,6 +1070,40 @@ test.describe('scenario 1 — paste, save, inspect', () => {
     await expect(page.locator('.mn-popover-pane')).toHaveCount(1);
   });
 
+  test('an open sentence sheet keeps its sentence when the reading scrolls @mobile @smoke', async ({
+    page,
+    context,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'only the docked sheet stays open while the reading scrolls');
+    const paragraphs = Array.from(
+      { length: 40 },
+      (_value, index) =>
+        `第${String(index)}段の文です。吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。`,
+    );
+    await importReading(page, paragraphs.join(PARAGRAPH_BREAK), 'Scrolled sheet');
+    await longPress(page, page.locator('.sentence').first());
+    const sheet = page.locator('mn-sentence-popover');
+    await expect(sheet.locator('.source')).toHaveText('第0段の文です。');
+
+    // Step by step, as a reader scrolls, so the window moves past the paragraph.
+    for (let step = 0; step < 30; step += 1) {
+      await page.evaluate(() => {
+        window.scrollBy({ top: 400, behavior: 'instant' });
+      });
+      // eslint-disable-next-line no-restricted-syntax -- one frame per step, as a reader scrolls
+      await page.waitForTimeout(80);
+    }
+    await expect(page.locator('mn-reader-paragraph', { hasText: '第0段' })).toHaveCount(0);
+
+    await expect(sheet.locator('.source')).toHaveText('第0段の文です。');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await sheet.getByRole('button', { name: 'Copy' }).click();
+    await expect
+      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toBe('第0段の文です。');
+  });
+
   test('holding a word opens its sentence rather than the word @mobile @smoke', async ({
     page,
     isMobile,

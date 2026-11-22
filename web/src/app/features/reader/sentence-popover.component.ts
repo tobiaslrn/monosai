@@ -566,13 +566,19 @@ export class SentencePopoverComponent {
   }
 
   protected async copySentence(): Promise<void> {
+    const text = this.sentenceText();
+    // Nothing to copy is not a copy: writing it would empty the clipboard and
+    // then say "Copied" about it.
+    if (text === '') {
+      return;
+    }
     const clipboard = this.documentRef.defaultView?.navigator.clipboard;
     if (clipboard === undefined) {
       this.copyStatus.set('failed');
       return;
     }
     try {
-      await clipboard.writeText(this.sentenceText());
+      await clipboard.writeText(text);
       this.copyStatus.set('copied');
       this.copyAnnounced.set(true);
     } catch {

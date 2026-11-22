@@ -199,6 +199,28 @@ describe('SentencePopoverComponent', () => {
     expect(rendered.querySelector('[role="status"]')?.textContent).toContain('Copied');
   });
 
+  it('neither writes nor reports a copy when there is no sentence to copy', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    const documentRef = TestBed.inject(DOCUMENT);
+    Object.defineProperty(documentRef.defaultView?.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const fixture = render();
+    fixture.componentInstance.sentenceText.set('');
+    fixture.detectChanges();
+    const rendered = host(fixture);
+
+    [...rendered.querySelectorAll('button')]
+      .find((button) => button.textContent.trim() === 'Copy')
+      ?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(writeText).not.toHaveBeenCalled();
+    expect(rendered.textContent).not.toContain('Copied');
+  });
+
   it('keeps copy failures local and offers ordinary selection as recovery', async () => {
     const documentRef = TestBed.inject(DOCUMENT);
     Object.defineProperty(documentRef.defaultView?.navigator, 'clipboard', {
