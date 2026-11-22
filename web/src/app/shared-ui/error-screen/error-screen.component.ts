@@ -17,7 +17,7 @@ import { IconComponent } from '../icon/icon.component';
   imports: [IconComponent],
   template: `
     <section class="mn-state mn-state--error" role="alert">
-      <span class="mn-state__mark" aria-hidden="true"><mn-icon name="warning" [size]="20" /></span>
+      <span class="mn-state__mark" aria-hidden="true"><mn-icon name="warning" /></span>
       <h2 class="mn-state__title">{{ heading() }}</h2>
       @if (description(); as what) {
         <p class="mn-state__what">{{ what }}</p>

@@ -77,7 +77,7 @@ import { PageNoticeSlot } from '../../shared-ui/page-header/page-notice-slot';
           </aside>
         }
         @if (intro.saveFailed()) {
-          <mn-notice tone="error" icon="warning" role="alert">
+          <mn-notice tone="danger" icon="warning" role="alert">
             <p>Could not save</p>
             <button mn-notice-action mnButton type="button" (click)="intro.retrySave()">
               Try again

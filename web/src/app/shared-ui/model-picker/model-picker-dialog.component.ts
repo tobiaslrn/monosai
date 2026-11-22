@@ -94,7 +94,7 @@ export type ModelPickerChoice =
               <span class="mn-dropdown-row__label">{{ fallback }}</span>
             </span>
             @if (request.selectedId() === '') {
-              <mn-icon class="mn-dropdown-row__check" name="check" tone="accent" />
+              <mn-icon class="mn-dropdown-row__check" name="check" tone="action" />
             }
           </button>
         }
@@ -102,7 +102,7 @@ export type ModelPickerChoice =
         @if (request.loading()) {
           <p class="mn-dropdown__state state" role="status">Loading models…</p>
         } @else if (request.failure(); as failure) {
-          <mn-notice tone="error" role="alert"
+          <mn-notice tone="danger" role="alert"
             ><p>{{ failure }}</p></mn-notice
           >
         } @else {
@@ -166,7 +166,7 @@ export type ModelPickerChoice =
         </button>
         <span class="mn-dropdown-row__mark">
           @if (model.modelId === request.selectedId()) {
-            <mn-icon class="mn-dropdown-row__check" name="check" tone="accent" />
+            <mn-icon class="mn-dropdown-row__check" name="check" tone="action" />
           }
         </span>
       </div>

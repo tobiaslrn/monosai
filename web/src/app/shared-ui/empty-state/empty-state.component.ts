@@ -20,7 +20,7 @@ import type { IconName } from '../icon/icon-set';
   imports: [IconComponent],
   template: `
     <section class="mn-state" [attr.aria-labelledby]="headingId">
-      <span class="mn-state__mark" aria-hidden="true"><mn-icon [name]="icon()" [size]="20" /></span>
+      <span class="mn-state__mark" aria-hidden="true"><mn-icon [name]="icon()" /></span>
       <h2 class="mn-state__title" [id]="headingId">{{ heading() }}</h2>
       @if (description(); as text) {
         <p class="mn-state__what">{{ text }}</p>

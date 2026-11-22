@@ -110,7 +110,7 @@ interface VirtualVocabularyEntry {
               <span class="mn-dropdown-row__label">{{ option.label }}</span>
             </span>
             @if (store.query().sort === option.value) {
-              <mn-icon class="mn-dropdown-row__check" name="check" tone="accent" />
+              <mn-icon class="mn-dropdown-row__check" name="check" tone="action" />
             }
           </button>
         }
@@ -125,13 +125,13 @@ interface VirtualVocabularyEntry {
           <p class="mn-hint" role="status">Loading…</p>
         }
         @case ('unavailable') {
-          <mn-notice tone="error" role="alert">
+          <mn-notice tone="danger" role="alert">
             <p>Could not load words.</p>
             <button mn-notice-action mnButton type="button" (click)="reload()">Try again</button>
           </mn-notice>
         }
         @case ('failed') {
-          <mn-notice tone="error" role="alert">
+          <mn-notice tone="danger" role="alert">
             <p>Could not load words.</p>
             <button mn-notice-action mnButton type="button" (click)="reload()">Try again</button>
           </mn-notice>

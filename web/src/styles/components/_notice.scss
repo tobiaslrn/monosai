@@ -7,7 +7,7 @@
  * icon, and an optional action at the end that moves to its own line only when
  * the words need the room.
  *
- *   <div class="mn-notice mn-notice--error" role="alert">
+ *   <div class="mn-notice mn-notice--danger" role="alert">
  *     <mn-icon name="warning" />      optional
  *     <p>What happened.</p>           or a <div> of several paragraphs
  *     <button class="mn-button">…</button>   optional
@@ -33,7 +33,7 @@
   @include motion.enter;
 }
 
-.mn-notice--error {
+.mn-notice--danger {
   --notice-soft: var(--status-danger-soft);
   --notice-ink: var(--status-danger);
 }
@@ -49,7 +49,7 @@
 }
 
 /*
- * One meaning per tone, app-wide. Error: something failed. Warning: it can go
+ * One meaning per tone, app-wide. Danger: something failed. Warning: it can go
  * ahead, but the result may be limited or wrong unless the learner acts.
  * Setup: something has to be set up before this works — the look of a blocker
  * row, the plain ground with the warning mark, and its way forward at the end.

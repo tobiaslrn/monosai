@@ -93,7 +93,7 @@ import {
                 }
                 @case ('credit') {
                   <mn-settings-row
-                    action="accent"
+                    action="action"
                     glyph="external"
                     [label]="row.label"
                     href="https://openrouter.ai/settings/credits"
@@ -102,7 +102,7 @@ import {
                 }
                 @case ('prepare') {
                   <mn-settings-row
-                    action="accent"
+                    action="action"
                     [label]="row.label"
                     [disabled]="row.disabled"
                     [busy]="pending() === row.layer"
@@ -111,7 +111,7 @@ import {
                 }
                 @case ('cancel') {
                   <mn-settings-row
-                    action="accent"
+                    action="action"
                     [label]="row.label"
                     [busy]="pending() === row.layer"
                     (pressed)="pending() === row.layer || stopRequested.emit(row.layer)"

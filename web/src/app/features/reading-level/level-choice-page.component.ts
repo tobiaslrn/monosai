@@ -39,7 +39,7 @@ import { PresetPickerComponent } from '../grammar/preset-picker.component';
         <mn-preset-picker [selected]="draft()" (selectedChange)="choose($event)" />
 
         @if (profile.lastError()) {
-          <p class="mn-notice mn-notice--error" role="alert">
+          <p class="mn-notice mn-notice--danger" role="alert">
             Could not save. Your level is unchanged.
           </p>
         }

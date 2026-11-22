@@ -215,7 +215,7 @@ describe('auxAction', () => {
       kind: 'cancel',
       icon: 'stop',
       label: 'Stop generating audio',
-      tone: 'accent',
+      tone: 'action',
     });
   });
 
@@ -265,7 +265,7 @@ describe('auxAction', () => {
       kind: 'generate',
       label: 'Generate audio',
       title: 'Generate audio — 4 of 13 sentences have audio',
-      tone: 'accent',
+      tone: 'action',
     });
   });
 

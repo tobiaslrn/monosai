@@ -41,7 +41,7 @@ import { TextInputStepComponent } from './text-input-step.component';
         }
 
         @if (store.languageFailure(); as failure) {
-          <div class="mn-notice mn-notice--error" role="alert">
+          <div class="mn-notice mn-notice--danger" role="alert">
             <div>
               <p><strong>Japanese analysis is not ready</strong> {{ failure.message }}</p>
               <p>Your text is unchanged.</p>
@@ -51,7 +51,7 @@ import { TextInputStepComponent } from './text-input-step.component';
         }
 
         @if (store.storageFailure(); as failure) {
-          <div class="mn-notice mn-notice--error" role="alert">
+          <div class="mn-notice mn-notice--danger" role="alert">
             <div>
               <p><strong>Could not save the story.</strong> {{ failure.message }}</p>
               <p>Your text is still here.</p>

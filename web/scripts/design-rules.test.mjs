@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { compare, violationsOf } from './design-rules.mjs';
+import { checkIconSizes, compare, violationsOf } from './design-rules.mjs';
 
 const component = (body) => `@Component({ selector: 'mn-x', ${body} }) export class X {}`;
 const template = (html) => component(`template: \`${html}\``);
@@ -12,14 +12,38 @@ test('finds a native select in a template', () => {
   assert.deepEqual(violationsOf(FEATURE, template('<mn-select></mn-select>')), []);
 });
 
-test('finds an icon size outside the three roles and ignores the others', () => {
+test('finds an icon sized outside the three roles and ignores the roles', () => {
   assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [size]="18" />')), ['R35']);
+  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [size]="20" />')), ['R35']);
   assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" size="14" />')), ['R35']);
-  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [size]="16" />')), []);
-  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [size]="20" />')), []);
-  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [size]="24" />')), []);
+  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" size="large" />')), ['R35']);
+  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [legacySize]="18" />')), [
+    'R35',
+  ]);
+  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" size="inline" />')), []);
+  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" size="control" />')), []);
+  assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" size="feature" />')), []);
   assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" [size]="size()" />')), []);
   assert.deepEqual(violationsOf(FEATURE, template('<mn-icon name="a" />')), []);
+});
+
+test('finds a glyph resized by a stylesheet', () => {
+  assert.deepEqual(violationsOf(FEATURE, styles('mn-icon svg { width: 1rem; }')), ['R35']);
+  assert.deepEqual(violationsOf('src/styles/_a.scss', '.a svg { block-size: 1rem; }'), ['R35']);
+  assert.deepEqual(violationsOf('src/styles/_a.scss', 'svg { max-width: 100%; }'), []);
+  assert.deepEqual(violationsOf('src/styles/_a.scss', '.a svg { fill: currentcolor; }'), []);
+});
+
+test('holds the icon component to the same three sizes', () => {
+  assert.deepEqual(
+    checkIconSizes('export const ICON_SIZES = { inline: 16, control: 20, feature: 24 } as const;'),
+    [],
+  );
+  assert.match(
+    checkIconSizes('export const ICON_SIZES = { inline: 14, control: 20, feature: 24 };')[0],
+    /R35/,
+  );
+  assert.match(checkIconSizes('')[0], /must declare ICON_SIZES/);
 });
 
 test('finds a button inside a settings row, not beside one', () => {

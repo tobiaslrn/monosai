@@ -172,9 +172,9 @@
   --status-tone: var(--status-danger);
 }
 
-/* An action names itself in the accent colour, or the danger colour when it destroys. */
-.mn-settings-row--accent .mn-settings-row__title,
-.mn-settings-row--accent .mn-settings-row__end {
+/* An action names itself in the action colour, or the danger colour when it destroys. */
+.mn-settings-row--action .mn-settings-row__title,
+.mn-settings-row--action .mn-settings-row__end {
   color: var(--action-primary-text);
 }
 

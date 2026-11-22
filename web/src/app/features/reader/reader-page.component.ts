@@ -172,7 +172,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
           @if (audio.maintenanceState() === 'cleared') {
             <p class="audio-maintenance-message mn-hint" role="status">Audio deleted</p>
           } @else if (audio.maintenanceError(); as error) {
-            <p class="audio-maintenance-message mn-notice mn-notice--error" role="alert">
+            <p class="audio-maintenance-message mn-notice mn-notice--danger" role="alert">
               Deleting audio failed: {{ error.message }}
             </p>
           }

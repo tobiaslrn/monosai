@@ -127,7 +127,7 @@ const TYPE_AHEAD_RESET_MS = 600;
               }
             </span>
             @if (index === selectedIndex()) {
-              <mn-icon class="mn-dropdown-row__check" name="check" tone="accent" />
+              <mn-icon class="mn-dropdown-row__check" name="check" tone="action" />
             }
           </div>
         }

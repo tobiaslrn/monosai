@@ -20,7 +20,7 @@ export interface AlphaNoticeDialogData {
       <p id="mn-alpha-message">Expect bugs and changes.</p>
 
       @if (saveFailed()) {
-        <mn-notice tone="error" role="alert">
+        <mn-notice tone="danger" role="alert">
           <p>Could not save. Try again.</p>
         </mn-notice>
       }

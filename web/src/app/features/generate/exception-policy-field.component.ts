@@ -66,7 +66,7 @@ import { CardComponent } from '../../shared-ui/card/card.component';
         <p class="mn-hint" role="status">Saved</p>
       }
       @if (policy.failure(); as failure) {
-        <p role="alert" class="mn-notice mn-notice--error">{{ failure.message }}</p>
+        <p role="alert" class="mn-notice mn-notice--danger">{{ failure.message }}</p>
       }
     </mn-card>
   `,

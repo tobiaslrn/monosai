@@ -25,7 +25,7 @@ import { IconComponent } from '../icon/icon.component';
         >
           <span class="mark" aria-hidden="true">
             @if (current() > index + 1) {
-              <mn-icon name="check" [size]="14" />
+              <mn-icon name="check" [legacySize]="14" />
             } @else {
               {{ index + 1 }}
             }

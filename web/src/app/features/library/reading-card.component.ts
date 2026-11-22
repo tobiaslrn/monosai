@@ -72,7 +72,7 @@ const FORM_LABELS: Readonly<Record<StoryForm, string>> = {
         }
         @if (hasAudio()) {
           <mn-cluster [gap]="1" title="Audio">
-            <mn-icon name="audio" [size]="16" />
+            <mn-icon name="audio" size="inline" />
             <span class="mn-visually-hidden">Audio</span>
           </mn-cluster>
         }

@@ -32,10 +32,8 @@ import {
   type SelectValue,
 } from '../../shared-ui/select/select.component';
 import { SettingsRowComponent } from '../../shared-ui/settings-row/settings-row.component';
-import {
-  StatusLineComponent,
-  type StatusTone,
-} from '../../shared-ui/status-line/status-line.component';
+import { StatusLineComponent } from '../../shared-ui/status-line/status-line.component';
+import type { StatusTone } from '../../shared-ui/tone';
 import type { AudioStatus } from './ai-status';
 import { ModelCatalogView } from './model-catalog-view';
 import { modelRowWords } from './model-row';
@@ -133,7 +131,7 @@ interface VoiceLine {
 
       <mn-section label="Sample" [rows]="true">
         <mn-settings-row
-          action="accent"
+          action="action"
           [label]="tts.action() === 'testing' ? 'Stop sample' : 'Play sample'"
           [glyph]="tts.action() === 'testing' ? 'stop' : 'play'"
           [testId]="tts.action() === 'testing' ? 'cancel-tts-test' : 'test-tts'"

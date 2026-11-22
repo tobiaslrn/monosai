@@ -1,11 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { IconComponent } from '../icon/icon.component';
 import type { IconName } from '../icon/icon-set';
+import type { StatusTone } from '../tone';
 
-/** Where something stands, as the tone of the mark and words that lead its line. */
-export type StatusTone = 'success' | 'warning' | 'danger' | 'info';
+/**
+ * Where something stands, as the tone of the mark and words that lead its
+ * line. `setup` has no look here: a row that needs setting up says so in words.
+ */
+export type StatusLeadTone = Exclude<StatusTone, 'setup'>;
 
-const STATUS_ICON: Record<StatusTone, IconName> = {
+const STATUS_ICON: Record<StatusLeadTone, IconName> = {
   success: 'synced',
   warning: 'alert',
   danger: 'alert',
@@ -27,11 +31,11 @@ const STATUS_ICON: Record<StatusTone, IconName> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [IconComponent],
   template: `<span class="mn-status-lead" [attr.data-tone]="tone()"
-    ><mn-icon [name]="icon()" [size]="16" />{{ text() }}</span
+    ><mn-icon [name]="icon()" size="inline" />{{ text() }}</span
   >`,
 })
 export class StatusLeadComponent {
-  readonly tone = input.required<StatusTone>();
+  readonly tone = input.required<StatusLeadTone>();
   readonly text = input.required<string>();
   protected readonly icon = computed(() => STATUS_ICON[this.tone()]);
 }

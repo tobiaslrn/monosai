@@ -13,13 +13,21 @@ import { readBaseAllowlist, templatesOf } from './composition-freeze.mjs';
 export const EXEMPTIONS_PATH = 'scripts/design-rules-exemptions.json';
 export const RULEBOOK = 'docs/design/rules.md';
 
-/** The three icon-size roles (inline, control, feature), in pixels. */
-export const ICON_SIZES = [16, 20, 24];
+/**
+ * The three icon-size roles, in pixels. `mn-icon` takes only these names as
+ * its `size`, and `ICON_SIZES` in its component must say the same.
+ */
+export const ICON_SIZES = { inline: 16, control: 20, feature: 24 };
+export const ICON_COMPONENT = 'src/app/shared-ui/icon/icon.component.ts';
+
+const ICON_ROLES = Object.entries(ICON_SIZES)
+  .map(([role, pixels]) => `${role} ${String(pixels)}px`)
+  .join(', ');
 
 /** What each guard enforces; the key is the rule number in the rulebook. */
 export const RULES = {
   R20: 'uses a native <select>; every choice from a list is mn-select or the model picker dialog',
-  R35: `sets an mn-icon size outside the three icon-size roles (${ICON_SIZES.join(', ')})`,
+  R35: `sizes an icon outside the three roles (${ICON_ROLES}); pass a role as the mn-icon size, never legacySize or a stylesheet size`,
   R15: 'puts a button inside an <mn-settings-row>; a row never holds a button, field or pill',
   R39: 'writes a colour literal outside _tokens.scss; use a colour token',
   R40: 'scales on press; a press is a colour change and nothing moves',
@@ -74,8 +82,27 @@ function styleViolations(css) {
   for (const { header, body } of blocksOf(css)) {
     const press = /:active\b|@mixin\s+press/i.test(header);
     if (press && /\bscale\s*\(|(?:^|[;\s{])scale\s*:/i.test(body)) found.add('R40');
+    // A glyph resized by a stylesheet rather than by its role.
+    if (
+      /\bsvg\b/i.test(header) &&
+      /(?:^|[;\s{])(?:width|height|inline-size|block-size)\s*:/i.test(body)
+    )
+      found.add('R35');
   }
   return found;
+}
+
+/**
+ * Whether an mn-icon tag sizes itself outside the roles: a bound pixel `size`,
+ * a static `size` that names no role, or the deprecated `legacySize` set to a
+ * number. The type of `size` already refuses anything but a role; this also
+ * catches what the template type check lets through.
+ */
+function iconSizeViolates(tag) {
+  for (const [, bound, value] of tag.matchAll(/(\[)?\bsize\]?\s*=\s*"([^"]*)"/g)) {
+    if (bound ? /^\s*\d+\s*$/.test(value) : !Object.hasOwn(ICON_SIZES, value)) return true;
+  }
+  return /\[?\blegacySize\]?\s*=\s*"\s*\d+\s*"/.test(tag);
 }
 
 function hasColourLiteral(css) {
@@ -100,9 +127,7 @@ export function violationsOf(path, source) {
     for (const template of templatesOf(path, source)) {
       if (/<select[\s>]/i.test(template)) found.add('R20');
       for (const tag of template.matchAll(/<mn-icon\b[^>]*>/g)) {
-        for (const size of tag[0].matchAll(/(?:\[size\]|\bsize)\s*=\s*"(\d+)"/g)) {
-          if (!ICON_SIZES.includes(Number(size[1]))) found.add('R35');
-        }
+        if (iconSizeViolates(tag[0])) found.add('R35');
       }
       for (const row of template.matchAll(/<mn-settings-row\b[\s\S]*?<\/mn-settings-row>/g)) {
         if (/\bmnButton\b|<mn-button\b/.test(row[0])) found.add('R15');
@@ -178,10 +203,24 @@ export async function checkRulebook(repoRoot) {
   return errors;
 }
 
+/** The icon component draws the same three sizes this guard knows. */
+export function checkIconSizes(source) {
+  const declared = /\bICON_SIZES\s*=\s*(\{[^}]*\})/.exec(source)?.[1] ?? '';
+  const sizes = Object.fromEntries(
+    [...declared.matchAll(/(\w+)\s*:\s*(\d+)/g)].map(([, role, pixels]) => [role, Number(pixels)]),
+  );
+  if (JSON.stringify(sizes) === JSON.stringify(ICON_SIZES)) return [];
+  return [
+    `${ICON_COMPONENT} must declare ICON_SIZES as ${JSON.stringify(ICON_SIZES)}. ` +
+      `See R35 in ${RULEBOOK}.`,
+  ];
+}
+
 export async function checkDesignRules(webRoot) {
   const exemptions = JSON.parse(await readFile(join(webRoot, EXEMPTIONS_PATH), 'utf8'));
   return [
     ...(await checkRulebook(resolve(webRoot, '..'))),
+    ...checkIconSizes(await readFile(join(webRoot, ICON_COMPONENT), 'utf8')),
     ...compare(await scan(webRoot), exemptions, readBaseAllowlist(webRoot, EXEMPTIONS_PATH)),
   ];
 }

@@ -56,7 +56,7 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
           </p>
         }
         @if (editorError(); as error) {
-          <mn-notice tone="error" role="alert"
+          <mn-notice tone="danger" role="alert"
             ><p>{{ error }}</p></mn-notice
           >
         }
