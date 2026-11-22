@@ -37,6 +37,11 @@ let nextDropdownId = 0;
  * `_dropdown.scss`, which menus share; nothing about it is chosen by the place
  * that uses it.
  *
+ * Its rows have no line between them and no title or handle above them. The
+ * chosen option is marked only by a check at its end, never by weight or a
+ * tinted ground; a real split in the list is one separator or a muted group
+ * label. While it is open, its row keeps the state layer.
+ *
  * It is a native popover, so a press outside or Escape closes it and focus
  * returns to the field. Back closes it too, rather than leaving the page, and a
  * press outside never also activates what it landed on (`OpenOverlayGuard`). Opening moves focus to its `[data-overlay-focus]`

@@ -8,7 +8,9 @@ import type { IconName } from '../icon/icon-set';
  * title says what is empty, one sentence says what would fill it, and the
  * projected actions are the ways to fill it, primary first. A search or filter
  * that matched nothing is the same state with its title alone, and Reset as
- * its one action.
+ * its one action; the search text and the active filters stay visible above
+ * it. A list never filled and a list whose current snapshot is empty are two
+ * states, each with the one action that can change it.
  *
  *   <mn-empty-state heading="No stories yet" description="Write one from your words.">
  *     <ng-container data-actions>…</ng-container>

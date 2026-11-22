@@ -10,6 +10,13 @@ import { IconComponent } from '../icon/icon.component';
  *
  * The steps share the width and wrap to fewer columns when the labels need
  * the room. A long task's progress through its stages is `mn-stepper`.
+ *
+ * A form in steps has no step tabs and no second Next. The bar's Back goes up
+ * one step, and from the first to the page's parent; the step's one filled
+ * action at the foot is Next, then the verb that commits the work. Moving to a
+ * step moves focus to its heading and the page to its top. A step's action is
+ * disabled only by what that step would spend: a step that only chooses is
+ * never blocked.
  */
 @Component({
   selector: 'mn-wizard-steps',

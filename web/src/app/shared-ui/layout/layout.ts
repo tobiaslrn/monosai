@@ -28,6 +28,13 @@ const spaceToken = (step: Gap): string =>
 /**
  * The frame of every non-reader screen: its `mn-page-header`, then the content,
  * in one centred column on the page measure.
+ *
+ * There is one measure: a wide window gives the page more canvas, never a wider
+ * column or a second one, and no page keeps a narrower or wider variant. The page
+ * is top-aligned and grows downward like a document; it is never centred
+ * vertically or stretched to fill the viewport. Its blocks (a hero, a section, a
+ * form's commit) sit one page gap apart, and a form's one action sits below its
+ * card, one page gap away, on every screen.
  */
 @Component({
   selector: 'mn-page',

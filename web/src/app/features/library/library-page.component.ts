@@ -62,10 +62,19 @@ const FILTERS: readonly FilterOption[] = [
  */
 export const FILTER_VISIBILITY_THRESHOLD = 8;
 
-/** The library: the shelf of readings, and the one way to add another. */
 /** Frames the shelf's height must hold still before a position that cannot be reached is given up. */
 const RESTORATION_SETTLED_FRAMES = 8;
 
+/**
+ * The library: the shelf of readings, and the one way to add another.
+ *
+ * It is home, so its bar has no Back and carries the application's utilities,
+ * Help and Settings; no other bar does. The shelf's two ways in,
+ * Write with AI (the filled primary) and Paste, are the one way to start a
+ * story: they share one row, three parts to one, and stack only where a label
+ * would otherwise be cut. Nothing repeats them, and no menu hides them. While
+ * the first-steps card is shown, they are not.
+ */
 @Component({
   selector: 'mn-library-page',
   changeDetection: ChangeDetectionStrategy.OnPush,

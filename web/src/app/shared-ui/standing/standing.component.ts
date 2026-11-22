@@ -13,7 +13,7 @@ import { RouterLink, type NavigationExtras } from '@angular/router';
  *
  * Two lines of space are held whether or not anything is projected yet, so
  * nothing below moves when the facts arrive. A skeleton would be the
- * alternative, and the design system rules those out.
+ * alternative, and the design rules rule those out.
  *
  * The sentence is the link, and it says so under a pointer and nowhere else.
  * Marking its facts permanently was tried: at display size two underlines read
