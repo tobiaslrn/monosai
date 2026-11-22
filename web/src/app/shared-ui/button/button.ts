@@ -12,6 +12,27 @@ export type ButtonVariant = 'default' | 'primary' | 'ghost' | 'danger' | 'icon' 
  *   <a mnButton="ghost" routerLink="/help">Help</a>
  *   <button type="button" mnButton="icon" aria-label="More"><mn-icon name="overflow" /></button>
  *
+ * The emphases, by what a press does:
+ *
+ *   (empty)        the outline: an ordinary, reversible action
+ *   primary        the one filled action that starts or commits a surface's main work;
+ *                  at most one per surface
+ *   ghost          action-colour text with no border: a quiet verb (Add source, Test)
+ *   ghost + tone="danger"
+ *                  a footer action that deletes and leads to a confirmation
+ *   danger         outlined in the danger colour: the confirming button of a
+ *                  confirmation, the one that commits the loss
+ *   icon           bare at rest, for a control pressed again and again in a session
+ *   icon-primary   the filled circle of a transport's play control
+ *
+ * A chosen toggle (`aria-pressed`) wears the soft selection tint, never the
+ * filled primary. Busy is `aria-busy="true"` and nothing else: the control keeps
+ * its place, label, size and fill, and is never disabled for it; the surface
+ * keeps a hidden `role="status"` line saying what started, because a label
+ * that changes on an unfocused control is not announced. Disabled is drawn with
+ * a sunken surface and a distinct boundary, never with opacity alone; a ghost
+ * has no pill, so disabled it is its label in the secondary colour.
+ *
  * A variant written as a plain attribute is drawn from the moment the element
  * exists, not one pass later: a button that first painted unstyled would fade
  * from the browser's grey to its own colour.

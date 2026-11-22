@@ -27,6 +27,14 @@
  * by `styles.scss`, and holds every keyframe and the one
  * reduction for `prefers-reduced-motion`. No other file writes a keyframe, a
  * duration, or a curve: the style scan rejects one.
+ *
+ * Only paint properties animate (opacity, transform, colour, clip); width,
+ * inset, margin and padding never do. A disclosure's height is the one size
+ * that moves, because a fold that jumps reads as a fault. A bar that fills is
+ * uncovered by a clip, and a selection that slides is one shape moved by a
+ * transform. Nothing on the reading surface moves: a word's or a sentence's
+ * colour may fade, and nothing else. A new kind of movement is a new named
+ * motion here first.
  */
 
 @use 'sass:list';

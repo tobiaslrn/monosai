@@ -25,6 +25,15 @@ import { PageNoticeSlot } from './page-notice-slot';
  * Monosai mark, then the title, then whatever the page puts at its end. It
  * sticks to the top of the viewport, so the way back is always the first
  * thing on the screen.
+ *
+ * Its ground is opaque and spans the window; its lower hairline fades in once
+ * content has begun to pass beneath it. The title sits on the page column, and
+ * Back hangs in the canvas beside it, so the title's first letter shares the
+ * edge of the headings and cards below. Back and the last trailing control give
+ * up their inset outward: their glyphs, not their hit areas, line up with the
+ * column. The application's own news is an `mn-banner` above the bar; what the
+ * application offers about the page is the page's first block, under it
+ * (`PageNoticeSlot`).
  */
 @Component({
   selector: 'mn-page-header',

@@ -26,6 +26,11 @@
   --action-primary-hover: #2b6947;
   --action-primary-soft: #e4ede6;
   --action-primary-text: #2b6947;
+  /*
+   * The highlight (lavender): the tint on the open word or sentence in the
+   * reading, and nothing else. It is not a tone: it marks no status and nothing
+   * pressable. A new mark on the Japanese is a rule change, not a new token.
+   */
   --accent-secondary: #6f629a;
   --accent-secondary-soft: #ddd5ef;
 
@@ -114,6 +119,19 @@
   --overlay-edge: color-mix(in srgb, var(--border-strong) 70%, transparent);
 }
 
+/*
+ * Units say what a value follows, so a wrong one silently removes a setting
+ * from the learner:
+ *
+ *   rem   all type, spacing and gaps: the browser's and the OS's text size
+ *   em    the reading measure, and breakpoints: the text, not the window
+ *   px    borders, hairlines, shadow geometry: one pixel stays one pixel
+ *   px floor, rem growth   the touch target: a minimum that may only grow
+ *   dvh   full-height surfaces: the viewport a mobile browser leaves
+ *
+ * The root font size is never set, type is never sized in viewport units, and
+ * every width rule uses a breakpoint from `_breakpoints.scss`.
+ */
 :root {
   @include light-palette;
 
@@ -147,6 +165,11 @@
   --weight-semibold: 600;
   --weight-bold: 700;
 
+  /*
+   * Local system stacks only: no font is ever downloaded, so Japanese renders
+   * offline. An identifier the learner copies character for character (a model
+   * ID, an error code) is set in the monospace stack (`.mn-code`).
+   */
   --font-ui: system-ui, 'Segoe UI', roboto, helvetica, arial, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', consolas, 'Liberation Mono', monospace;
   --font-japanese: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Noto Sans JP', meiryo, sans-serif;
@@ -332,8 +355,8 @@
    * leaving, ambient for what runs without being asked. Distances
    * say how far a named motion travels: a message rises, a menu nudges toward
    * its trigger, a step shifts in from its side. Nothing scales or overshoots,
-   * and a press is a colour, not a movement. The named motions themselves are
-   * `_motion.scss`; see the design system's motion section.
+   * and a press is a colour, not a movement. The named motions themselves, and
+   * when each applies, are `_motion.scss`.
    */
   --motion-fast: 120ms;
   --motion-medium: 200ms;

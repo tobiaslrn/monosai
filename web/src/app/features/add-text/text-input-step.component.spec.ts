@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ImportStore } from '../../application/reading/import.store';
+import { MAXIMUM_IMPORT_CHARACTERS } from '../../domain/reading/import-text';
 import { TextInputStepComponent } from './text-input-step.component';
 
 /** Only the surface this field group reads from the import store. */
@@ -47,10 +48,13 @@ function render(): HTMLElement {
 }
 
 describe('TextInputStepComponent', () => {
+  let store: FakeImportStore;
+
   beforeEach(() => {
+    store = new FakeImportStore();
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
-      providers: [{ provide: ImportStore, useValue: new FakeImportStore() }],
+      providers: [{ provide: ImportStore, useValue: store }],
     });
   });
 
@@ -85,5 +89,34 @@ describe('TextInputStepComponent', () => {
     expect(element.querySelector('#mn-import-count')).toBeNull();
     expect(element.querySelector('#mn-import-hint')).toBeNull();
     expect(textarea?.getAttribute('aria-describedby')).toBeNull();
+  });
+
+  /** Every counter keeps out of the way until its field is roughly 80% full. */
+  it('shows the counter from 80% of the limit, and only then names it as a description', () => {
+    const threshold = Math.ceil(MAXIMUM_IMPORT_CHARACTERS * 0.8);
+
+    store.setPastedText('あ'.repeat(threshold - 1));
+    let element = render();
+    expect(element.querySelector('#mn-import-count')).toBeNull();
+    expect(element.querySelector('textarea')?.getAttribute('aria-describedby')).toBeNull();
+
+    store.setPastedText('あ'.repeat(threshold));
+    element = render();
+    expect(element.querySelector('#mn-import-count')?.textContent).toContain(
+      '40,000 of 50,000 characters',
+    );
+    expect(element.querySelector('textarea')?.getAttribute('aria-describedby')).toBe(
+      'mn-import-count',
+    );
+  });
+
+  it('says the count and the fix in one alert once the text is over the limit', () => {
+    store.setPastedText('あ'.repeat(MAXIMUM_IMPORT_CHARACTERS + 2));
+    const element = render();
+
+    const count = element.querySelectorAll('#mn-import-count');
+    expect(count).toHaveLength(1);
+    expect(count[0]?.getAttribute('role')).toBe('alert');
+    expect(count[0]?.textContent).toContain('Remove 2 characters to continue.');
   });
 });

@@ -26,7 +26,18 @@ import {
   SheetPopoverComponent,
 } from '../../shared-ui/popover/sheet-popover.component';
 
-/** One reader options surface: appearance, saved content, and maintenance. */
+/**
+ * One reader options surface: appearance, saved content, and maintenance.
+ *
+ * Reading appearance is device-wide and applies at once. Each content layer is
+ * the rows of one setting: its state in words (Ready is a status, never a
+ * switch), then its one verb, and a danger row that confirms what it deletes.
+ * Progress, failures and recovery stay beside the layer they affect, and
+ * closing the panel leaves the work running. When every layer waits on the
+ * same setup, the group's status line says it once. Audio's verbs live on the
+ * player and deleting the story lives on its library row, so neither repeats
+ * here.
+ */
 @Component({
   selector: 'mn-reader-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,

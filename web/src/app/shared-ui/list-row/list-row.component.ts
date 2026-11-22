@@ -8,6 +8,17 @@ let nextListRowId = 0;
 /**
  * The shared shape for a row that leads somewhere.
  *
+ * A shelf row answers "what would I open?" and nothing else: an optional
+ * leading mark for a meaningful origin, a title, one line saying what is inside
+ * and, opposite, its status or way forward. The line prefers what the content
+ * says about itself over what is counted about it, and the useful date is when
+ * it was last opened. Its facts are separated by a middle dot and break between
+ * facts, never inside a word. A long title wraps once, then ends in an
+ * ellipsis, and stays whole as the link's accessible name. Every row on a shelf
+ * has one height, and a row standing in for work still running is the row it
+ * will become, its status leading its line. Hover tints a row only under a
+ * mouse.
+ *
  * The link owns the row's content. A menu is projected into a separate sibling
  * slot so an action button can never become invalid interactive content inside
  * the link. The marker attributes are deliberately light-weight projection API

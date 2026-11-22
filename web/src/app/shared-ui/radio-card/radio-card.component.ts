@@ -16,6 +16,10 @@ import { RADIO_CARD_GROUP } from './radio-card-group.component';
  *
  * `inset` is the card sunken inside a card that offers it, which is how drafted
  * options sit; without it the card is its own raised surface.
+ *
+ * It is only for drafted options the learner may edit, such as the plots.
+ * Options that each need a line are an `mn-radio-list`; a few short ones are an
+ * `mn-segmented-control`.
  */
 @Component({
   selector: 'mn-radio-card',
