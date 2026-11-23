@@ -34,6 +34,7 @@ shared its number until it was given the next free one.
 | [0060](../decisions/0060-progressive-translation-freezes-terminology.md)            | Progressive translation freezes a persisted terminology plan           |
 | [0062](../decisions/0062-vocabulary-identity-is-expression-plus-meaning.md)         | Vocabulary identity is expression plus meaning                         |
 | [0096](../decisions/0096-shared-aids-are-counted-by-key-and-outlive-one-reading.md) | Shared aids are counted by key and outlive the reading that wrote them |
+| [0100](../decisions/0100-clip-metadata-has-its-own-table.md)                        | A clip's metadata has its own table                                    |
 
 ### Language processing
 

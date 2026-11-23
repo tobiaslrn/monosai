@@ -554,7 +554,7 @@ describe('DexieEnrichmentRepository', () => {
       const cacheKeys = currentAudioKeys();
       await repository.storeAudio(audio(0), cacheKeys);
       await repository.storeAudio(audio(1, 'audio-1'), cacheKeys);
-      const where = vi.spyOn(db.audioAssets, 'where');
+      const where = vi.spyOn(db.audioSummaries, 'where');
 
       const bounded = await repository.listAudioSummariesForCacheKeys(['audio-0']);
 
@@ -573,6 +573,84 @@ describe('DexieEnrichmentRepository', () => {
       const bounded = await repository.listAudioSummariesForCacheKeys(['audio-0']);
 
       expect(bounded.ok && bounded.value).toEqual([]);
+    });
+  });
+
+  /**
+   * The player refreshes these lists on every stored clip while a run plays, so
+   * a list that carried each clip's bytes out of IndexedDB copied megabytes per
+   * refresh only to throw them away.
+   */
+  describe('listing clip metadata', () => {
+    /** Counts the stored rows that left IndexedDB with their clip bytes on them. */
+    function countRowsReadWithBytes(): () => number {
+      let withBytes = 0;
+      db.audioAssets.hook('reading', (row: object) => {
+        if ('bytes' in row && (row as { bytes?: unknown }).bytes !== undefined) {
+          withBytes += 1;
+        }
+        return row;
+      });
+      return () => withBytes;
+    }
+
+    it("lists a reading's clips without reading any clip bytes", async () => {
+      await repository.storeAudio(audio(0), currentAudioKeys());
+      await repository.storeAudio(audio(1, 'audio-1'), currentAudioKeys());
+      const readWithBytes = countRowsReadWithBytes();
+
+      const summaries = await repository.listAudioSummaries(draft.reading.id);
+
+      expect(summaries.ok && summaries.value.length).toBe(2);
+      expect(readWithBytes()).toBe(0);
+    });
+
+    it('lists clips by cache key without reading any clip bytes', async () => {
+      await repository.storeAudio(audio(0), currentAudioKeys());
+      await repository.storeAudio(audio(1, 'audio-1'), currentAudioKeys());
+      const readWithBytes = countRowsReadWithBytes();
+
+      const summaries = await repository.listAudioSummariesForCacheKeys(['audio-0', 'audio-1']);
+
+      expect(summaries.ok && summaries.value.length).toBe(2);
+      expect(readWithBytes()).toBe(0);
+    });
+
+    it('lists a clip in the format it was re-encoded to', async () => {
+      const asset = audio(0);
+      await repository.storeAudio(asset, currentAudioKeys());
+
+      await repository.replaceAudioBytes({
+        cacheKey: asset.cacheKey,
+        expectedMimeType: asset.mimeType,
+        expectedByteLength: asset.byteLength,
+        bytes: new Uint8Array([9, 9]).buffer,
+        mimeType: 'audio/webm',
+      });
+
+      const summaries = await repository.listAudioSummariesForCacheKeys(['audio-0']);
+      expect(
+        summaries.ok &&
+          summaries.value.map(({ mimeType, byteLength }) => ({ mimeType, byteLength })),
+      ).toEqual([{ mimeType: 'audio/webm', byteLength: 2 }]);
+    });
+
+    it('stops listing a deleted clip', async () => {
+      const asset = audio(0);
+      await repository.storeAudio(asset, currentAudioKeys());
+
+      await repository.deleteAudio(asset.id);
+
+      const summaries = await repository.listAudioSummaries(draft.reading.id);
+      expect(summaries.ok && summaries.value).toEqual([]);
+    });
+
+    it('stops listing the clips of a deleted reading', async () => {
+      await repository.storeAudio(audio(0), currentAudioKeys());
+
+      await readings.deleteReading(draft.reading.id);
+
+      expect(await db.audioSummaries.count()).toBe(0);
     });
   });
 

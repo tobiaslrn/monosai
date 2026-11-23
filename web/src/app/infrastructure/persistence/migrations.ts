@@ -72,6 +72,13 @@ const V19_STORES: Readonly<Record<string, string | null>> = {
   sentences: '&id, readingId, paragraphId, [readingId+positionInReading], contentHash',
 };
 
+const V20_STORES: Readonly<Record<string, string | null>> = {
+  ...V19_STORES,
+  // Each clip's metadata without its bytes, so listing clips never reads audio.
+  // Same keys and indexes as `audioAssets`, which it mirrors row for row.
+  audioSummaries: '&cacheKey, id, sentenceId, readingId',
+};
+
 export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
   {
     version: 1,
@@ -472,6 +479,26 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
     // row is rewritten and an interrupted upgrade leaves version 18 as it was.
     version: 19,
     stores: V19_STORES,
+  },
+  {
+    // Copies each clip's metadata into its own table. A clip row holds its
+    // bytes, and IndexedDB cannot read part of a row, so a list of clips read
+    // every clip's audio. Rows are copied as they are, bytes left out; the
+    // audio rows are not rewritten, so an interrupted upgrade leaves version 19
+    // as it was and needs almost no extra space.
+    version: 20,
+    stores: V20_STORES,
+    upgrade: async (transaction) => {
+      const summaries: Record<string, unknown>[] = [];
+      await transaction
+        .table('audioAssets')
+        .toCollection()
+        .each((row: Record<string, unknown>) => {
+          const { bytes: _bytes, ...metadata } = row;
+          summaries.push(metadata);
+        });
+      await transaction.table('audioSummaries').bulkPut(summaries);
+    },
   },
 ];
 

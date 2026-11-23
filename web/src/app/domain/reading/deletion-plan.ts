@@ -23,6 +23,7 @@ export const OWNED_READING_STORES = [
   'translationPlans',
   'grammarAnalyses',
   'audioAssets',
+  'audioSummaries',
   'assetJobs',
   'generationProvenance',
 ] as const;

@@ -549,3 +549,19 @@ export async function storeClipsAt(
     await bed.enrichment.storeAudio(asset, cacheKeys);
   }
 }
+
+/**
+ * Deletes the clips at these positions the way the app does, so the reading
+ * has holes where no clip was ever made.
+ */
+export async function removeClipsAt(bed: PlaybackBed, positions: readonly number[]): Promise<void> {
+  const sentences = orderedSentences(bed.draft);
+  for (const index of positions) {
+    const stored = await bed.enrichment.getAudioByCacheKey(
+      keyFor(bed, sentences[index]!.contentHash),
+    );
+    if (stored.ok && stored.value !== null) {
+      await bed.enrichment.deleteAudio(stored.value.id);
+    }
+  }
+}

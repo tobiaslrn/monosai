@@ -15,14 +15,23 @@ import {
   runStorageWithRules,
   StorageRuleViolation,
 } from './repositories/storage-operation';
+import { clearClips, clipTables, releaseReadingClips } from './repositories/clip-rows';
 import {
   coverageByKey,
   grammarCoverageByKey,
   releaseReadingAids,
 } from './repositories/shared-aid-rows';
 
-/** The API key never leaves through an export, and audio is raw bytes JSON cannot hold. */
-const TABLES_LEFT_OUT_OF_EXPORT: readonly string[] = ['credentials', 'audioAssets'];
+/**
+ * The API key never leaves through an export, and audio is raw bytes JSON
+ * cannot hold. Its metadata stays with it: it would describe clips the export
+ * does not carry.
+ */
+const TABLES_LEFT_OUT_OF_EXPORT: readonly string[] = [
+  'credentials',
+  'audioAssets',
+  'audioSummaries',
+];
 
 /**
  * Storage durability and destructive maintenance.
@@ -88,9 +97,9 @@ export class BrowserStorageMaintenance implements StorageMaintenance {
     return runStorage('storage.clearAudio', async () => {
       await this.db.transaction(
         'rw',
-        [this.db.audioAssets, this.db.assetJobs, this.db.readings],
+        [...clipTables(this.db), this.db.assetJobs, this.db.readings],
         async () => {
-          await this.db.audioAssets.clear();
+          await clearClips(this.db);
           await this.db.assetJobs.where('kind').equals('prepare-audio').delete();
           const readings = await this.db.readings.toArray();
           for (const reading of readings) {
@@ -118,13 +127,13 @@ export class BrowserStorageMaintenance implements StorageMaintenance {
     return runStorage('storage.clearReadingAudio', async () => {
       await this.db.transaction(
         'rw',
-        [this.db.audioAssets, this.db.assetJobs, this.db.readings, this.db.sentences],
+        [...clipTables(this.db), this.db.assetJobs, this.db.readings, this.db.sentences],
         async () => {
           const reading = await this.db.readings.get(readingId);
           if (reading === undefined) {
             return;
           }
-          await releaseReadingAids(this.db, this.db.audioAssets, readingId, currentCacheKeys);
+          await releaseReadingClips(this.db, readingId, currentCacheKeys);
           await this.db.assetJobs
             .where('[readingId+kind]')
             .equals([readingId, 'prepare-audio'])

@@ -6,6 +6,7 @@ import {
   SENTENCE_COUNT,
   settle,
   storeClips,
+  removeClipsAt,
   storeClipsAt,
   type PlaybackBed,
 } from '../../../testing/audio-playback-bed';
@@ -252,7 +253,7 @@ describe('PlaybackNavigator', () => {
      */
     it('names a missing sentence without tearing down the session', async () => {
       const third = orderedSentences(bed.draft)[2];
-      await bed.db.audioAssets.where('sentenceId').equals(third!.id).delete();
+      await removeClipsAt(bed, [2]);
       await bed.store.prepare(bed.reading);
       await bed.navigator.play();
 
@@ -319,14 +320,7 @@ describe('PlaybackNavigator', () => {
      */
     it('starts at the first sentence that has a clip', async () => {
       await storeClipsAt(bed, [2, 3]);
-      await bed.db.audioAssets
-        .where('sentenceId')
-        .anyOf(
-          orderedSentences(bed.draft)
-            .slice(0, 2)
-            .map((sentence) => sentence.id),
-        )
-        .delete();
+      await removeClipsAt(bed, [0, 1]);
       await bed.store.prepare(bed.reading);
 
       await bed.navigator.play();

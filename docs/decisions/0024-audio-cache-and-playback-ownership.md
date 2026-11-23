@@ -83,7 +83,8 @@ overflow menu kept offering to prepare audio, each run synthesized nothing
 because nothing was missing, and the Play gate never opened. The same reasoning
 makes the reader's bounded per-window read `listAudioSummariesForCacheKeys`
 rather than a sentence-bounded one. One key per mounted sentence is the same
-bound, resolved through the primary key, and it still never loads a blob.
+bound, resolved through the primary key, and it never loads a clip: it reads the metadata-only
+`audioSummaries` table ([ADR 0100](0100-clip-metadata-has-its-own-table.md)).
 
 ### The complete-set gate
 

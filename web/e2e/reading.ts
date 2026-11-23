@@ -197,6 +197,7 @@ export async function countOwnedRows(page: Page): Promise<Record<string, number>
             'translations',
             'grammarAnalyses',
             'audioAssets',
+            'audioSummaries',
             'readingProgress',
             'assetJobs',
             'generationProvenance',

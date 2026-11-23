@@ -111,8 +111,8 @@ export class AudioCompressionStore {
   /**
    * Which stored clips are still uncompressed.
    *
-   * Paged, because a clip's metadata shares its row with its bytes: reading the
-   * table's metadata in one go would read every clip in it.
+   * Paged, so a large library is walked a batch at a time and stays responsive
+   * while it is.
    */
   private async findUncompressed(
     cacheKeys: readonly string[],

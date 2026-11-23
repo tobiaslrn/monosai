@@ -17,6 +17,7 @@ import type {
   TokenAnalysisRow,
 } from './rows';
 import type {
+  AudioAssetMetadata,
   AudioAssetStoredRow,
   GrammarAnalysisRow,
   TranslationRow,
@@ -134,6 +135,8 @@ export class MonosaiDatabase extends Dexie {
   readonly translationPlans!: Table<TranslationPlanRow, string>;
   readonly grammarAnalyses!: Table<GrammarAnalysisRow, string>;
   readonly audioAssets!: Table<AudioAssetStoredRow, string>;
+  /** `audioAssets` without the bytes, kept in step by `clip-rows.ts`. */
+  readonly audioSummaries!: Table<AudioAssetMetadata, string>;
   readonly assetJobs!: Table<AssetJobRow, string>;
   readonly generationProvenance!: Table<GenerationProvenanceRow, string>;
 

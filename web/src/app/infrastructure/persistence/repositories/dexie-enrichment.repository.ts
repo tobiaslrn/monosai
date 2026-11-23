@@ -20,11 +20,12 @@ import {
   grammarAnalysisRowSchema,
   translationRowSchema,
   translationPlanRowSchema,
-  type AudioAssetStoredRow,
+  type AudioAssetMetadata,
   type GrammarAnalysisRow,
   type TranslationRow,
   type TranslationPlanRow,
 } from '../schemas/enrichment.schema';
+import { clipMetadata, clipTables, deleteClipsWithId, putClip } from './clip-rows';
 import { coverageByKey, grammarCoverageByKey, storedCacheKeys } from './shared-aid-rows';
 import { StorageRuleViolation, runStorage, runStorageWithRules } from './storage-operation';
 
@@ -278,12 +279,15 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     return written.ok ? ok(record) : written;
   }
 
-  /** Metadata only: list queries must never pull audio blobs into memory. */
+  /**
+   * Metadata only, read from `audioSummaries`: a clip's row in `audioAssets`
+   * carries its bytes, and reading the row reads them.
+   */
   async listAudioSummaries(
     readingId: ReadingId,
   ): Promise<Result<readonly AudioAssetSummary[], StorageError>> {
-    const loaded = await runStorage('audioAssets.list', () =>
-      this.db.audioAssets.where('readingId').equals(readingId).toArray(),
+    const loaded = await runStorage('audioSummaries.list', () =>
+      this.db.audioSummaries.where('readingId').equals(readingId).toArray(),
     );
     if (!loaded.ok) {
       return loaded;
@@ -292,25 +296,20 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
   }
 
   /**
-   * The same metadata, bounded to specific sentences through the `sentenceId`
-   * index, so the reader's mounted window never reads the whole reading — and,
-   * like every list query here, never touches `bytes`.
-   */
-  /**
    * Metadata for a bounded set of clips, by cache key.
    *
    * Bounded by key rather than by sentence because the table is keyed by
    * `cacheKey`: two sentences with identical Japanese share one clip, and a
    * sentence-bounded read would miss the row for whichever of them did not
    * happen to be stored under its own id. One key per mounted sentence is the
-   * same bound, resolved through the primary key, and it still never loads a
-   * blob.
+   * same bound, resolved through the primary key. Read from `audioSummaries`,
+   * like the list above, so it never reads a clip's bytes.
    */
   async listAudioSummariesForCacheKeys(
     cacheKeys: readonly string[],
   ): Promise<Result<readonly AudioAssetSummary[], StorageError>> {
-    const loaded = await runStorage('audioAssets.listForCacheKeys', () =>
-      this.db.audioAssets
+    const loaded = await runStorage('audioSummaries.listForCacheKeys', () =>
+      this.db.audioSummaries
         .where(':id')
         .anyOf([...cacheKeys])
         .toArray(),
@@ -329,7 +328,7 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     if (!loaded.value) {
       return ok(null);
     }
-    const parsed = parseRecord(audioAssetMetadataSchema, stripBytes(loaded.value), 'audioAssets');
+    const parsed = parseRecord(audioAssetMetadataSchema, clipMetadata(loaded.value), 'audioAssets');
     if (!parsed.ok) {
       return parsed;
     }
@@ -348,9 +347,9 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     const bytes = await blob.arrayBuffer();
 
     const written = await runStorageWithRules('audioAssets.put', async () => {
-      await this.db.transaction('rw', [this.db.audioAssets, this.db.readings], async () => {
+      await this.db.transaction('rw', [...clipTables(this.db), this.db.readings], async () => {
         await this.requireReading(asset.readingId);
-        await this.db.audioAssets.put({ ...metadata, bytes, v: ROW_VERSION });
+        await putClip(this.db, { ...metadata, bytes, v: ROW_VERSION });
         await this.refreshAudioSummary(asset.readingId, currentCacheKeys);
       });
     });
@@ -361,9 +360,9 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
   }
 
   deleteAudio(id: AssetId): Promise<Result<void, StorageError>> {
-    return runStorage('audioAssets.delete', async () => {
-      await this.db.audioAssets.where('id').equals(id).delete();
-    });
+    return runStorage('audioAssets.delete', () =>
+      this.db.transaction('rw', clipTables(this.db), () => deleteClipsWithId(this.db, id)),
+    );
   }
 
   /**
@@ -384,9 +383,9 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
     readonly mimeType: AudioMimeType;
   }): Promise<Result<'replaced' | 'skipped', StorageError>> {
     return runStorage('audioAssets.replaceBytes', () =>
-      // `audioAssets` alone: the cache key does not change, so the reading's
+      // The clip's tables alone: the cache key does not change, so the reading's
       // summary counts exactly what it counted before and must not be touched.
-      this.db.transaction('rw', this.db.audioAssets, async () => {
+      this.db.transaction('rw', clipTables(this.db), async () => {
         const current = await this.db.audioAssets.get(replacement.cacheKey);
         if (
           current?.mimeType !== replacement.expectedMimeType ||
@@ -394,7 +393,7 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
         ) {
           return 'skipped' as const;
         }
-        await this.db.audioAssets.put({
+        await putClip(this.db, {
           ...current,
           bytes: replacement.bytes,
           mimeType: replacement.mimeType,
@@ -610,11 +609,11 @@ export class DexieEnrichmentRepository implements EnrichmentRepository {
   }
 }
 
-/** Metadata for stored rows, validated and stripped of bytes and row version. */
+/** Stored clip metadata, validated and stripped of its row version. */
 function toSummaries(
-  rows: readonly AudioAssetStoredRow[],
+  rows: readonly AudioAssetMetadata[],
 ): Result<readonly AudioAssetSummary[], StorageError> {
-  const parsed = parseRecords(audioAssetMetadataSchema, rows.map(stripBytes), 'audioAssets');
+  const parsed = parseRecords(audioAssetMetadataSchema, rows, 'audioSummaries');
   return parsed.ok
     ? ok(
         parsed.value.map((row) => {
@@ -623,11 +622,6 @@ function toSummaries(
         }),
       )
     : parsed;
-}
-
-function stripBytes(row: AudioAssetStoredRow): Omit<AudioAssetStoredRow, 'bytes'> {
-  const { bytes: _bytes, ...metadata } = row;
-  return metadata;
 }
 
 function toTranslation(row: TranslationRow): TranslationRecord {

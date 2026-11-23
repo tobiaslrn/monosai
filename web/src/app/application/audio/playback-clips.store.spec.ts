@@ -10,6 +10,7 @@ import {
   PLAYBACK_NOW,
   SENTENCE_COUNT,
   storeClips,
+  removeClipsAt,
   storeClipsAt,
   TEST_HASHER,
   type PlaybackBed,
@@ -414,10 +415,7 @@ describe('PlaybackClipsStore', () => {
     });
 
     it('names the first sentence with a clip', async () => {
-      await bed.db.audioAssets
-        .where('sentenceId')
-        .equals(orderedSentences(bed.draft)[0]!.id)
-        .delete();
+      await removeClipsAt(bed, [0]);
       await bed.clips.refresh(bed.reading);
 
       expect(bed.clips.firstAvailable()).toBe(orderedSentences(bed.draft)[1]!.id);

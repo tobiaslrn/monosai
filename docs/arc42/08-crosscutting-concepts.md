@@ -224,6 +224,12 @@ grammar or audio can find another reading with the same sentence and hand it the
 instead of deleting it. The index is built inside the version-change transaction; no row is
 rewritten ([ADR 0096](../decisions/0096-shared-aids-are-counted-by-key-and-outlive-one-reading.md)).
 
+Schema version 20 adds `audioSummaries`, each clip's metadata without its bytes, because
+IndexedDB reads a row whole and a list over `audioAssets` read every clip's audio. Lists of clips
+read it; `audioAssets` is read whole only to play or re-encode one clip. The two are written
+together by `clip-rows.ts` alone. The upgrade copies the metadata and rewrites no clip row
+([ADR 0100](../decisions/0100-clip-metadata-has-its-own-table.md)).
+
 Translation plans are validated persisted state with three explicit forms: opening pending,
 glossary repair required, and ready with a frozen glossary. Establishing a ready plan and its
 accepted opening translations is one transaction. Provisional opening rows remain recoverable but
