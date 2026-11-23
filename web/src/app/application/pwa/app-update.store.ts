@@ -1,9 +1,10 @@
-import { DOCUMENT, Injectable, inject, signal } from '@angular/core';
+import { DOCUMENT, Injectable, computed, inject, signal } from '@angular/core';
 import {
   APP_RELOAD,
   APP_UPDATE_CHECKER,
   type AppUpdateEvent,
 } from '../../domain/platform/app-update.port';
+import { isHoldingWork } from '../../domain/shared/busy-work';
 import type { DatabaseLossCause } from '../../domain/storage/storage-error';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
 import { LOGGER, NOOP_LOGGER, type Logger } from '../shared/diagnostics';
@@ -45,6 +46,21 @@ export class AppUpdateStore {
   readonly isBusy = this.busy.isBusy;
   readonly busyWork = this.busy.busyWork;
 
+  /**
+   * The written stories a reload would lose, which never finish by themselves:
+   * a reload asks before losing them rather than waiting for them.
+   */
+  readonly unsavedStories = computed(() =>
+    this.busy
+      .work()
+      .reduce((count, work) => count + (work.kind === 'unsaved-story' ? work.count : 0), 0),
+  );
+
+  /**
+   * The work a reload waits for: everything in progress but unsaved stories.
+   */
+  readonly holdingWork = computed(() => this.busy.work().filter(isHoldingWork));
+
   constructor() {
     this.checker.updates().subscribe((event) => {
       this.onEvent(event);
@@ -80,11 +96,15 @@ export class AppUpdateStore {
 
   /**
    * Performs a plain controlled reload to recover from a broken worker state. Refuses while busy,
-   * because the reload would destroy that work.
+   * because the reload would destroy that work, except for as many unsaved stories as the learner
+   * agreed to lose: more than that means one was never asked about.
    */
-  reloadNow(): void {
-    if (this.busy.isBusy()) {
+  reloadNow(acceptedUnsaved = 0): void {
+    if (this.holdingWork().length > 0 || this.unsavedStories() > acceptedUnsaved) {
       return;
+    }
+    if (this.unsavedStories() > 0) {
+      this.busy.acceptUnload();
     }
     this.reload();
   }

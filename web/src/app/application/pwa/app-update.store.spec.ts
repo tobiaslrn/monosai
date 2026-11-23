@@ -103,6 +103,46 @@ describe('AppUpdateStore', () => {
     expect(reloadCalls).toBe(0);
   });
 
+  describe('a reload that would lose an unsaved story', () => {
+    const unsaved = (count: number) =>
+      busy.track('generation-unsaved', signal<BusyWork | null>({ kind: 'unsaved-story', count }));
+
+    it('is not held by it, and reloads once the learner agreed to lose it', () => {
+      const instance = store();
+      unsaved(2);
+
+      expect(instance.unsavedStories()).toBe(2);
+      expect(instance.holdingWork()).toEqual([]);
+      instance.reloadNow(2);
+
+      expect(reloadCalls).toBe(1);
+      // The browser is not asked the same question again.
+      expect(busy.unloadAccepted()).toBe(true);
+    });
+
+    it('refuses without the learner agreeing to lose every one', () => {
+      const instance = store();
+      unsaved(2);
+
+      instance.reloadNow();
+      instance.reloadNow(1);
+
+      expect(reloadCalls).toBe(0);
+      expect(busy.unloadAccepted()).toBe(false);
+    });
+
+    it('still waits for other work', () => {
+      const instance = store();
+      unsaved(1);
+      busy.track('generation', signal<BusyWork | null>({ kind: 'story-generation', count: 1 }));
+
+      instance.reloadNow(1);
+
+      expect(instance.holdingWork()).toEqual([{ kind: 'story-generation', count: 1 }]);
+      expect(reloadCalls).toBe(0);
+    });
+  });
+
   it('downloads a newer build before reloading into it', async () => {
     let reloadsWhenChecked = -1;
     checker.check = () => {

@@ -20,9 +20,10 @@ const ICONS: Record<StatusTone, IconName> = {
  *     <button mn-status-line-action type="button" (click)="retry()">Test again</button>
  *   </mn-status-line>
  *
- * A failure is announced as an alert; anything else is a polite status. It is
- * the only place a group's state is written, so a pill or a note beside it
- * would only repeat it.
+ * A failure is announced as an alert; anything else is a polite status. A line
+ * whose words a live region already present announces is `[announced]="false"`,
+ * so they are read once. It is the only place a group's state is written, so a
+ * pill or a note beside it would only repeat it.
  */
 @Component({
   selector: 'mn-status-line',
@@ -31,7 +32,7 @@ const ICONS: Record<StatusTone, IconName> = {
   host: {
     class: 'mn-status-line',
     '[attr.data-tone]': 'tone()',
-    '[attr.role]': "tone() === 'danger' ? 'alert' : 'status'",
+    '[attr.role]': "!announced() ? null : tone() === 'danger' ? 'alert' : 'status'",
   },
   template: `
     <mn-icon [name]="icon()" size="inline" />
@@ -42,5 +43,7 @@ const ICONS: Record<StatusTone, IconName> = {
 })
 export class StatusLineComponent {
   readonly tone = input<StatusTone>('info');
+  /** False when a live region elsewhere already announces these words. */
+  readonly announced = input(true);
   protected readonly icon = computed(() => ICONS[this.tone()]);
 }

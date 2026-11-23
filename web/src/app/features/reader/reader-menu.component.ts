@@ -10,6 +10,7 @@ import {
   input,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -133,7 +134,7 @@ import {
                     action="action"
                     [label]="row.label"
                     [busy]="reloadWaitingFor() !== null"
-                    (pressed)="reloadWaitingFor() !== null || reloadRequested.emit()"
+                    (pressed)="reloadWaitingFor() !== null || requestReload()"
                   />
                 }
               }
@@ -161,7 +162,7 @@ import {
           }
           @for (row of rows(); track row.layer) {
             @if (row.action === 'reload' && reloadWaitingFor(); as waiting) {
-              <mn-status-line tone="info" data-testid="reload-waiting">{{
+              <mn-status-line tone="info" [announced]="false" data-testid="reload-waiting">{{
                 waiting
               }}</mn-status-line>
             } @else if (row.error) {
@@ -175,7 +176,8 @@ import {
       </mn-stack>
       <!--
         Present from the start, so the wait is announced when it begins: a
-        status line inserted with its words already in it is not.
+        status line inserted with its words already in it is not. It is the
+        only announcement; the status line itself stays quiet.
       -->
       <p class="mn-visually-hidden" role="status" aria-live="polite">{{ reloadWaitingFor() }}</p>
     </mn-sheet-popover>
@@ -193,6 +195,11 @@ export class ReaderMenuComponent {
    * was, busy.
    */
   readonly reloadWaitingFor = input<string | null>(null);
+  /**
+   * Whether Reload asks before it goes on, because it would lose a story. The
+   * confirmation opens with the panel closed, as Delete audio's does.
+   */
+  readonly reloadConfirms = input(false);
   readonly prepare = output<PreparationLayer>();
   readonly opened = output<void>();
   /** Whether the panel is showing, so what it reported can be told from what it never showed. */
@@ -213,6 +220,15 @@ export class ReaderMenuComponent {
   private creditFocus: PreparationLayer | null = null;
 
   constructor() {
+    // A Reload confirmed with the panel closed can still wait for other work.
+    // The wait is shown where it was pressed, so the panel opens again with it;
+    // closing the panel drops the wait, so this never reopens a panel itself.
+    effect(() => {
+      if (this.reloadWaitingFor() === null || this.menuOpen()) return;
+      untracked(() => {
+        this.open();
+      });
+    });
     // Returning from the credit page removes the link that was focused, and
     // focus would fall to the page behind a panel that traps it. It goes to
     // the row's new action, or to the row itself.
@@ -279,6 +295,10 @@ export class ReaderMenuComponent {
       event.preventDefault();
       this.close();
     }
+  }
+  protected requestReload(): void {
+    if (this.reloadConfirms()) this.close();
+    this.reloadRequested.emit();
   }
   protected deleteAudio(): void {
     this.close();

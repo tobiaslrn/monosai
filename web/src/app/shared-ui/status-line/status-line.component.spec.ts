@@ -11,6 +11,7 @@ import { StatusLineComponent } from './status-line.component';
       <button mn-status-line-action type="button">Test again</button>
     </mn-status-line>
     <mn-status-line tone="success">Ready.</mn-status-line>
+    <mn-status-line tone="info" [announced]="false">Waiting.</mn-status-line>
   `,
 })
 class HostComponent {}
@@ -29,6 +30,12 @@ describe('StatusLineComponent', () => {
 
     expect(failed?.getAttribute('role')).toBe('alert');
     expect(ready?.getAttribute('role')).toBe('status');
+  });
+
+  it('stays quiet when a live region elsewhere announces its words', () => {
+    const [, , waiting] = render();
+
+    expect(waiting?.hasAttribute('role')).toBe(false);
   });
 
   it('carries its tone, and puts its one action at the end of the sentence', () => {

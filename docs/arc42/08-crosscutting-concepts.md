@@ -109,10 +109,15 @@ Code loaded on demand is tried once more at once when its import fails, and a la
 again after that. Some browsers refuse a module that failed once for the rest of the page's life,
 so speech code that still cannot load is a failure of the run, not of one sentence: it offers no
 retry, and Story options offers a reload beside the Audio row. The voice test loads no code on
-demand, so it never meets this failure. Under the guard every recovery reload has, the reload waits
-until no work a reload would destroy is running: a story being written or one whose failed save
-can still be retried, an Anki import, an unsaved draft. A reload still waiting is dropped when Story options closes. The busy registry holds what
-that work is, not words for it, so each surface names it in its own form. Only that load counts: a
+demand, so it never meets this failure. Under the guard every recovery reload has, the reload waits until no work
+a reload would destroy is running: a story being written, an Anki import, an unsaved draft. A
+story whose failed save can still be retried never ends by itself, so it is not waited for: Reload,
+in Story options or in the broken-worker notice, asks first through the shared confirmation, and the
+browser's own unload prompt does not ask again. A story left unsaved while the reload waits was
+never asked about, so the wait is dropped. A reload still waiting is dropped when Story options
+closes; the confirmation opens with Story options closed, so a confirmed reload that still waits
+opens it again to show the wait. The busy registry holds what that work is, not words for it, so
+each surface names it in its own form. Only that load counts: a
 fault after the code loaded keeps its own kind. A clip the provider was already paid for is kept as
 WAV when its encoder cannot load (ADR 0070). Every clip is decoded before it is kept: a clip that does not decode
 is that sentence's failure, asked for once more, while a browser with nothing to decode with fails

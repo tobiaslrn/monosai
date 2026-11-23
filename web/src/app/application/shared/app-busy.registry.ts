@@ -20,10 +20,26 @@ export class AppBusyRegistry {
     [...this.trackedReasons().values()].flatMap((reason) => reason() ?? []),
   );
 
+  private readonly unloadAcceptedSignal = signal(false);
+
   readonly isBusy = computed(() => this.reasonsSignal().length > 0);
+
+  /** Every piece of work in progress, in the order it was registered. */
+  readonly work = this.reasonsSignal;
 
   /** The first registered work, for a surface that can only name one. */
   readonly busyWork = computed(() => this.reasonsSignal()[0] ?? null);
+
+  /**
+   * The learner confirmed a reload that loses this tab's work. A guard that
+   * would ask the browser to confirm the unload stands down, so the same
+   * question is never asked twice.
+   */
+  readonly unloadAccepted = this.unloadAcceptedSignal.asReadonly();
+
+  acceptUnload(): void {
+    this.unloadAcceptedSignal.set(true);
+  }
 
   /**
    * Follows `reason` under `key` until the returned function releases it: the

@@ -157,6 +157,12 @@ describe('GenerationJobsStore', () => {
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(true);
 
+    // A reload the learner confirmed losing it to is not asked about twice.
+    busy.acceptUnload();
+    const confirmed = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(confirmed);
+    expect(confirmed.defaultPrevented).toBe(false);
+
     jobs.dismiss(id!);
     TestBed.tick();
     expect(busy.isBusy()).toBe(false);

@@ -144,7 +144,7 @@ describe('Story options', () => {
     expect(live.textContent.trim()).toBe('');
     press('Reload');
     expect(reload).toHaveBeenCalledOnce();
-    fixture.componentRef.setInput('reloadWaitingFor', 'Waiting for story');
+    fixture.componentRef.setInput('reloadWaitingFor', 'Waiting for the story');
     fixture.detectChanges();
     // The row keeps its one line, its place and its label: only busy.
     const row = element.querySelector<HTMLButtonElement>('[data-layer="audio"] button')!;
@@ -152,13 +152,45 @@ describe('Story options', () => {
     expect(row.disabled).toBe(false);
     expect(row.closest('mn-settings-row')?.textContent.trim()).toBe('Reload');
     expect(element.querySelector('[data-layer="audio"]')?.textContent).not.toContain('Waiting');
-    // The wait is the group's status line, in place of the failure, and is announced.
+    // The wait is the group's status line, in place of the failure, and is
+    // announced once: by the live region that was there before it began.
     const lines = [...element.querySelectorAll('mn-status-line')];
-    expect(lines.map((line) => line.textContent.trim())).toEqual(['Waiting for story']);
+    expect(lines.map((line) => line.textContent.trim())).toEqual(['Waiting for the story']);
     expect(lines[0]?.getAttribute('data-tone')).toBe('info');
-    expect(live.textContent.trim()).toBe('Waiting for story');
+    expect(lines[0]?.hasAttribute('role')).toBe(false);
+    expect(live.textContent.trim()).toBe('Waiting for the story');
+    const announcers = [...element.querySelectorAll('[role="status"], [role="alert"]')];
+    expect(announcers.filter((node) => node.textContent.includes('Waiting'))).toEqual([live]);
     row.click();
     expect(reload).toHaveBeenCalledOnce();
+  });
+  // A confirmation opens with the panel closed, as Delete audio's does. A wait
+  // that follows it is shown where Reload was pressed, so the panel opens again.
+  it('closes before a Reload that asks, and opens again to show its wait', () => {
+    const { fixture, element, press, hide } = render({
+      ...ROW,
+      layer: 'audio',
+      name: 'Audio',
+      status: 'Stopped',
+      action: 'reload',
+      label: 'Reload',
+      error: 'Speech could not load.',
+    });
+    const panel = element.querySelector<HTMLElement>('mn-sheet-popover')!;
+    const shown = vi.fn();
+    Object.defineProperty(panel, 'showPopover', { value: shown });
+    const order: string[] = [];
+    hide.mockImplementation(() => order.push('closed'));
+    fixture.componentInstance.reloadRequested.subscribe(() => order.push('requested'));
+    fixture.componentRef.setInput('reloadConfirms', true);
+    fixture.detectChanges();
+
+    press('Reload');
+    expect(order).toEqual(['closed', 'requested']);
+
+    fixture.componentRef.setInput('reloadWaitingFor', 'Waiting for Anki import');
+    fixture.detectChanges();
+    expect(shown).toHaveBeenCalledOnce();
   });
   it('leaves deleting the story to the library', () => {
     const { element } = render();

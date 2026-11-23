@@ -83,6 +83,35 @@ describe('AppUpdateBannerComponent', () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
+  // A story whose save failed never finishes, so it is asked about instead of
+  // holding the reload disabled for good.
+  it.each([
+    [true, 1],
+    [false, 0],
+  ])(
+    'asks before a recovery reload loses an unsaved story (confirmed: %s)',
+    async (confirmed, reloads) => {
+      const { fixture, checker, busy, element, reload, dialogOpen } = render(confirmed);
+      checker.events.next({ kind: 'unrecoverable', reason: 'missing chunk' });
+      busy.track('generation', signal<BusyWork | null>({ kind: 'unsaved-story', count: 1 }));
+      fixture.detectChanges();
+
+      const button = element.querySelector('button');
+      expect(button?.disabled).toBe(false);
+      expect(element.textContent).not.toContain('Finishing current work');
+      button?.click();
+
+      await vi.waitFor(() => {
+        expect(dialogOpen).toHaveBeenCalledOnce();
+      });
+      const asked = JSON.stringify(dialogOpen.mock.calls);
+      expect(asked).toContain('Reload and lose the new story?');
+      await vi.waitFor(() => {
+        expect(reload).toHaveBeenCalledTimes(reloads);
+      });
+    },
+  );
+
   it('offers a reload action for an unrecoverable state', () => {
     const { fixture, checker, element } = render();
 

@@ -10,3 +10,13 @@ export type BusyWork =
   | { readonly kind: 'unsaved-story'; readonly count: number }
   | { readonly kind: 'package-import' }
   | { readonly kind: 'import-draft' };
+
+/**
+ * Work a reload waits for. An unsaved story is not among it: it never ends by
+ * itself, so a reload asks before losing it instead.
+ */
+export type HoldingWork = Exclude<BusyWork, { readonly kind: 'unsaved-story' }>;
+
+export function isHoldingWork(work: BusyWork): work is HoldingWork {
+  return work.kind !== 'unsaved-story';
+}

@@ -141,8 +141,10 @@ export class GenerationJobsStore {
 
     // Reloading or closing the tab bypasses the router, and neither an
     // in-flight generation nor an unsaved story survives it, so the browser's
-    // own prompt is the only guard available for them.
+    // own prompt is the only guard available for them. A reload the learner
+    // already confirmed in Monosai is not asked about again.
     const warnOnUnload = (event: BeforeUnloadEvent): void => {
+      if (this.busyRegistry.unloadAccepted()) return;
       if (this.runningCount() > 0 || this.unsavedCount() > 0) {
         event.preventDefault();
       }

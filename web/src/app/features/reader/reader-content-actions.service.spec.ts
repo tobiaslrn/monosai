@@ -1,12 +1,13 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { signal, type WritableSignal } from '@angular/core';
+import { computed, signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LayerProgress } from '../../application/enrichment/layer-progress';
 import { ReadingTextAidMaintenanceStore } from '../../application/enrichment/reading-text-aid-maintenance.store';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { DeferredReloadStore } from '../../application/pwa/deferred-reload.store';
-import type { BusyWork } from '../../domain/shared/busy-work';
+import { isHoldingWork, type BusyWork } from '../../domain/shared/busy-work';
 import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
 import { ReaderPreparationStore } from '../../application/reading/reader-preparation.store';
 import { ReaderStore } from '../../application/reading/reader.store';
@@ -65,7 +66,15 @@ function setup(initial: Progress = {}, shared?: WritableSignal<Progress>) {
   const current = signal(reading(ID));
   const readiness = signal<ConfigurationReadiness>('ready');
   const busyWork = signal<BusyWork | null>(null);
+  const unsaved = signal(0);
+  const work = computed<BusyWork[]>(() => [
+    ...(busyWork() === null ? [] : [busyWork()!]),
+    ...(unsaved() === 0 ? [] : [{ kind: 'unsaved-story' as const, count: unsaved() }]),
+  ]);
+  const holdingWork = computed(() => work().filter(isHoldingWork));
   const reloadNow = vi.fn();
+  const answer = { confirmed: true };
+  const confirm = vi.fn(() => ({ closed: of(answer.confirmed) }));
   const acknowledge = vi.fn((id: ReadingId, layer: PreparationLayer) => {
     if (id === ID) progress.update((all) => ({ ...all, [layer]: IDLE }));
   });
@@ -90,14 +99,14 @@ function setup(initial: Progress = {}, shared?: WritableSignal<Progress>) {
         useValue: { pending: signal(null), error: signal(null) },
       },
       { provide: ReaderAudioStore, useValue: { decoderMissing: () => false } },
-      { provide: Dialog, useValue: {} },
+      { provide: Dialog, useValue: { open: confirm } },
       {
         provide: AppUpdateStore,
         useValue: {
-          busyWork,
-          isBusy: () => busyWork() !== null,
-          reloadNow: () => {
-            if (busyWork() === null) reloadNow();
+          unsavedStories: unsaved,
+          holdingWork,
+          reloadNow: (accepted = 0) => {
+            if (holdingWork().length === 0 && unsaved() <= accepted) reloadNow(accepted);
           },
         },
       },
@@ -108,7 +117,19 @@ function setup(initial: Progress = {}, shared?: WritableSignal<Progress>) {
   const leave = () => {
     TestBed.resetTestingModule();
   };
-  return { service, progress, current, readiness, acknowledge, leave, busyWork, reloadNow };
+  return {
+    service,
+    progress,
+    current,
+    readiness,
+    acknowledge,
+    leave,
+    busyWork,
+    unsaved,
+    reloadNow,
+    answer,
+    confirm,
+  };
 }
 
 /** The learner opens the panel, which draws every row. */
@@ -323,18 +344,18 @@ describe('refusals the reader forgets', () => {
 });
 
 describe('reloading for speech code that could not load', () => {
-  it('reloads at once when nothing running would be lost', () => {
+  it('reloads at once when nothing running would be lost', async () => {
     const bed = setup({ audio: speechCodeLost() });
-    bed.service.reload();
+    await bed.service.reload();
     TestBed.tick();
     expect(bed.reloadNow).toHaveBeenCalledTimes(1);
     expect(bed.service.reloadWaitingFor()).toBeNull();
   });
 
-  it('waits for running work, says which, and reloads when it ends', () => {
+  it('waits for running work, says which, and reloads when it ends', async () => {
     const bed = setup({ audio: speechCodeLost() });
     bed.busyWork.set({ kind: 'story-generation', count: 2 });
-    bed.service.reload();
+    await bed.service.reload();
     TestBed.tick();
     expect(bed.reloadNow).not.toHaveBeenCalled();
     expect(bed.service.reloadWaitingFor()).toBe('Waiting for 2 stories');
@@ -346,13 +367,13 @@ describe('reloading for speech code that could not load', () => {
     expect(bed.reloadNow).toHaveBeenCalledTimes(1);
   });
 
-  it('drops a waiting reload when Story options closes', () => {
+  it('drops a waiting reload when Story options closes', async () => {
     const bed = setup({ audio: speechCodeLost() });
     bed.service.menuShown(true);
     bed.busyWork.set({ kind: 'story-generation', count: 1 });
-    bed.service.reload();
+    await bed.service.reload();
     TestBed.tick();
-    expect(bed.service.reloadWaitingFor()).toBe('Waiting for story');
+    expect(bed.service.reloadWaitingFor()).toBe('Waiting for the story');
     bed.service.menuShown(false);
     TestBed.tick();
     expect(bed.service.reloadWaitingFor()).toBeNull();
@@ -361,10 +382,10 @@ describe('reloading for speech code that could not load', () => {
     expect(bed.reloadNow).not.toHaveBeenCalled();
   });
 
-  it('drops a waiting reload when the reader is left', () => {
+  it('drops a waiting reload when the reader is left', async () => {
     const bed = setup({ audio: speechCodeLost() });
     bed.busyWork.set({ kind: 'story-generation', count: 1 });
-    bed.service.reload();
+    await bed.service.reload();
     TestBed.tick();
     const { busyWork, reloadNow } = bed;
     bed.leave();
@@ -372,10 +393,58 @@ describe('reloading for speech code that could not load', () => {
     expect(reloadNow).not.toHaveBeenCalled();
   });
 
-  it('does nothing when no row offers a reload', () => {
+  it('does nothing when no row offers a reload', async () => {
     const bed = setup();
-    bed.service.reload();
+    await bed.service.reload();
     TestBed.tick();
     expect(bed.reloadNow).not.toHaveBeenCalled();
+  });
+  describe('when a story whose save failed would be lost', () => {
+    it('asks first, then reloads at once', async () => {
+      const bed = setup({ audio: speechCodeLost() });
+      bed.unsaved.set(1);
+      expect(bed.service.reloadConfirms()).toBe(true);
+      await bed.service.reload();
+      TestBed.tick();
+      expect(JSON.stringify(bed.confirm.mock.calls)).toContain('Reload and lose the new story?');
+      expect(bed.reloadNow).toHaveBeenCalledExactlyOnceWith(1);
+    });
+
+    it('reloads nothing when the learner keeps it', async () => {
+      const bed = setup({ audio: speechCodeLost() });
+      bed.unsaved.set(1);
+      bed.answer.confirmed = false;
+      await bed.service.reload();
+      TestBed.tick();
+      expect(bed.reloadNow).not.toHaveBeenCalled();
+      expect(bed.service.reloadWaitingFor()).toBeNull();
+    });
+
+    it('still waits for other work once the learner agreed', async () => {
+      const bed = setup({ audio: speechCodeLost() });
+      bed.unsaved.set(1);
+      bed.busyWork.set({ kind: 'package-import' });
+      await bed.service.reload();
+      TestBed.tick();
+      expect(bed.service.reloadWaitingFor()).toBe('Waiting for Anki import');
+      expect(bed.reloadNow).not.toHaveBeenCalled();
+      bed.busyWork.set(null);
+      TestBed.tick();
+      expect(bed.reloadNow).toHaveBeenCalledExactlyOnceWith(1);
+    });
+
+    // A story that became unsaved during the wait was never asked about.
+    it('drops a wait when another story is left unsaved', async () => {
+      const bed = setup({ audio: speechCodeLost() });
+      bed.busyWork.set({ kind: 'story-generation', count: 1 });
+      await bed.service.reload();
+      TestBed.tick();
+      expect(bed.confirm).not.toHaveBeenCalled();
+      bed.busyWork.set(null);
+      bed.unsaved.set(1);
+      TestBed.tick();
+      expect(bed.service.reloadWaitingFor()).toBeNull();
+      expect(bed.reloadNow).not.toHaveBeenCalled();
+    });
   });
 });

@@ -158,6 +158,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
                   [pending]="actions.pending()"
                   [error]="actions.error()"
                   [reloadWaitingFor]="actions.reloadWaitingFor()"
+                  [reloadConfirms]="actions.reloadConfirms()"
                   (prepare)="actions.prepare($event)"
                   (opened)="popover.close()"
                   (shown)="actions.menuShown($event)"

@@ -1,9 +1,16 @@
-import { ChangeDetectionStrategy, Component, inject, Injector, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  Injector,
+  input,
+} from '@angular/core';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { confirmLater } from '../../shared-ui/confirm-dialog/confirm-later';
 import { BannerComponent } from '../../shared-ui/banner/banner.component';
 import { ButtonDirective } from '../../shared-ui/button/button';
-import { busyWorkLine } from '../../shared-ui/busy-work/busy-work-copy';
+import { busyWorkLine, unsavedStoryReload } from '../../shared-ui/busy-work/busy-work-copy';
 
 /**
  * A non-modal notice for the two states only a reload ends: a broken service worker and a lost
@@ -11,7 +18,8 @@ import { busyWorkLine } from '../../shared-ui/busy-work/busy-work-copy';
  *
  * Deliberately never a dialog: it must not steal focus from a form the learner is in the middle
  * of. While busy work is in progress a broken worker's reload says so and is disabled rather
- * than hidden.
+ * than hidden. A story whose save failed never finishes, so it does not hold the reload: the
+ * learner is asked first whether to lose it.
  */
 @Component({
   selector: 'mn-app-update-banner',
@@ -28,14 +36,14 @@ import { busyWorkLine } from '../../shared-ui/busy-work/busy-work-copy';
         [attr.aria-live]="status.kind === 'superseded' ? null : 'polite'"
       >
         <p>{{ status.message }}</p>
-        @if (status.kind === 'failed' && store.isBusy()) {
+        @if (status.kind === 'failed' && holding()) {
           <p class="mn-hint">Finishing current work…</p>
         }
         <ng-container ngProjectAs="[mn-banner-action]">
           @if (status.kind === 'superseded') {
             <button mnButton="primary" type="button" (click)="reloadSuperseded()">Reload</button>
           } @else {
-            <button mnButton type="button" [disabled]="store.isBusy()" (click)="reload()">
+            <button mnButton type="button" [disabled]="holding()" (click)="reload()">
               Reload to recover
             </button>
           }
@@ -73,7 +81,13 @@ export class AppUpdateBannerComponent {
     this.store.reloadSuperseded();
   }
 
-  protected reload(): void {
-    this.store.reloadNow();
+  protected readonly holding = computed(() => this.store.holdingWork().length > 0);
+
+  protected async reload(): Promise<void> {
+    const unsaved = this.store.unsavedStories();
+    if (unsaved > 0 && !(await confirmLater(this.injector, unsavedStoryReload(unsaved)))) {
+      return;
+    }
+    this.store.reloadNow(unsaved);
   }
 }

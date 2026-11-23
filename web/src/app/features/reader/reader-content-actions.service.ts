@@ -8,7 +8,7 @@ import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
 import { ReaderPreparationStore } from '../../application/reading/reader-preparation.store';
 import { ReaderStore } from '../../application/reading/reader.store';
 import { PREPARATION_ORDER, type PreparationLayer } from '../../domain/enrichment/preparation';
-import { waitingForWork } from '../../shared-ui/busy-work/busy-work-copy';
+import { unsavedStoryReload, waitingForWork } from '../../shared-ui/busy-work/busy-work-copy';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { enrichmentCanRetry } from './enrichment-failure-copy';
 import { readerContentState } from './reader-content-state';
@@ -71,6 +71,9 @@ export class ReaderContentActionsService {
     const work = this.deferredReload.waitingFor();
     return work === null ? null : waitingForWork(work);
   });
+
+  /** Whether Reload would lose an unsaved story, so it asks first. */
+  readonly reloadConfirms = computed(() => this.deferredReload.unsavedStories() > 0);
 
   constructor() {
     const document = inject(DOCUMENT);
@@ -200,11 +203,19 @@ export class ReaderContentActionsService {
     this.preparation.prepare(layer);
   }
 
-  /** Reloads Monosai to load code this tab could not, once no work would be lost. */
-  reload(): void {
+  /**
+   * Reloads Monosai to load code this tab could not, once no running work
+   * would be lost. A written story whose save failed never finishes, so it is
+   * not waited for: the learner is asked first whether to lose it.
+   */
+  async reload(): Promise<void> {
     const row = this.rows().find((entry) => entry.action === 'reload');
-    if (row === undefined) return;
-    this.deferredReload.request();
+    if (row === undefined || this.deferredReload.waitingFor() !== null) return;
+    const unsaved = this.deferredReload.unsavedStories();
+    if (unsaved > 0 && !(await openConfirmDialog(this.dialog, unsavedStoryReload(unsaved)))) {
+      return;
+    }
+    this.deferredReload.request(unsaved);
   }
 
   async stop(layer: PreparationLayer): Promise<void> {
