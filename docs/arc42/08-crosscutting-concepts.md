@@ -108,8 +108,9 @@ worker is replaced on the next clip; it keeps no state, so nothing has to be pre
 Code loaded on demand is tried once more at once when its import fails, and a later request tries
 again after that. Some browsers refuse a module that failed once for the rest of the page's life,
 so speech code that still cannot load is a failure of the run, not of one sentence: it offers no
-retry, and Story options offers a reload beside the Audio row. The voice test loads no code on
-demand, so it never meets this failure. Under the guard every recovery reload has, the reload waits until no work
+retry, and Story options offers a reload beside the Audio row. The voice test's code is in the
+initial bundle; the encoder it may load on demand keeps the clip as WAV when it cannot load, so it
+never meets this failure. Under the guard every recovery reload has, the reload waits until no work
 a reload would destroy is running: a story being written, an Anki import, an unsaved draft. A
 story whose failed save can still be retried never ends by itself, so it is not waited for: Reload,
 in Story options or in the broken-worker notice, asks first through the shared confirmation, and the
