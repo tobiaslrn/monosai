@@ -174,18 +174,20 @@ export async function encodeOpusWebm(
     },
   });
 
+  // Closed here rather than left for garbage collection: the encoder keeps its
+  // own reference, and a compression pass encodes clip after clip in one worker.
+  let frame: AudioData | null = null;
   try {
     encoder.configure(config);
-    encoder.encode(
-      new codecs.AudioData({
-        format: 's16',
-        sampleRate: input.sampleRate,
-        numberOfFrames: frames,
-        numberOfChannels: input.channels,
-        timestamp: 0,
-        data: input.samples,
-      }),
-    );
+    frame = new codecs.AudioData({
+      format: 's16',
+      sampleRate: input.sampleRate,
+      numberOfFrames: frames,
+      numberOfChannels: input.channels,
+      timestamp: 0,
+      data: input.samples,
+    });
+    encoder.encode(frame);
     await encoder.flush();
   } catch (thrown) {
     return err(
@@ -196,6 +198,7 @@ export async function encodeOpusWebm(
       ),
     );
   } finally {
+    frame?.close();
     if (encoder.state !== 'closed') {
       encoder.close();
     }

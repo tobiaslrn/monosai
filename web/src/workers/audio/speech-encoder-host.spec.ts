@@ -89,6 +89,9 @@ function fakeCodecs(
     constructor(init: unknown) {
       this.init = init;
     }
+    close(): void {
+      // Nothing to free in a stand-in.
+    }
   }
   return {
     AudioEncoder: FakeAudioEncoder,
