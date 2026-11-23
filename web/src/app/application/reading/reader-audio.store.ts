@@ -176,6 +176,13 @@ export class ReaderAudioStore {
       this.reader.paragraphs().some((paragraph) => paragraph.sentences.length > 0),
   );
 
+  /**
+   * The run's progress as it stood when the clip list was last read in full.
+   * A run that has just stopped may have stored its last clip in the same
+   * moment, so a wait is only released once the list read after the stop is in.
+   */
+  private readonly listedAt = signal<ReaderAudioProgress | null>(null);
+
   constructor() {
     // Which clips exist, re-read whenever the reading changes and whenever the
     // audio job has written more. Two local reads: the player appears because
@@ -192,9 +199,14 @@ export class ReaderAudioStore {
         return reading === null ? undefined : { reading, progress, voice };
       },
       loader: ({ params }) =>
-        this.playback.prepare(params.reading).catch((error: unknown) => {
-          reportRejection(this.logger, error);
-        }),
+        this.playback
+          .prepare(params.reading)
+          .catch((error: unknown) => {
+            reportRejection(this.logger, error);
+          })
+          .finally(() => {
+            this.listedAt.set(params.progress);
+          }),
     });
 
     // An effect because whether a run is still coming belongs to the reader, not
@@ -211,9 +223,15 @@ export class ReaderAudioStore {
       // The wait is still watched too — one sentence at a time can start one
       // *after* the run has stopped, and a release that only fired on the job's
       // own transition would leave it waiting for something already called off.
-      const kind = this.progress().kind;
+      //
+      // Not before the clips are re-read once the run has stopped: the clip
+      // the session is waiting for may be among the last the run stored, and
+      // releasing first would end the wait on a sentence that has audio.
+      const progress = this.progress();
+      const kind = progress.kind;
       this.playback.status();
-      if (kind === 'failed' || kind === 'cancelled') {
+      const listed = this.reader.reading() === null || this.listedAt() === progress;
+      if ((kind === 'failed' || kind === 'cancelled') && listed) {
         untracked(() => {
           this.playback.stopExpectingClips();
         });

@@ -205,6 +205,28 @@ describe('ReaderAudioStore', () => {
       expect(stopExpectingClips).not.toHaveBeenCalled();
     });
 
+    it('reads the clips again before saying none are coming', async () => {
+      reading.set(row());
+      status.set('waiting');
+      await settled();
+      let listed: () => void = () => undefined;
+      prepare.mockReturnValue(
+        new Promise<void>((resolve) => {
+          listed = resolve;
+        }),
+      );
+
+      // The run stopped, possibly just after storing the clip being waited for.
+      progress.set({ kind: 'failed' });
+      TestBed.tick();
+      expect(prepare).toHaveBeenCalledTimes(2);
+      expect(stopExpectingClips).not.toHaveBeenCalled();
+
+      listed();
+      await settled();
+      expect(stopExpectingClips).toHaveBeenCalled();
+    });
+
     it('releases a wait that starts after the run has stopped', async () => {
       progress.set({ kind: 'failed' });
       await settled();
