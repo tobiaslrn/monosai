@@ -118,7 +118,7 @@ export class AddTextPageComponent {
       case 'idle':
         return null;
       case 'preparing-language':
-        return 'Preparing…';
+        return 'Preparing Japanese analysis';
       case 'segmenting':
         return 'Splitting sentences…';
       case 'analyzing':

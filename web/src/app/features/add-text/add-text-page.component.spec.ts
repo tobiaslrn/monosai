@@ -48,6 +48,10 @@ describe('AddTextPageComponent', () => {
     fixture.detectChanges();
     expect(button.getAttribute('aria-busy')).toBe('true');
     expect(button.disabled).toBe(false);
+    // The wait names its stage, with no trailing ellipsis.
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[role="status"]')?.textContent?.trim(),
+    ).toBe('Preparing Japanese analysis');
 
     imports.release();
     await vi.waitFor(() => {
