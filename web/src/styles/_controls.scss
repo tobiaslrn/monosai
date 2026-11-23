@@ -29,8 +29,18 @@
 }
 
 :where(html[data-pointer='mouse'])
-  :where(.mn-control, .mn-field input, .mn-field textarea):hover:not(:disabled) {
+  :where(.mn-control, .mn-field input, .mn-field textarea):hover:not(:disabled, [readonly]) {
   border-color: var(--action-primary);
+}
+
+/*
+ * Locked while work runs on the value (a save, a request): `readonly`, so the
+ * value keeps its full ink and stays focusable, selectable and read aloud. The
+ * lock shows only in the surface: the sunken fill, the quiet border, no hover.
+ */
+:where(.mn-control, .mn-field input, .mn-field textarea)[readonly] {
+  border-color: var(--border-subtle);
+  background: var(--surface-sunken);
 }
 
 :where(.mn-control, .mn-field input, .mn-field textarea):disabled {

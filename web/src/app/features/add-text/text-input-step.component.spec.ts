@@ -7,6 +7,7 @@ import { TextInputStepComponent } from './text-input-step.component';
 /** Only the surface this field group reads from the import store. */
 class FakeImportStore {
   private text = '';
+  private title = '';
   saving = false;
 
   isSaving(): boolean {
@@ -22,7 +23,7 @@ class FakeImportStore {
   }
 
   titleInput(): string {
-    return '';
+    return this.title;
   }
 
   derivedTitle(): string {
@@ -41,8 +42,8 @@ class FakeImportStore {
     this.text = value;
   }
 
-  setTitle(): void {
-    // Not exercised here.
+  setTitle(value: string): void {
+    this.title = value;
   }
 }
 
@@ -125,13 +126,38 @@ describe('TextInputStepComponent', () => {
     expect(count[0]?.textContent).toContain('Remove 2 characters to continue.');
   });
 
-  it('locks the text and the title while a save runs', () => {
+  it('keeps the text and the title readable but read-only while a save runs', () => {
     store.setPastedText('猫が寝た。');
-    expect(render().querySelector('textarea')?.disabled).toBe(false);
+    const idle = render();
+    expect(idle.querySelector('textarea')?.readOnly).toBe(false);
+    expect(idle.querySelector<HTMLInputElement>('#mn-import-title')?.readOnly).toBe(false);
 
     store.saving = true;
     const element = render();
-    expect(element.querySelector('textarea')?.disabled).toBe(true);
-    expect(element.querySelector<HTMLInputElement>('#mn-import-title')?.disabled).toBe(true);
+    const text = element.querySelector('textarea')!;
+    const title = element.querySelector<HTMLInputElement>('#mn-import-title')!;
+    expect(text.readOnly).toBe(true);
+    expect(text.disabled).toBe(false);
+    expect(title.readOnly).toBe(true);
+    expect(title.disabled).toBe(false);
+  });
+
+  it('ignores an edit that reaches a field while a save runs', () => {
+    store.setPastedText('猫が寝た。');
+    store.setTitle('Cats');
+    store.saving = true;
+    const element = render();
+    const text = element.querySelector('textarea')!;
+    const title = element.querySelector<HTMLInputElement>('#mn-import-title')!;
+
+    text.value = '犬が寝た。';
+    text.dispatchEvent(new Event('input'));
+    title.value = 'Dogs';
+    title.dispatchEvent(new Event('input'));
+
+    expect(store.rawText()).toBe('猫が寝た。');
+    expect(store.titleInput()).toBe('Cats');
+    expect(text.value).toBe('猫が寝た。');
+    expect(title.value).toBe('Cats');
   });
 });

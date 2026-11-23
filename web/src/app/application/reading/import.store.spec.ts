@@ -316,7 +316,7 @@ describe('ImportStore', () => {
 });
 
 describe('ImportStore when the text is edited while a save runs', () => {
-  it('stores the text it segmented, with the title derived from that text', async () => {
+  function setUp(): { store: ImportStore; imports: FakeTextImportService; release: () => void } {
     const imports = new FakeTextImportService();
     TestBed.configureTestingModule({
       providers: [ImportStore, { provide: TextImportService, useValue: imports }],
@@ -326,15 +326,23 @@ describe('ImportStore when the text is edited while a save runs', () => {
     imports.gate = new Promise<void>((resolve) => {
       release = resolve;
     });
+    return { store, imports, release };
+  }
+
+  it('ignores the edit and stores the text it segmented, with the title derived from it', async () => {
+    const { store, imports, release } = setUp();
     store.setPastedText('猫が窓の外を見ていた。');
 
     const saving = store.save();
     await vi.waitFor(() => {
       expect(store.isBusy()).toBe(true);
     });
-    // The text changes while the language step runs.
+    // The text and the title change while the language step runs.
     store.setPastedText('犬が庭で遊んでいた。');
+    store.setTitle('Dogs');
     expect(store.isSaving()).toBe(true);
+    expect(store.rawText()).toBe('猫が窓の外を見ていた。');
+    expect(store.titleInput()).toBe('');
     release();
     await saving;
     expect(store.isSaving()).toBe(false);
@@ -345,5 +353,24 @@ describe('ImportStore when the text is edited while a save runs', () => {
     expect(sentences).toEqual(['猫が窓の外を見ていた。']);
     expect(imports.saved!.sourceText).toBe('猫が窓の外を見ていた。');
     expect(imports.saved!.title.startsWith('猫')).toBe(true);
+  });
+
+  it('starts no second save while one runs, and takes edits again once it ends', async () => {
+    const { store, imports, release } = setUp();
+    imports.languageReady = false;
+    store.setPastedText('猫が窓の外を見ていた。');
+
+    const first = store.save();
+    await vi.waitFor(() => {
+      expect(store.isBusy()).toBe(true);
+    });
+    expect(await store.save()).toBeNull();
+    release();
+    await first;
+
+    expect(imports.ensureCalls).toBe(1);
+    expect(store.isSaving()).toBe(false);
+    store.setTitle('Cats');
+    expect(store.titleInput()).toBe('Cats');
   });
 });

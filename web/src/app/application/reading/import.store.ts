@@ -82,8 +82,8 @@ export class ImportStore {
   readonly isBusy = computed(() => this.busySignal().kind !== 'idle');
   /**
    * Whether a save is running, from its duplicate check to its last write. The
-   * text and title are locked meanwhile, because the save stores what they held
-   * when it started.
+   * text and title are read-only meanwhile, because the save stores what they
+   * held when it started.
    */
   readonly isSaving = this.savingSignal.asReadonly();
 
@@ -126,14 +126,22 @@ export class ImportStore {
     );
   }
 
+  /** Ignored while a save runs: the text field is read-only until it ends. */
   setPastedText(text: string): void {
+    if (this.savingSignal()) {
+      return;
+    }
     this.rawTextSignal.set(normalizeImportedText(text));
     this.sourceSignal.set('paste');
     this.rejectionSignal.set(null);
     this.duplicatesSignal.set([]);
   }
 
+  /** Ignored while a save runs, like the text. */
   setTitle(title: string): void {
+    if (this.savingSignal()) {
+      return;
+    }
     this.titleInputSignal.set(title);
   }
 

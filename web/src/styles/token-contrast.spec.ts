@@ -145,6 +145,8 @@ const PAIRINGS: readonly {
   { foreground: 'action-primary-text', background: 'action-primary-soft', kind: 'text' },
   { foreground: 'text-on-tint', background: 'surface-sunken', kind: 'text' },
   { foreground: 'text-secondary', background: 'surface-sunken', kind: 'text' },
+  // A read-only field: the value keeps its ink while the field is sunken.
+  { foreground: 'text-primary', background: 'surface-sunken', kind: 'text' },
   // Outlines interactive control boundaries (buttons, text inputs), not a
   // decorative divider, so it must clear the UI-component minimum.
   { foreground: 'border-strong', background: 'surface-canvas', kind: 'ui' },

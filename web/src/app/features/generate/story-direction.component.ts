@@ -148,7 +148,7 @@ import { ClusterComponent, StackComponent } from '../../shared-ui/layout/layout'
             [value]="draft.specialInstructions()"
             [attr.aria-describedby]="instructionsDescriptionIds()"
             [attr.aria-invalid]="instructionsTooLong()"
-            [disabled]="disabled()"
+            [readonly]="disabled()"
             (input)="onInstructions($event)"
           ></textarea>
         </mn-field>
@@ -167,6 +167,10 @@ export class StoryDirectionComponent {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
 
+  /**
+   * Set while a story is written from this direction: the choices are
+   * disabled and the instructions are read-only, so the text stays readable.
+   */
   readonly disabled = input(false);
 
   protected readonly axes = STORY_AXES;
@@ -264,7 +268,12 @@ export class StoryDirectionComponent {
   }
 
   protected onInstructions(event: Event): void {
-    this.draft.setSpecialInstructions((event.target as HTMLTextAreaElement).value);
+    const field = event.target as HTMLTextAreaElement;
+    if (this.disabled()) {
+      field.value = this.draft.specialInstructions();
+      return;
+    }
+    this.draft.setSpecialInstructions(field.value);
   }
 
   /** Closes the field and hands focus back to the control that opened it. */

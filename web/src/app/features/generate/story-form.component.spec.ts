@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { chooseValue, optionValues, selectedValue } from '../../../testing/select';
 import { GenerationDraftStore } from '../../application/generation/generation-draft.store';
 import { StoryPlotStore } from '../../application/generation/story-plot.store';
@@ -448,5 +448,43 @@ describe('StoryFormComponent', () => {
     expect(element.querySelector<HTMLButtonElement>('[data-testid="wizard-next"]')?.disabled).toBe(
       true,
     );
+  });
+
+  it('keeps the instructions readable but read-only while a run is in flight', () => {
+    const { element, fixture, host } = render();
+    atStep(fixture, 2);
+    type(element, 'special-instructions', 'Set it by the sea.');
+    host.disabled.set(true);
+    fixture.detectChanges();
+
+    const field = element.querySelector<HTMLTextAreaElement>(
+      '[data-testid="special-instructions"]',
+    )!;
+    expect(field.readOnly).toBe(true);
+    expect(field.disabled).toBe(false);
+
+    type(element, 'special-instructions', 'Set it in the mountains.');
+    expect(draft.specialInstructions()).toBe('Set it by the sea.');
+    expect(field.value).toBe('Set it by the sea.');
+  });
+
+  it('keeps an open plot readable but read-only while plots are drafted', () => {
+    const plots = TestBed.inject(StoryPlotStore) as unknown as ReturnType<typeof plotStoreStub>;
+    const edit = vi.fn();
+    plots.edit = edit;
+    const { element, fixture } = render();
+    atStep(fixture, 3);
+    element.querySelector<HTMLButtonElement>('[data-testid="edit-plot"]')!.click();
+    fixture.detectChanges();
+    plots.isDrafting.set(true);
+    fixture.detectChanges();
+
+    const editor = element.querySelector<HTMLTextAreaElement>('[data-testid="plot-editor"]')!;
+    expect(editor.readOnly).toBe(true);
+    expect(editor.disabled).toBe(false);
+
+    type(element, 'plot-editor', 'A different plot.');
+    expect(edit).not.toHaveBeenCalled();
+    expect(editor.value).toBe('Plot 1.');
   });
 });

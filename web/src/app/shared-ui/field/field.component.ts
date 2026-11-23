@@ -15,6 +15,19 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
  * a row title) and the field only keeps it and its error together. The line
  * carries `errorId` (or `hintId`), which the control names in
  * `aria-describedby`; the error is announced.
+ *
+ * Two states take a value out of the learner's hands, and they are not the
+ * same:
+ *
+ * - **Read-only** (`readonly`): work is running on this value, such as a save
+ *   or a request that started from it. The value keeps its full ink and stays
+ *   focusable, selectable and read aloud; only the surface shows the lock,
+ *   with the sunken fill, the quiet border and no hover. The control's input
+ *   handler ignores anything that still arrives, and the commit that started
+ *   the work stays busy (R43), so a second run cannot start. The lock lifts
+ *   when the work ends.
+ * - **Disabled** (`disabled`): the control is not available yet, such as one
+ *   that needs setup first. It is greyed and skipped by focus.
  */
 @Component({
   selector: 'mn-field',

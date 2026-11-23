@@ -79,12 +79,11 @@ interface PlotChip {
       }
 
       @if (plots.cards().length > 0) {
-        @let locked = disabled() || plots.isDrafting();
         <mn-radio-card-group
           label="Choose a plot"
           name="mn-plot"
           [value]="selectedId()"
-          [disabled]="locked"
+          [disabled]="locked()"
           (valueChange)="choose($event)"
         >
           @for (card of plots.cards(); track card.id; let index = $index) {
@@ -130,7 +129,7 @@ interface PlotChip {
                       [attr.aria-label]="'Plot ' + (index + 1)"
                       [attr.aria-describedby]="editDescriptionIds()"
                       [attr.aria-invalid]="tooLong(card)"
-                      [disabled]="locked"
+                      [readonly]="locked()"
                       [value]="card.text"
                       (input)="onEdit(index, $event)"
                     ></textarea>
@@ -149,7 +148,7 @@ interface PlotChip {
                     type="button"
                     data-testid="edit-plot"
                     data-edit-toggle
-                    [disabled]="locked"
+                    [disabled]="locked()"
                     (click)="toggleEdit(index, card.id)"
                   >
                     @if (editing() === card.id) {
@@ -182,6 +181,9 @@ export class StoryPlotsComponent {
   private readonly injector = inject(Injector);
 
   readonly disabled = input(false);
+
+  /** While plots are drafted or a story is written, choices wait and the editor is read-only. */
+  protected readonly locked = computed(() => this.disabled() || this.plots.isDrafting());
 
   /** The card being edited, by its id, so the editor follows the card and not a slot. */
   protected readonly editing = signal<string | null>(null);
@@ -275,7 +277,12 @@ export class StoryPlotsComponent {
   }
 
   protected onEdit(index: number, event: Event): void {
-    this.plots.edit(index, (event.target as HTMLTextAreaElement).value);
+    const field = event.target as HTMLTextAreaElement;
+    if (this.locked()) {
+      field.value = this.plots.cards()[index]?.text ?? '';
+      return;
+    }
+    this.plots.edit(index, field.value);
   }
 
   protected regenerate(): void {
