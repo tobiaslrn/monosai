@@ -89,7 +89,7 @@ function setup(initial: Progress = {}, shared?: WritableSignal<Progress>) {
         provide: ReadingTextAidMaintenanceStore,
         useValue: { pending: signal(null), error: signal(null) },
       },
-      { provide: ReaderAudioStore, useValue: {} },
+      { provide: ReaderAudioStore, useValue: { decoderMissing: () => false } },
       { provide: Dialog, useValue: {} },
       {
         provide: AppUpdateStore,

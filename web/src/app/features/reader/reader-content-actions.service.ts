@@ -49,6 +49,7 @@ export class ReaderContentActionsService {
             this.preparation.progressFor(reading.id, layer),
             this.preparation.readiness(layer),
             this.preparation.online(),
+            this.audio.decoderMissing(),
           ),
         );
   });

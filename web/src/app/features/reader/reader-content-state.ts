@@ -3,7 +3,7 @@ import type { ConfigurationReadiness } from '../../domain/ai/configuration-readi
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { Reading } from '../../domain/reading/reading';
 import { formatCount } from '../../domain/shared/locale';
-import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
+import { aiFailureMessage, NO_AUDIO_DECODER_MESSAGE } from '../../shared-ui/ai-error/ai-error-copy';
 import {
   enrichmentCanRetry,
   enrichmentNeedsReload,
@@ -49,6 +49,7 @@ export function readerContentState(
   progress: LayerProgress,
   readiness: ConfigurationReadiness,
   online: boolean,
+  decoderMissing = false,
 ): ReaderContentState {
   const state = layerState(reading, layer, progress, readiness, online);
   // Audio reports here and is run from the transport: generating, stopping,
@@ -57,10 +58,19 @@ export function readerContentState(
   // What went wrong stays: it is a report, and the transport carries the retry.
   // The one exception is speech code that could not load: only a reload ends
   // it, and the transport has no room for one, so it sits beside the report.
+  // A browser with nothing to check new audio with is reported here too,
+  // before any run meets it: no run is started there, so none would say it.
   if (layer !== 'audio') return state;
   const reload = progress.kind === 'failed' && enrichmentNeedsReload(progress.error);
+  const undecodable =
+    decoderMissing &&
+    state.error === null &&
+    !state.setup &&
+    state.status !== 'Ready' &&
+    state.status !== 'No sentences';
   return {
     ...state,
+    error: undecodable ? NO_AUDIO_DECODER_MESSAGE : state.error,
     action: reload ? 'reload' : null,
     label: reload ? 'Reload' : '',
     disabled: false,

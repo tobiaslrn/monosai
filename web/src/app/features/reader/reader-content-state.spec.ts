@@ -4,6 +4,7 @@ import { readingId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
 import { aiError } from '../../domain/ai/ai-error';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
+import { NO_AUDIO_DECODER_MESSAGE } from '../../shared-ui/ai-error/ai-error-copy';
 import { readerContentState } from './reader-content-state';
 
 const ID = readingId('018f0000-0000-7000-8000-000000000001');
@@ -310,6 +311,20 @@ describe('reader content state', () => {
 
     expect(state).toMatchObject({ action: 'reload', label: 'Reload', disabled: false });
     expect(state.error).toBe('Speech could not load.');
+  });
+
+  it('reports a browser with no audio decoder beside missing audio before any run', () => {
+    const state = readerContentState(READING, 'audio', IDLE, 'ready', true, true);
+
+    expect(state).toMatchObject({ action: null, error: NO_AUDIO_DECODER_MESSAGE });
+    expect(readerContentState(READING, 'audio', IDLE, 'ready', true).error).toBeNull();
+  });
+
+  it('says nothing of a missing decoder where audio is complete or setup comes first', () => {
+    const complete = { ...READING, audioSummary: { total: 4, completed: 4, failed: 0 } };
+
+    expect(readerContentState(complete, 'audio', IDLE, 'ready', true, true).error).toBeNull();
+    expect(readerContentState(READING, 'audio', IDLE, 'incomplete', true, true).error).toBeNull();
   });
 
   it('offers no action beside any other audio failure', () => {

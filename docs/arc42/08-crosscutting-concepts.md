@@ -119,8 +119,8 @@ is that sentence's failure, asked for once more, while a browser with nothing to
 the run at once, since every further clip would be paid for and thrown away. The decoder is asked
 before any request, the voice test's included, whether it can decode at all: a browser with no
 audio context answers no at once, one whose contexts all refused is remembered as having none for
-the tab's life, and then nothing is requested, the player offers no Generate and the background
-compression pass does not start.
+the tab's life, and then nothing is requested, the player offers no Generate, Story options says why
+beside audio that is not complete, and the background compression pass does not start.
 
 State unions are handled exhaustively, with a helper that makes an unhandled case a type error.
 Adding a state breaks the compile rather than falling through a screen.
