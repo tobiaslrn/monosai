@@ -300,7 +300,7 @@ describe('auxAction', () => {
     const action = auxAction(facts({ progress, ...PARTIAL }));
 
     expect(action).toMatchObject({ kind: 'dismiss', label: 'Dismiss' });
-    expect(action?.title).toContain('Audio cannot play in this browser.');
+    expect(action?.title).toContain('New audio cannot be made in this browser.');
   });
 
   it('retries a cancelled run, which has no reason not to be', () => {
