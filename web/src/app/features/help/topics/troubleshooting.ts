@@ -266,7 +266,7 @@ export const TROUBLESHOOTING_GROUPS: readonly TroubleshootingGroup[] = [
         text: "The Japanese dictionary isn't available yet. Connect to the internet, then select **Try again**. Your text is still there.",
       },
       {
-        seen: ['Could not save the story.'],
+        seen: ['Could not save the story'],
         text: "Your pasted text couldn't be saved. The line after the message says why; most often the device is out of space. Your text is still there.",
       },
       {

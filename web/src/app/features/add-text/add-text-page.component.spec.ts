@@ -5,6 +5,7 @@ import { ImportStore } from '../../application/reading/import.store';
 import { TextImportService } from '../../application/reading/text-import.service';
 import { languageError } from '../../domain/language/language-error';
 import { err, ok } from '../../domain/shared/result';
+import { storageError } from '../../domain/storage/storage-error';
 import { AddTextPageComponent } from './add-text-page.component';
 
 /** Holds the language check open so the page can be inspected while it works. */
@@ -85,6 +86,27 @@ describe('AddTextPageComponent', () => {
 
     stages.releaseSave();
     await fixture.whenStable();
+  });
+
+  it('titles a save failure without a full stop', async () => {
+    TestBed.overrideProvider(TextImportService, {
+      useValue: {
+        findDuplicates: () => Promise.resolve(err(storageError('quota', 'No room left.'))),
+      },
+    });
+    const fixture = TestBed.createComponent(AddTextPageComponent);
+    const store = fixture.debugElement.injector.get(ImportStore);
+    store.setPastedText('今日は天気がいいです。');
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    element.querySelector<HTMLButtonElement>('mn-action-bar button.mn-button--primary')!.click();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(element.querySelector('[role="alert"] strong')?.textContent).toBe(
+        'Could not save the story',
+      );
+    });
   });
 });
 
