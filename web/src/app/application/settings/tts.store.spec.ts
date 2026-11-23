@@ -139,6 +139,33 @@ describe('TtsStore', () => {
     expect(store.readiness()).toBe('incomplete');
   });
 
+  it('ends a voice test whose provider throws, and shows it as failed', async () => {
+    const store = await ready();
+    store.setDraft(CONFIGURED);
+    await store.save();
+    provider.testConfiguration = () =>
+      Promise.reject(new TypeError('Failed to fetch dynamically imported module'));
+
+    await store.test();
+
+    expect(store.action()).toBe('idle');
+    expect(store.testFailure()).toMatchObject({ code: 'unknown', task: 'tts-test' });
+  });
+
+  it('ends a preset test whose provider throws, and shows it as failed', async () => {
+    const store = await ready();
+    await store.registerPreset({ id: 'voice', name: 'Voice', ...CONFIGURED });
+    provider.testConfiguration = () =>
+      Promise.reject(new TypeError('Failed to fetch dynamically imported module'));
+
+    await store.testPreset('voice');
+
+    expect(store.action()).toBe('idle');
+    expect(store.settings().failedTests).toEqual([
+      expect.objectContaining({ code: 'unknown', message: 'The voice test threw TypeError.' }),
+    ]);
+  });
+
   it('keeps audio compatibility evidence on the tested preset', async () => {
     const store = await ready();
     await store.registerPreset({ id: 'voice', name: 'Voice', ...CONFIGURED });

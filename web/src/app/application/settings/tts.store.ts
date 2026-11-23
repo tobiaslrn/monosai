@@ -3,7 +3,8 @@ import {
   recordConfigurationFailure,
 } from '../../domain/ai/failed-configuration-test';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import type { AiError } from '../../domain/ai/ai-error';
+import { aiError, type AiError } from '../../domain/ai/ai-error';
+import type { TtsConfig, TtsTest } from '../../domain/ai/model-test';
 import { ttsFingerprint } from '../../domain/ai/configuration-fingerprint';
 import { readinessOf, type ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import { declaredSpeechCapabilities, type StyleControl } from '../../domain/ai/speech-capabilities';
@@ -14,6 +15,8 @@ import {
   type TtsSettings,
 } from '../../domain/settings/settings';
 import type { SpeechPace, SpeechStyle } from '../../domain/ai/speech-instructions';
+import { safeErrorTypeOf } from '../../domain/shared/errors';
+import { err, type Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { TEXT_TO_SPEECH_PROVIDER } from '../shared/ai-tokens';
 import { CLOCK, HASHER, SETTINGS_REPOSITORY } from '../shared/repository-tokens';
@@ -424,66 +427,64 @@ export class TtsStore {
     this.testFailureSignal.set(null);
     this.testCancelledSignal.set(false);
     this.sampleSignal.set(null);
-
-    const persisted = await this.persistDraft();
-    const settings = this.settingsSignal();
-    if (!persisted || settings.modelId === '' || this.controller !== controller) {
-      if (this.controller === controller) {
-        this.controller = null;
-        this.actionSignal.set('idle');
+    try {
+      const persisted = await this.persistDraft();
+      const settings = this.settingsSignal();
+      if (!persisted || settings.modelId === '' || this.controller !== controller) {
+        return;
       }
-      return;
-    }
 
-    // Taken before the request: a key saved while it is open was never measured.
-    const fingerprint = this.fingerprintFor(settings);
-    const result = await this.provider.testConfiguration(
-      {
-        modelId: settings.modelId,
-        voiceId: settings.voiceId,
-        speechStyle: settings.speechStyle,
-        speechPace: settings.speechPace,
-        attempt: declaredSpeechCapabilities(settings.modelId, supportedParameters),
-      },
-      controller.signal,
-    );
+      // Taken before the request: a key saved while it is open was never measured.
+      const fingerprint = this.fingerprintFor(settings);
+      const result = await this.runTest(
+        {
+          modelId: settings.modelId,
+          voiceId: settings.voiceId,
+          speechStyle: settings.speechStyle,
+          speechPace: settings.speechPace,
+          attempt: declaredSpeechCapabilities(settings.modelId, supportedParameters),
+        },
+        controller.signal,
+      );
 
-    if (this.controller !== controller) {
-      return;
-    }
-    this.controller = null;
-    this.actionSignal.set('idle');
+      if (this.controller !== controller) {
+        return;
+      }
+      this.settle(controller);
 
-    if (!result.ok) {
-      this.testFailureSignal.set(result.error);
-      await this.persistTestFailure(result.error, fingerprint);
-      return;
-    }
+      if (!result.ok) {
+        this.testFailureSignal.set(result.error);
+        await this.persistTestFailure(result.error, fingerprint);
+        return;
+      }
 
-    this.instructionsAppliedSignal.set(result.value.speechInstructionsApplied);
-    this.sampleSignal.set(result.value.sample);
-    // What the provider honoured, written beside the configuration it was
-    // measured for. The fingerprint covers the configuration alone, so storing
-    // a finding here cannot make the test that produced it look stale. When
-    // the configuration or key changed meanwhile, the pass marks nothing tested.
-    const testedAt = this.clock.now();
-    const saved = await this.repository.updateTtsSettings((current) => ({
-      failedTests: (current.failedTests ?? []).filter((test) => test.fingerprint !== fingerprint),
-      ...(this.fingerprintFor(current) === fingerprint
-        ? {
-            speechInstructions: result.value.speechInstructionsApplied
-              ? ('supported' as const)
-              : ('unsupported' as const),
-            lastTestFingerprint: fingerprint,
-            lastTestedAt: testedAt,
-          }
-        : {}),
-    }));
-    if (saved.ok) {
-      this.settingsSignal.set(saved.value);
-      this.storageFailureSignal.set(null);
-    } else {
-      this.storageFailureSignal.set(saved.error);
+      this.instructionsAppliedSignal.set(result.value.speechInstructionsApplied);
+      this.sampleSignal.set(result.value.sample);
+      // What the provider honoured, written beside the configuration it was
+      // measured for. The fingerprint covers the configuration alone, so storing
+      // a finding here cannot make the test that produced it look stale. When
+      // the configuration or key changed meanwhile, the pass marks nothing tested.
+      const testedAt = this.clock.now();
+      const saved = await this.repository.updateTtsSettings((current) => ({
+        failedTests: (current.failedTests ?? []).filter((test) => test.fingerprint !== fingerprint),
+        ...(this.fingerprintFor(current) === fingerprint
+          ? {
+              speechInstructions: result.value.speechInstructionsApplied
+                ? ('supported' as const)
+                : ('unsupported' as const),
+              lastTestFingerprint: fingerprint,
+              lastTestedAt: testedAt,
+            }
+          : {}),
+      }));
+      if (saved.ok) {
+        this.settingsSignal.set(saved.value);
+        this.storageFailureSignal.set(null);
+      } else {
+        this.storageFailureSignal.set(saved.error);
+      }
+    } finally {
+      this.settle(controller);
     }
   }
 
@@ -499,89 +500,116 @@ export class TtsStore {
     this.testFailureSignal.set(null);
     this.testCancelledSignal.set(false);
     this.sampleSignal.set(null);
-    // Taken before the request, like `test`: the result vouches only for what was sent.
-    const fingerprint = this.fingerprintFor(preset);
-    const result = await this.provider.testConfiguration(
-      {
-        modelId: preset.modelId,
-        voiceId: preset.voiceId,
-        speechStyle: preset.speechStyle,
-        speechPace: preset.speechPace,
-        attempt: declaredSpeechCapabilities(preset.modelId, supportedParameters),
-      },
-      controller.signal,
-    );
-
-    if (this.controller !== controller) {
-      return;
-    }
-    this.controller = null;
-    this.actionSignal.set('idle');
-
-    if (!result.ok) {
-      this.testFailureSignal.set(result.error);
-      await this.persistTestFailure(result.error, fingerprint);
-      return;
-    }
-
-    const speechInstructions = result.value.speechInstructionsApplied ? 'supported' : 'unsupported';
-    const testedAt = this.clock.now();
-    // Set inside the write, which sees the row as stored.
-    let marked = false as boolean;
-    const saved = await this.repository.updateTtsSettings((current) => {
-      const failedTests = (current.failedTests ?? []).filter(
-        (test) => test.fingerprint !== fingerprint,
+    try {
+      // Taken before the request, like `test`: the result vouches only for what was sent.
+      const fingerprint = this.fingerprintFor(preset);
+      const result = await this.runTest(
+        {
+          modelId: preset.modelId,
+          voiceId: preset.voiceId,
+          speechStyle: preset.speechStyle,
+          speechPace: preset.speechPace,
+          attempt: declaredSpeechCapabilities(preset.modelId, supportedParameters),
+        },
+        controller.signal,
       );
-      const latest = current.presets.find((item) => item.id === id);
-      if (latest === undefined || this.fingerprintFor(latest) !== fingerprint) {
-        // The preset or the key changed while the request was open. The pass
-        // clears this configuration's failure and marks nothing tested.
-        return { failedTests };
+
+      if (this.controller !== controller) {
+        return;
       }
-      marked = true;
-      const isDefault = current.activePresetId === id;
-      const becomesDefault = current.activePresetId === null;
-      return {
-        failedTests,
-        presets: current.presets.map((item) =>
-          item.id === id
+      this.settle(controller);
+
+      if (!result.ok) {
+        this.testFailureSignal.set(result.error);
+        await this.persistTestFailure(result.error, fingerprint);
+        return;
+      }
+
+      const speechInstructions = result.value.speechInstructionsApplied
+        ? 'supported'
+        : 'unsupported';
+      const testedAt = this.clock.now();
+      // Set inside the write, which sees the row as stored.
+      let marked = false as boolean;
+      const saved = await this.repository.updateTtsSettings((current) => {
+        const failedTests = (current.failedTests ?? []).filter(
+          (test) => test.fingerprint !== fingerprint,
+        );
+        const latest = current.presets.find((item) => item.id === id);
+        if (latest === undefined || this.fingerprintFor(latest) !== fingerprint) {
+          // The preset or the key changed while the request was open. The pass
+          // clears this configuration's failure and marks nothing tested.
+          return { failedTests };
+        }
+        marked = true;
+        const isDefault = current.activePresetId === id;
+        const becomesDefault = current.activePresetId === null;
+        return {
+          failedTests,
+          presets: current.presets.map((item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  speechInstructions,
+                  lastTestFingerprint: fingerprint,
+                  lastTestedAt: testedAt,
+                }
+              : item,
+          ),
+          ...(isDefault || becomesDefault
             ? {
-                ...item,
+                activePresetId: id,
+                modelId: latest.modelId,
+                voiceId: latest.voiceId,
+                speechStyle: latest.speechStyle,
+                speechPace: latest.speechPace,
                 speechInstructions,
                 lastTestFingerprint: fingerprint,
                 lastTestedAt: testedAt,
               }
-            : item,
-        ),
-        ...(isDefault || becomesDefault
-          ? {
-              activePresetId: id,
-              modelId: latest.modelId,
-              voiceId: latest.voiceId,
-              speechStyle: latest.speechStyle,
-              speechPace: latest.speechPace,
-              speechInstructions,
-              lastTestFingerprint: fingerprint,
-              lastTestedAt: testedAt,
-            }
-          : {}),
-      };
-    });
-    if (saved.ok) {
-      this.settingsSignal.set(saved.value);
-      if (marked) {
-        this.instructionsAppliedSignal.set(result.value.speechInstructionsApplied);
-        this.sampleSignal.set(result.value.sample);
-        this.storageFailureSignal.set(null);
+            : {}),
+        };
+      });
+      if (saved.ok) {
+        this.settingsSignal.set(saved.value);
+        if (marked) {
+          this.instructionsAppliedSignal.set(result.value.speechInstructionsApplied);
+          this.sampleSignal.set(result.value.sample);
+          this.storageFailureSignal.set(null);
+        }
+      } else {
+        this.storageFailureSignal.set(saved.error);
       }
-    } else {
-      this.storageFailureSignal.set(saved.error);
+    } finally {
+      this.settle(controller);
     }
   }
 
   configForPreset(id: string | null): TtsPreset | null {
     const preset = this.settingsSignal().presets.find((item) => item.id === id);
     return preset !== undefined && this.isPresetReady(preset) ? preset : null;
+  }
+
+  /**
+   * The provider's test, as a Result even if it throws, so a fault reaches the
+   * learner as a failed test rather than a test that never ends.
+   */
+  private async runTest(config: TtsConfig, signal: AbortSignal): Promise<Result<TtsTest, AiError>> {
+    try {
+      return await this.provider.testConfiguration(config, signal);
+    } catch (thrown) {
+      return err(
+        aiError('unknown', 'tts-test', `The voice test threw ${safeErrorTypeOf(thrown)}.`),
+      );
+    }
+  }
+
+  /** Ends the test `controller` started, unless a newer one has taken over. */
+  private settle(controller: AbortController): void {
+    if (this.controller === controller) {
+      this.controller = null;
+      this.actionSignal.set('idle');
+    }
   }
 
   /** Stops a test that is still waiting, and says so rather than reporting a failure. */

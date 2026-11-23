@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fakeAudioDecoder, FakeCredentialRepository } from '../../../testing/ai-fakes';
 import { FAKE_OPENROUTER, FakeOpenRouterServer } from '../../../testing/openrouter-server';
+import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
 import { SPEECH_CODE_UNAVAILABLE, type TtsRequest } from '../../domain/ai/text-to-speech-provider';
 import type { SpeechEncoder } from '../../domain/audio/speech-encoder';
 import { restartingSpeechEncoder } from '../audio/audio.providers';
@@ -134,6 +135,31 @@ describe('OpenRouterTextToSpeechProvider wired to its adapters', () => {
 
     expect(server.requests.at(-1)?.body['response_format']).toBe('pcm');
     expect(result).toMatchObject({ ok: true, value: { mimeType: 'audio/wav' } });
+  });
+
+  it('answers a voice test with a Result when the encoder throws', async () => {
+    const server = new FakeOpenRouterServer({ pcmOnlyRate: 24_000 });
+    const throwing: SpeechEncoder = {
+      encode: () => Promise.reject(new TypeError('Failed to fetch dynamically imported module')),
+    };
+
+    const outcome = await wired({ server, encoder: throwing })
+      .testConfiguration({
+        modelId: FAKE_OPENROUTER.ttsModel,
+        voiceId: FAKE_OPENROUTER.voice,
+        speechStyle: 'clear',
+        speechPace: 'natural',
+        attempt: declaredSpeechCapabilities(FAKE_OPENROUTER.ttsModel, []),
+      })
+      .then(
+        (result) => ({ settled: 'resolved' as const, result }),
+        (error: unknown) => ({ settled: 'rejected' as const, error }),
+      );
+
+    expect(outcome).toMatchObject({
+      settled: 'resolved',
+      result: { ok: false, error: { code: 'unknown', task: 'tts-test' } },
+    });
   });
 
   it('does not report a fault after the code loaded as code that could not load', async () => {

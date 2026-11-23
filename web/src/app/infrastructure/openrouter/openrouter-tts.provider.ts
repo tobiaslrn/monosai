@@ -38,8 +38,23 @@ export class OpenRouterTextToSpeechProvider implements TextToSpeechProvider {
     this.synthesizer = retryOnRejection(loadSynthesizer);
   }
 
-  testConfiguration(config: TtsConfig, signal?: AbortSignal): Promise<Result<TtsTest, AiError>> {
-    return this.tester.testConfiguration(config, signal);
+  async testConfiguration(
+    config: TtsConfig,
+    signal?: AbortSignal,
+  ): Promise<Result<TtsTest, AiError>> {
+    try {
+      return await this.tester.testConfiguration(config, signal);
+    } catch (thrown) {
+      // The test shares the clip path with synthesis, the encoder and the
+      // decoder included, and a throw there would otherwise leave the voice
+      // test running with nothing to report.
+      if (signal?.aborted === true) {
+        return err(aiError('cancelled', 'tts-test', 'The test was cancelled.'));
+      }
+      return err(
+        aiError('unknown', 'tts-test', `The voice test threw ${safeErrorTypeOf(thrown)}.`),
+      );
+    }
   }
 
   async synthesize(input: TtsRequest, signal: AbortSignal): Promise<Result<AudioPayload, AiError>> {
