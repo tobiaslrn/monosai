@@ -327,6 +327,11 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
     if (MediaSourceConstructor?.isTypeSupported(sourceType) !== true) {
       throw new Error(`MediaSource cannot take ${mimeType}`);
     }
+    // Queued work can run after a newer load or a stop. Touching the element
+    // then would tear down the clip that replaced this one.
+    if (token !== operationToken) {
+      throw new Error('Audio load was superseded');
+    }
     release();
     const source = new MediaSourceConstructor();
     objectUrl = view.URL.createObjectURL(source);

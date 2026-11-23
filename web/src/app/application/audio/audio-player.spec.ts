@@ -505,3 +505,44 @@ describe('createAudioPlayer', () => {
     expect(element.played).toBe(1);
   });
 });
+
+describe('a superseded sequence still queued', () => {
+  it('leaves the clip that replaced it loaded and its URL alive', async () => {
+    const element = new FakeAudioElement();
+    const fake = fakeView(element);
+    let urls = 0;
+    const byUrl = new Map<string, unknown>();
+    fake.createObjectURL.mockImplementation((object: unknown) => {
+      urls += 1;
+      const url = `blob:${String(urls)}`;
+      byUrl.set(url, object);
+      return url;
+    });
+    (fake.view as unknown as { MediaSource: typeof MediaSource }).MediaSource =
+      FakeMediaSource as unknown as typeof MediaSource;
+    const player = createAudioPlayer(fake.view);
+
+    // A track whose resource has not opened yet when the learner moves on.
+    const first = player.playSequence([mpeg('a1'), mpeg('a2')]).catch(() => 'superseded');
+    await settle();
+    const firstSource = byUrl.get(element.src) as FakeMediaSource;
+    // A second track, queued behind the first, then a single clip that wins.
+    const second = player.playSequence([mpeg('b1')]).catch(() => 'superseded');
+    await player.play(new Blob(['c']));
+    const clipUrl = element.src;
+    expect(byUrl.get(clipUrl)).toBeInstanceOf(Blob);
+
+    firstSource.dispatchEvent(new Event('sourceopen'));
+    await settle();
+    const attached = byUrl.get(element.src);
+    if (attached instanceof FakeMediaSource) {
+      attached.dispatchEvent(new Event('sourceopen'));
+    }
+    await first;
+    await second;
+    await settle();
+
+    expect(fake.revokeObjectURL).not.toHaveBeenCalledWith(clipUrl);
+    expect(element.src).toBe(clipUrl);
+  });
+});
