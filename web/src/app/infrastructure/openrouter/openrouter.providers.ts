@@ -1,6 +1,7 @@
 import { DOCUMENT, Injector, inject, type Provider } from '@angular/core';
 import { LOGGER, type Logger } from '../../application/shared/diagnostics';
 import {
+  AUDIO_DECODER,
   MODEL_CATALOG,
   STRUCTURED_OUTPUT_MEMO,
   TEXT_GENERATION_PROVIDER,
@@ -10,7 +11,6 @@ import {
 import { StructuredOutputMemoService } from '../../application/settings/structured-output-memo.service';
 import type { StructuredOutputMemo } from '../../domain/ai/structured-output-memo';
 import { CREDENTIAL_REPOSITORY } from '../../application/shared/repository-tokens';
-import { createAudioDecoder } from './audio-decode';
 import { OpenRouterClient } from './openrouter-client';
 import { OpenRouterModelCatalog } from './model-catalog.adapter';
 import { OpenRouterTextProvider } from './openrouter-text-provider';
@@ -84,7 +84,9 @@ export function provideOpenRouter(): Provider[] {
       useFactory: () => {
         const view = inject(DOCUMENT).defaultView;
         const shared = client();
-        const decoder = createAudioDecoder(view ?? globalThis.window);
+        // The one decoder the app has, so a browser found to have none is
+        // known to the reader too, and to every later test and clip.
+        const decoder = inject(AUDIO_DECODER);
         // Injected, never imported: the tester is constructed eagerly, so a
         // static import of the encoder would pull the codec worker into the
         // initial bundle for every learner.

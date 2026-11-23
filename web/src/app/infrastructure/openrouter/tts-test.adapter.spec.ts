@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
+import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import { FAKE_OPENROUTER } from '../../../testing/openrouter-server';
 import { openRouterHarness, type HarnessOptions } from '../../../testing/ai-fakes';
 import { TTS_TEST_CONTEXT, TTS_TEST_PHRASE } from './tts-test.adapter';
@@ -39,6 +40,18 @@ describe('OpenRouterTtsTester', () => {
     expect(String(harness.server.requests[0]?.body['instructions'])).toContain(
       TTS_TEST_CONTEXT.beforeJa,
     );
+  });
+
+  it('sends no paid request from a browser with no audio decoder', async () => {
+    const harness = run({ decodable: 'missing' });
+
+    const result = await harness.tts.testConfiguration(CONFIG);
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'unknown', task: 'tts-test', detail: { issueCode: NO_AUDIO_DECODER } },
+    });
+    expect(harness.server.callCount).toBe(0);
   });
 
   it('tries exactly the channels the catalog declared', async () => {

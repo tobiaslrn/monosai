@@ -133,14 +133,19 @@ export function fakeAudioDecoder(
   decodable: FakeDecodable = true,
   durationSeconds = 1.5,
 ): AudioDecoder {
-  return { decode: () => Promise.resolve(fakeOutcome(decodable, durationSeconds)) };
+  return sequencedAudioDecoder(decodable, [durationSeconds]);
 }
 
-/** Whether a fake decoder decodes, finds the clip undecodable, or has nothing to decode with. */
-export type FakeDecodable = boolean | 'no-decoder';
+/**
+ * Whether a fake decoder decodes, finds the clip undecodable, or has nothing to
+ * decode with: `no-decoder` is a browser whose contexts all refuse, found out
+ * on the first decode, and `missing` one with no context at all, known before
+ * anything is asked for.
+ */
+export type FakeDecodable = boolean | 'no-decoder' | 'missing';
 
 function fakeOutcome(decodable: FakeDecodable, durationSeconds: number): DecodeOutcome {
-  if (decodable === 'no-decoder') return { kind: 'no-decoder' };
+  if (decodable === 'no-decoder' || decodable === 'missing') return { kind: 'no-decoder' };
   return decodable ? { kind: 'decoded', durationSeconds } : { kind: 'undecodable' };
 }
 
@@ -149,11 +154,16 @@ function sequencedAudioDecoder(
   clipSeconds: readonly number[] = [],
 ): AudioDecoder {
   let decoded = 0;
+  // Like the real one, a decoder that found nothing to decode with remembers it.
+  let missing = decodable === 'missing';
   return {
+    available: () => !missing,
     decode: () => {
       const durationSeconds = clipSeconds[Math.min(decoded, clipSeconds.length - 1)] ?? 1.5;
       decoded += 1;
-      return Promise.resolve(fakeOutcome(decodable, durationSeconds));
+      const outcome = fakeOutcome(decodable, durationSeconds);
+      if (outcome.kind === 'no-decoder') missing = true;
+      return Promise.resolve(outcome);
     },
   };
 }

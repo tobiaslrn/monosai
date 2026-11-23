@@ -12,6 +12,7 @@ import { PreparationStore } from '../enrichment/preparation.store';
 import { ReadingAudioMaintenanceStore } from '../enrichment/reading-audio-maintenance.store';
 import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { TtsStore } from '../settings/tts.store';
+import { AUDIO_DECODER } from '../shared/ai-tokens';
 import { LOGGER, NOOP_LOGGER, reportRejection, type Logger } from '../shared/diagnostics';
 import { ReaderStore } from './reader.store';
 
@@ -51,6 +52,7 @@ export class ReaderAudioStore {
   private readonly maintenance = inject(ReadingAudioMaintenanceStore);
   private readonly configuration = inject(AudioConfigurationService);
   private readonly network = inject(NETWORK_STATUS);
+  private readonly decoder = inject(AUDIO_DECODER);
   readonly playback = inject(AudioPlaybackStore);
   readonly tts = inject(TtsStore);
 
@@ -90,6 +92,21 @@ export class ReaderAudioStore {
     const lane = this.lane.progressFor(id, 'audio');
     return lane.kind === 'queued' ? lane : this.job.progressFor(id);
   });
+
+  /**
+   * This browser has nothing to decode audio with, so no clip it was sent could
+   * be kept and generating would only fail. Asked again whenever the run moves,
+   * since a run is how a browser whose contexts all refuse is found out.
+   */
+  readonly decoderMissing = computed(() => {
+    this.progress();
+    return !this.decoder.available();
+  });
+
+  private readonly decoderNoticeDismissed = signal(false);
+
+  /** Whether the player still reports the missing decoder; dismissing it puts it away. */
+  readonly decoderNotice = computed(() => this.decoderMissing() && !this.decoderNoticeDismissed());
 
   /**
    * A run is in progress for the learner, including one parked between batches
@@ -257,6 +274,7 @@ export class ReaderAudioStore {
 
   /** Puts a settled report away without asking for the work again. */
   dismiss(): void {
+    if (this.decoderMissing()) this.decoderNoticeDismissed.set(true);
     const id = this.readingId();
     if (id !== null) this.job.acknowledge(id);
   }

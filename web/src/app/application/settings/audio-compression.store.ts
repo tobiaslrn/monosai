@@ -60,7 +60,9 @@ export class AudioCompressionStore {
    * the work is recomputed from what is still stored.
    */
   async run(): Promise<void> {
-    if (this.stateSignal().kind === 'running') {
+    // Without a decoder no compressed clip could be checked, so none would be
+    // kept: the pass would read every clip to replace none of them.
+    if (this.stateSignal().kind === 'running' || !this.decoder.available()) {
       return;
     }
     const controller = new AbortController();

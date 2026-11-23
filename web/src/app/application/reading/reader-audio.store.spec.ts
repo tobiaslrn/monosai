@@ -10,6 +10,8 @@ import { AudioJobStore } from '../enrichment/audio-job.store';
 import { PreparationStore } from '../enrichment/preparation.store';
 import { ReadingAudioMaintenanceStore } from '../enrichment/reading-audio-maintenance.store';
 import { TtsStore } from '../settings/tts.store';
+import { AUDIO_DECODER } from '../shared/ai-tokens';
+import { fakeAudioDecoder } from '../../../testing/ai-fakes';
 import { ReaderAudioStore } from './reader-audio.store';
 import { ReaderStore } from './reader.store';
 
@@ -28,6 +30,7 @@ describe('ReaderAudioStore', () => {
   let online: WritableSignal<boolean>;
   let acknowledgeMaintenance: ReturnType<typeof vi.fn>;
   let availableCount: WritableSignal<number>;
+  let decoder: ReturnType<typeof fakeAudioDecoder>;
 
   const settled = () => TestBed.inject(ApplicationRef).whenStable();
 
@@ -43,6 +46,7 @@ describe('ReaderAudioStore', () => {
     online = signal(true);
     acknowledgeMaintenance = vi.fn();
     availableCount = signal(0);
+    decoder = fakeAudioDecoder();
 
     TestBed.configureTestingModule({
       providers: [
@@ -50,7 +54,11 @@ describe('ReaderAudioStore', () => {
         { provide: ReaderStore, useValue: { reading } },
         {
           provide: AudioJobStore,
-          useValue: { idleProgress: { kind: 'idle' }, progressFor: () => progress() },
+          useValue: {
+            idleProgress: { kind: 'idle' },
+            progressFor: () => progress(),
+            acknowledge: vi.fn(),
+          },
         },
         {
           provide: PreparationStore,
@@ -67,6 +75,14 @@ describe('ReaderAudioStore', () => {
           useValue: { prepare, stopExpectingClips, status, availableCount },
         },
         { provide: TtsStore, useValue: { settings: voice } },
+        {
+          provide: AUDIO_DECODER,
+          // Through the variable, so a test can swap the browser it stands for.
+          useValue: {
+            available: () => decoder.available(),
+            decode: (bytes: ArrayBuffer, mimeType: string) => decoder.decode(bytes, mimeType),
+          },
+        },
       ],
     });
     TestBed.inject(ReaderAudioStore).setReading(ID);
@@ -198,6 +214,33 @@ describe('ReaderAudioStore', () => {
       await settled();
 
       expect(stopExpectingClips).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('a browser with no audio decoder', () => {
+    it('is known before a run, and its report can be put away', () => {
+      decoder = fakeAudioDecoder('missing');
+      const store = TestBed.inject(ReaderAudioStore);
+
+      expect(store.decoderMissing()).toBe(true);
+      expect(store.decoderNotice()).toBe(true);
+
+      store.dismiss();
+
+      expect(store.decoderMissing()).toBe(true);
+      expect(store.decoderNotice()).toBe(false);
+    });
+
+    it('is learned from the run that found none', async () => {
+      decoder = fakeAudioDecoder('no-decoder');
+      const store = TestBed.inject(ReaderAudioStore);
+      expect(store.decoderMissing()).toBe(false);
+
+      // The run's first clip found every context refused, and the run failed.
+      await decoder.decode(new ArrayBuffer(1), 'audio/wav');
+      progress.set({ kind: 'failed' });
+
+      expect(store.decoderMissing()).toBe(true);
     });
   });
 });

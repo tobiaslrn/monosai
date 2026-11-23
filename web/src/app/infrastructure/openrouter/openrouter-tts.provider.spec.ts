@@ -165,6 +165,7 @@ describe('OpenRouterTextToSpeechProvider wired to its adapters', () => {
   it('does not report a fault after the code loaded as code that could not load', async () => {
     const server = new FakeOpenRouterServer();
     const throwing: AudioDecoder = {
+      available: () => true,
       decode: () => {
         throw new DOMException('Too many AudioContexts', 'NotSupportedError');
       },

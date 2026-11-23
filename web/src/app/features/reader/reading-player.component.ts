@@ -423,6 +423,10 @@ export class ReadingPlayerComponent {
   readonly modelConfigured = input<boolean>(false);
   /** Whether a waiting run is waiting for the connection rather than its turn. */
   readonly online = input<boolean>(true);
+  /** This browser cannot decode audio, so nothing is offered to generate. */
+  readonly decoderMissing = input<boolean>(false);
+  /** Whether the missing decoder is still reported rather than put away. */
+  readonly decoderNotice = input<boolean>(false);
 
   readonly generate = output<void>();
   readonly retryGeneration = output<void>();
@@ -444,6 +448,8 @@ export class ReadingPlayerComponent {
     hasStaleAudio: this.store.hasStaleAudio(),
     modelConfigured: this.modelConfigured(),
     online: this.online(),
+    decoderMissing: this.decoderMissing(),
+    decoderNotice: this.decoderNotice(),
   }));
 
   protected readonly setupRequired = computed(() => setupNeeded(this.facts()));

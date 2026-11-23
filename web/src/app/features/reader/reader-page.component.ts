@@ -200,6 +200,8 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
             [selectedSentenceId]="audio.playerSentenceId()"
             [modelConfigured]="audio.hasModel()"
             [online]="audio.online()"
+            [decoderMissing]="audio.decoderMissing()"
+            [decoderNotice]="audio.decoderNotice()"
             (generate)="audio.start()"
             (retryGeneration)="audio.retry()"
             (cancelGeneration)="actions.stop('audio')"

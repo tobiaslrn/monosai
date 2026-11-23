@@ -119,7 +119,7 @@ const SPEECH_CODE: TroubleshootingEntry = {
 /** The browser itself, not the clip: it has nothing to decode audio with. */
 const NO_AUDIO_DECODER: TroubleshootingEntry = {
   seen: [NO_AUDIO_DECODER_HEADING],
-  text: "This browser has no way to check new audio, so Monosai can't save any. It stops after the first clip, which OpenRouter still charges for. Open Monosai in a current version of Chrome.",
+  text: "This browser has no way to check new audio, so Monosai can't save any and doesn't ask OpenRouter for it. Audio that's already saved still plays. Open Monosai in a current version of Chrome.",
   code: 'ai/unknown',
 };
 

@@ -4,6 +4,7 @@ import { aiError } from '../../domain/ai/ai-error';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import { readingId } from '../../domain/shared/ids';
+import { NO_AUDIO_DECODER_MESSAGE } from '../../shared-ui/ai-error/ai-error-copy';
 import {
   announcement,
   auxAction,
@@ -53,6 +54,8 @@ function facts(overrides: Partial<PlayerFacts> = {}): PlayerFacts {
     hasStaleAudio: false,
     modelConfigured: true,
     online: true,
+    decoderMissing: false,
+    decoderNotice: false,
     ...overrides,
   };
 }
@@ -313,6 +316,28 @@ describe('auxAction', () => {
       title: 'Generate audio — 4 of 13 sentences have audio',
       tone: 'action',
     });
+  });
+
+  it('offers nothing paid in a browser with no audio decoder, and reports why', () => {
+    const missing = { decoderMissing: true, decoderNotice: true };
+    const dismiss = {
+      kind: 'dismiss',
+      label: 'Dismiss',
+      title: NO_AUDIO_DECODER_MESSAGE,
+      tone: 'danger',
+    };
+
+    expect(centreControl(facts(missing))).toMatchObject({ kind: 'play', disabled: true });
+    expect(auxAction(facts(missing))).toMatchObject(dismiss);
+    expect(auxAction(facts({ ...missing, ...PARTIAL }))).toMatchObject(dismiss);
+    // A stopped run is not offered again either: a retry is a paid request.
+    expect(auxAction(facts({ ...missing, ...PARTIAL, progress: CANCELLED }))).toMatchObject({
+      kind: 'dismiss',
+    });
+    // Put away, the report leaves nothing to press.
+    expect(auxAction(facts({ ...PARTIAL, decoderMissing: true }))).toBeNull();
+    expect(announcement(facts(missing))).toBe(`Not playing ${NO_AUDIO_DECODER_MESSAGE}`);
+    expect(announcement(facts({ decoderMissing: true }))).toBe('Not playing');
   });
 
   it('is empty when the centre control already is that action, or the model is missing', () => {

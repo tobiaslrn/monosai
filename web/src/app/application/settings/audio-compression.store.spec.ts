@@ -59,7 +59,10 @@ describe('AudioCompressionStore', () => {
   let playing: boolean;
 
   function build(
-    options: { encoder?: 'encodes' | 'unsupported' | 'fails'; decodable?: boolean } = {},
+    options: {
+      encoder?: 'encodes' | 'unsupported' | 'fails';
+      decodable?: boolean | 'missing';
+    } = {},
   ) {
     TestBed.configureTestingModule({
       providers: [
@@ -105,6 +108,17 @@ describe('AudioCompressionStore', () => {
       'audio/mpeg',
       'audio/webm',
     ]);
+  });
+
+  it('does not start a pass in a browser with no decoder', async () => {
+    repository.audio = [clip(0)];
+
+    const store = build({ decodable: 'missing' });
+    await store.run();
+
+    // No compressed clip could be checked, so reading every clip is skipped.
+    expect(store.state()).toStrictEqual({ kind: 'idle' });
+    expect(repository.audio[0]!.mimeType).toBe('audio/wav');
   });
 
   it('keeps the original when the browser has no encoder', async () => {

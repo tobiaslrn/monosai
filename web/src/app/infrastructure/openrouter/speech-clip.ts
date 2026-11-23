@@ -1,10 +1,11 @@
 import type { AiError } from '../../domain/ai/ai-error';
 import type { SpeechEncoder } from '../../domain/audio/speech-encoder';
-import { ok, type Result } from '../../domain/shared/result';
+import { err, ok, type Result } from '../../domain/shared/result';
 import type { AudioDecoder } from './audio-decode';
 import {
   checkSpokenLength,
   longestPlausibleSpeechSeconds,
+  noAudioDecoder,
   verifyAudio,
   type AudioContext,
   type VerifiedAudio,
@@ -36,11 +37,17 @@ export interface SpeechClip {
  * clip's length reveals. A clip that carried the direction and runs far longer
  * than its text is asked for once more without it; a clip that is still too
  * long is refused rather than stored.
+ *
+ * A browser with nothing to decode with could keep no clip, so it is asked
+ * first and nothing is requested, or paid for, when it has none.
  */
 export async function speechClip(
   ports: SpeechClipPorts,
   attempt: SpeechAttempt,
 ): Promise<Result<SpeechClip, AiError>> {
+  if (!ports.decoder.available()) {
+    return err(noAudioDecoder(contextOf(attempt)));
+  }
   let heard = await hear(ports, attempt);
   if (
     heard.ok &&

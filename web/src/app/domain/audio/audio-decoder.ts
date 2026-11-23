@@ -34,5 +34,10 @@ export const NO_AUDIO_DECODER = 'no-audio-decoder';
  * one place that touches Web Audio stays replaceable.
  */
 export interface AudioDecoder {
+  /**
+   * Whether this browser has anything to decode with, asked before a clip is
+   * paid for. Once it has said no, it says no for the rest of the tab's life.
+   */
+  available(): boolean;
   decode(bytes: ArrayBuffer, mimeType: string): Promise<DecodeOutcome>;
 }

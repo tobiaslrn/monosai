@@ -116,7 +116,11 @@ that work is, not words for it, so each surface names it in its own form. Only t
 fault after the code loaded keeps its own kind. A clip the provider was already paid for is kept as
 WAV when its encoder cannot load (ADR 0070). Every clip is decoded before it is kept: a clip that does not decode
 is that sentence's failure, asked for once more, while a browser with nothing to decode with fails
-the run at once, since every further clip would be paid for and thrown away.
+the run at once, since every further clip would be paid for and thrown away. The decoder is asked
+before any request, the voice test's included, whether it can decode at all: a browser with no
+audio context answers no at once, one whose contexts all refused is remembered as having none for
+the tab's life, and then nothing is requested, the player offers no Generate and the background
+compression pass does not start.
 
 State unions are handled exhaustively, with a helper that makes an unhandled case a type error.
 Adding a state breaks the compile rather than falling through a screen.

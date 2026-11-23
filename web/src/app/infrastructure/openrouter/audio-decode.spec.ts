@@ -76,6 +76,55 @@ describe('createAudioDecoder', () => {
     ).toEqual({ kind: 'no-decoder' });
   });
 
+  it('decodes with the prefixed offline context older WebKit has, through callbacks', async () => {
+    const constructed = vi.fn();
+    class CallbackContext {
+      constructor(...args: unknown[]) {
+        constructed(...args);
+      }
+      decodeAudioData(
+        _bytes: ArrayBuffer,
+        success: (buffer: { duration: number }) => void,
+      ): undefined {
+        success({ duration: 1.25 });
+        return undefined;
+      }
+    }
+
+    const decoder = decoderFor({ webkitOfflineAudioContext: CallbackContext });
+
+    expect(decoder.available()).toBe(true);
+    expect(await decoder.decode(new ArrayBuffer(8), 'audio/wav')).toEqual({
+      kind: 'decoded',
+      durationSeconds: 1.25,
+    });
+    expect(constructed).toHaveBeenCalledWith(1, 1, 44_100);
+  });
+
+  it('knows before any clip that a browser with no context has no decoder', () => {
+    expect(decoderFor({}).available()).toBe(false);
+    expect(decoderFor({ AudioContext: contextClass(decodes).FakeContext }).available()).toBe(true);
+  });
+
+  it('remembers a browser whose contexts all refused as having no decoder', async () => {
+    const offline = contextClass('refused');
+    const decoder = decoderFor({ OfflineAudioContext: offline.FakeContext });
+    expect(decoder.available()).toBe(true);
+
+    expect(await decoder.decode(new ArrayBuffer(8), 'audio/wav')).toEqual({ kind: 'no-decoder' });
+
+    expect(decoder.available()).toBe(false);
+    expect(await decoder.decode(new ArrayBuffer(8), 'audio/wav')).toEqual({ kind: 'no-decoder' });
+    expect(offline.constructed).toHaveBeenCalledOnce();
+  });
+
+  it('keeps bytes that do not decode a fault of the clip, not of the browser', async () => {
+    const decoder = decoderFor({ OfflineAudioContext: contextClass(rejects).FakeContext });
+
+    expect(await decoder.decode(new ArrayBuffer(8), 'audio/wav')).toEqual({ kind: 'undecodable' });
+    expect(decoder.available()).toBe(true);
+  });
+
   it('decodes a copy, so the clip it proved survives', async () => {
     const bytes = new ArrayBuffer(8);
     let given: ArrayBuffer | null = null;

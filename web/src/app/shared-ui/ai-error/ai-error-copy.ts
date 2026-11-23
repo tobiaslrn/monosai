@@ -211,6 +211,9 @@ function isSpeechCodeUnavailable(error: AiError): boolean {
 /** The title of a browser with no audio decoder, shared with the troubleshooting guide. */
 export const NO_AUDIO_DECODER_HEADING = 'Audio cannot play in this browser';
 
+/** A browser with no audio decoder, said the same wherever it is met. */
+export const NO_AUDIO_DECODER_MESSAGE = `${NO_AUDIO_DECODER_HEADING}. ${OPEN_ANOTHER_BROWSER}`;
+
 /**
  * This browser has nothing to decode audio with, so no clip can be checked
  * and none is kept. No voice, model or retry changes that; another browser
@@ -296,7 +299,7 @@ export function aiFailureMessage(
     return `${SPEECH_CODE_HEADING}.`;
   }
   if (isNoAudioDecoder(error)) {
-    return `${NO_AUDIO_DECODER_HEADING}. ${OPEN_ANOTHER_BROWSER}`;
+    return NO_AUDIO_DECODER_MESSAGE;
   }
   const task =
     (scope === 'run' ? AI_RUN_TASK_COPY[error.task] : undefined) ?? aiTaskCopy(error.task);

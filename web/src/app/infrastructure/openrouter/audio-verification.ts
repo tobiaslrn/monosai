@@ -121,6 +121,20 @@ export function normalizeMimeType(contentType: string): string {
 }
 
 /**
+ * The failure of a browser with nothing to decode audio with: not any clip's
+ * fault and not the model's, so no voice, model or retry changes it.
+ */
+export function noAudioDecoder(context: AudioContext): AiError {
+  return aiError('unknown', context.task, 'This browser has no audio decoder.', {
+    detail: {
+      modelId: context.modelId,
+      voiceId: context.voiceId,
+      issueCode: NO_AUDIO_DECODER,
+    },
+  });
+}
+
+/**
  * Proves a response is a clip this browser can play, before anything stores it.
  *
  * A well-formed file this browser cannot decode is a failure the learner has to
@@ -149,15 +163,7 @@ export async function verifyAudio(
   if (decoded.kind === 'no-decoder') {
     // Not this clip's fault and not the model's: no clip decodes here, so the
     // run stops rather than paying for more clips it would throw away.
-    return err(
-      aiError('unknown', context.task, 'This browser has no audio decoder.', {
-        detail: {
-          modelId: context.modelId,
-          voiceId: context.voiceId,
-          issueCode: NO_AUDIO_DECODER,
-        },
-      }),
-    );
+    return err(noAudioDecoder(context));
   }
   if (decoded.kind === 'undecodable') {
     const fromEncoder = context.origin === 'encoder';

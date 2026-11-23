@@ -6,6 +6,7 @@ import {
 import { PLAYBACK_RATES, type PlaybackRate } from '../../domain/settings/settings';
 import { defined } from '../../domain/shared/invariant';
 import { enrichmentFailedInBrowser } from './enrichment-failure-copy';
+import { NO_AUDIO_DECODER_MESSAGE } from '../../shared-ui/ai-error/ai-error-copy';
 import type { IconName } from '../../shared-ui/icon/icon-set';
 import type { Tone } from '../../shared-ui/tone';
 import {
@@ -76,6 +77,10 @@ export interface PlayerFacts {
   readonly hasStaleAudio: boolean;
   readonly modelConfigured: boolean;
   readonly online: boolean;
+  /** This browser cannot decode audio, so generating could keep nothing. */
+  readonly decoderMissing: boolean;
+  /** The missing decoder is still reported; false once the learner dismissed it. */
+  readonly decoderNotice: boolean;
 }
 
 /**
@@ -201,7 +206,9 @@ export function centreControl(facts: PlayerFacts): CentreControl {
         busy: true,
       };
     }
-    if (facts.sentenceCount > 0 && facts.modelConfigured) {
+    // Not offered where no clip could be kept: every request would be refused
+    // before it was sent, and the report says so instead.
+    if (facts.sentenceCount > 0 && facts.modelConfigured && !facts.decoderMissing) {
       return {
         kind: 'generate',
         icon: 'generate',
@@ -267,11 +274,25 @@ export function auxAction(facts: PlayerFacts): AuxAction | null {
     // code this tab will not load until it reloads, which Story options offers
     // beside the Audio row, or no audio decoder at all.
     const retryable =
-      facts.progress.kind !== 'failed' ||
-      (facts.progress.canRetry && !enrichmentFailedInBrowser(facts.progress.error));
+      !facts.decoderMissing &&
+      (facts.progress.kind !== 'failed' ||
+        (facts.progress.canRetry && !enrichmentFailedInBrowser(facts.progress.error)));
     return retryable
       ? { kind: 'retry', icon: 'retry', label: 'Try again', title, tone: 'danger' }
       : { kind: 'dismiss', icon: 'close', label: 'Dismiss', title, tone: 'danger' };
+  }
+  if (rail === 'offer' && facts.decoderMissing) {
+    // What would have been the offer to generate is the reason there is none,
+    // in the words a run that met it uses, until it is put away.
+    return facts.decoderNotice
+      ? {
+          kind: 'dismiss',
+          icon: 'close',
+          label: 'Dismiss',
+          title: NO_AUDIO_DECODER_MESSAGE,
+          tone: 'danger',
+        }
+      : null;
   }
   if (!facts.modelConfigured) {
     // The centre control is the setup in this state, and one screen does not
@@ -334,7 +355,9 @@ export function announcement(facts: PlayerFacts): string {
   if (facts.hasStaleAudio) {
     parts.push(STALE_AUDIO_ANNOUNCEMENT);
   }
-  if (rail === 'offer') {
+  if (rail === 'offer' && facts.decoderMissing) {
+    if (facts.decoderNotice) parts.push(NO_AUDIO_DECODER_MESSAGE);
+  } else if (rail === 'offer') {
     parts.push(
       `${offerLabel(facts.availableCount, facts.sentenceCount)} — audio can be generated.`,
     );
