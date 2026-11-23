@@ -380,6 +380,7 @@ export async function configurePlaybackBed(): Promise<PlaybackBed> {
   const navigator = TestBed.inject(PlaybackNavigator);
   const resumption = TestBed.inject(PlaybackResumption);
   unsettledWork.clear();
+  workFailures.length = 0;
   trackWork(navigator, 'advanceAfterEnd');
   trackWork(resumption, 'resume');
   trackWork(resumption, 'continueReading');
@@ -416,6 +417,9 @@ export async function configurePlaybackBed(): Promise<PlaybackBed> {
  */
 const unsettledWork = new Set<Promise<void>>();
 
+/** Why tracked work rejected, in the order it did, until `settle` reports it. */
+const workFailures: unknown[] = [];
+
 /**
  * Records every call of `method` until it settles, so `settle` can wait for
  * it. The units call these fire-and-forget from the player's and the media
@@ -427,9 +431,13 @@ function trackWork<T extends object>(target: T, method: keyof T & string): void 
     [method]: (...args: unknown[]): unknown => {
       const result = original.apply(target, args);
       if (result instanceof Promise) {
+        // Caught here so an unawaited call is not an unhandled rejection, and
+        // kept so `settle` can fail the test with it instead of losing it.
         const done: Promise<void> = result.then(
           () => undefined,
-          () => undefined,
+          (reason: unknown) => {
+            workFailures.push(reason);
+          },
         );
         unsettledWork.add(done);
         void done.then(() => unsettledWork.delete(done));
@@ -444,12 +452,18 @@ function trackWork<T extends object>(target: T, method: keyof T & string): void 
  *
  * Advancing loads the next clip from storage, a real IndexedDB round trip that
  * takes a varying number of tasks, so this waits for the work itself rather
- * than for a timer tick.
+ * than for a timer tick. Work that rejected fails the test with its reason:
+ * the app does not await it either, so a rejection here is a fault nothing
+ * else would surface.
  */
 export async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
   while (unsettledWork.size > 0) {
     await Promise.all([...unsettledWork]);
+  }
+  if (workFailures.length > 0) {
+    const [first] = workFailures.splice(0);
+    throw first;
   }
 }
 
