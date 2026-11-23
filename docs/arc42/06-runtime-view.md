@@ -437,7 +437,8 @@ a lock-screen or headset Pause holds the wait instead: the clip arriving starts 
 takes the wait up again or plays the clip that arrived in the meantime. A run that stops ends a
 paused wait only when its clip never arrived; one whose clip arrived stays paused on it. Whether it
 arrived is known only after the clips are read again once the run has stopped, so the wait is let
-go only after that read.
+go only after that read. A read that a newer one replaced does not count, even when it finishes
+last.
 
 The playback store reads the saved reader rate and applies it only to playback-paced
 rows, preserving pitch and reporting the actual rate to the media session. It

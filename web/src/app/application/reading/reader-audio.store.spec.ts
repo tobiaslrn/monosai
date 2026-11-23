@@ -227,6 +227,34 @@ describe('ReaderAudioStore', () => {
       expect(stopExpectingClips).toHaveBeenCalled();
     });
 
+    // A read the stop replaced can still finish last, as when its playback
+    // append is slower than the read after the stop. It must not count as the
+    // list read after the stop, or the wait is never let go.
+    it('lets a wait go when a read the stop replaced finishes last', async () => {
+      reading.set(row());
+      status.set('waiting');
+      await settled();
+      const pending: (() => void)[] = [];
+      const held = () =>
+        new Promise<void>((resolve) => {
+          pending.push(resolve);
+        });
+      prepare.mockReturnValueOnce(held()).mockReturnValueOnce(held());
+
+      progress.set({ kind: 'running', step: 1 });
+      TestBed.tick();
+      progress.set({ kind: 'failed' });
+      TestBed.tick();
+      expect(prepare).toHaveBeenCalledTimes(3);
+
+      const [replaced, latest] = pending;
+      latest?.();
+      replaced?.();
+      await settled();
+
+      expect(stopExpectingClips).toHaveBeenCalled();
+    });
+
     it('releases a wait that starts after the run has stopped', async () => {
       progress.set({ kind: 'failed' });
       await settled();

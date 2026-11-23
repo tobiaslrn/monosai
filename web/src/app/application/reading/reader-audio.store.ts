@@ -198,14 +198,16 @@ export class ReaderAudioStore {
         const voice = this.tts.settings();
         return reading === null ? undefined : { reading, progress, voice };
       },
-      loader: ({ params }) =>
+      loader: ({ params, abortSignal }) =>
         this.playback
           .prepare(params.reading)
           .catch((error: unknown) => {
             reportRejection(this.logger, error);
           })
           .finally(() => {
-            this.listedAt.set(params.progress);
+            // A read that a newer one replaced can finish after it; its older
+            // progress must not stand as the last read in full.
+            if (!abortSignal.aborted) this.listedAt.set(params.progress);
           }),
     });
 
