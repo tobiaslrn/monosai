@@ -46,6 +46,9 @@ export class PlaybackResumption {
       }
       return;
     }
+    if (await this.resumeWait()) {
+      return;
+    }
     try {
       await this.player.resume();
     } catch {
@@ -61,6 +64,55 @@ export class PlaybackResumption {
     }
     this.transport.enter('playing');
     this.sequencer.publishPosition();
+  }
+
+  /**
+   * Takes up a wait at the frontier that a Pause interrupted.
+   *
+   * The clip may have been stored while the session was paused, in which case
+   * it plays now; otherwise the session waits for it again. A sentence clip is
+   * never resumed here: the element still holds the sentence that ended, and
+   * resuming it would play that sentence again.
+   *
+   * Returns false when the paused session was not waiting, or has moved since,
+   * so an ordinary resume follows.
+   */
+  private async resumeWait(): Promise<boolean> {
+    const pending = this.transport.pendingSentenceId();
+    if (pending === null) {
+      return false;
+    }
+    const current = this.transport.currentSentenceId();
+    if (current === null || this.clips.indexOf(pending) !== this.clips.indexOf(current) + 1) {
+      // The learner moved the cursor while paused: the wait no longer applies.
+      this.transport.stopWaiting();
+      return false;
+    }
+    if (this.sequencer.hasTrack()) {
+      try {
+        await this.player.resume();
+      } catch {
+        this.transport.enter('paused');
+        return true;
+      }
+      const nextToAppend = this.sequencer.nextToAppend();
+      if (nextToAppend !== null && this.clips.indexOf(pending) >= nextToAppend) {
+        // Nothing was appended while paused: the element holds again.
+        this.transport.enter('waiting');
+      } else {
+        this.transport.stopWaiting();
+        this.transport.enter('playing');
+      }
+      this.sequencer.publishPosition();
+      return true;
+    }
+    if (this.clips.isAvailable(pending)) {
+      this.transport.stopWaiting();
+      await this.sequencer.load(pending);
+      return true;
+    }
+    this.transport.enter('waiting');
+    return true;
   }
 
   /**
@@ -163,7 +215,12 @@ export class PlaybackResumption {
    */
   stopExpectingClips(): void {
     this.sequencer.seal();
-    if (this.transport.status() !== 'waiting') {
+    const status = this.transport.status();
+    // A wait the learner paused ends too, or Play would take up a wait for a
+    // clip that is no longer coming.
+    const waits =
+      status === 'waiting' || (status === 'paused' && this.transport.pendingSentenceId() !== null);
+    if (!waits) {
       return;
     }
     const position = this.transport.pendingPosition();

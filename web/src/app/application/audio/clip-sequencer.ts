@@ -112,7 +112,8 @@ export class ClipSequencer {
   }
 
   /**
-   * Pauses, including while the next clip is still being read.
+   * Pauses, including while the next clip is still being read or the session
+   * waits for one at the frontier.
    *
    * A press during the load window used to be dropped, and the next sentence
    * then started anyway. It is now remembered, and the clip arrives paused.
@@ -122,14 +123,17 @@ export class ClipSequencer {
    */
   pause(): void {
     const status = this.transport.status();
-    if (status !== 'playing' && status !== 'loading') {
+    if (status !== 'playing' && status !== 'loading' && status !== 'waiting') {
       return;
     }
     this.player.pause();
     if (this.loading) {
       this.pauseRequested = true;
-      this.pausedLoadStatus = status;
+      this.pausedLoadStatus = status === 'loading' ? 'loading' : 'playing';
     }
+    // A session waiting at the frontier keeps the sentence it waits for, so
+    // Play can take the wait up again. Paused, it is not waiting, and the clip
+    // arriving starts nothing.
     this.transport.enter('paused');
     this.publishPosition();
   }

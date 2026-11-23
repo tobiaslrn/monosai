@@ -160,6 +160,74 @@ describe('PlaybackResumption', () => {
       expect(bed.player.played).toHaveLength(3);
     });
 
+    it('tells the lock screen a waiting session is live, so it offers Pause', async () => {
+      await playToTheFrontier();
+
+      expect(bed.store.status()).toBe('waiting');
+      expect(bed.media.playbackStates.at(-1)).toBe('playing');
+    });
+
+    it('stays quiet when the clip lands after a lock-screen Pause while waiting', async () => {
+      await playToTheFrontier();
+
+      bed.media.handlers?.pause();
+      expect(bed.store.status()).toBe('paused');
+      expect(bed.media.playbackStates.at(-1)).toBe('paused');
+
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.store.status()).toBe('paused');
+      expect(bed.player.played).toHaveLength(2);
+    });
+
+    it('plays the clip that landed while paused when Play is pressed', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await playToTheFrontier();
+      bed.media.handlers?.pause();
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+
+      bed.media.handlers?.play();
+      await settle();
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.currentSentenceId()).toBe(sentences[2]!.id);
+      expect(bed.player.played).toHaveLength(3);
+      // The sentence that had ended is not played again.
+      expect(bed.player.resumes).toBe(0);
+    });
+
+    it('waits again when Play follows Pause before the clip landed', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await playToTheFrontier();
+      bed.media.handlers?.pause();
+
+      bed.media.handlers?.play();
+      await settle();
+
+      expect(bed.store.status()).toBe('waiting');
+      expect(bed.store.pendingSentenceId()).toBe(sentences[2]!.id);
+      expect(bed.player.resumes).toBe(0);
+      expect(bed.media.playbackStates.at(-1)).toBe('playing');
+
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+      await settle();
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.player.played).toHaveLength(3);
+    });
+
+    it('lets go of a paused wait when the run that was filling it stops', async () => {
+      await playToTheFrontier();
+      bed.media.handlers?.pause();
+
+      bed.resumption.stopExpectingClips();
+
+      expect(bed.store.status()).toBe('ended');
+      expect(bed.store.failure()).toEqual({ kind: 'not-generated', position: 3 });
+    });
+
     it('keeps waiting while the clip it waits for has not been stored', async () => {
       await playToTheFrontier();
 
@@ -354,6 +422,40 @@ describe('PlaybackResumption', () => {
       expect(bed.store.status()).toBe('playing');
       expect(bed.store.pendingSentenceId()).toBeNull();
       expect(bed.player.played).toEqual([]);
+    });
+
+    it('holds a paused wait inside the track until Play, then waits again', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await bed.store.play();
+      bed.player.moveTo(1.5);
+      bed.player.stall();
+      expect(bed.media.playbackStates.at(-1)).toBe('playing');
+
+      bed.media.handlers?.pause();
+      expect(bed.store.status()).toBe('paused');
+      expect(bed.player.pauses).toBe(1);
+
+      bed.media.handlers?.play();
+      await settle();
+
+      expect(bed.store.status()).toBe('waiting');
+      expect(bed.store.pendingSentenceId()).toBe(sentences[2]!.id);
+    });
+
+    it('reads on from a paused wait inside the track once the clip was appended', async () => {
+      await bed.store.play();
+      bed.player.moveTo(1.5);
+      bed.player.stall();
+      bed.media.handlers?.pause();
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+      expect(bed.store.status()).toBe('paused');
+
+      bed.media.handlers?.play();
+      await settle();
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.pendingSentenceId()).toBeNull();
     });
 
     it('does not wait inside a track that is paused', async () => {

@@ -79,7 +79,8 @@ describe('PlaybackTransportStore', () => {
     transport.enter('waiting');
     transport.enter('ended');
 
-    expect(states).toEqual(['playing', 'paused', 'paused', 'paused', 'paused']);
+    // A waiting session is live: the lock screen offers the Pause that holds it.
+    expect(states).toEqual(['playing', 'paused', 'paused', 'playing', 'paused']);
     expect(transport.status()).toBe('ended');
   });
 
@@ -111,7 +112,7 @@ describe('PlaybackTransportStore', () => {
     expect(transport.currentPosition()).toBe(2);
     expect(transport.pendingPosition()).toBe(3);
     expect(transport.status()).toBe('waiting');
-    expect(states).toEqual(['paused']);
+    expect(states).toEqual(['playing']);
 
     transport.stopWaiting();
 

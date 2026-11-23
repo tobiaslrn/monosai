@@ -160,8 +160,9 @@ function playLabel(status: PlaybackStatus): string {
 /**
  * Play is pressable when it has somewhere to start.
  *
- * Waiting and loading are already-started sessions with nothing to press —
- * and no longer a dead end either way, because Stop is live beside them. Any
+ * Waiting and loading are already-started sessions with nothing to press.
+ * Neither is a dead end: a load lands by itself, and while waiting Back replays
+ * the sentence just heard and leaves the wait (ADR 0038). Any
  * stored clip is enough to start on: clips arrive out of order, so requiring
  * sentence one left a learner with no way into audio they had paid for.
  */

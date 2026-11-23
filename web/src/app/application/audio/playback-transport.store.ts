@@ -160,11 +160,19 @@ export class PlaybackTransportStore {
     this.statusSignal.set(status);
   }
 
-  /** Tells the media session the status the session is in. */
+  /**
+   * Tells the media session the status the session is in.
+   *
+   * A session waiting at the frontier is live, as a buffering one is: it reads
+   * on by itself when the clip arrives. Reporting it as paused put a Play on the
+   * lock screen that did nothing and hid the Pause that holds the wait.
+   */
   announce(): void {
     const status = this.statusSignal();
     if (status !== 'loading' && status !== 'idle') {
-      this.mediaSession.setPlaybackState(status === 'playing' ? 'playing' : 'paused');
+      this.mediaSession.setPlaybackState(
+        status === 'playing' || status === 'waiting' ? 'playing' : 'paused',
+      );
     }
   }
 
