@@ -96,9 +96,10 @@ export function classifyTokens(
       continue;
     }
 
-    // A word that only reads like a reviewed word is weaker evidence than
-    // grammar the baseline already names.
-    const normalized = context.vocabulary.findNormalized(token);
+    // A match by the token's own reading is weaker evidence than grammar the
+    // baseline already names. A match by its dictionary form's reading is
+    // recorded as a base-form match and does not yield.
+    const normalized = context.vocabulary.findNormalized(token, tokens.slice(index + 1, index + 3));
     if (
       normalized !== null &&
       (normalized.basis !== 'reading' || context.baseline.match(token) === null)

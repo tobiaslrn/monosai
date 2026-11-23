@@ -134,6 +134,140 @@ describe('compileVocabularyMatcher', () => {
     });
   });
 
+  describe('an inflected verb', () => {
+    function entry(id: string, expression: string, reading: string): VocabularyItem {
+      return {
+        id: vocabularyItemId(`${id}0000-0000-4000-8000-000000000000`),
+        snapshotId: snapshotId('11111111-1111-4111-8111-111111111111'),
+        visibleExpression: expression,
+        canonicalExpression: expression,
+        expressionHash: `hash-${expression}`,
+        analyzedSequence: [{ surface: expression, lemma: expression, readingHiragana: reading }],
+      };
+    }
+    const stomach = entry('11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '胃', 'い');
+    const end = entry('22222222-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '終わり', 'おわり');
+    const comeKana = entry('33333333-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'くる', 'くる');
+    const wearKana = entry('44444444-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'きる', 'きる');
+    const matcher = compileVocabularyMatcher([stomach, end, comeKana, wearKana]);
+
+    function token(fields: Partial<Token> & Pick<Token, 'surface'>): Token {
+      return {
+        id: `token-${fields.surface}`,
+        startUtf16: 0,
+        endUtf16: fields.surface.length,
+        dictionaryKeys: [],
+        isPunctuation: false,
+        ...fields,
+      };
+    }
+
+    it('is not matched by its stem’s reading to a word spelled otherwise', () => {
+      // い of いた reads like the noun 胃.
+      const stem = token({
+        surface: 'い',
+        lemma: 'いる',
+        readingHiragana: 'い',
+        partOfSpeech: 'verb',
+        inflectionForm: 'continuative',
+        verbConjugationFamily: 'ichidan',
+      });
+      expect(matcher.findNormalized(stem)).toBeNull();
+    });
+
+    it('is matched by its stem where the card spells that stem', () => {
+      const stem = token({
+        surface: 'おわり',
+        lemma: 'おわる',
+        readingHiragana: 'おわり',
+        partOfSpeech: 'verb',
+        inflectionForm: 'continuative',
+        verbConjugationFamily: 'godan',
+      });
+      expect(matcher.findNormalized(stem)).toEqual({
+        vocabularyItemIds: [end.id],
+        basis: 'reading',
+      });
+    });
+
+    describe('used as a noun', () => {
+      // い of いに, as the tokenizer tags the noun 胃 written in kana.
+      const stem = token({
+        surface: 'い',
+        lemma: 'いる',
+        readingHiragana: 'い',
+        partOfSpeech: 'verb',
+        inflectionForm: 'continuative',
+        verbConjugationFamily: 'ichidan',
+      });
+      const particle = (surface: string): Token =>
+        token({ surface, lemma: surface, readingHiragana: surface, partOfSpeech: 'particle' });
+      const verb = token({
+        surface: 'いく',
+        lemma: 'いく',
+        readingHiragana: 'いく',
+        partOfSpeech: 'verb',
+        inflectionForm: 'dictionary',
+      });
+
+      it.each(['が', 'を', 'で', 'の', 'から'])(
+        'is matched by its own reading before %s, which only a noun takes',
+        (surface) => {
+          expect(matcher.findNormalized(stem, [particle(surface)])).toEqual({
+            vocabularyItemIds: [stomach.id],
+            basis: 'reading',
+          });
+        },
+      );
+
+      it('is matched by its own reading before に and no verb', () => {
+        expect(matcher.findNormalized(stem, [particle('に')])).toEqual({
+          vocabularyItemIds: [stomach.id],
+          basis: 'reading',
+        });
+      });
+
+      it('is not matched before に and a verb, which may state a purpose', () => {
+        expect(matcher.findNormalized(stem, [particle('に'), verb])).toBeNull();
+      });
+
+      it.each(['て', 'は', 'も'])('is not matched before %s, which a stem takes', (surface) => {
+        expect(matcher.findNormalized(stem, [particle(surface)])).toBeNull();
+      });
+
+      it('is not matched as a past stem before で, its te-form', () => {
+        const past = { ...stem, inflectionForm: 'continuative-ta' as const };
+        expect(matcher.findNormalized(past, [particle('で')])).toBeNull();
+      });
+    });
+
+    it('reads the kanji of 来る anew in its dictionary form', () => {
+      const come = token({
+        surface: '来',
+        lemma: '来る',
+        readingHiragana: 'き',
+        partOfSpeech: 'verb',
+        inflectionForm: 'continuative',
+        verbConjugationFamily: 'irregular',
+      });
+      expect(matcher.findNormalized(come)).toEqual({
+        vocabularyItemIds: [comeKana.id],
+        basis: 'lemma',
+      });
+    });
+
+    it('guesses no dictionary form for 来 of no known verb family', () => {
+      const come = token({
+        surface: '来',
+        lemma: '来る',
+        readingHiragana: 'き',
+        partOfSpeech: 'verb',
+        inflectionForm: 'continuative',
+      });
+      expect(matcher.findNormalized(come)).toBeNull();
+    });
+  });
+
   describe('a phrase', () => {
     const regards: VocabularyItem = {
       id: vocabularyItemId('ffffffff-ffff-4fff-8fff-ffffffffffff'),
@@ -175,6 +309,33 @@ describe('compileVocabularyMatcher', () => {
         basis: 'normalized-form',
       });
     });
+
+    it('matches a function word in kanji where the phrase spells it in kana', () => {
+      const humble: VocabularyItem = {
+        ...regards,
+        analyzedSequence: [
+          { surface: 'よろしく', lemma: 'よろしく', readingHiragana: 'よろしく' },
+          { surface: 'お願い', lemma: 'お願い', readingHiragana: 'おねがい' },
+          { surface: 'いたし', lemma: 'いたす', readingHiragana: 'いたし' },
+          { surface: 'ます', lemma: 'ます', readingHiragana: 'ます' },
+        ],
+      };
+      const tokens = [
+        token({ surface: '宜しく', readingHiragana: 'よろしく', partOfSpeech: 'adverb' }),
+        token({ surface: 'お願い', readingHiragana: 'おねがい', partOfSpeech: 'noun' }),
+        token({
+          surface: '致し',
+          lemma: '致す',
+          readingHiragana: 'いたし',
+          partOfSpeech: 'auxiliary',
+        }),
+        token({ surface: 'ます', readingHiragana: 'ます', partOfSpeech: 'auxiliary' }),
+      ];
+      expect(compileVocabularyMatcher([humble]).findPhraseAt(tokens, 0)).toMatchObject({
+        vocabularyItemId: humble.id,
+        endTokenIndex: 3,
+      });
+    });
   });
 });
 
@@ -189,6 +350,30 @@ describe('spellingsContradict', () => {
     ['お茶', 'おちゃ', false],
     ['手伝う', 'てつだう', false],
     ['橋', '橋', false],
+    ['子ども', '子供', false],
+    ['子供', '子ども', false],
+    ['友だち', '友達', false],
+    ['友達', '友だち', false],
+    ['ご飯', '御飯', false],
+    ['御飯', 'ご飯', false],
+    ['子', '子供', false],
+    ['子供', '子', false],
+    ['友', '友達', false],
+    ['友達', '友', false],
+    ['飯', '御飯', false],
+    ['御飯', '飯', false],
+    ['分', '解', true],
+    ['解', '分', true],
+    ['早', '速', true],
+    ['速', '早', true],
+    ['暑', '熱', true],
+    ['熱', '暑', true],
+    ['神', '紙', true],
+    ['解る', '分かる', true],
+    ['早い', '速い', true],
+    ['速い', '早い', true],
+    ['暑い', '熱い', true],
+    ['熱い', '暑い', true],
   ])('%s against %s: %s', (left, right, expected) => {
     expect(spellingsContradict(left, right)).toBe(expected);
   });

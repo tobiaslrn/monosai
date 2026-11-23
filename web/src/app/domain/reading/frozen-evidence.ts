@@ -1,5 +1,5 @@
 import { containsKanji, isKanaOnly } from '../language/kana';
-import { isFunctionWord } from '../language/vocabulary-matcher';
+import { isFunctionWord, isInflectedConjugatingWord } from '../language/vocabulary-matcher';
 import type { Token } from './token';
 import type {
   FrozenSentenceValidation,
@@ -49,13 +49,15 @@ function isUncovered(validation: TokenValidation): boolean {
  *
  * Evidence is only as good as the matcher that produced it, and a story
  * accepted before the matching rule (arc42 8.1) may carry a match the rule
- * refuses: a function word matched by how it sounds (は as 歯), or a word
- * written in kanji matched by its reading to a word written with other kanji
- * (紙 as 神). The evidence names its words only by ids that each vocabulary
- * refresh replaces, so the spelling it was matched against is not known; a
- * match that could be either kind no longer counts. Where the word it named is
- * still reviewed, the current snapshot covers the token by the rule itself
- * (猫 for ねこ), so only the evidence of a word since dropped is lost.
+ * refuses: a function word matched by how it sounds (は as 歯), a word written
+ * in kanji matched by its reading to a word written with other kanji (紙 as
+ * 神), or the stem of an inflected verb matched by its reading (い of いた as
+ * 胃). The evidence names its words only by ids that each vocabulary refresh
+ * replaces, so the spelling it was matched against is not known; a match that
+ * could be any of these kinds no longer counts. Where the rule accepts the
+ * match and the word it named is still reviewed, the current snapshot covers
+ * the token instead (猫 for ねこ, 子ども for 子供), so what is lost is a match
+ * the rule refuses and the evidence of a word since dropped.
  * `tokens` are the sentence's tokens, which is how such a match is recognized.
  * `frozen` is undefined for a sentence with no stored evidence.
  */
@@ -97,7 +99,15 @@ function matchedByReadingItMayNotUse(
     // recorded under the written form is not evidence for grammar.
     return true;
   }
-  return containsKanji(token.surface) && matchedThroughKana(validation.basis, token);
+  if (containsKanji(token.surface)) {
+    return matchedThroughKana(validation.basis, token);
+  }
+  // A stem in kana is its own reading, so its written form may have met a
+  // reviewed word's reading as well.
+  return (
+    isInflectedConjugatingWord(token) &&
+    (validation.basis === 'reading' || validation.basis === 'normalized-form')
+  );
 }
 
 /** Whether the key the basis names is a kana spelling, which a reading can be. */

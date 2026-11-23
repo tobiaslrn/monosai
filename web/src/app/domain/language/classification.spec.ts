@@ -220,15 +220,31 @@ describe('matches by reading alone', () => {
     ['てつだう', '手伝う'],
     ['お茶', 'おちゃ'],
     ['行なう', '行う'],
+    ['子ども', '子供'],
+    ['子供', '子ども'],
+    ['友だち', '友達'],
+    ['友達', '友だち'],
+    ['ご飯', '御飯'],
+    ['御飯', 'ご飯'],
+    ['子どもたち', '子供'],
+    ['友だちと', '友達'],
+    ['おわり', '終わり'],
+    ['申込み', '申し込み'],
   ])('matches %s against the reviewed %s by its reading', async (text, entry) => {
     const result = await classify(text, [entry], 'generated');
-    expect(result[0]!.surface).toBe(text);
+    expect(text.startsWith(result[0]!.surface)).toBe(true);
     expect(result[0]!.validation).toMatchObject({ category: 'anki-normalized', basis: 'reading' });
   });
 
   it.each([
     ['紙', '神'],
+    ['神', '紙'],
     ['分かる', '解る'],
+    ['解る', '分かる'],
+    ['早い', '速い'],
+    ['速い', '早い'],
+    ['暑い', '熱い'],
+    ['熱い', '暑い'],
   ])('does not match %s against the reviewed %s, written with other kanji', async (text, entry) => {
     const result = await classify(text, [entry], 'generated');
     expect(result[0]!.validation.category).toBe('unknown');
@@ -253,6 +269,12 @@ describe('kana spellings of reviewed inflecting words', () => {
     ['もっていく', '持つ', 0],
     ['手伝った', 'てつだう', 0],
     ['食べた', 'たべる', 0],
+    ['食べた', '食べる', 0],
+    ['行った', '行く', 0],
+    ['いきます', '行く', 0],
+    ['いた', 'いる', 0],
+    ['居た', 'いる', 0],
+    ['出来た', 'できる', 0],
   ])(
     'matches the verb of %s against the reviewed %s by its base form',
     async (text, entry, index) => {
@@ -263,6 +285,86 @@ describe('kana spellings of reviewed inflecting words', () => {
       });
     },
   );
+
+  it('prefers the reviewed verb to a noun its stem reads like', async () => {
+    const result = await classify('いた', ['胃', 'いる'], 'generated');
+    expect(result[0]!.validation).toMatchObject({ category: 'anki-normalized', basis: 'lemma' });
+  });
+});
+
+describe('the stem of an inflected verb', () => {
+  it.each([
+    ['いた', '胃'],
+    ['した', '詩'],
+    ['きた', '木'],
+    ['みた', '実'],
+    ['かいた', '貝'],
+    ['いきます', '息'],
+  ])('does not match %s against the reviewed %s, which it only reads like', async (text, entry) => {
+    const result = await classify(text, [entry], 'generated');
+    expect(result[0]!.validation.category).toBe('unknown');
+  });
+
+  it.each([
+    ['みせでかった', 'みせ', '店'],
+    ['ひがくれた', 'ひ', '日'],
+    ['わたしはいえにいます', 'いえ', '家'],
+    ['かきをたべた', 'かき', '柿'],
+  ])('matches %s, whose %s is a noun, against the reviewed %s', async (text, noun, entry) => {
+    const result = await classify(text, [entry], 'generated');
+    expect(result.find((status) => status.surface === noun)?.validation).toMatchObject({
+      category: 'anki-normalized',
+      basis: 'reading',
+    });
+  });
+
+  it('does not match みせ before に and a verb, which may be 見せに', async () => {
+    const result = await classify('みせにいく', ['店'], 'generated');
+    expect(result[0]!.validation.category).toBe('unknown');
+  });
+});
+
+describe('the irregular verbs', () => {
+  it.each(['来た', '来ない', '来ます', '来れば', '来い', '来よう'])(
+    'matches %s against the reviewed くる by its base form',
+    async (text) => {
+      const result = await classify(text, ['くる'], 'generated');
+      expect(result[0]!.validation).toMatchObject({ category: 'anki-normalized', basis: 'lemma' });
+    },
+  );
+
+  it.each(['きる', '着る', '切る'])(
+    'does not match 来た against the reviewed %s',
+    async (entry) => {
+      const result = await classify('来た', [entry], 'generated');
+      expect(result[0]!.validation.category).toBe('unknown');
+    },
+  );
+
+  it.each(['した', 'しない', 'すれば', 'させる'])(
+    'matches %s against the reviewed する by its base form',
+    async (text) => {
+      const result = await classify(text, ['する'], 'generated');
+      expect(result[0]!.validation).toMatchObject({ category: 'anki-normalized', basis: 'lemma' });
+    },
+  );
+});
+
+describe('function words', () => {
+  it('does not match 下さい alone against the reviewed ください', async () => {
+    const result = await classify('下さい', ['ください'], 'generated');
+    expect(result[0]!.validation.category).toBe('unknown');
+  });
+
+  it.each([
+    ['宜しくお願い致します', 'よろしくお願いいたします'],
+    ['私達', '私たち'],
+  ])('matches %s as the reviewed phrase %s', async (text, entry) => {
+    const result = await classify(text, [entry], 'generated');
+    expect(result.map((token) => token.validation.category)).toEqual(
+      result.map(() => 'anki-phrase'),
+    );
+  });
 });
 
 describe('classifyAgainstSnapshot', () => {

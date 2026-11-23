@@ -24,8 +24,12 @@ export interface VocabularyMatcher {
   findPhraseAt(tokens: readonly Token[], startIndex: number): PhraseMatch | null;
   /** Items whose canonical expression is exactly this token's surface. */
   findExact(token: Token): readonly VocabularyItemId[];
-  /** Items reachable through allowed normalization only. */
-  findNormalized(token: Token): NormalizedMatch | null;
+  /**
+   * Items reachable through allowed normalization only. `following` are the
+   * tokens after it in the sentence, which tell a word used as a noun from a
+   * verb's stem.
+   */
+  findNormalized(token: Token, following?: readonly Token[]): NormalizedMatch | null;
 }
 
 interface TrieNode {
@@ -94,21 +98,40 @@ function isKana(character: string): boolean {
 }
 
 /** A spelling with all kana removed: 行なう and 行う both give 行. */
-function withoutKana(text: string): string {
+function withoutKana(text: string): readonly string[] {
   // eslint-disable-next-line @typescript-eslint/no-misused-spread -- code-point iteration is intended
-  return [...text.normalize('NFKC')].filter((character) => !isKana(character)).join('');
+  return [...text.normalize('NFKC')].filter((character) => !isKana(character));
+}
+
+/** Whether every character of `part` appears in `whole`, in the same order. */
+function isOrderedSubsequence(part: readonly string[], whole: readonly string[]): boolean {
+  let next = 0;
+  for (const character of whole) {
+    if (next < part.length && part[next] === character) {
+      next += 1;
+    }
+  }
+  return next === part.length;
 }
 
 /**
  * Whether two spellings of one reading name different words.
  *
- * Only when both are written with kanji and their kanji differ once the kana is
- * set aside: 紙 is not 神, though both are read かみ. A spelling in kana alone
- * never contradicts one in kanji (ねこ and 猫), and okurigana or a kana part
- * does not either (行なう and 行う, お茶 and おちゃ).
+ * Only when both are written with kanji and, once the kana is set aside,
+ * neither one's kanji appear in order within the other's: 紙 is not 神, though
+ * both are read かみ, nor 早い 速い. A spelling in kana alone never contradicts
+ * one in kanji (ねこ and 猫), and okurigana or a part written in kana does not
+ * either (行なう and 行う, 子ども and 子供, ご飯 and 御飯).
  */
 export function spellingsContradict(left: string, right: string): boolean {
-  return containsKanji(left) && containsKanji(right) && withoutKana(left) !== withoutKana(right);
+  if (!containsKanji(left) || !containsKanji(right)) {
+    return false;
+  }
+  const leftKanji = withoutKana(left);
+  const rightKanji = withoutKana(right);
+  return (
+    !isOrderedSubsequence(leftKanji, rightKanji) && !isOrderedSubsequence(rightKanji, leftKanji)
+  );
 }
 
 /** The kana a spelling ends in: べる of 食べる, all of たべる. */
@@ -123,12 +146,25 @@ function trailingKana(text: string): string {
 }
 
 /**
+ * The irregular verbs whose written kanji changes its reading as the verb
+ * inflects (来た, 来ない, 来れば), with the reading of that kanji in the
+ * dictionary form. Every other kanji keeps its reading: 食 of 食べた is the 食
+ * of 食べる.
+ */
+const IRREGULAR_KANJI_READINGS: ReadonlyMap<string, string> = new Map([
+  ['来', 'く'],
+  ['來', 'く'],
+  ['為', 'す'],
+]);
+
+/**
  * The reading of a token's dictionary form, which the analyzer does not give:
  * the reading of たべ (from たべた) or 食べ is たべ, of their dictionary form
  * たべる. The written form and the dictionary form must share everything but
  * their kana ending, and the reading must end in the written form's ending,
- * which is then swapped for the dictionary form's. Undefined for a token that
- * is already in its dictionary form, or whose forms do not line up.
+ * which is then swapped for the dictionary form's. The kanji of an irregular
+ * verb is read anew as well: 来 of 来た is き, of 来る く. Undefined for a token
+ * that is already in its dictionary form, or whose forms do not line up.
  */
 function dictionaryFormReading(token: Token): string | undefined {
   const { surface, lemma } = token;
@@ -138,13 +174,29 @@ function dictionaryFormReading(token: Token): string | undefined {
   const reading = tokenReading(token);
   const surfaceEnding = normalizeLookupKey(trailingKana(surface));
   const lemmaEnding = normalizeLookupKey(trailingKana(lemma));
-  const sameHead =
-    surface.slice(0, surface.length - trailingKana(surface).length) ===
-    lemma.slice(0, lemma.length - trailingKana(lemma).length);
+  const head = surface.slice(0, surface.length - trailingKana(surface).length);
+  const sameHead = head === lemma.slice(0, lemma.length - trailingKana(lemma).length);
   if (reading === undefined || !sameHead || !reading.endsWith(surfaceEnding)) {
     return undefined;
   }
-  return reading.slice(0, reading.length - surfaceEnding.length) + lemmaEnding;
+  const headReading = reading.slice(0, reading.length - surfaceEnding.length);
+  const irregular = IRREGULAR_KANJI_READINGS.get(head.slice(-1));
+  if (irregular === undefined) {
+    return headReading + lemmaEnding;
+  }
+  // The same kanji also ends regular verbs (出来る, and 来る read きたる), so
+  // only the irregular verb's kanji, a single kana in every form, is read anew,
+  // and a verb of no known family is not guessed at.
+  switch (token.verbConjugationFamily) {
+    case 'irregular':
+      return headReading.length === 0
+        ? undefined
+        : headReading.slice(0, -1) + irregular + lemmaEnding;
+    case undefined:
+      return undefined;
+    default:
+      return headReading + lemmaEnding;
+  }
 }
 
 /** The token's reading in hiragana; a kana spelling is its own reading. */
@@ -156,27 +208,117 @@ function tokenReading(token: Token): string | undefined {
   return isKanaOnly(surface) ? normalizeLookupKey(surface) : undefined;
 }
 
+/** Word classes that conjugate, whose written form may be a bare stem. */
+const CONJUGATING_CLASSES: ReadonlySet<PartOfSpeech> = new Set<PartOfSpeech>([
+  'verb',
+  'adjective-i',
+]);
+
+/**
+ * Whether a token is a verb or adjective in a form other than its dictionary
+ * form (たべ of たべた, い of いた, 高く), whose own reading is a stem.
+ */
+export function isInflectedConjugatingWord(
+  token: Pick<Token, 'surface' | 'lemma' | 'partOfSpeech'>,
+): boolean {
+  return (
+    token.partOfSpeech !== undefined &&
+    CONJUGATING_CLASSES.has(token.partOfSpeech) &&
+    token.lemma !== undefined &&
+    token.lemma.length > 0 &&
+    token.lemma !== token.surface
+  );
+}
+
+/** The last character of a spelling, as hiragana when it is kana. */
+function finalKana(text: string): string | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-misused-spread -- code-point iteration is intended
+  const last = [...text.normalize('NFKC')].at(-1);
+  return last !== undefined && isKana(last) ? normalizeLookupKey(last) : undefined;
+}
+
+/**
+ * Whether a card spells the stem a token is written as: the token is a bare
+ * continuative stem, which Japanese also uses as a noun (おわり, 申込み), and
+ * the card ends in the same kana (終わり, 申し込み). A stem that merely reads
+ * like a word spelled otherwise is a different word: い of いた is not 胃, nor
+ * き of きた 木.
+ */
+function spellsStem(token: Token, spelling: string): boolean {
+  if (token.inflectionForm !== 'continuative') {
+    return false;
+  }
+  const ending = finalKana(token.surface);
+  return ending !== undefined && ending === finalKana(spelling);
+}
+
+/** Particles that follow a noun and never a verb's stem or imperative. */
+const NOUN_PARTICLES: ReadonlySet<string> = new Set([
+  'が',
+  'を',
+  'に',
+  'で',
+  'の',
+  'へ',
+  'から',
+  'まで',
+  'より',
+  'や',
+]);
+
+/**
+ * Whether a word tagged as an inflected verb is used as a noun: a stem or an
+ * imperative followed by a particle that only a noun takes (みせ of みせで as
+ * 店, ひ of ひが as 日, いえ of いえに as 家). A stem followed by に and a verb
+ * is a purpose instead (かい of かいにいく), and a past or te stem takes で as
+ * its te-form (よん of よんで).
+ */
+function usedAsNoun(token: Token, following: readonly Token[]): boolean {
+  if (token.inflectionForm !== 'continuative' && token.inflectionForm !== 'imperative') {
+    return false;
+  }
+  const [next, after] = following;
+  if (next?.partOfSpeech !== 'particle' || !NOUN_PARTICLES.has(normalizeLookupKey(next.surface))) {
+    return false;
+  }
+  return !(
+    token.inflectionForm === 'continuative' &&
+    normalizeLookupKey(next.surface) === 'に' &&
+    after?.partOfSpeech === 'verb'
+  );
+}
+
+interface ReadingKey {
+  readonly key: string;
+  readonly basis: NormalizedMatchBasis;
+  /**
+   * Whether the key is a stem's own reading, which only `spellsStem` or
+   * `usedAsNoun` admits.
+   */
+  readonly stem: boolean;
+}
+
 /**
  * Readings a token may be matched by, each with the basis it is recorded
- * under: its own reading, and the reading of its dictionary form, which counts
- * as a match of its base form. An inflected token is looked up by its
- * dictionary form first, since a stem such as い (from いた) can read like an
- * unrelated noun. A function word has none.
+ * under: the reading of its dictionary form, which counts as a match of its
+ * base form, and its own reading. A verb or adjective that is inflected is
+ * matched by the reading of its dictionary form only, or by its own reading
+ * where the card spells the same stem (`spellsStem`) or the word is used as a
+ * noun (`usedAsNoun`). A function word has none.
  */
-function readingKeys(
-  token: Token,
-): readonly { readonly key: string; readonly basis: NormalizedMatchBasis }[] {
+function readingKeys(token: Token): readonly ReadingKey[] {
   if (isFunctionWord(token)) {
     return [];
   }
   const own = tokenReading(token);
   const dictionary = dictionaryFormReading(token);
-  const keys: { key: string; basis: NormalizedMatchBasis }[] = [];
+  const stem = isInflectedConjugatingWord(token);
+  const keys: ReadingKey[] = [];
   if (dictionary !== undefined && dictionary !== own) {
-    keys.push({ key: dictionary, basis: 'lemma' });
+    keys.push({ key: dictionary, basis: 'lemma', stem: false });
   }
   if (own !== undefined) {
-    keys.push({ key: own, basis: 'reading' });
+    keys.push({ key: own, basis: 'reading', stem });
   }
   return keys;
 }
@@ -198,13 +340,15 @@ function formKeys(
 }
 
 /**
- * Keys a token is compared with a phrase's words under: its forms and, for a
- * content word, its reading, which can only equal a word the phrase spells in
- * kana (宜しく in text for よろしく in the phrase).
+ * Keys a token is compared with a phrase's words under: its forms and its
+ * reading, which can only equal a word the phrase spells in kana at the same
+ * place (宜しく in text for よろしく in the phrase). The rest of the phrase
+ * vouches for the word, so a function word counts here too (致し for いたし, 達
+ * for たち), though never alone.
  */
 function phraseKeys(token: Token): readonly string[] {
   const keys = formKeys(token).map((candidate) => candidate.key);
-  const reading = isFunctionWord(token) ? undefined : tokenReading(token);
+  const reading = tokenReading(token);
   return reading === undefined ? keys : [...keys, reading];
 }
 
@@ -252,8 +396,12 @@ function longestMatch(
  * forms are looked up among the forms. Failing that, its reading and its
  * dictionary form's reading are looked up among the readings, and an entry
  * found there counts only when the two spellings do not contradict each other
- * (`spellingsContradict`): ねこ and 猫 are one word, 紙 and 神 are not. A
- * function word is never matched by its reading, so the particle は is not 歯.
+ * (`spellingsContradict`): ねこ and 猫 are one word, 子ども and 子供 too, 紙 and
+ * 神 are not. An inflected verb or adjective is matched by the reading of its
+ * dictionary form, not by its stem's (い of いた is not 胃), unless the card
+ * spells that stem (`spellsStem`) or the sentence uses the word as a noun
+ * (`usedAsNoun`). A function word is never matched by its
+ * reading, so the particle は is not 歯.
  * Nothing here accepts synonyms, edit distance, or shared kanji as evidence of
  * known vocabulary.
  */
@@ -337,7 +485,8 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
     findExact(token) {
       return exact.get(token.surface) ?? [];
     },
-    findNormalized(token) {
+    findNormalized(token, following = []) {
+      const noun = usedAsNoun(token, following);
       for (const candidate of formKeys(token)) {
         const bucket = forms.get(candidate.key);
         if (bucket !== undefined) {
@@ -346,7 +495,11 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
       }
       for (const candidate of readingKeys(token)) {
         const ids = (readings.get(candidate.key) ?? [])
-          .filter((entry) => !spellingsContradict(token.surface, entry.spelling))
+          .filter(
+            (entry) =>
+              !spellingsContradict(token.surface, entry.spelling) &&
+              (!candidate.stem || noun || spellsStem(token, entry.spelling)),
+          )
           .map((entry) => entry.id);
         if (ids.length > 0) {
           return { vocabularyItemIds: ids, basis: candidate.basis };

@@ -10,10 +10,11 @@
 export const ANALYZER_VERSION = 'analyzer/3';
 
 /**
- * Bump when classification precedence or normalization rules change. Version 2
- * matches a reading only where the spellings agree and never for a function
- * word (arc42 8.1); evidence frozen under version 1 is held to that rule when a
- * story is read back.
+ * Bump when classification precedence or normalization rules change in a
+ * release. Version 2 matches a reading only where the spellings agree, never
+ * for a function word alone, and for an inflected verb or adjective only by its
+ * dictionary form's reading unless it is used as a noun (arc42 8.1); evidence
+ * frozen under version 1 is held to that rule when a story is read back.
  */
 export const VALIDATOR_VERSION = 'validator/2';
 
