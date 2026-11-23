@@ -38,8 +38,13 @@ export class PlaybackResumption {
     if (this.transport.status() !== 'paused') {
       return;
     }
-    if (continueReading) {
-      this.transport.readOn();
+    if (this.sequencer.resumePendingLoad()) {
+      // Paused while the next clip was being read: that clip plays when it
+      // lands, and the element still holds the sentence before it.
+      if (continueReading) {
+        this.transport.readOn();
+      }
+      return;
     }
     try {
       await this.player.resume();
@@ -49,6 +54,10 @@ export class PlaybackResumption {
       // over it loses the place the learner had reached.
       this.transport.enter('paused');
       return;
+    }
+    if (continueReading) {
+      // Only once the resume worked: a refused one leaves the session as it was.
+      this.transport.readOn();
     }
     this.transport.enter('playing');
     this.sequencer.publishPosition();

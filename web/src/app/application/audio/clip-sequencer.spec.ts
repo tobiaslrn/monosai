@@ -175,6 +175,71 @@ describe('ClipSequencer', () => {
       expect(bed.player.startedPaused.at(-1)).toBe(true);
     });
 
+    /** Holds every clip read until `release` is called. */
+    function holdClipReads(): { release: () => Promise<void> } {
+      const read = bed.enrichment.getAudioByCacheKey.bind(bed.enrichment);
+      let open!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+      const reads: Promise<unknown>[] = [];
+      bed.enrichment.getAudioByCacheKey = (cacheKey: string) => {
+        const pending = gate.then(() => read(cacheKey));
+        reads.push(pending);
+        return pending;
+      };
+      return {
+        release: async () => {
+          open();
+          await Promise.all(reads);
+          await settle();
+        },
+      };
+    }
+
+    it('plays the arriving clip when Play follows Pause within the read', async () => {
+      await bed.store.play();
+      const reads = holdClipReads();
+
+      bed.player.finishClip();
+      bed.store.pause();
+      await bed.store.resume(true);
+      expect(bed.player.resumes).toBe(0);
+      await reads.release();
+
+      expect(bed.store.currentPosition()).toBe(2);
+      expect(bed.player.startedPaused.at(-1)).toBe(false);
+      expect(bed.store.status()).toBe('playing');
+    });
+
+    it('silences the sentence still sounding when the lock screen pauses a jump', async () => {
+      await bed.store.play();
+      const reads = holdClipReads();
+
+      const jump = bed.store.next();
+      expect(bed.store.status()).toBe('loading');
+      bed.media.handlers?.pause();
+
+      expect(bed.store.status()).toBe('paused');
+      expect(bed.player.pauses).toBe(1);
+      await reads.release();
+      await jump;
+      expect(bed.store.status()).toBe('paused');
+      expect(bed.store.currentPosition()).toBe(2);
+    });
+
+    it('keeps a single sentence single when the resume is refused', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await bed.store.playSentence(sentences[0]!.id);
+      bed.store.pause();
+      bed.player.failNextResume = true;
+
+      await bed.resumption.resume(true);
+      expect(bed.store.status()).toBe('paused');
+
+      expect(bed.transport.readsOneSentence()).toBe(true);
+    });
+
     it('starts nothing for a load a later one superseded', async () => {
       const sentences = orderedSentences(bed.draft);
 

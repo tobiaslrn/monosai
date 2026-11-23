@@ -62,6 +62,8 @@ export class ClipSequencer {
   private loading = false;
   /** A Pause that arrived during a load, to be honoured when the clip lands. */
   private pauseRequested = false;
+  /** The status that Pause interrupted, which a Play during the same load goes back to. */
+  private pausedLoadStatus: 'playing' | 'loading' = 'loading';
   /** The native continuous resource, when one is loaded. */
   private track: ContinuousTrack | null = null;
   /**
@@ -109,19 +111,39 @@ export class ClipSequencer {
    *
    * A press during the load window used to be dropped, and the next sentence
    * then started anyway. It is now remembered, and the clip arrives paused.
+   * The element is paused at once as well, because until the read lands it
+   * still holds the sentence before, which would otherwise carry on sounding
+   * under a Paused transport.
    */
   pause(): void {
     const status = this.transport.status();
     if (status !== 'playing' && status !== 'loading') {
       return;
     }
+    this.player.pause();
     if (this.loading) {
       this.pauseRequested = true;
-    } else {
-      this.player.pause();
+      this.pausedLoadStatus = status;
     }
     this.transport.enter('paused');
     this.publishPosition();
+  }
+
+  /**
+   * Takes back a Pause that arrived while a clip was being read, so that clip
+   * plays when it lands.
+   *
+   * Resuming the element instead would replay the clip it still holds, the
+   * sentence before, and the arriving clip would then still start paused.
+   * Returns false when no load is holding a Pause.
+   */
+  resumePendingLoad(): boolean {
+    if (!this.loading || !this.pauseRequested) {
+      return false;
+    }
+    this.pauseRequested = false;
+    this.transport.enter(this.pausedLoadStatus);
+    return true;
   }
 
   /** The learner Stop. Leaves the cursor cleared and the lock screen empty. */
@@ -213,11 +235,12 @@ export class ClipSequencer {
     if (token !== this.loadToken) {
       return;
     }
+    const paused = this.honourLatePause(startPaused);
     this.loading = false;
     this.pauseRequested = false;
 
     this.transport.moveTo(sentenceId);
-    this.transport.setStatus(startPaused ? 'paused' : 'playing');
+    this.transport.setStatus(paused ? 'paused' : 'playing');
     this.transport.clearFailure();
     this.transport.publishMetadata(position - 1);
     this.transport.announce();
@@ -331,10 +354,11 @@ export class ClipSequencer {
       }
       return;
     }
+    const paused = this.honourLatePause(startPaused);
     this.loading = false;
     this.pauseRequested = false;
     this.transport.moveTo(sentenceId);
-    this.transport.setStatus(startPaused ? 'paused' : 'playing');
+    this.transport.setStatus(paused ? 'paused' : 'playing');
     this.transport.clearFailure();
     this.transport.publishMetadata(startIndex);
     this.transport.announce();
@@ -439,6 +463,22 @@ export class ClipSequencer {
     }
     this.player.seek(track.clamp(seconds));
     this.followPosition();
+  }
+
+  /**
+   * Whether a clip that has just started should be left paused.
+   *
+   * A Pause can land after the clip was handed to the element unpaused but
+   * before the element confirmed it was playing. The element is paused again
+   * here, so the transport never says Playing over a paused element or Paused
+   * over a sounding one.
+   */
+  private honourLatePause(startedPaused: boolean): boolean {
+    if (!startedPaused && this.pauseRequested) {
+      this.player.pause();
+      return true;
+    }
+    return startedPaused;
   }
 
   /** Applies the learner's local speech rate to whatever is loaded. */
