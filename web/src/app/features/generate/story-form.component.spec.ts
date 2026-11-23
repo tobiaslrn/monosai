@@ -487,4 +487,22 @@ describe('StoryFormComponent', () => {
     expect(edit).not.toHaveBeenCalled();
     expect(editor.value).toBe('Plot 1.');
   });
+
+  it('closes the plot editor when plots are drafted again, and keeps it closed while they are', () => {
+    const plots = TestBed.inject(StoryPlotStore) as unknown as ReturnType<typeof plotStoreStub>;
+    const { element, fixture } = render();
+    atStep(fixture, 3);
+    element.querySelector<HTMLButtonElement>('[data-testid="edit-plot"]')!.click();
+    fixture.detectChanges();
+    expect(element.querySelector('[data-testid="plot-editor"]')).not.toBeNull();
+
+    element.querySelector<HTMLButtonElement>('[data-testid="regenerate-plots"]')!.click();
+    plots.isDrafting.set(true);
+    fixture.detectChanges();
+
+    expect(element.querySelector('[data-testid="plot-editor"]')).toBeNull();
+    expect(element.querySelector<HTMLButtonElement>('[data-testid="edit-plot"]')?.disabled).toBe(
+      true,
+    );
+  });
 });
