@@ -5,7 +5,7 @@ import { describeThrown } from '../../domain/shared/errors';
 import { err, ok, type Result } from '../../domain/shared/result';
 import { languageAssetManifestSchema } from './language-asset.schema';
 import {
-  loadUnverifiedAsset,
+  loadValidatedAsset,
   pruneOtherBundles,
   type AssetFetchContext,
 } from './language-asset-cache';
@@ -25,9 +25,10 @@ export function languageBundleUrl(documentBaseUrl: string): string {
  * Loads the language manifest from the application's own origin.
  *
  * The manifest is the root of trust for every other asset: it is schema
- * validated here, and each file it lists is then proven against the digest it
- * records before use. It is cached alongside those files so that initialization
- * works with no network at all.
+ * validated here, before it is cached or used, and each file it lists is then
+ * proven against the digest it records before use. It is cached alongside those
+ * files so that initialization works with no network at all, and a cached copy
+ * that no longer validates is replaced by a fresh download.
  */
 export class HttpLanguageAssetSource implements LanguageAssetSource {
   readonly baseUrl: string;
@@ -48,53 +49,57 @@ export class HttpLanguageAssetSource implements LanguageAssetSource {
   }
 
   async loadManifest(): Promise<Result<LanguageAssetManifest, LanguageError>> {
-    const bytes = await loadUnverifiedAsset(this.context, 'manifest.json');
-    if (!bytes.ok) {
+    const manifest = await loadValidatedAsset(this.context, 'manifest.json', parseManifest);
+    if (!manifest.ok && manifest.error.code !== 'asset-manifest-invalid') {
       return err(
         languageError(
           'assets-unavailable',
           'The language asset manifest could not be loaded.',
-          bytes.error.cause,
+          manifest.error.cause,
         ),
       );
     }
-
-    let payload: unknown;
-    try {
-      payload = JSON.parse(new TextDecoder().decode(bytes.value));
-    } catch (thrown) {
-      return err(
-        languageError(
-          'asset-manifest-invalid',
-          'The language asset manifest is not valid JSON.',
-          describeThrown(thrown),
-        ),
-      );
-    }
-
-    const parsed = languageAssetManifestSchema.safeParse(payload);
-    if (!parsed.success) {
-      return err(
-        languageError(
-          'asset-manifest-invalid',
-          'The language asset manifest is not valid.',
-          parsed.error.issues[0]?.message,
-        ),
-      );
-    }
-    if (parsed.data.bundleVersion !== LANGUAGE_BUNDLE_VERSION) {
-      return err(
-        languageError(
-          'asset-manifest-invalid',
-          'The language asset manifest is for a different bundle version.',
-          `expected ${LANGUAGE_BUNDLE_VERSION}, found ${parsed.data.bundleVersion}`,
-        ),
-      );
-    }
-    return ok(parsed.data);
+    return manifest;
   }
 
   async pruneSupersededBundles(activeBundleVersion: string): Promise<void> {
     await pruneOtherBundles(this.cacheStorage, activeBundleVersion);
   }
+}
+
+/** Decodes and checks manifest bytes, whether cached or freshly downloaded. */
+function parseManifest(bytes: Uint8Array): Result<LanguageAssetManifest, LanguageError> {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(new TextDecoder().decode(bytes));
+  } catch (thrown) {
+    return err(
+      languageError(
+        'asset-manifest-invalid',
+        'The language asset manifest is not valid JSON.',
+        describeThrown(thrown),
+      ),
+    );
+  }
+
+  const parsed = languageAssetManifestSchema.safeParse(payload);
+  if (!parsed.success) {
+    return err(
+      languageError(
+        'asset-manifest-invalid',
+        'The language asset manifest is not valid.',
+        parsed.error.issues[0]?.message,
+      ),
+    );
+  }
+  if (parsed.data.bundleVersion !== LANGUAGE_BUNDLE_VERSION) {
+    return err(
+      languageError(
+        'asset-manifest-invalid',
+        'The language asset manifest is for a different bundle version.',
+        `expected ${LANGUAGE_BUNDLE_VERSION}, found ${parsed.data.bundleVersion}`,
+      ),
+    );
+  }
+  return ok(parsed.data);
 }

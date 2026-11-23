@@ -148,25 +148,39 @@ export async function loadAssetJson(
 }
 
 /**
- * Reads a bundle file that carries no digest of its own, cache first.
+ * Reads a bundle file that carries no digest of its own, cache first, and
+ * accepts it only once `validate` does.
  *
  * Only the manifest is loaded this way, and only because it is the root of trust
  * that every other digest comes from. A cache-first read is safe because the
  * bundle URL is immutable: a new bundle is published under a new version
  * directory, so a cached entry can never become stale. Caching it is what makes
  * initialization work with no network at all.
+ *
+ * Like `loadAssetFile`, it repairs itself: a cached copy that fails `validate`
+ * is dropped and downloaded once more, and a download is cached only after it
+ * passes, so an error page answered in place of the file is never kept.
  */
-export async function loadUnverifiedAsset(
+export async function loadValidatedAsset<T>(
   context: AssetFetchContext,
   path: string,
-): Promise<Result<Uint8Array, LanguageError>> {
+  validate: (bytes: Uint8Array) => Result<T, LanguageError>,
+): Promise<Result<T, LanguageError>> {
   const url = new URL(path, context.baseUrl).toString();
   const cache = await openCache(context);
 
   if (cache !== null) {
     const cached = await cache.match(url).catch(() => undefined);
     if (cached !== undefined) {
-      return ok(new Uint8Array(await cached.arrayBuffer()));
+      const bytes = await cached.arrayBuffer().then(
+        (body) => new Uint8Array(body),
+        () => null,
+      );
+      const validated = bytes === null ? null : validate(bytes);
+      if (validated?.ok === true) {
+        return validated;
+      }
+      await cache.delete(url).catch(() => false);
     }
   }
 
@@ -174,12 +188,16 @@ export async function loadUnverifiedAsset(
   if (!downloaded.ok) {
     return downloaded;
   }
+  const validated = validate(downloaded.value);
+  if (!validated.ok) {
+    return validated;
+  }
   if (cache !== null) {
     const body = new ArrayBuffer(downloaded.value.byteLength);
     new Uint8Array(body).set(downloaded.value);
     await cache.put(url, new Response(body)).catch(() => undefined);
   }
-  return downloaded;
+  return validated;
 }
 
 /** Removes every cached bundle other than the one being activated. */

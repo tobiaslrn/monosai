@@ -99,6 +99,11 @@ All external data is untrusted until a Zod schema accepts it. This applies to:
 Stored rows are validated on read because storage is external too. A browser can be inspected, and a
 schema version can be edited by hand.
 
+Cached language assets are checked the same way each time they are read. The manifest is cached only
+after its schema accepts it, and every other file only after it matches the digest the manifest
+records. A cached copy that fails its check is dropped and downloaded once more, so an error page
+answered in place of a file never sticks.
+
 Grammar review is a bounded provider interaction: a request covers at most 30
 sentences and 12,000 estimated input tokens, returns at most one useful finding
 per sentence, and has a response allowance sized from the batch. One
