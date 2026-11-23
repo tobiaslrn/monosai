@@ -3,6 +3,8 @@ import {
   configurePlaybackBed,
   holdClipReads,
   orderedSentences,
+  removeAllClips,
+  removeClipsAt,
   SENTENCE_COUNT,
   settle,
   storeClips,
@@ -119,8 +121,7 @@ describe('ClipSequencer', () => {
 
     it('stops and names the sentence when a clip has gone missing', async () => {
       await bed.store.play();
-      const second = orderedSentences(bed.draft)[1];
-      await bed.db.audioAssets.where('sentenceId').equals(second!.id).delete();
+      await removeClipsAt(bed, [1]);
 
       await bed.store.next();
 
@@ -546,7 +547,7 @@ describe('ClipSequencer', () => {
      * per-sentence path waits there instead.
      */
     it('keeps a partly generated WAV reading on the sentence path', async () => {
-      await bed.db.audioAssets.clear();
+      await removeAllClips(bed);
       await storeClipsAt(bed, [0, 1], 'audio/wav');
       await bed.store.prepare(bed.reading);
 

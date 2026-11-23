@@ -44,6 +44,7 @@ import { assetId, type SentenceId } from '../app/domain/shared/ids';
 import type { MonosaiDatabase } from '../app/infrastructure/persistence/monosai-db';
 import { DexieEnrichmentRepository } from '../app/infrastructure/persistence/repositories/dexie-enrichment.repository';
 import { DexieReadingRepository } from '../app/infrastructure/persistence/repositories/dexie-reading.repository';
+import { clearClips } from '../app/infrastructure/persistence/repositories/clip-rows';
 import { importedReadingFixture, uuid } from './persistence-fixtures';
 import { createTestDatabase } from './test-database';
 
@@ -564,4 +565,11 @@ export async function removeClipsAt(bed: PlaybackBed, positions: readonly number
       await bed.enrichment.deleteAudio(stored.value.id);
     }
   }
+}
+
+/** Deletes every clip, both of its rows, as clearing all audio does. */
+export async function removeAllClips(bed: PlaybackBed): Promise<void> {
+  await bed.db.transaction('rw', [bed.db.audioAssets, bed.db.audioSummaries], () =>
+    clearClips(bed.db),
+  );
 }

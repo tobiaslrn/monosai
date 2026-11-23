@@ -4,6 +4,7 @@ import { storageError } from '../../domain/storage/storage-error';
 import {
   configurePlaybackBed,
   orderedSentences,
+  removeAllClips,
   SENTENCE_COUNT,
   settle,
   storeClips,
@@ -163,7 +164,7 @@ describe('AudioPlaybackStore', () => {
     });
 
     it('clears a reported failure when the surface that showed it is done', async () => {
-      await bed.db.audioAssets.clear();
+      await removeAllClips(bed);
       await storeClips(bed, SENTENCE_COUNT - 1);
       await bed.store.prepare(bed.reading);
       await bed.store.playFrom(orderedSentences(bed.draft)[SENTENCE_COUNT - 1]!.id);
