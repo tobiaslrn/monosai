@@ -90,6 +90,29 @@ describe('PlaybackResumption', () => {
       expect(bed.store.status()).toBe('playing');
       expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
     });
+
+    /**
+     * A loaded machine makes every clip read take longer. Waiting for the
+     * advance must not depend on how many tasks the read takes.
+     */
+    it('reads on however long the clip read after the seam takes', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await bed.store.playSentence(sentences[0]!.id);
+      bed.store.pause();
+      await bed.resumption.resume(true);
+      const read = bed.enrichment.getAudioByCacheKey.bind(bed.enrichment);
+      bed.enrichment.getAudioByCacheKey = async (cacheKey: string) => {
+        const result = await read(cacheKey);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        return result;
+      };
+
+      bed.player.finishClip();
+      await settle();
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
+    });
   });
 
   /**

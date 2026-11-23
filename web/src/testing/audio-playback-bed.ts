@@ -373,15 +373,27 @@ export async function configurePlaybackBed(): Promise<PlaybackBed> {
     throw new Error('fixture reading did not save');
   }
 
+  // Injected first, so the player and media session are wired as in the app.
+  const store = TestBed.inject(AudioPlaybackStore);
+  const sequencer = TestBed.inject(ClipSequencer);
+  const navigator = TestBed.inject(PlaybackNavigator);
+  const resumption = TestBed.inject(PlaybackResumption);
+  unsettledWork.clear();
+  trackWork(navigator, 'advanceAfterEnd');
+  trackWork(resumption, 'resume');
+  trackWork(resumption, 'continueReading');
+  trackWork(store, 'next');
+  trackWork(store, 'previous');
+  trackWork(sequencer, 'useCurrentSentenceClip');
+
   return {
     db,
-    // Injected first, so the player and media session are wired as in the app.
-    store: TestBed.inject(AudioPlaybackStore),
+    store,
     clips: TestBed.inject(PlaybackClipsStore),
     transport: TestBed.inject(PlaybackTransportStore),
-    sequencer: TestBed.inject(ClipSequencer),
-    navigator: TestBed.inject(PlaybackNavigator),
-    resumption: TestBed.inject(PlaybackResumption),
+    sequencer,
+    navigator,
+    resumption,
     maintenance: TestBed.inject(PlaybackMaintenance),
     player,
     media,
@@ -398,13 +410,46 @@ export async function configurePlaybackBed(): Promise<PlaybackBed> {
 }
 
 /**
- * Lets the automatic advance finish.
- *
- * Advancing loads the next clip from storage, so it is a real asynchronous
- * round trip rather than a microtask.
+ * Work the playback units start without awaiting it, from a player or media
+ * session event, still running.
  */
-export function settle(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+const unsettledWork = new Set<Promise<void>>();
+
+/**
+ * Records every call of `method` until it settles, so `settle` can wait for
+ * it. The units call these fire-and-forget from the player's and the media
+ * session's handlers, which give a test nothing to await.
+ */
+function trackWork<T extends object>(target: T, method: keyof T & string): void {
+  const original = target[method] as unknown as (...args: unknown[]) => unknown;
+  Object.assign(target, {
+    [method]: (...args: unknown[]): unknown => {
+      const result = original.apply(target, args);
+      if (result instanceof Promise) {
+        const done: Promise<void> = result.then(
+          () => undefined,
+          () => undefined,
+        );
+        unsettledWork.add(done);
+        void done.then(() => unsettledWork.delete(done));
+      }
+      return result;
+    },
+  });
+}
+
+/**
+ * Lets the work a player or media session event started finish.
+ *
+ * Advancing loads the next clip from storage, a real IndexedDB round trip that
+ * takes a varying number of tasks, so this waits for the work itself rather
+ * than for a timer tick.
+ */
+export async function settle(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  while (unsettledWork.size > 0) {
+    await Promise.all([...unsettledWork]);
+  }
 }
 
 /** The sentences in reading order, which is playback order. */
