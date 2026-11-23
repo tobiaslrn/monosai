@@ -4,6 +4,7 @@ import type { ReadingId } from '../../domain/shared/ids';
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ok } from '../../domain/shared/result';
+import { storageError } from '../../domain/storage/storage-error';
 import {
   configureGenerationTestBed,
   strictStory,
@@ -137,6 +138,27 @@ describe('GenerationJobsStore', () => {
     expect(busy.busyWork()).toEqual({ kind: 'story-generation', count: 1 });
 
     await settle();
+    expect(busy.isBusy()).toBe(false);
+  });
+
+  it('counts a story whose save can be retried as work a reload would lose', async () => {
+    const busy = TestBed.inject(AppBusyRegistry);
+    bed.readings.failSaveGeneratedWith = storageError('quota', 'The device is out of space.');
+    bed.provider.storyQueue.push(ok(strictStory()));
+
+    const id = jobs.start(5, PREMISE);
+    await settle();
+
+    // The written story is in this tab's memory only: nothing is running, but
+    // a reload or a closed tab would lose it.
+    expect(jobs.runningCount()).toBe(0);
+    expect(busy.busyWork()).toEqual({ kind: 'unsaved-story', count: 1 });
+    const unload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+
+    jobs.dismiss(id!);
+    TestBed.tick();
     expect(busy.isBusy()).toBe(false);
   });
 

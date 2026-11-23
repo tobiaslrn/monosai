@@ -96,6 +96,15 @@ export class GenerationJobsStore {
   /** Runs still working. A finished job holds no requests open. */
   readonly runningCount = computed(() => this.jobs().filter((job) => job.store.isBusy()).length);
 
+  /**
+   * Written stories whose save failed and can still be retried. The story
+   * exists only in this tab's memory, so a reload or a closed tab loses it as
+   * surely as a run still working.
+   */
+  readonly unsavedCount = computed(
+    () => this.jobs().filter((job) => job.store.canRetrySave()).length,
+  );
+
   readonly canStart = computed(() => this.runningCount() < MAX_CONCURRENT_GENERATIONS);
 
   /**
@@ -122,12 +131,19 @@ export class GenerationJobsStore {
         return count === 0 ? null : { kind: 'story-generation', count };
       }),
     );
+    const releaseUnsaved = this.busyRegistry.track(
+      'generation-unsaved',
+      computed<BusyWork | null>(() => {
+        const count = this.unsavedCount();
+        return count === 0 ? null : { kind: 'unsaved-story', count };
+      }),
+    );
 
-    // Reloading or closing the tab bypasses the router, and an in-flight
-    // generation cannot be resumed, so the browser's own prompt is the only
-    // guard available for it.
+    // Reloading or closing the tab bypasses the router, and neither an
+    // in-flight generation nor an unsaved story survives it, so the browser's
+    // own prompt is the only guard available for them.
     const warnOnUnload = (event: BeforeUnloadEvent): void => {
-      if (this.runningCount() > 0) {
+      if (this.runningCount() > 0 || this.unsavedCount() > 0) {
         event.preventDefault();
       }
     };
@@ -135,6 +151,7 @@ export class GenerationJobsStore {
     inject(DestroyRef).onDestroy(() => {
       window.removeEventListener('beforeunload', warnOnUnload);
       releaseBusy();
+      releaseUnsaved();
       for (const record of this.records()) {
         this.tearDown(record);
       }
