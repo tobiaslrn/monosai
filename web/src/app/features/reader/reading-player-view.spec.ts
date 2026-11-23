@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
 import { aiError } from '../../domain/ai/ai-error';
+import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import { readingId } from '../../domain/shared/ids';
 import {
   announcement,
@@ -252,6 +253,26 @@ describe('auxAction', () => {
 
     expect(action).toMatchObject({ kind: 'dismiss', label: 'Dismiss', tone: 'danger' });
     expect(action?.title).toContain('no longer offered');
+  });
+
+  it('offers no retry once speech code could not load, since only a reload helps', () => {
+    const progress: AudioJobProgress = {
+      kind: 'failed',
+      readingId: READING,
+      counts: COUNTS,
+      error: {
+        source: 'provider',
+        error: aiError('unknown', 'tts-synthesis', 'The speech code could not be loaded.', {
+          detail: { issueCode: SPEECH_CODE_UNAVAILABLE },
+        }),
+      },
+      canRetry: true,
+    };
+
+    const action = auxAction(facts({ progress, ...PARTIAL }));
+
+    expect(action).toMatchObject({ kind: 'dismiss', label: 'Dismiss' });
+    expect(action?.title).toContain('Speech could not load. Reload Monosai.');
   });
 
   it('retries a cancelled run, which has no reason not to be', () => {

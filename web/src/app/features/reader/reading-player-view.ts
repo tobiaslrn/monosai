@@ -5,6 +5,8 @@ import {
 } from '../../application/reading/reader-audio.store';
 import { PLAYBACK_RATES, type PlaybackRate } from '../../domain/settings/settings';
 import { defined } from '../../domain/shared/invariant';
+import type { LayerError } from '../../application/enrichment/layer-progress';
+import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import type { IconName } from '../../shared-ui/icon/icon-set';
 import type { Tone } from '../../shared-ui/tone';
 import {
@@ -222,6 +224,11 @@ export function centreControl(facts: PlayerFacts): CentreControl {
   };
 }
 
+/** Speech code that could not load: only a reload of the tab brings it back. */
+function needsReload(error: LayerError): boolean {
+  return error.source === 'provider' && error.error.detail?.issueCode === SPEECH_CODE_UNAVAILABLE;
+}
+
 /**
  * The one contextual control, in priority order.
  *
@@ -262,7 +269,11 @@ export function auxAction(facts: PlayerFacts): AuxAction | null {
     // card cannot leave a settled failure on its own, and a control that
     // spends a request per missing sentence to reproduce the same answer is
     // not the way out of it.
-    const retryable = facts.progress.kind !== 'failed' || facts.progress.canRetry;
+    // Nor is one offered for speech code that could not load: this tab refuses
+    // it again until it reloads, and the app's banner offers that reload.
+    const retryable =
+      facts.progress.kind !== 'failed' ||
+      (facts.progress.canRetry && !needsReload(facts.progress.error));
     return retryable
       ? { kind: 'retry', icon: 'retry', label: 'Try again', title, tone: 'danger' }
       : { kind: 'dismiss', icon: 'close', label: 'Dismiss', title, tone: 'danger' };

@@ -1,6 +1,10 @@
 import type { AiErrorCode } from '../../../domain/ai/ai-error';
 import type { AnkiErrorCode } from '../../../domain/anki/anki-error';
-import { AI_ERROR_COPY, MODERATION_HEADING } from '../../../shared-ui/ai-error/ai-error-copy';
+import {
+  AI_ERROR_COPY,
+  MODERATION_HEADING,
+  SPEECH_CODE_HEADING,
+} from '../../../shared-ui/ai-error/ai-error-copy';
 import {
   ANKI_ERROR_COPY,
   connectFailureCopy,
@@ -102,6 +106,13 @@ const FLAGGED: TroubleshootingEntry = {
   seen: [MODERATION_HEADING],
   text: 'OpenRouter checks the text sent to some models, and it flagged this text. Choose another model in **Settings** > **Text models**.',
   code: 'ai/capability-unsupported',
+};
+
+/** The app itself, not the request: part of Monosai's code didn't load in this tab. */
+const SPEECH_CODE: TroubleshootingEntry = {
+  seen: [SPEECH_CODE_HEADING, 'Part of Monosai did not load, so this tab cannot make audio.'],
+  text: "Part of Monosai didn't load, often after an update or on an unsteady connection, and only a reload brings it back. Select **Reload to recover**. Audio that's already saved still plays.",
+  code: 'ai/unknown',
 };
 
 /** Anki failures, most common first. */
@@ -206,6 +217,7 @@ export const TROUBLESHOOTING_GROUPS: readonly TroubleshootingGroup[] = [
       })),
       CUT_OFF,
       FLAGGED,
+      SPEECH_CODE,
     ],
   },
   {

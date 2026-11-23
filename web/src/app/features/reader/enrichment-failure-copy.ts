@@ -1,4 +1,5 @@
 import { isTruncatedReply } from '../../domain/ai/ai-error';
+import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import { isRetryable } from '../../domain/storage/storage-error';
 import type { EnrichmentFailure } from '../../application/enrichment/sentence-enrichment.service';
 import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
@@ -61,6 +62,9 @@ export function enrichmentNeedsSettings(failure: EnrichmentFailure | null): bool
 export function enrichmentCanRetry(failure: EnrichmentFailure | null): boolean {
   if (failure === null) return true;
   if (failure.source === 'storage') return isRetryable(failure.error);
+  // Speech code that could not load is refused again in this tab until it
+  // reloads, so a retry would only fail the same way.
+  if (failure.error.detail?.issueCode === SPEECH_CODE_UNAVAILABLE) return false;
   // A reply cut off at the token limit is about the size of one answer, not
   // about the model's input ceiling: the same aid asked for on its own has room
   // the interrupted batch did not, so retrying is a real offer.

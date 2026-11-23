@@ -59,11 +59,12 @@ export async function normalizeProviderAudio(
   if (encoded.error.code === 'cancelled') {
     return err(aiError('cancelled', context.task, 'The request was cancelled.'));
   }
-  if (encoded.error.code === 'unsupported') {
-    // No encoder here. The clip is stored uncompressed rather than refused: it
-    // costs far more room, but a learner on such a browser still gets audio,
-    // and the maintenance pass will compress it if they ever open a browser
-    // that can.
+  if (encoded.error.code === 'unsupported' || encoded.error.code === 'worker-unavailable') {
+    // No encoder here, or none could be reached for this clip: the browser has
+    // none, its code could not be fetched, or its worker stopped. The clip is
+    // stored uncompressed rather than refused (ADR 0070): it costs far more
+    // room, but the provider has been paid for it, the learner still gets
+    // audio, and the maintenance pass compresses it once an encoder can run.
     return ok(pcmToWav(response));
   }
   return err(

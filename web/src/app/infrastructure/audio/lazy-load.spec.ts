@@ -24,6 +24,17 @@ describe('retryOnRejection', () => {
     online = true;
     await expect(load()).resolves.toBe('loaded');
   });
+
+  it('tries a failed load once more at once before reporting it', async () => {
+    let attempts = 0;
+    const load = retryOnRejection(() => {
+      attempts += 1;
+      return attempts === 1 ? Promise.reject(new TypeError('fetch')) : Promise.resolve('loaded');
+    });
+
+    await expect(load()).resolves.toBe('loaded');
+    expect(attempts).toBe(2);
+  });
 });
 
 describe('untilAborted', () => {

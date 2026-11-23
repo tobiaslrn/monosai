@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 import { ALL_ANKI_ERROR_CODES } from '../../../domain/anki/anki-error';
-import { AI_ERROR_COPY } from '../../../shared-ui/ai-error/ai-error-copy';
+import { AI_ERROR_COPY, SPEECH_CODE_HEADING } from '../../../shared-ui/ai-error/ai-error-copy';
 import { ANKI_ERROR_COPY } from '../../vocabulary/anki-error-copy';
 import { TroubleshootingPageComponent } from './troubleshooting-page.component';
 import { SILENT_PROBLEMS, TROUBLESHOOTING_GROUPS } from './troubleshooting';
@@ -22,6 +22,14 @@ describe('troubleshooting', () => {
       expect(entry?.seen, code).toContain(copy.heading);
     }
     expect(entries.some((entry) => entry.seen.includes('The reply was cut off'))).toBe(true);
+  });
+
+  it('sends speech code that could not load to a reload, not a retry', () => {
+    const entry = group('ai').entries.find((candidate) =>
+      candidate.seen.includes(SPEECH_CODE_HEADING),
+    );
+    expect(entry?.text).toContain('**Reload to recover**');
+    expect(entry?.text).not.toMatch(/try again/iu);
   });
 
   it('lists every Anki failure under the heading the screen shows', () => {

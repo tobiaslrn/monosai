@@ -1,12 +1,14 @@
 import { ChangeDetectionStrategy, Component, inject, Injector, input } from '@angular/core';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
+import { UnloadedCodeRegistry } from '../../application/shared/unloaded-code.registry';
 import { confirmLater } from '../../shared-ui/confirm-dialog/confirm-later';
 import { BannerComponent } from '../../shared-ui/banner/banner.component';
 import { ButtonDirective } from '../../shared-ui/button/button';
 
 /**
- * A non-modal notice for the two states only a reload ends: a broken service worker and a lost
- * database. A new version never shows here; the next launch picks it up (ADR 0094).
+ * A non-modal notice for the states only a reload ends: a broken service worker, a lost database,
+ * and speech code this tab could not load. A new version never shows here; the next launch picks
+ * it up (ADR 0094).
  *
  * Deliberately never a dialog: it must not steal focus from a form the learner is in the middle
  * of. While busy work is in progress a broken worker's reload says so and is disabled rather
@@ -40,14 +42,30 @@ import { ButtonDirective } from '../../shared-ui/button/button';
           }
         </ng-container>
       </mn-banner>
+    } @else if (unloadedCode.speech()) {
+      <mn-banner class="banner" tone="danger" icon="warning" role="status" aria-live="polite">
+        <p>Part of Monosai did not load, so this tab cannot make audio.</p>
+        @if (store.isBusy()) {
+          <p class="mn-hint">Finishing current work…</p>
+        }
+        <ng-container ngProjectAs="[mn-banner-action]">
+          <button mnButton type="button" [disabled]="store.isBusy()" (click)="reload()">
+            Reload to recover
+          </button>
+        </ng-container>
+      </mn-banner>
     }
   `,
 })
 export class AppUpdateBannerComponent {
   protected readonly store = inject(AppUpdateStore);
+  protected readonly unloadedCode = inject(UnloadedCodeRegistry);
   private readonly injector = inject(Injector);
 
-  /** The reader carries no application chrome, so it shows only a lost database. */
+  /**
+   * The reader carries no application chrome, so it shows only what concerns it: a lost database,
+   * and speech that could not load, which is where audio is made.
+   */
   readonly supersededOnly = input(false);
 
   /**

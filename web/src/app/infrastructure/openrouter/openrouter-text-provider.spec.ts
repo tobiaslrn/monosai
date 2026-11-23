@@ -83,7 +83,8 @@ describe('OpenRouterTextProvider when its code cannot be loaded', () => {
       new OpenRouterTextModelTester(context.client),
       () => {
         loads += 1;
-        return loads === 1
+        // Twice: a failed load is tried once more before it counts as failed.
+        return loads <= 2
           ? chunkFailure()
           : Promise.resolve(new OpenRouterStoryGenerator(context.client));
       },
@@ -97,7 +98,7 @@ describe('OpenRouterTextProvider when its code cannot be loaded', () => {
     ]);
 
     expect(first.ok && second.ok).toBe(true);
-    expect(loads).toBe(2);
+    expect(loads).toBe(3);
   });
 
   it('answers cancelled and sends nothing when cancelled while the code loads', async () => {

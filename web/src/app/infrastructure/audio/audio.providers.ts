@@ -84,11 +84,16 @@ export function restartingSpeechEncoder(
       let encoder: SpeechEncoder;
       try {
         encoder = await untilAborted(current(), signal);
-      } catch (error: unknown) {
+      } catch {
         if (signal?.aborted === true) {
           return err(speechEncodeError('cancelled', 'The encode was cancelled.'));
         }
-        throw error;
+        // The encoder's code could not be fetched. Answered rather than thrown,
+        // so a clip the provider has already been paid for is stored as it
+        // came instead of being thrown away with the failure.
+        return err(
+          speechEncodeError('worker-unavailable', 'The speech encoder could not be loaded.'),
+        );
       }
       return encoder.encode(input, signal);
     },

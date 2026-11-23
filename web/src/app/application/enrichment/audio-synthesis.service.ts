@@ -12,8 +12,10 @@ import type { Sentence } from '../../domain/reading/text-hierarchy';
 import { assetId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { StorageError } from '../../domain/storage/storage-error';
+import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import { TEXT_TO_SPEECH_PROVIDER } from '../shared/ai-tokens';
 import { CLOCK, ENRICHMENT_REPOSITORY, ID_GENERATOR } from '../shared/repository-tokens';
+import { UnloadedCodeRegistry } from '../shared/unloaded-code.registry';
 
 /** The model, voice, named pace, and delivery channel one synthesis runs under. */
 export interface AudioSynthesisConfig {
@@ -66,6 +68,7 @@ export class AudioSynthesisService {
   private readonly enrichment = inject(ENRICHMENT_REPOSITORY);
   private readonly clock = inject(CLOCK);
   private readonly ids = inject(ID_GENERATOR);
+  private readonly unloadedCode = inject(UnloadedCodeRegistry);
 
   /**
    * Produces one clip, from the cache when there is one.
@@ -110,6 +113,10 @@ export class AudioSynthesisService {
       signal,
     );
     if (!payload.ok) {
+      if (payload.error.detail?.issueCode === SPEECH_CODE_UNAVAILABLE) {
+        // Asking again in this tab cannot help; the app offers the reload.
+        this.unloadedCode.reportSpeech();
+      }
       return err(payload.error);
     }
 

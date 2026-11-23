@@ -5,6 +5,7 @@ import {
   type AiErrorCode,
 } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
+import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 
 /**
  * Provider-failure copy, shared by every screen that can see one.
@@ -175,6 +176,20 @@ export const AI_TASK_COPY: Record<AiTask, string> = {
 /** The title of a moderation refusal, shared with the troubleshooting guide. */
 export const MODERATION_HEADING = 'OpenRouter flagged the text';
 
+/** The title of speech code that could not load, shared with the troubleshooting guide. */
+export const SPEECH_CODE_HEADING = 'Speech could not load';
+
+/**
+ * Monosai's own speech code could not be loaded in this tab.
+ *
+ * Not the request's fault and not any sentence's: no voice, model or retry
+ * changes it, since some browsers refuse a module that failed once until the
+ * page reloads. Reloading is the one step that works.
+ */
+function isSpeechCodeUnavailable(error: AiError): boolean {
+  return error.detail?.issueCode === SPEECH_CODE_UNAVAILABLE;
+}
+
 export function aiErrorCopy(error: AiError): AiErrorCopy {
   // The output ran out of room, not the input. The shared row's "the request
   // was too large" would send the learner to shorten something that was fine.
@@ -188,6 +203,14 @@ export function aiErrorCopy(error: AiError): AiErrorCopy {
   }
   // The key worked and the model exists; its moderation check refused the text.
   // A different model is still the remedy, so only the title differs.
+  if (isSpeechCodeUnavailable(error)) {
+    return {
+      ...AI_ERROR_COPY.unknown,
+      heading: SPEECH_CODE_HEADING,
+      primaryAction: 'Reload Monosai.',
+      retryAction: 'Reload Monosai.',
+    };
+  }
   if (isModerationRefusal(error)) {
     return { ...AI_ERROR_COPY['capability-unsupported'], heading: MODERATION_HEADING };
   }
@@ -223,5 +246,10 @@ export function aiErrorAction(error: AiError, surface: AiFailureSurface): string
  * only the action changes with the surface.
  */
 export function aiFailureMessage(error: AiError, surface: AiFailureSurface): string {
+  // Nothing the learner was doing caused it, so naming the task would only
+  // send them to look for a fault in it.
+  if (isSpeechCodeUnavailable(error)) {
+    return `${aiErrorCopy(error).heading}. ${aiErrorAction(error, surface)}`;
+  }
   return `${aiErrorCopy(error).heading} while ${aiTaskCopy(error.task)}. ${aiErrorAction(error, surface)}`;
 }

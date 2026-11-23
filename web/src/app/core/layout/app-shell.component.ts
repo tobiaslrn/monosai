@@ -28,8 +28,9 @@ import { PageNoticeSlot } from '../../shared-ui/page-header/page-notice-slot';
  * The shell draws no bar of its own: every page's top bar is its
  * `mn-page-header`, and the reader keeps its own. Banners and the first-use
  * Help guide belong to non-reader surfaces; the alpha disclosure is a startup
- * release notice and may cover any route once. The one other exception is the notice that this
- * tab lost its database: a reader that cannot save must say so.
+ * release notice and may cover any route once. The other exceptions are the notices that this
+ * tab lost its database, since a reader that cannot save must say so, and that its speech code
+ * did not load, since the reader is where audio is made.
  */
 @Component({
   selector: 'mn-app-shell',

@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { fakeAudioDecoder, FakeCredentialRepository } from '../../../testing/ai-fakes';
+import { FAKE_OPENROUTER, FakeOpenRouterServer } from '../../../testing/openrouter-server';
 import { SPEECH_CODE_UNAVAILABLE, type TtsRequest } from '../../domain/ai/text-to-speech-provider';
+import { restartingSpeechEncoder } from '../audio/audio.providers';
+import { OpenRouterClient } from './openrouter-client';
 import { OpenRouterTextToSpeechProvider } from './openrouter-tts.provider';
-import type { OpenRouterTtsTester } from './tts-test.adapter';
-import type { OpenRouterTtsSynthesizer } from './tts-synthesis.adapter';
+import { SpeechRefusals } from './speech-attempts';
+import { OpenRouterTtsSynthesizer } from './tts-synthesis.adapter';
+import { OpenRouterTtsTester } from './tts-test.adapter';
 
 const REQUEST = { text: 'ねこ。' } as TtsRequest;
 const TESTER = {} as OpenRouterTtsTester;
@@ -76,5 +81,45 @@ describe('OpenRouterTextToSpeechProvider', () => {
     expect((await provider.synthesize(REQUEST, signal)).ok).toBe(false);
     online = true;
     expect((await provider.synthesize(REQUEST, signal)).ok).toBe(true);
+  });
+});
+
+describe('OpenRouterTextToSpeechProvider when the encoder code cannot load', () => {
+  const request: TtsRequest = {
+    text: 'ねこがすきです。',
+    modelId: FAKE_OPENROUTER.ttsModel,
+    voiceId: FAKE_OPENROUTER.voice,
+    speechStyle: 'clear',
+    speechPace: 'natural',
+    responseFormat: 'mp3',
+    speechInstructions: 'supported',
+  };
+
+  it('keeps a paid PCM clip uncompressed rather than throwing it away', async () => {
+    const server = new FakeOpenRouterServer({ pcmOnlyRate: 24_000 });
+    const client = new OpenRouterClient({
+      fetchFn: server.fetch,
+      credentials: new FakeCredentialRepository(),
+      isOnline: () => true,
+      sleep: () => Promise.resolve(),
+      random: () => 0.5,
+      correlationId: () => 'test-correlation',
+    });
+    const decoder = fakeAudioDecoder();
+    // Wired as the app wires it, over an encoder chunk that cannot be fetched.
+    const encoder = restartingSpeechEncoder(() =>
+      Promise.reject(new TypeError('Failed to fetch dynamically imported module')),
+    );
+    const refusals = new SpeechRefusals();
+    const tts = new OpenRouterTextToSpeechProvider(
+      new OpenRouterTtsTester(client, decoder, encoder, refusals),
+      () => Promise.resolve(new OpenRouterTtsSynthesizer(client, decoder, encoder, refusals)),
+      () => true,
+    );
+
+    const result = await tts.synthesize(request, new AbortController().signal);
+
+    expect(server.requests.at(-1)?.body['response_format']).toBe('pcm');
+    expect(result).toMatchObject({ ok: true, value: { mimeType: 'audio/wav' } });
   });
 });

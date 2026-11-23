@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALL_AI_ERROR_CODES, aiError } from '../../domain/ai/ai-error';
 import { ALL_AI_TASKS } from '../../domain/ai/ai-task';
+import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import {
   AI_ERROR_COPY,
   AI_TASK_COPY,
@@ -129,6 +130,18 @@ describe('aiFailureMessage', () => {
     expect(aiFailureMessage(error, 'settings-test')).toBe(
       'Too many requests while translating this sentence. Wait a moment, then try again.',
     );
+  });
+
+  it('offers a reload, not a retry, for speech code that could not load', () => {
+    const error = aiError('unknown', 'tts-synthesis', 'The speech code could not be loaded.', {
+      detail: { issueCode: SPEECH_CODE_UNAVAILABLE },
+    });
+
+    for (const surface of SURFACES) {
+      // About the tab, not any sentence: no task clause sends the learner to
+      // look for a fault in the text.
+      expect(aiFailureMessage(error, surface)).toBe('Speech could not load. Reload Monosai.');
+    }
   });
 
   it('does not report a cancellation in the reader as a cancelled test', () => {

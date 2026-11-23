@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALL_AI_ERROR_CODES, aiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
+import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import { storageError } from '../../domain/storage/storage-error';
 import { AI_TASK_COPY, aiErrorAction } from '../../shared-ui/ai-error/ai-error-copy';
 import {
@@ -83,6 +84,17 @@ describe('describeEnrichmentFailure', () => {
 });
 
 describe('enrichmentCanRetry', () => {
+  it('offers no retry for speech code that could not load, which only a reload brings back', () => {
+    const failure = {
+      source: 'provider',
+      error: aiError('unknown', 'tts-synthesis', 'The speech code could not be loaded.', {
+        detail: { issueCode: SPEECH_CODE_UNAVAILABLE },
+      }),
+    } as const;
+
+    expect(enrichmentCanRetry(failure)).toBe(false);
+  });
+
   it('offers another attempt when a model answered in the wrong shape', () => {
     const failure = {
       source: 'provider',

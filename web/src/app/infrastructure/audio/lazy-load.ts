@@ -2,15 +2,22 @@
  * Remembers a lazy load while it succeeds or is under way, and forgets one that
  * failed: a chunk that could not be fetched offline has to be asked for again
  * after reconnecting, not replayed until the page reloads.
+ *
+ * A failed load is tried once more at once before it counts as failed, so one
+ * dropped request does not cost the learner a Try again. Some browsers remember
+ * a module that failed to load for the life of the page and refuse it again
+ * without asking the network, and there only a reload helps.
  */
 export function retryOnRejection<T>(load: () => Promise<T>): () => Promise<T> {
   let loading: Promise<T> | null = null;
   return () => {
     if (loading === null) {
-      const started = load().catch((error: unknown) => {
-        if (loading === started) loading = null;
-        throw error;
-      });
+      const started = load()
+        .catch(() => load())
+        .catch((error: unknown) => {
+          if (loading === started) loading = null;
+          throw error;
+        });
       loading = started;
     }
     return loading;

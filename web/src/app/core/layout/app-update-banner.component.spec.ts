@@ -5,6 +5,7 @@ import { Subject, of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { AppBusyRegistry } from '../../application/shared/app-busy.registry';
+import { UnloadedCodeRegistry } from '../../application/shared/unloaded-code.registry';
 import {
   APP_RELOAD,
   APP_UPDATE_CHECKER,
@@ -175,5 +176,21 @@ describe('AppUpdateBannerComponent', () => {
     view.fixture.detectChanges();
 
     expect(view.element.textContent).toContain('can no longer save');
+  });
+
+  it('offers a reload, even in the reader, once speech code could not load', () => {
+    const view = render();
+    view.fixture.componentRef.setInput('supersededOnly', true);
+    view.fixture.detectChanges();
+    expect(view.element.querySelector('.banner')).toBeNull();
+
+    TestBed.inject(UnloadedCodeRegistry).reportSpeech();
+    view.fixture.detectChanges();
+
+    expect(view.element.textContent).toContain('Part of Monosai did not load');
+    const button = view.element.querySelector('button');
+    expect(button?.textContent).toContain('Reload to recover');
+    button?.click();
+    expect(view.reload).toHaveBeenCalledOnce();
   });
 });
