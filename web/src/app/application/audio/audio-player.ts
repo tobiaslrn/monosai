@@ -234,6 +234,21 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
   /** Latest-wins guard for sequence assembly racing a newer source or Stop. */
   let operationToken = 0;
   /**
+   * Rejects the waits of work that a newer load or a stop superseded.
+   *
+   * A MediaSource whose element moved on before it opened fires nothing at
+   * all, so waiting for its `sourceopen` would never end, and every later
+   * sequence queued behind that wait would never start.
+   */
+  const abandoners = new Set<() => void>();
+  const supersede = (): number => {
+    operationToken += 1;
+    for (const abandon of [...abandoners]) {
+      abandon();
+    }
+    return operationToken;
+  };
+  /**
    * Whether a clip is loaded at all.
    *
    * `stop()` unloads the element, and unloading is itself something an engine
@@ -272,6 +287,36 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       };
       target.addEventListener(type, onEvent, { once: true });
       target.addEventListener('error', onError, { once: true });
+    });
+
+  /**
+   * Waits for a new resource to open, and gives up when it closes first or
+   * when the load it was made for is superseded.
+   */
+  const waitForOpen = (source: MediaSource, token: number): Promise<void> =>
+    new Promise((resolve, reject) => {
+      const onOpen = (): void => {
+        cleanup();
+        resolve();
+      };
+      const onClose = (): void => {
+        cleanup();
+        reject(new Error('Media source closed before it opened'));
+      };
+      const onSuperseded = (): void => {
+        if (token !== operationToken) {
+          cleanup();
+          reject(new Error('Audio load was superseded'));
+        }
+      };
+      const cleanup = (): void => {
+        source.removeEventListener('sourceopen', onOpen);
+        source.removeEventListener('sourceclose', onClose);
+        abandoners.delete(onSuperseded);
+      };
+      source.addEventListener('sourceopen', onOpen, { once: true });
+      source.addEventListener('sourceclose', onClose, { once: true });
+      abandoners.add(onSuperseded);
     });
 
   /**
@@ -338,7 +383,7 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
     element.src = objectUrl;
     loaded = true;
     element.load();
-    await waitFor(source, 'sourceopen');
+    await waitForOpen(source, token);
     if (token !== operationToken) {
       throw new Error('Audio load was superseded');
     }
@@ -405,7 +450,7 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       element.defaultPlaybackRate = rate;
     },
     async play(clip: Blob, options?: PlayOptions): Promise<void> {
-      operationToken += 1;
+      supersede();
       trackDuration = 0;
       discardSequence();
       loadBlob(clip);
@@ -421,7 +466,7 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       clips: readonly AudioSequenceClip[],
       options?: SequencePlayOptions,
     ): Promise<AudioTimeline> {
-      const token = (operationToken += 1);
+      const token = supersede();
       discardSequence();
       const [firstClip] = clips;
       if (firstClip === undefined) {
@@ -538,7 +583,7 @@ export function createAudioPlayer(view: Window & typeof globalThis): AudioPlayer
       await element.play();
     },
     stop(): void {
-      operationToken += 1;
+      supersede();
       loaded = false;
       trackDuration = 0;
       discardSequence();

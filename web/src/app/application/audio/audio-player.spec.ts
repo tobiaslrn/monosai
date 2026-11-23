@@ -546,3 +546,78 @@ describe('a superseded sequence still queued', () => {
     expect(element.src).toBe(clipUrl);
   });
 });
+
+describe('a resource replaced before it opened', () => {
+  function chromiumLikeView(element: FakeAudioElement): {
+    readonly fake: ReturnType<typeof fakeView>;
+    readonly byUrl: Map<string, unknown>;
+  } {
+    const fake = fakeView(element);
+    let urls = 0;
+    const byUrl = new Map<string, unknown>();
+    fake.createObjectURL.mockImplementation((object: unknown) => {
+      urls += 1;
+      const url = `blob:${String(urls)}`;
+      byUrl.set(url, object);
+      return url;
+    });
+    (fake.view as unknown as { MediaSource: typeof MediaSource }).MediaSource =
+      FakeMediaSource as unknown as typeof MediaSource;
+    // As Chromium does: the source opens a moment after the load, and only if
+    // the element still points at it by then; otherwise it fires nothing at all.
+    element.onLoad = () => {
+      const url = element.src;
+      setTimeout(() => {
+        if (url !== '' && element.src === url) {
+          (byUrl.get(url) as FakeMediaSource).dispatchEvent(new Event('sourceopen'));
+        }
+      }, 5);
+    };
+    element.removeAttribute = (name: string) => {
+      if (name === 'src') {
+        element.src = '';
+      }
+    };
+    return { fake, byUrl };
+  }
+
+  function outcomeOf(work: Promise<unknown>): Promise<string> {
+    return Promise.race([
+      work.then(
+        () => 'played',
+        () => 'failed',
+      ),
+      new Promise<string>((resolve) =>
+        setTimeout(() => {
+          resolve('still pending');
+        }, 100),
+      ),
+    ]);
+  }
+
+  it('lets a later sequence load after a stop that landed before the resource opened', async () => {
+    const element = new FakeAudioElement();
+    const { fake } = chromiumLikeView(element);
+    const player = createAudioPlayer(fake.view);
+    const abandoned = outcomeOf(player.playSequence([mpeg('a1'), mpeg('a2')]));
+    await settle();
+
+    player.stop();
+    const next = outcomeOf(player.playSequence([mpeg('b1')]));
+
+    expect(await abandoned).toBe('failed');
+    expect(await next).toBe('played');
+  });
+
+  it('fails a sequence whose resource closed before it opened', async () => {
+    const element = new FakeAudioElement();
+    const { fake, byUrl } = chromiumLikeView(element);
+    element.onLoad = () => {
+      const source = byUrl.get(element.src) as FakeMediaSource;
+      setTimeout(() => source.dispatchEvent(new Event('sourceclose')), 1);
+    };
+    const player = createAudioPlayer(fake.view);
+
+    expect(await outcomeOf(player.playSequence([mpeg('a1')]))).toBe('failed');
+  });
+});
