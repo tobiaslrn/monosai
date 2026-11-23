@@ -54,31 +54,34 @@ the story was written, stays unmarked, while a word the learner has since review
 marked. The types live in `domain/reading/` and `domain/vocabulary/`.
 
 A token matches a reviewed word when its written form or its base form equals the word's. Failing
-that, it matches by reading: its own reading, or for an inflected word the reading of its dictionary
-form (たべた for 食べる, 来た for くる, recorded as a base-form match), equals the word's reading. A reading
-counts only when the two spellings do not contradict each other, and they contradict only when both
-are written with kanji and, with all kana removed, neither one's kanji appear in order within the
-other's: 紙 is not 神 and 早い is not 速い, while 猫 and ねこ, 行なう and 行う, 子ども and 子供, and ご飯 and 御飯 are one
-word. An inflected verb or adjective is matched by the reading of its dictionary form, never by its
-stem's own reading, so い of いた is not 胃 and き of きた is not 木. The exceptions are where the word is a
-noun: a bare continuative stem matches by its own reading a word that ends in the same kana (おわり for
-終わり, 申込み for 申し込み), and a word tagged as a stem or imperative matches by its own reading when the
-next token is a particle only a noun takes (みせ of みせで for 店, いえ of いえに for 家). A stem before に and a
-verb may state a purpose (みせにいく may be 見せに行く), so it does not match that way. A function word
-(particle, auxiliary, prefix, suffix or symbol) is never matched by its reading alone, so は is not
-歯, て is not 手 and 下さい is not ください, and the structural baseline wins over a match by a token's own
-reading. Within a phrase, any word also matches by its reading where the phrase spells that word in
-kana at the same place, since the rest of the phrase vouches for it (宜しくお願い致します for よろしくお願いいたします, 私達
-for 私たち). The reader, the word details and the check of a generated story all use this one matcher.
+that, it matches by reading: for an inflected word first the reading of its dictionary form (たべた
+for 食べる, 来た for くる, recorded as a base-form match), then its own reading, equals the word's
+reading. A reading counts only when the two spellings do not contradict each other, and they
+contradict only when both are written with kanji and, with all kana removed, neither one's kanji
+appear in order within the other's: 紙 is not 神 and 早い is not 速い, while 猫 and ねこ, 行なう and
+行う, 子ども and 子供, and ご飯 and 御飯 are one word. A function word (particle, auxiliary, prefix,
+suffix or symbol) is never matched by its reading alone, so は is not 歯, て is not 手 and 下さい is
+not ください, and the structural baseline wins over a match by a token's own reading. Within a
+phrase, any word also matches by its reading where the phrase spells that word in kana at the same
+place, since the rest of the phrase vouches for it (宜しくお願い致します for よろしくお願いいたします,
+私達 for 私たち). The reader, the word details and the check of a generated story all use this one
+matcher.
+
+One gap is known and accepted. An inflected verb or adjective written in kana also matches by its
+own reading, so where the learner reviews a word that only reads like its stem but has no card for
+the verb, the stem counts as that word: い of いた as 胃, き of きた as 木, み of みた as 実. A card for
+the verb wins, since the dictionary form's reading is tried first. The tokens do not tell such a
+stem from a word in kana they tag the same way (みせ of みせはどこ for 店, はやく for 早く, き of
+きにいった for 気), so refusing the stem would lose those everyday matches.
 
 Evidence frozen by an earlier validator version is held to the rule when a story is read back. It
 names its words by ids that each vocabulary refresh replaces, so the spelling it was matched against
 is unknown, and a match that could be one the rule refuses no longer counts: a function word matched
-by anything but an exact form, a word written in kanji matched through a kana reading, or a verb or
-adjective stem in kana matched by its written form or reading. Where the rule accepts the match and
-the learner still reviews the word, the current snapshot covers the token instead (猫 for ねこ, 子ども
-for 子供). A match the rule refuses (紙 for 神, い for 胃), and the evidence of a word the learner no
-longer reviews, are lost from the display; the stored record is unchanged.
+by anything but an exact form, or a word written in kanji matched through a kana reading. Where the
+rule accepts such a match and the learner still reviews the word, the current snapshot covers the
+token instead (猫 for ねこ, 子ども for 子供). A match the rule refuses (紙 for 神, は for 歯), and such a
+match of a word the learner no longer reviews, are lost from the display; the stored record is
+unchanged. Every other match keeps counting, a kana verb stem matched by its reading among them.
 
 ## 8.2 Error handling
 

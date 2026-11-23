@@ -24,12 +24,8 @@ export interface VocabularyMatcher {
   findPhraseAt(tokens: readonly Token[], startIndex: number): PhraseMatch | null;
   /** Items whose canonical expression is exactly this token's surface. */
   findExact(token: Token): readonly VocabularyItemId[];
-  /**
-   * Items reachable through allowed normalization only. `following` are the
-   * tokens after it in the sentence, which tell a word used as a noun from a
-   * verb's stem.
-   */
-  findNormalized(token: Token, following?: readonly Token[]): NormalizedMatch | null;
+  /** Items reachable through allowed normalization only. */
+  findNormalized(token: Token): NormalizedMatch | null;
 }
 
 interface TrieNode {
@@ -208,117 +204,27 @@ function tokenReading(token: Token): string | undefined {
   return isKanaOnly(surface) ? normalizeLookupKey(surface) : undefined;
 }
 
-/** Word classes that conjugate, whose written form may be a bare stem. */
-const CONJUGATING_CLASSES: ReadonlySet<PartOfSpeech> = new Set<PartOfSpeech>([
-  'verb',
-  'adjective-i',
-]);
-
-/**
- * Whether a token is a verb or adjective in a form other than its dictionary
- * form (たべ of たべた, い of いた, 高く), whose own reading is a stem.
- */
-export function isInflectedConjugatingWord(
-  token: Pick<Token, 'surface' | 'lemma' | 'partOfSpeech'>,
-): boolean {
-  return (
-    token.partOfSpeech !== undefined &&
-    CONJUGATING_CLASSES.has(token.partOfSpeech) &&
-    token.lemma !== undefined &&
-    token.lemma.length > 0 &&
-    token.lemma !== token.surface
-  );
-}
-
-/** The last character of a spelling, as hiragana when it is kana. */
-function finalKana(text: string): string | undefined {
-  // eslint-disable-next-line @typescript-eslint/no-misused-spread -- code-point iteration is intended
-  const last = [...text.normalize('NFKC')].at(-1);
-  return last !== undefined && isKana(last) ? normalizeLookupKey(last) : undefined;
-}
-
-/**
- * Whether a card spells the stem a token is written as: the token is a bare
- * continuative stem, which Japanese also uses as a noun (おわり, 申込み), and
- * the card ends in the same kana (終わり, 申し込み). A stem that merely reads
- * like a word spelled otherwise is a different word: い of いた is not 胃, nor
- * き of きた 木.
- */
-function spellsStem(token: Token, spelling: string): boolean {
-  if (token.inflectionForm !== 'continuative') {
-    return false;
-  }
-  const ending = finalKana(token.surface);
-  return ending !== undefined && ending === finalKana(spelling);
-}
-
-/** Particles that follow a noun and never a verb's stem or imperative. */
-const NOUN_PARTICLES: ReadonlySet<string> = new Set([
-  'が',
-  'を',
-  'に',
-  'で',
-  'の',
-  'へ',
-  'から',
-  'まで',
-  'より',
-  'や',
-]);
-
-/**
- * Whether a word tagged as an inflected verb is used as a noun: a stem or an
- * imperative followed by a particle that only a noun takes (みせ of みせで as
- * 店, ひ of ひが as 日, いえ of いえに as 家). A stem followed by に and a verb
- * is a purpose instead (かい of かいにいく), and a past or te stem takes で as
- * its te-form (よん of よんで).
- */
-function usedAsNoun(token: Token, following: readonly Token[]): boolean {
-  if (token.inflectionForm !== 'continuative' && token.inflectionForm !== 'imperative') {
-    return false;
-  }
-  const [next, after] = following;
-  if (next?.partOfSpeech !== 'particle' || !NOUN_PARTICLES.has(normalizeLookupKey(next.surface))) {
-    return false;
-  }
-  return !(
-    token.inflectionForm === 'continuative' &&
-    normalizeLookupKey(next.surface) === 'に' &&
-    after?.partOfSpeech === 'verb'
-  );
-}
-
-interface ReadingKey {
-  readonly key: string;
-  readonly basis: NormalizedMatchBasis;
-  /**
-   * Whether the key is a stem's own reading, which only `spellsStem` or
-   * `usedAsNoun` admits.
-   */
-  readonly stem: boolean;
-}
-
 /**
  * Readings a token may be matched by, each with the basis it is recorded
  * under: the reading of its dictionary form, which counts as a match of its
- * base form, and its own reading. A verb or adjective that is inflected is
- * matched by the reading of its dictionary form only, or by its own reading
- * where the card spells the same stem (`spellsStem`) or the word is used as a
- * noun (`usedAsNoun`). A function word has none.
+ * base form, and its own reading. An inflected token is looked up by its
+ * dictionary form first, so a reviewed verb wins over a noun its stem reads
+ * like (い of いた is いる before 胃). A function word has none.
  */
-function readingKeys(token: Token): readonly ReadingKey[] {
+function readingKeys(
+  token: Token,
+): readonly { readonly key: string; readonly basis: NormalizedMatchBasis }[] {
   if (isFunctionWord(token)) {
     return [];
   }
   const own = tokenReading(token);
   const dictionary = dictionaryFormReading(token);
-  const stem = isInflectedConjugatingWord(token);
-  const keys: ReadingKey[] = [];
+  const keys: { key: string; basis: NormalizedMatchBasis }[] = [];
   if (dictionary !== undefined && dictionary !== own) {
-    keys.push({ key: dictionary, basis: 'lemma', stem: false });
+    keys.push({ key: dictionary, basis: 'lemma' });
   }
   if (own !== undefined) {
-    keys.push({ key: own, basis: 'reading', stem });
+    keys.push({ key: own, basis: 'reading' });
   }
   return keys;
 }
@@ -397,11 +303,11 @@ function longestMatch(
  * dictionary form's reading are looked up among the readings, and an entry
  * found there counts only when the two spellings do not contradict each other
  * (`spellingsContradict`): ねこ and 猫 are one word, 子ども and 子供 too, 紙 and
- * 神 are not. An inflected verb or adjective is matched by the reading of its
- * dictionary form, not by its stem's (い of いた is not 胃), unless the card
- * spells that stem (`spellsStem`) or the sentence uses the word as a noun
- * (`usedAsNoun`). A function word is never matched by its
- * reading, so the particle は is not 歯.
+ * 神 are not. A function word is never matched by its reading, so the
+ * particle は is not 歯. An inflected word in kana is matched by its own
+ * reading as well, so where no card for its dictionary form claims it first,
+ * a stem meets a word it only reads like (い of いた as 胃): a known gap
+ * (arc42 8.1), kept because a kana noun is often tagged as a stem.
  * Nothing here accepts synonyms, edit distance, or shared kanji as evidence of
  * known vocabulary.
  */
@@ -485,8 +391,7 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
     findExact(token) {
       return exact.get(token.surface) ?? [];
     },
-    findNormalized(token, following = []) {
-      const noun = usedAsNoun(token, following);
+    findNormalized(token) {
       for (const candidate of formKeys(token)) {
         const bucket = forms.get(candidate.key);
         if (bucket !== undefined) {
@@ -495,11 +400,7 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
       }
       for (const candidate of readingKeys(token)) {
         const ids = (readings.get(candidate.key) ?? [])
-          .filter(
-            (entry) =>
-              !spellingsContradict(token.surface, entry.spelling) &&
-              (!candidate.stem || noun || spellsStem(token, entry.spelling)),
-          )
+          .filter((entry) => !spellingsContradict(token.surface, entry.spelling))
           .map((entry) => entry.id);
         if (ids.length > 0) {
           return { vocabularyItemIds: ids, basis: candidate.basis };

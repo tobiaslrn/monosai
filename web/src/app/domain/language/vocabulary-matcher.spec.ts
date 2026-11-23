@@ -145,11 +145,10 @@ describe('compileVocabularyMatcher', () => {
         analyzedSequence: [{ surface: expression, lemma: expression, readingHiragana: reading }],
       };
     }
-    const stomach = entry('11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '胃', 'い');
     const end = entry('22222222-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '終わり', 'おわり');
     const comeKana = entry('33333333-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'くる', 'くる');
     const wearKana = entry('44444444-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'きる', 'きる');
-    const matcher = compileVocabularyMatcher([stomach, end, comeKana, wearKana]);
+    const matcher = compileVocabularyMatcher([end, comeKana, wearKana]);
 
     function token(fields: Partial<Token> & Pick<Token, 'surface'>): Token {
       return {
@@ -162,20 +161,7 @@ describe('compileVocabularyMatcher', () => {
       };
     }
 
-    it('is not matched by its stem’s reading to a word spelled otherwise', () => {
-      // い of いた reads like the noun 胃.
-      const stem = token({
-        surface: 'い',
-        lemma: 'いる',
-        readingHiragana: 'い',
-        partOfSpeech: 'verb',
-        inflectionForm: 'continuative',
-        verbConjugationFamily: 'ichidan',
-      });
-      expect(matcher.findNormalized(stem)).toBeNull();
-    });
-
-    it('is matched by its stem where the card spells that stem', () => {
+    it('is matched by the reading of a stem the card spells', () => {
       const stem = token({
         surface: 'おわり',
         lemma: 'おわる',
@@ -187,57 +173,6 @@ describe('compileVocabularyMatcher', () => {
       expect(matcher.findNormalized(stem)).toEqual({
         vocabularyItemIds: [end.id],
         basis: 'reading',
-      });
-    });
-
-    describe('used as a noun', () => {
-      // い of いに, as the tokenizer tags the noun 胃 written in kana.
-      const stem = token({
-        surface: 'い',
-        lemma: 'いる',
-        readingHiragana: 'い',
-        partOfSpeech: 'verb',
-        inflectionForm: 'continuative',
-        verbConjugationFamily: 'ichidan',
-      });
-      const particle = (surface: string): Token =>
-        token({ surface, lemma: surface, readingHiragana: surface, partOfSpeech: 'particle' });
-      const verb = token({
-        surface: 'いく',
-        lemma: 'いく',
-        readingHiragana: 'いく',
-        partOfSpeech: 'verb',
-        inflectionForm: 'dictionary',
-      });
-
-      it.each(['が', 'を', 'で', 'の', 'から'])(
-        'is matched by its own reading before %s, which only a noun takes',
-        (surface) => {
-          expect(matcher.findNormalized(stem, [particle(surface)])).toEqual({
-            vocabularyItemIds: [stomach.id],
-            basis: 'reading',
-          });
-        },
-      );
-
-      it('is matched by its own reading before に and no verb', () => {
-        expect(matcher.findNormalized(stem, [particle('に')])).toEqual({
-          vocabularyItemIds: [stomach.id],
-          basis: 'reading',
-        });
-      });
-
-      it('is not matched before に and a verb, which may state a purpose', () => {
-        expect(matcher.findNormalized(stem, [particle('に'), verb])).toBeNull();
-      });
-
-      it.each(['て', 'は', 'も'])('is not matched before %s, which a stem takes', (surface) => {
-        expect(matcher.findNormalized(stem, [particle(surface)])).toBeNull();
-      });
-
-      it('is not matched as a past stem before で, its te-form', () => {
-        const past = { ...stem, inflectionForm: 'continuative-ta' as const };
-        expect(matcher.findNormalized(past, [particle('で')])).toBeNull();
       });
     });
 

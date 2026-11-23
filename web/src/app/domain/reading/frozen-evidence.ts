@@ -1,5 +1,5 @@
 import { containsKanji, isKanaOnly } from '../language/kana';
-import { isFunctionWord, isInflectedConjugatingWord } from '../language/vocabulary-matcher';
+import { isFunctionWord } from '../language/vocabulary-matcher';
 import type { Token } from './token';
 import type {
   FrozenSentenceValidation,
@@ -49,15 +49,16 @@ function isUncovered(validation: TokenValidation): boolean {
  *
  * Evidence is only as good as the matcher that produced it, and a story
  * accepted before the matching rule (arc42 8.1) may carry a match the rule
- * refuses: a function word matched by how it sounds (は as 歯), a word written
- * in kanji matched by its reading to a word written with other kanji (紙 as
- * 神), or the stem of an inflected verb matched by its reading (い of いた as
- * 胃). The evidence names its words only by ids that each vocabulary refresh
- * replaces, so the spelling it was matched against is not known; a match that
- * could be any of these kinds no longer counts. Where the rule accepts the
- * match and the word it named is still reviewed, the current snapshot covers
- * the token instead (猫 for ねこ, 子ども for 子供), so what is lost is a match
- * the rule refuses and the evidence of a word since dropped.
+ * refuses: a function word matched by how it sounds (は as 歯), or a word
+ * written in kanji matched by its reading to a word written with other kanji
+ * (紙 as 神). The evidence names its words only by ids that each vocabulary
+ * refresh replaces, so the spelling it was matched against is not known; a
+ * match that could be either kind no longer counts, even one the rule accepts
+ * (子ども for 子供). Where the rule accepts the match and the word it named is
+ * still reviewed, the current snapshot covers the token instead, so what is
+ * lost is a match the rule refuses and such a match of a word since dropped.
+ * Every other match is one the rule still makes and keeps counting, including
+ * a verb stem in kana matched by its reading (い of いた as 胃, arc42 8.1).
  * `tokens` are the sentence's tokens, which is how such a match is recognized.
  * `frozen` is undefined for a sentence with no stored evidence.
  */
@@ -99,15 +100,7 @@ function matchedByReadingItMayNotUse(
     // recorded under the written form is not evidence for grammar.
     return true;
   }
-  if (containsKanji(token.surface)) {
-    return matchedThroughKana(validation.basis, token);
-  }
-  // A stem in kana is its own reading, so its written form may have met a
-  // reviewed word's reading as well.
-  return (
-    isInflectedConjugatingWord(token) &&
-    (validation.basis === 'reading' || validation.basis === 'normalized-form')
-  );
+  return containsKanji(token.surface) && matchedThroughKana(validation.basis, token);
 }
 
 /** Whether the key the basis names is a kana spelling, which a reading can be. */

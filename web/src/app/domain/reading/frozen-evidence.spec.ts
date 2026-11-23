@@ -131,16 +131,6 @@ describe('withFrozenEvidence', () => {
       ]);
     });
 
-    it.each(['reading', 'normalized-form'])(
-      'no longer covers a verb stem in kana recorded as matched by its %s',
-      (basis) => {
-        // い of いた met the reviewed noun 胃 through 胃's reading.
-        expect(merge(normalized(basis), token('い', 'verb', 'いる'))).toEqual([
-          status('t0', notInSnapshot),
-        ]);
-      },
-    );
-
     it('still covers a verb in kana in its dictionary form', () => {
       expect(merge(normalized('normalized-form'), token('いる', 'verb', 'いる'))).toEqual([
         status('t0', normalized('normalized-form')),
