@@ -145,7 +145,7 @@ function layerState(
         error:
           progress.error.source === 'storage'
             ? `Could not save: ${progress.error.error.message}`
-            : aiFailureMessage(progress.error.error, 'reader'),
+            : aiFailureMessage(progress.error.error, 'reader', 'run'),
       };
     }
     case 'cancelled':

@@ -29,6 +29,12 @@ import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider
 export type AiFailureSurface = 'settings-test' | 'reader';
 
 /**
+ * What the failure stopped: one `request`, such as a sentence's translation, or
+ * a `run` over a whole story, which a single failed request ends.
+ */
+export type AiFailureScope = 'request' | 'run';
+
+/**
  * What the learner is told about one provider failure.
  *
  * Every failure is a title, one safety line and one next action for each
@@ -173,6 +179,16 @@ export const AI_TASK_COPY: Record<AiTask, string> = {
   'tts-synthesis': 'reading this sentence aloud',
 };
 
+/**
+ * The tasks that read differently when a whole story's run of them stopped:
+ * one failed request stops the run, and naming its sentence on a card with no
+ * sentence in view sent the learner to look for a fault in one.
+ */
+const AI_RUN_TASK_COPY: Partial<Record<AiTask, string>> = {
+  translation: 'translating this story',
+  'tts-synthesis': 'making audio for this story',
+};
+
 /** The title of a moderation refusal, shared with the troubleshooting guide. */
 export const MODERATION_HEADING = 'OpenRouter flagged the text';
 
@@ -245,11 +261,17 @@ export function aiErrorAction(error: AiError, surface: AiFailureSurface): string
  * is the shared table's, so the same status reads the same way on every screen;
  * only the action changes with the surface.
  */
-export function aiFailureMessage(error: AiError, surface: AiFailureSurface): string {
+export function aiFailureMessage(
+  error: AiError,
+  surface: AiFailureSurface,
+  scope: AiFailureScope = 'request',
+): string {
   // Nothing the learner was doing caused it, so naming the task would only
   // send them to look for a fault in it.
   if (isSpeechCodeUnavailable(error)) {
     return `${aiErrorCopy(error).heading}. ${aiErrorAction(error, surface)}`;
   }
-  return `${aiErrorCopy(error).heading} while ${aiTaskCopy(error.task)}. ${aiErrorAction(error, surface)}`;
+  const task =
+    (scope === 'run' ? AI_RUN_TASK_COPY[error.task] : undefined) ?? aiTaskCopy(error.task);
+  return `${aiErrorCopy(error).heading} while ${task}. ${aiErrorAction(error, surface)}`;
 }

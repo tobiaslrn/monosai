@@ -6,6 +6,7 @@ import {
   type TextToSpeechProvider,
   type TtsRequest,
 } from '../../domain/ai/text-to-speech-provider';
+import { safeErrorTypeOf } from '../../domain/shared/errors';
 import { err, type Result } from '../../domain/shared/result';
 import { retryOnRejection, untilAborted } from '../audio/lazy-load';
 import type { OpenRouterTtsSynthesizer } from './tts-synthesis.adapter';
@@ -42,15 +43,16 @@ export class OpenRouterTextToSpeechProvider implements TextToSpeechProvider {
   }
 
   async synthesize(input: TtsRequest, signal: AbortSignal): Promise<Result<AudioPayload, AiError>> {
+    let synthesizer: OpenRouterTtsSynthesizer;
     try {
-      const synthesizer = await untilAborted(this.synthesizer(), signal);
-      return await synthesizer.synthesize(input, signal);
+      synthesizer = await untilAborted(this.synthesizer(), signal);
     } catch {
-      // The port answers with a Result, and a chunk that cannot be fetched, the
-      // synthesizer's or the encoder's it calls, is what a first synthesis meets
-      // on a device with no connection.
+      // The port answers with a Result, and a chunk that cannot be fetched is
+      // what a first synthesis meets on a device with no connection. Only this
+      // load is speech code that could not load: the encoder's own load fails
+      // as a Result inside the synthesizer, and keeps the paid clip.
       if (signal.aborted) {
-        return err(aiError('cancelled', 'tts-synthesis', 'The request was cancelled.'));
+        return cancelled();
       }
       return err(
         this.isOnline()
@@ -60,5 +62,22 @@ export class OpenRouterTextToSpeechProvider implements TextToSpeechProvider {
           : aiError('offline', 'tts-synthesis', 'The device is offline.'),
       );
     }
+    try {
+      return await synthesizer.synthesize(input, signal);
+    } catch (thrown) {
+      // A fault after the code loaded is neither the connection nor the code:
+      // it keeps its own kind, so a report says what actually threw. Only the
+      // kind, since a thrown message can carry the text being read.
+      if (signal.aborted) {
+        return cancelled();
+      }
+      return err(
+        aiError('unknown', 'tts-synthesis', `Speech synthesis threw ${safeErrorTypeOf(thrown)}.`),
+      );
+    }
   }
+}
+
+function cancelled(): Result<never, AiError> {
+  return err(aiError('cancelled', 'tts-synthesis', 'The request was cancelled.'));
 }

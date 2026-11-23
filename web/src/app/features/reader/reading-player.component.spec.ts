@@ -591,7 +591,7 @@ describe('ReadingPlayerComponent', () => {
       fixture.detectChanges();
       const spoken = said(fixture.nativeElement as HTMLElement);
 
-      expect(spoken).toContain('Out of OpenRouter credit while reading this sentence aloud.');
+      expect(spoken).toContain('Out of OpenRouter credit while making audio for this story.');
       expect(spoken).toContain('Add credit on openrouter.ai, then try again.');
       expect(spoken.toLowerCase()).not.toContain('run the test');
     });

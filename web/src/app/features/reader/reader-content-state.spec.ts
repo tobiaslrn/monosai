@@ -262,6 +262,31 @@ describe('reader content state', () => {
     expect(state.error).toBeTruthy();
   });
 
+  it.each([
+    ['english', 'translation'],
+    ['audio', 'tts-synthesis'],
+  ] as const)(
+    'speaks of the story, not one sentence, when a whole run stopped (%s)',
+    (layer, task) => {
+      const state = readerContentState(
+        READING,
+        layer,
+        {
+          kind: 'failed',
+          readingId: ID,
+          counts: COUNTS,
+          canRetry: true,
+          error: { source: 'provider', error: aiError('provider-unavailable', task, 'Down') },
+        },
+        'ready',
+        true,
+      );
+
+      expect(state.error).toContain('this story');
+      expect(state.error).not.toContain('this sentence');
+    },
+  );
+
   describe('a failed run the provider refused', () => {
     const failed = (code: Parameters<typeof aiError>[0]) =>
       ({

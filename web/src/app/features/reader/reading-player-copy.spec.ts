@@ -194,6 +194,39 @@ describe('stoppedRunFailure', () => {
 
     expect(stoppedRunFailure(progress)).not.toBeNull();
   });
+
+  it('speaks of the story, not one sentence, when a whole run stopped', () => {
+    const progress: AudioJobProgress = {
+      kind: 'failed',
+      readingId: READING,
+      counts: COUNTS,
+      error: {
+        source: 'provider',
+        error: aiError('provider-unavailable', 'tts-synthesis', 'Service Unavailable'),
+      },
+      canRetry: true,
+    };
+
+    expect(stoppedRunFailure(progress)).toContain('while making audio for this story.');
+    expect(stoppedRunFailure(progress)).not.toContain('this sentence');
+  });
+
+  it('does not blame one sentence when the speech code could not load', () => {
+    const progress: AudioJobProgress = {
+      kind: 'failed',
+      readingId: READING,
+      counts: COUNTS,
+      error: {
+        source: 'provider',
+        error: aiError('unknown', 'tts-synthesis', 'The speech code could not be loaded.', {
+          detail: { issueCode: SPEECH_CODE_UNAVAILABLE },
+        }),
+      },
+      canRetry: true,
+    };
+
+    expect(stoppedRunFailure(progress)).not.toContain('this sentence');
+  });
 });
 
 describe('offerLabel', () => {

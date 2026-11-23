@@ -109,7 +109,7 @@ Code loaded on demand is tried once more at once when its import fails, and a la
 again after that. Some browsers refuse a module that failed once for the rest of the page's life,
 so speech code that still cannot load is reported to the app as a whole rather than as a fault of
 one sentence: the failure offers no retry, and the update banner offers a reload, in the reader
-too. A clip the provider was already paid for is kept as WAV when its encoder cannot load
+too. Only that load counts: a fault after the code loaded keeps its own kind. A clip the provider was already paid for is kept as WAV when its encoder cannot load
 (ADR 0070).
 
 State unions are handled exhaustively, with a helper that makes an unhandled case a type error.

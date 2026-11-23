@@ -120,8 +120,9 @@ export function stoppedRunFailure(progress: ReaderAudioProgress): string | null 
     return `Could not save: ${progress.error.error.message}`;
   }
   // The reader surface, because the settings table's action names a test this
-  // screen does not have. Try again is the control right beside this.
-  return aiFailureMessage(progress.error.error, 'reader');
+  // screen does not have. Try again is the control right beside this. The run
+  // scope, because one failed sentence stopped the whole run.
+  return aiFailureMessage(progress.error.error, 'reader', 'run');
 }
 
 /** What is still missing, when there is an offer to prepare it. */

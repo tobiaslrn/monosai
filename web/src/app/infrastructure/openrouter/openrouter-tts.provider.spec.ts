@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { fakeAudioDecoder, FakeCredentialRepository } from '../../../testing/ai-fakes';
 import { FAKE_OPENROUTER, FakeOpenRouterServer } from '../../../testing/openrouter-server';
 import { SPEECH_CODE_UNAVAILABLE, type TtsRequest } from '../../domain/ai/text-to-speech-provider';
+import type { SpeechEncoder } from '../../domain/audio/speech-encoder';
 import { restartingSpeechEncoder } from '../audio/audio.providers';
+import type { AudioDecoder } from './audio-decode';
 import { OpenRouterClient } from './openrouter-client';
 import { OpenRouterTextToSpeechProvider } from './openrouter-tts.provider';
 import { SpeechRefusals } from './speech-attempts';
@@ -42,14 +44,16 @@ describe('OpenRouterTextToSpeechProvider', () => {
     expect(result).toMatchObject({ error: { detail: { issueCode: SPEECH_CODE_UNAVAILABLE } } });
   });
 
-  it('classifies a chunk the synthesizer itself failed to load, such as the encoder', async () => {
+  it('reports a throw from a loaded synthesizer as itself, not as a load or the connection', async () => {
     const synthesizer = {
-      synthesize: () => Promise.reject(new TypeError('fetch')),
+      synthesize: () => Promise.reject(new TypeError('boom')),
     } as unknown as OpenRouterTtsSynthesizer;
 
     const result = await synthesize(() => Promise.resolve(synthesizer), false);
 
-    expect(result).toMatchObject({ ok: false, error: { code: 'offline' } });
+    expect(result).toMatchObject({ ok: false, error: { code: 'unknown' } });
+    expect(result.ok ? undefined : result.error.detail?.issueCode).toBeUndefined();
+    expect(result.ok ? '' : result.error.message).toContain('TypeError');
   });
 
   it('answers cancelled at once when stopped while the load is stalled', async () => {
@@ -84,7 +88,7 @@ describe('OpenRouterTextToSpeechProvider', () => {
   });
 });
 
-describe('OpenRouterTextToSpeechProvider when the encoder code cannot load', () => {
+describe('OpenRouterTextToSpeechProvider wired to its adapters', () => {
   const request: TtsRequest = {
     text: 'ねこがすきです。',
     modelId: FAKE_OPENROUTER.ttsModel,
@@ -95,31 +99,60 @@ describe('OpenRouterTextToSpeechProvider when the encoder code cannot load', () 
     speechInstructions: 'supported',
   };
 
-  it('keeps a paid PCM clip uncompressed rather than throwing it away', async () => {
-    const server = new FakeOpenRouterServer({ pcmOnlyRate: 24_000 });
+  function wired(options: {
+    readonly server: FakeOpenRouterServer;
+    readonly decoder?: AudioDecoder;
+    readonly encoder?: SpeechEncoder;
+  }) {
     const client = new OpenRouterClient({
-      fetchFn: server.fetch,
+      fetchFn: options.server.fetch,
       credentials: new FakeCredentialRepository(),
       isOnline: () => true,
       sleep: () => Promise.resolve(),
       random: () => 0.5,
       correlationId: () => 'test-correlation',
     });
-    const decoder = fakeAudioDecoder();
-    // Wired as the app wires it, over an encoder chunk that cannot be fetched.
-    const encoder = restartingSpeechEncoder(() =>
-      Promise.reject(new TypeError('Failed to fetch dynamically imported module')),
-    );
+    const decoder = options.decoder ?? fakeAudioDecoder();
+    // Wired as the app wires it, by default over an encoder chunk that cannot be fetched.
+    const encoder =
+      options.encoder ??
+      restartingSpeechEncoder(() =>
+        Promise.reject(new TypeError('Failed to fetch dynamically imported module')),
+      );
     const refusals = new SpeechRefusals();
-    const tts = new OpenRouterTextToSpeechProvider(
+    return new OpenRouterTextToSpeechProvider(
       new OpenRouterTtsTester(client, decoder, encoder, refusals),
       () => Promise.resolve(new OpenRouterTtsSynthesizer(client, decoder, encoder, refusals)),
       () => true,
     );
+  }
 
-    const result = await tts.synthesize(request, new AbortController().signal);
+  it('keeps a paid PCM clip uncompressed when the encoder code cannot load', async () => {
+    const server = new FakeOpenRouterServer({ pcmOnlyRate: 24_000 });
+
+    const result = await wired({ server }).synthesize(request, new AbortController().signal);
 
     expect(server.requests.at(-1)?.body['response_format']).toBe('pcm');
     expect(result).toMatchObject({ ok: true, value: { mimeType: 'audio/wav' } });
+  });
+
+  it('does not report a fault after the code loaded as code that could not load', async () => {
+    const server = new FakeOpenRouterServer();
+    const throwing: AudioDecoder = {
+      decode: () => {
+        throw new DOMException('Too many AudioContexts', 'NotSupportedError');
+      },
+    };
+
+    const result = await wired({ server, decoder: throwing }).synthesize(
+      request,
+      new AbortController().signal,
+    );
+
+    expect(server.callCount).toBe(1);
+    expect(result).toMatchObject({ ok: false, error: { code: 'unknown' } });
+    expect(result.ok ? undefined : result.error.detail?.issueCode).not.toBe(
+      SPEECH_CODE_UNAVAILABLE,
+    );
   });
 });

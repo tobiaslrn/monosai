@@ -132,6 +132,18 @@ describe('aiFailureMessage', () => {
     );
   });
 
+  it('names the story, not a sentence, for a run a single request stopped', () => {
+    const audio = aiError('timeout', 'tts-synthesis', 'x');
+    const grammar = aiError('timeout', 'grammar-review', 'x');
+
+    expect(aiFailureMessage(audio, 'reader', 'run')).toContain(
+      'while making audio for this story.',
+    );
+    expect(aiFailureMessage(audio, 'reader')).toContain('while reading this sentence aloud.');
+    // A task with no sentence in its wording reads the same either way.
+    expect(aiFailureMessage(grammar, 'reader', 'run')).toBe(aiFailureMessage(grammar, 'reader'));
+  });
+
   it('offers a reload, not a retry, for speech code that could not load', () => {
     const error = aiError('unknown', 'tts-synthesis', 'The speech code could not be loaded.', {
       detail: { issueCode: SPEECH_CODE_UNAVAILABLE },

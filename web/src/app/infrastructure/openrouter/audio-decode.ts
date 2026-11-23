@@ -21,14 +21,17 @@ export function createAudioDecoder(view: Window): AudioDecoder {
         return null;
       }
       const Constructor = candidate as AudioContextConstructor;
-      const context = new Constructor();
+      let context: InstanceType<AudioContextConstructor> | null = null;
       try {
+        // Inside the try: a browser can refuse a new context, for one, when
+        // too many are open, and this browser then cannot decode the clip.
+        context = new Constructor();
         const buffer = await context.decodeAudioData(bytes.slice(0));
         return { durationSeconds: buffer.duration };
       } catch {
         return null;
       } finally {
-        await context.close?.();
+        await context?.close?.();
       }
     },
   };
