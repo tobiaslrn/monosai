@@ -228,6 +228,27 @@ describe('PlaybackResumption', () => {
       expect(bed.store.failure()).toEqual({ kind: 'not-generated', position: 3 });
     });
 
+    it('stays paused on a clip that landed during a paused wait when the run stops', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await playToTheFrontier();
+      bed.media.handlers?.pause();
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+
+      bed.resumption.stopExpectingClips();
+
+      expect(bed.store.status()).toBe('paused');
+      expect(bed.store.failure()).toBeNull();
+
+      bed.media.handlers?.play();
+      await settle();
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.currentSentenceId()).toBe(sentences[2]!.id);
+      expect(bed.player.played).toHaveLength(3);
+      expect(bed.player.resumes).toBe(0);
+    });
+
     it('keeps waiting while the clip it waits for has not been stored', async () => {
       await playToTheFrontier();
 
@@ -456,6 +477,42 @@ describe('PlaybackResumption', () => {
 
       expect(bed.store.status()).toBe('playing');
       expect(bed.store.pendingSentenceId()).toBeNull();
+    });
+
+    it('stays paused on a clip appended during a paused wait when the run stops', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await bed.store.play();
+      bed.player.moveTo(1.5);
+      bed.player.stall();
+      bed.media.handlers?.pause();
+      await storeClips(bed, 3);
+      await bed.store.prepare(bed.reading);
+
+      bed.resumption.stopExpectingClips();
+
+      expect(bed.store.status()).toBe('paused');
+      expect(bed.store.failure()).toBeNull();
+
+      bed.media.handlers?.play();
+      await settle();
+      bed.player.unstall();
+
+      expect(bed.store.status()).toBe('playing');
+      expect(bed.store.pendingSentenceId()).toBeNull();
+      bed.player.moveTo(2.5);
+      expect(bed.store.currentSentenceId()).toBe(sentences[2]!.id);
+    });
+
+    it('lets go of a paused wait inside the track when its clip never came', async () => {
+      await bed.store.play();
+      bed.player.moveTo(1.5);
+      bed.player.stall();
+      bed.media.handlers?.pause();
+
+      bed.resumption.stopExpectingClips();
+
+      expect(bed.store.status()).toBe('ended');
+      expect(bed.store.failure()).toEqual({ kind: 'not-generated', position: 3 });
     });
 
     it('does not wait inside a track that is paused', async () => {

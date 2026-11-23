@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import type { SentenceId } from '../../domain/shared/ids';
 import { AUDIO_PLAYER } from './audio-player';
 import { ClipSequencer } from './clip-sequencer';
 import { PlaybackClipsStore } from './playback-clips.store';
@@ -216,10 +217,13 @@ export class PlaybackResumption {
   stopExpectingClips(): void {
     this.sequencer.seal();
     const status = this.transport.status();
+    const pending = this.transport.pendingSentenceId();
     // A wait the learner paused ends too, or Play would take up a wait for a
-    // clip that is no longer coming.
+    // clip that is no longer coming. One whose clip arrived while it was paused
+    // is left alone: that clip exists, and Play reads on into it.
     const waits =
-      status === 'waiting' || (status === 'paused' && this.transport.pendingSentenceId() !== null);
+      status === 'waiting' ||
+      (status === 'paused' && pending !== null && !this.pendingClipArrived(pending));
     if (!waits) {
       return;
     }
@@ -227,5 +231,18 @@ export class PlaybackResumption {
     this.transport.stopWaiting();
     this.transport.enter('ended');
     this.transport.fail({ kind: 'not-generated', position });
+  }
+
+  /**
+   * Whether the clip a wait is holding for can be played now.
+   *
+   * In a track, that is whether it was appended: a clip stored but not yet in
+   * the resource is not heard when the sealed resource plays out.
+   */
+  private pendingClipArrived(pending: SentenceId): boolean {
+    if (this.sequencer.hasTrack()) {
+      return this.sequencer.timeOf(this.clips.indexOf(pending)) !== null;
+    }
+    return this.clips.isAvailable(pending);
   }
 }

@@ -434,7 +434,8 @@ ordering that fills the front of the reading first — exists.
 A waiting session is live, so the media session reports it as playing, as it would a buffering
 one. The player card has no Pause while waiting ([ADR 0038](../decisions/0038-minimal-audio-player.md));
 a lock-screen or headset Pause holds the wait instead: the clip arriving starts nothing, and Play
-takes the wait up again or plays the clip that arrived in the meantime.
+takes the wait up again or plays the clip that arrived in the meantime. A run that stops ends a
+paused wait only when its clip never arrived; one whose clip arrived stays paused on it.
 
 The playback store reads the saved reader rate and applies it only to playback-paced
 rows, preserving pitch and reporting the actual rate to the media session. It
