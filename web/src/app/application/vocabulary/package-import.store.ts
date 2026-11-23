@@ -22,6 +22,7 @@ import { storageError, type StorageError } from '../../domain/storage/storage-er
 import type { DeckScope, SourceMapping } from '../../domain/vocabulary/source-mapping';
 import type { VocabularySourceCache } from '../../domain/vocabulary/vocabulary-source';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
+import type { BusyWork } from '../../domain/shared/busy-work';
 import { PACKAGE_PROVIDER_FACTORY } from '../shared/anki-tokens';
 import { CLOCK, ID_GENERATOR } from '../shared/repository-tokens';
 import { SourceMappingStore } from './source-mapping.store';
@@ -117,7 +118,7 @@ export class PackageImportStore {
     // busy until it reaches a terminal state or the page releases the store.
     const releaseBusy = this.busyRegistry.track(
       'package-import',
-      computed(() => (this.isActive() ? 'an Anki package is being imported' : null)),
+      computed<BusyWork | null>(() => (this.isActive() ? { kind: 'package-import' } : null)),
     );
     inject(DestroyRef).onDestroy(() => {
       this.dispose();

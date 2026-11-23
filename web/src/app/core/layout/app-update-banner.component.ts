@@ -3,6 +3,7 @@ import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { confirmLater } from '../../shared-ui/confirm-dialog/confirm-later';
 import { BannerComponent } from '../../shared-ui/banner/banner.component';
 import { ButtonDirective } from '../../shared-ui/button/button';
+import { busyWorkLine } from '../../shared-ui/busy-work/busy-work-copy';
 
 /**
  * A non-modal notice for the two states only a reload ends: a broken service worker and a lost
@@ -55,12 +56,12 @@ export class AppUpdateBannerComponent {
    * told what a reload discards and decides.
    */
   protected async reloadSuperseded(): Promise<void> {
-    const work = this.store.busyReason();
+    const work = this.store.busyWork();
     if (work !== null) {
       const confirmed = await confirmLater(this.injector, {
         title: 'Reload and lose unsaved work?',
         message: 'Reloading discards:',
-        details: [work.charAt(0).toUpperCase() + work.slice(1)],
+        details: [busyWorkLine(work)],
         confirmLabel: 'Reload',
         cancelLabel: 'Cancel',
         tone: 'danger',

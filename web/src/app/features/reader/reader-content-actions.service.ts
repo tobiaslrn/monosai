@@ -3,11 +3,12 @@ import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import type { LayerError } from '../../application/enrichment/layer-progress';
 import { ReadingTextAidMaintenanceStore } from '../../application/enrichment/reading-text-aid-maintenance.store';
-import { AppUpdateStore } from '../../application/pwa/app-update.store';
+import { DeferredReloadStore } from '../../application/pwa/deferred-reload.store';
 import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
 import { ReaderPreparationStore } from '../../application/reading/reader-preparation.store';
 import { ReaderStore } from '../../application/reading/reader.store';
 import { PREPARATION_ORDER, type PreparationLayer } from '../../domain/enrichment/preparation';
+import { waitingForWork } from '../../shared-ui/busy-work/busy-work-copy';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
 import { enrichmentCanRetry } from './enrichment-failure-copy';
 import { readerContentState } from './reader-content-state';
@@ -28,7 +29,6 @@ export class ReaderContentActionsService {
   private readonly preparation = inject(ReaderPreparationStore);
   private readonly textAidMaintenance = inject(ReadingTextAidMaintenanceStore);
   private readonly audio = inject(ReaderAudioStore);
-  private readonly update = inject(AppUpdateStore);
   private readonly dialog = inject(Dialog);
 
   readonly pending = computed(
@@ -60,29 +60,20 @@ export class ReaderContentActionsService {
   private pressed: { readonly layer: 'english' | 'grammar'; readonly error: LayerError } | null =
     null;
   private pressTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly reloadPressed = signal(false);
+  private readonly deferredReload = inject(DeferredReloadStore);
   /**
-   * The work a pressed Reload is waiting for, in the learner's words, or null
-   * when it is not waiting. A reload would destroy that work, so it waits, as
-   * every recovery reload does, and happens as soon as the work ends.
+   * What a pressed Reload is waiting for, in the learner's words, or null when
+   * it is not waiting. A reload would destroy that work, so it waits, as every
+   * recovery reload does, and happens as soon as the work ends.
    */
   readonly reloadWaitingFor = computed(() => {
-    const work = this.reloadPressed() ? this.update.busyReason() : null;
-    return work === null ? null : work.charAt(0).toUpperCase() + work.slice(1);
+    const work = this.deferredReload.waitingFor();
+    return work === null ? null : waitingForWork(work);
   });
 
   constructor() {
     const document = inject(DOCUMENT);
 
-    // A pressed Reload happens once nothing running would be lost. The page
-    // provides this service, so leaving the reader drops a reload still waiting.
-    effect(() => {
-      if (this.reloadPressed() && !this.update.isBusy()) {
-        untracked(() => {
-          this.update.reloadNow();
-        });
-      }
-    });
     const readingId = computed(() => this.store.reading()?.id ?? null);
 
     // A refusal that repeating cannot fix (a refused key) stays on its row until
@@ -156,8 +147,13 @@ export class ReaderContentActionsService {
     });
   }
 
+  /**
+   * The menu opened or closed. A Reload still waiting is dropped with the menu
+   * that offered it, so a reload never arrives later out of nowhere.
+   */
   menuShown(open: boolean): void {
     this.menuOpen.set(open);
+    if (!open) this.deferredReload.cancel();
   }
 
   /**
@@ -207,7 +203,7 @@ export class ReaderContentActionsService {
   reload(): void {
     const row = this.rows().find((entry) => entry.action === 'reload');
     if (row === undefined) return;
-    this.reloadPressed.set(true);
+    this.deferredReload.request();
   }
 
   async stop(layer: PreparationLayer): Promise<void> {

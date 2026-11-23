@@ -14,6 +14,7 @@ import type { GeneratedStory } from '../../domain/reading/reading';
 import { jobId, type JobId } from '../../domain/shared/ids';
 import { LibraryStore } from '../reading/library.store';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
+import type { BusyWork } from '../../domain/shared/busy-work';
 import { CLOCK, ID_GENERATOR } from '../shared/repository-tokens';
 import { GenerationStore } from './generation.store';
 import { StoryAssemblyService } from './story-assembly.service';
@@ -116,13 +117,9 @@ export class GenerationJobsStore {
     // clearing the key while a first still runs would tell a reload it is safe.
     const releaseBusy = this.busyRegistry.track(
       'generation',
-      computed(() => {
-        const running = this.runningCount();
-        return running === 0
-          ? null
-          : running === 1
-            ? 'a story is being generated'
-            : `${String(running)} stories are being generated`;
+      computed<BusyWork | null>(() => {
+        const count = this.runningCount();
+        return count === 0 ? null : { kind: 'story-generation', count };
       }),
     );
 

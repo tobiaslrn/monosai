@@ -108,8 +108,11 @@ worker is replaced on the next clip; it keeps no state, so nothing has to be pre
 Code loaded on demand is tried once more at once when its import fails, and a later request tries
 again after that. Some browsers refuse a module that failed once for the rest of the page's life,
 so speech code that still cannot load is a failure of the run, not of one sentence: it offers no
-retry, and Story options offers a reload beside the Audio row. Under the guard every recovery
-reload has, it waits until no work a reload would destroy is running. Only that load counts: a
+retry, and Story options offers a reload beside the Audio row. The voice test loads no code on
+demand, so it never meets this failure. Under the guard every recovery reload has, the reload waits
+until no work a reload would destroy is running: a story being written, an Anki import, an unsaved
+draft. A reload still waiting is dropped when Story options closes. The busy registry holds what
+that work is, not words for it, so each surface names it in its own form. Only that load counts: a
 fault after the code loaded keeps its own kind. A clip the provider was already paid for is kept as
 WAV when its encoder cannot load (ADR 0070). Every clip is decoded before it is kept: a clip that does not decode
 is that sentence's failure, asked for once more, while a browser with nothing to decode with fails

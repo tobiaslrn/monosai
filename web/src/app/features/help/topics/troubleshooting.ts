@@ -112,7 +112,7 @@ const FLAGGED: TroubleshootingEntry = {
 /** The app itself, not the request: part of Monosai's code didn't load in this tab. */
 const SPEECH_CODE: TroubleshootingEntry = {
   seen: [SPEECH_CODE_HEADING],
-  text: "Part of Monosai didn't load, often after an update or on an unsteady connection, and only a reload brings it back. In the reader, open **Story options** and select **Reload**. If a story is being written, Monosai reloads when it's finished. Audio that's already saved still plays.",
+  text: "Part of Monosai didn't load, often after an update or on an unsteady connection, and only a reload brings it back. In the reader, open **Story options** and select **Reload**. If a story is still being written, Monosai reloads once it's finished, unless you close **Story options** first. Audio that's already saved still plays.",
   code: 'ai/unknown',
 };
 

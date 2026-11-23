@@ -1,4 +1,5 @@
 import { Dialog } from '@angular/cdk/dialog';
+import type { BusyWork } from '../../domain/shared/busy-work';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Subject, of } from 'rxjs';
@@ -71,7 +72,7 @@ describe('AppUpdateBannerComponent', () => {
   it('disables the recovery reload and explains why while busy work is in progress', () => {
     const { fixture, checker, busy, element, reload } = render();
     checker.events.next({ kind: 'unrecoverable', reason: 'missing chunk' });
-    busy.track('generation', signal('a story is being generated'));
+    busy.track('generation', signal<BusyWork | null>({ kind: 'story-generation', count: 1 }));
     fixture.detectChanges();
 
     const button = element.querySelector('button');
@@ -125,7 +126,7 @@ describe('AppUpdateBannerComponent', () => {
 
     it('does not claim to wait for work, and asks before discarding unsaved work', async () => {
       const view = render(false);
-      view.busy.track('import-draft', signal('an import draft is unsaved'));
+      view.busy.track('import-draft', signal<BusyWork | null>({ kind: 'import-draft' }));
       lose(view);
 
       expect(view.element.textContent).not.toContain('Finishing current work');
@@ -142,7 +143,7 @@ describe('AppUpdateBannerComponent', () => {
 
     it('reloads once the learner confirms discarding the work', async () => {
       const view = render(true);
-      view.busy.track('import-draft', signal('an import draft is unsaved'));
+      view.busy.track('import-draft', signal<BusyWork | null>({ kind: 'import-draft' }));
       lose(view);
 
       reloadButton(view.element).click();

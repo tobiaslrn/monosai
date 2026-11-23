@@ -18,6 +18,7 @@ import type { ImportedReading } from '../../domain/reading/reading';
 import type { ReadingId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { AppBusyRegistry } from '../shared/app-busy.registry';
+import type { BusyWork } from '../../domain/shared/busy-work';
 import { TextImportService, type AnalysisProgress } from './text-import.service';
 
 /** What the workflow is waiting on, if anything. */
@@ -121,7 +122,7 @@ export class ImportStore {
     destroyRef.onDestroy(
       this.busyRegistry.track(
         'import-draft',
-        computed(() => (this.isDirty() ? 'an import draft is unsaved' : null)),
+        computed<BusyWork | null>(() => (this.isDirty() ? { kind: 'import-draft' } : null)),
       ),
     );
   }

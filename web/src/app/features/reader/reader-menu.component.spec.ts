@@ -140,16 +140,23 @@ describe('Story options', () => {
     });
     const reload = vi.fn();
     fixture.componentInstance.reloadRequested.subscribe(reload);
+    const live = element.querySelector('p[role="status"]')!;
+    expect(live.textContent.trim()).toBe('');
     press('Reload');
     expect(reload).toHaveBeenCalledOnce();
-    fixture.componentRef.setInput('reloadWaitingFor', 'A story is being generated');
+    fixture.componentRef.setInput('reloadWaitingFor', 'Waiting for story');
     fixture.detectChanges();
+    // The row keeps its one line, its place and its label: only busy.
     const row = element.querySelector<HTMLButtonElement>('[data-layer="audio"] button')!;
     expect(row.getAttribute('aria-busy')).toBe('true');
     expect(row.disabled).toBe(false);
-    expect(element.querySelector('[data-layer="audio"]')?.textContent).toContain(
-      'A story is being generated',
-    );
+    expect(row.closest('mn-settings-row')?.textContent.trim()).toBe('Reload');
+    expect(element.querySelector('[data-layer="audio"]')?.textContent).not.toContain('Waiting');
+    // The wait is the group's status line, in place of the failure, and is announced.
+    const lines = [...element.querySelectorAll('mn-status-line')];
+    expect(lines.map((line) => line.textContent.trim())).toEqual(['Waiting for story']);
+    expect(lines[0]?.getAttribute('data-tone')).toBe('info');
+    expect(live.textContent.trim()).toBe('Waiting for story');
     row.click();
     expect(reload).toHaveBeenCalledOnce();
   });

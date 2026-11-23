@@ -43,7 +43,7 @@ export class AppUpdateStore {
 
   readonly status = this.statusSignal.asReadonly();
   readonly isBusy = this.busy.isBusy;
-  readonly busyReason = this.busy.busyReason;
+  readonly busyWork = this.busy.busyWork;
 
   constructor() {
     this.checker.updates().subscribe((event) => {

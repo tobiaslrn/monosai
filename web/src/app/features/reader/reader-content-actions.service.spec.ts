@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LayerProgress } from '../../application/enrichment/layer-progress';
 import { ReadingTextAidMaintenanceStore } from '../../application/enrichment/reading-text-aid-maintenance.store';
 import { AppUpdateStore } from '../../application/pwa/app-update.store';
+import { DeferredReloadStore } from '../../application/pwa/deferred-reload.store';
+import type { BusyWork } from '../../domain/shared/busy-work';
 import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
 import { ReaderPreparationStore } from '../../application/reading/reader-preparation.store';
 import { ReaderStore } from '../../application/reading/reader.store';
@@ -62,7 +64,7 @@ function setup(initial: Progress = {}, shared?: WritableSignal<Progress>) {
   const progress = shared ?? signal<Progress>(initial);
   const current = signal(reading(ID));
   const readiness = signal<ConfigurationReadiness>('ready');
-  const busyReason = signal<string | null>(null);
+  const busyWork = signal<BusyWork | null>(null);
   const reloadNow = vi.fn();
   const acknowledge = vi.fn((id: ReadingId, layer: PreparationLayer) => {
     if (id === ID) progress.update((all) => ({ ...all, [layer]: IDLE }));
@@ -70,6 +72,7 @@ function setup(initial: Progress = {}, shared?: WritableSignal<Progress>) {
   TestBed.configureTestingModule({
     providers: [
       ReaderContentActionsService,
+      DeferredReloadStore,
       { provide: ReaderStore, useValue: { reading: current } },
       {
         provide: ReaderPreparationStore,
@@ -91,10 +94,10 @@ function setup(initial: Progress = {}, shared?: WritableSignal<Progress>) {
       {
         provide: AppUpdateStore,
         useValue: {
-          busyReason,
-          isBusy: () => busyReason() !== null,
+          busyWork,
+          isBusy: () => busyWork() !== null,
           reloadNow: () => {
-            if (busyReason() === null) reloadNow();
+            if (busyWork() === null) reloadNow();
           },
         },
       },
@@ -105,7 +108,7 @@ function setup(initial: Progress = {}, shared?: WritableSignal<Progress>) {
   const leave = () => {
     TestBed.resetTestingModule();
   };
-  return { service, progress, current, readiness, acknowledge, leave, busyReason, reloadNow };
+  return { service, progress, current, readiness, acknowledge, leave, busyWork, reloadNow };
 }
 
 /** The learner opens the panel, which draws every row. */
@@ -330,24 +333,42 @@ describe('reloading for speech code that could not load', () => {
 
   it('waits for running work, says which, and reloads when it ends', () => {
     const bed = setup({ audio: speechCodeLost() });
-    bed.busyReason.set('a story is being generated');
+    bed.busyWork.set({ kind: 'story-generation', count: 2 });
     bed.service.reload();
     TestBed.tick();
     expect(bed.reloadNow).not.toHaveBeenCalled();
-    expect(bed.service.reloadWaitingFor()).toBe('A story is being generated');
-    bed.busyReason.set(null);
+    expect(bed.service.reloadWaitingFor()).toBe('Waiting for 2 stories');
+    bed.busyWork.set({ kind: 'package-import' });
+    TestBed.tick();
+    expect(bed.service.reloadWaitingFor()).toBe('Waiting for Anki import');
+    bed.busyWork.set(null);
     TestBed.tick();
     expect(bed.reloadNow).toHaveBeenCalledTimes(1);
   });
 
-  it('drops a waiting reload when the reader is left', () => {
+  it('drops a waiting reload when Story options closes', () => {
     const bed = setup({ audio: speechCodeLost() });
-    bed.busyReason.set('a story is being generated');
+    bed.service.menuShown(true);
+    bed.busyWork.set({ kind: 'story-generation', count: 1 });
     bed.service.reload();
     TestBed.tick();
-    const { busyReason, reloadNow } = bed;
+    expect(bed.service.reloadWaitingFor()).toBe('Waiting for story');
+    bed.service.menuShown(false);
+    TestBed.tick();
+    expect(bed.service.reloadWaitingFor()).toBeNull();
+    bed.busyWork.set(null);
+    TestBed.tick();
+    expect(bed.reloadNow).not.toHaveBeenCalled();
+  });
+
+  it('drops a waiting reload when the reader is left', () => {
+    const bed = setup({ audio: speechCodeLost() });
+    bed.busyWork.set({ kind: 'story-generation', count: 1 });
+    bed.service.reload();
+    TestBed.tick();
+    const { busyWork, reloadNow } = bed;
     bed.leave();
-    busyReason.set(null);
+    busyWork.set(null);
     expect(reloadNow).not.toHaveBeenCalled();
   });
 

@@ -129,12 +129,12 @@ describe('GenerationJobsStore', () => {
     const first = jobs.start(5, PREMISE);
     jobs.start(5, PREMISE);
     TestBed.tick();
-    expect(busy.busyReason()).toBe('2 stories are being generated');
+    expect(busy.busyWork()).toEqual({ kind: 'story-generation', count: 2 });
 
     // Ending one must not clear a reason the other is still holding.
     jobs.dismiss(first!);
     TestBed.tick();
-    expect(busy.busyReason()).toBe('a story is being generated');
+    expect(busy.busyWork()).toEqual({ kind: 'story-generation', count: 1 });
 
     await settle();
     expect(busy.isBusy()).toBe(false);

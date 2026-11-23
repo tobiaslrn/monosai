@@ -1,3 +1,4 @@
+import { DeferredReloadStore } from '../../application/pwa/deferred-reload.store';
 import type { ElementRef, OnChanges, SimpleChanges, TemplateRef } from '@angular/core';
 import {
   ChangeDetectionStrategy,
@@ -98,6 +99,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
     ReaderWordPreviewService,
     ReaderSurfacesService,
     ReaderContentActionsService,
+    DeferredReloadStore,
   ],
   template: `
     <div

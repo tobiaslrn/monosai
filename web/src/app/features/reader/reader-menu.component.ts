@@ -132,7 +132,6 @@ import {
                   <mn-settings-row
                     action="action"
                     [label]="row.label"
-                    [summary]="reloadWaitingFor()"
                     [busy]="reloadWaitingFor() !== null"
                     (pressed)="reloadWaitingFor() !== null || reloadRequested.emit()"
                   />
@@ -161,7 +160,11 @@ import {
             </mn-status-line>
           }
           @for (row of rows(); track row.layer) {
-            @if (row.error) {
+            @if (row.action === 'reload' && reloadWaitingFor(); as waiting) {
+              <mn-status-line tone="info" data-testid="reload-waiting">{{
+                waiting
+              }}</mn-status-line>
+            } @else if (row.error) {
               <mn-status-line tone="danger">{{ row.error }}</mn-status-line>
             }
           }
@@ -170,6 +173,11 @@ import {
           }
         </mn-dialog-group>
       </mn-stack>
+      <!--
+        Present from the start, so the wait is announced when it begins: a
+        status line inserted with its words already in it is not.
+      -->
+      <p class="mn-visually-hidden" role="status" aria-live="polite">{{ reloadWaitingFor() }}</p>
     </mn-sheet-popover>
   `,
 })
@@ -179,7 +187,11 @@ export class ReaderMenuComponent {
   readonly savedLayers = input<readonly PreparationLayer[]>([]);
   readonly pending = input<PreparationLayer | null>(null);
   readonly error = input<string | null>(null);
-  /** The work a pressed Reload waits for, so it would lose nothing, as its summary. */
+  /**
+   * The work a pressed Reload waits for, so it would lose nothing. It replaces
+   * the failure in the group's status line while the Reload row stays as it
+   * was, busy.
+   */
   readonly reloadWaitingFor = input<string | null>(null);
   readonly prepare = output<PreparationLayer>();
   readonly opened = output<void>();

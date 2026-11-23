@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import type { BusyWork } from '../../domain/shared/busy-work';
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -95,7 +96,7 @@ describe('AppUpdateStore', () => {
 
   it('reloadNow refuses while busy work is in progress', () => {
     const instance = store();
-    busy.track('generation', signal('a story is being generated'));
+    busy.track('generation', signal<BusyWork | null>({ kind: 'story-generation', count: 1 }));
 
     instance.reloadNow();
 
@@ -165,7 +166,7 @@ describe('AppUpdateStore', () => {
 
     it('reloads even while work is unsaved, because saving can no longer succeed', () => {
       const instance = superseded();
-      busy.track('import-draft', signal('an import draft is unsaved'));
+      busy.track('import-draft', signal<BusyWork | null>({ kind: 'import-draft' }));
 
       instance.reloadSuperseded();
 
