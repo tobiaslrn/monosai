@@ -6,6 +6,7 @@ import {
 } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
+import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 
 /**
  * Provider-failure copy, shared by every screen that can see one.
@@ -64,6 +65,7 @@ export const NOTHING_CHANGED = 'Nothing was changed.';
 
 const TRY_AGAIN = 'Try again.';
 const TRY_AGAIN_SOON = 'Try again in a moment.';
+const OPEN_ANOTHER_BROWSER = 'Open Monosai in a current browser, such as Chrome.';
 
 /**
  * English for every provider failure.
@@ -206,6 +208,18 @@ function isSpeechCodeUnavailable(error: AiError): boolean {
   return error.detail?.issueCode === SPEECH_CODE_UNAVAILABLE;
 }
 
+/** The title of a browser with no audio decoder, shared with the troubleshooting guide. */
+export const NO_AUDIO_DECODER_HEADING = 'Audio cannot play in this browser';
+
+/**
+ * This browser has nothing to decode audio with, so no clip can be checked
+ * and none is kept. No voice, model or retry changes that; another browser
+ * does.
+ */
+function isNoAudioDecoder(error: AiError): boolean {
+  return error.detail?.issueCode === NO_AUDIO_DECODER;
+}
+
 export function aiErrorCopy(error: AiError): AiErrorCopy {
   // The output ran out of room, not the input. The shared row's "the request
   // was too large" would send the learner to shorten something that was fine.
@@ -225,6 +239,14 @@ export function aiErrorCopy(error: AiError): AiErrorCopy {
       heading: SPEECH_CODE_HEADING,
       primaryAction: '',
       retryAction: '',
+    };
+  }
+  if (isNoAudioDecoder(error)) {
+    return {
+      ...AI_ERROR_COPY.unknown,
+      heading: NO_AUDIO_DECODER_HEADING,
+      primaryAction: OPEN_ANOTHER_BROWSER,
+      retryAction: OPEN_ANOTHER_BROWSER,
     };
   }
   // The key worked and the model exists; its moderation check refused the text.
@@ -272,6 +294,9 @@ export function aiFailureMessage(
   // send them to look for a fault in it.
   if (isSpeechCodeUnavailable(error)) {
     return `${SPEECH_CODE_HEADING}.`;
+  }
+  if (isNoAudioDecoder(error)) {
+    return `${NO_AUDIO_DECODER_HEADING}. ${OPEN_ANOTHER_BROWSER}`;
   }
   const task =
     (scope === 'run' ? AI_RUN_TASK_COPY[error.task] : undefined) ?? aiTaskCopy(error.task);

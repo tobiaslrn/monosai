@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
+import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import { FAKE_OPENROUTER } from '../../../testing/openrouter-server';
 import { openRouterHarness, type HarnessOptions } from '../../../testing/ai-fakes';
 
@@ -200,6 +201,25 @@ describe('OpenRouterTtsSynthesizer', () => {
       const result = await run(options).tts.synthesize(REQUEST, new AbortController().signal);
       expect(result.ok).toBe(false);
     }
+  });
+
+  it('tells a clip that does not decode from a browser with nothing to decode it', async () => {
+    const undecodable = await run({ decodable: false }).tts.synthesize(
+      REQUEST,
+      new AbortController().signal,
+    );
+    expect(undecodable).toMatchObject({
+      ok: false,
+      error: { code: 'audio-invalid', detail: { issueCode: 'undecodable' } },
+    });
+
+    const harness = run({ decodable: 'no-decoder' });
+    const noDecoder = await harness.tts.synthesize(REQUEST, new AbortController().signal);
+    expect(noDecoder).toMatchObject({
+      ok: false,
+      error: { code: 'unknown', detail: { issueCode: NO_AUDIO_DECODER } },
+    });
+    expect(harness.server.callCount).toBe(1);
   });
 
   it('reports server and voice failures without a capability retry', async () => {

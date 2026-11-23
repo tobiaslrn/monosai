@@ -1,5 +1,6 @@
 import { isTruncatedReply } from '../../domain/ai/ai-error';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
+import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import { isRetryable } from '../../domain/storage/storage-error';
 import type { EnrichmentFailure } from '../../application/enrichment/sentence-enrichment.service';
 import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
@@ -62,6 +63,18 @@ export function enrichmentNeedsReload(failure: EnrichmentFailure | null): boolea
 }
 
 /**
+ * Whether the browser, not the request, is what failed: speech code it would
+ * not load, or no audio decoder. Repeating the request in this tab fails the
+ * same way, and pays for a clip again where one was made.
+ */
+export function enrichmentFailedInBrowser(failure: EnrichmentFailure | null): boolean {
+  return (
+    enrichmentNeedsReload(failure) ||
+    (failure?.source === 'provider' && failure.error.detail?.issueCode === NO_AUDIO_DECODER)
+  );
+}
+
+/**
  * Whether repeating the same request could plausibly succeed.
  *
  * Deliberately not the negation of {@link enrichmentNeedsSettings}: a model that
@@ -73,9 +86,7 @@ export function enrichmentNeedsReload(failure: EnrichmentFailure | null): boolea
 export function enrichmentCanRetry(failure: EnrichmentFailure | null): boolean {
   if (failure === null) return true;
   if (failure.source === 'storage') return isRetryable(failure.error);
-  // Speech code that could not load is refused again in this tab until it
-  // reloads, so a retry would only fail the same way.
-  if (enrichmentNeedsReload(failure)) return false;
+  if (enrichmentFailedInBrowser(failure)) return false;
   // A reply cut off at the token limit is about the size of one answer, not
   // about the model's input ceiling: the same aid asked for on its own has room
   // the interrupted batch did not, so retrying is a real offer.

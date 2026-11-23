@@ -1,4 +1,4 @@
-import type { AudioDecoder } from '../app/infrastructure/openrouter/audio-decode';
+import type { AudioDecoder, DecodeOutcome } from '../app/infrastructure/openrouter/audio-decode';
 import { OpenRouterEnricher } from '../app/infrastructure/openrouter/enrichment.adapter';
 import { OpenRouterClient } from '../app/infrastructure/openrouter/openrouter-client';
 import { OpenRouterTextProvider } from '../app/infrastructure/openrouter/openrouter-text-provider';
@@ -129,12 +129,23 @@ export function failingCredentials(code: 'unavailable' | 'corrupt-record'): Cred
  * Every decodable clip reports `durationSeconds`, which defaults to the length
  * of a plain reading of the TTS test phrase.
  */
-export function fakeAudioDecoder(decodable = true, durationSeconds = 1.5): AudioDecoder {
-  return { decode: () => Promise.resolve(decodable ? { durationSeconds } : null) };
+export function fakeAudioDecoder(
+  decodable: FakeDecodable = true,
+  durationSeconds = 1.5,
+): AudioDecoder {
+  return { decode: () => Promise.resolve(fakeOutcome(decodable, durationSeconds)) };
+}
+
+/** Whether a fake decoder decodes, finds the clip undecodable, or has nothing to decode with. */
+export type FakeDecodable = boolean | 'no-decoder';
+
+function fakeOutcome(decodable: FakeDecodable, durationSeconds: number): DecodeOutcome {
+  if (decodable === 'no-decoder') return { kind: 'no-decoder' };
+  return decodable ? { kind: 'decoded', durationSeconds } : { kind: 'undecodable' };
 }
 
 function sequencedAudioDecoder(
-  decodable: boolean,
+  decodable: FakeDecodable,
   clipSeconds: readonly number[] = [],
 ): AudioDecoder {
   let decoded = 0;
@@ -142,7 +153,7 @@ function sequencedAudioDecoder(
     decode: () => {
       const durationSeconds = clipSeconds[Math.min(decoded, clipSeconds.length - 1)] ?? 1.5;
       decoded += 1;
-      return Promise.resolve(decodable ? { durationSeconds } : null);
+      return Promise.resolve(fakeOutcome(decodable, durationSeconds));
     },
   };
 }
@@ -191,7 +202,7 @@ export interface OpenRouterHarness {
 export interface HarnessOptions extends FakeOpenRouterOptions {
   readonly credentials?: CredentialRepository;
   readonly online?: boolean;
-  readonly decodable?: boolean;
+  readonly decodable?: FakeDecodable;
   /**
    * How long each decoded clip plays, in decode order; the last entry repeats.
    * Lets a test stand in for a model that reads its direction aloud.

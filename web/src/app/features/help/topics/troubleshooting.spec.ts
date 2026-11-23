@@ -2,7 +2,11 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 import { ALL_ANKI_ERROR_CODES } from '../../../domain/anki/anki-error';
-import { AI_ERROR_COPY, SPEECH_CODE_HEADING } from '../../../shared-ui/ai-error/ai-error-copy';
+import {
+  AI_ERROR_COPY,
+  NO_AUDIO_DECODER_HEADING,
+  SPEECH_CODE_HEADING,
+} from '../../../shared-ui/ai-error/ai-error-copy';
 import { ANKI_ERROR_COPY } from '../../vocabulary/anki-error-copy';
 import { TroubleshootingPageComponent } from './troubleshooting-page.component';
 import { SILENT_PROBLEMS, TROUBLESHOOTING_GROUPS } from './troubleshooting';
@@ -29,6 +33,14 @@ describe('troubleshooting', () => {
       candidate.seen.includes(SPEECH_CODE_HEADING),
     );
     expect(entry?.text).toContain('**Story options** and select **Reload**');
+    expect(entry?.text).not.toMatch(/try again/iu);
+  });
+
+  it('sends a browser with no audio decoder to another browser, not a retry', () => {
+    const entry = group('ai').entries.find((candidate) =>
+      candidate.seen.includes(NO_AUDIO_DECODER_HEADING),
+    );
+    expect(entry?.text).toContain('Chrome');
     expect(entry?.text).not.toMatch(/try again/iu);
   });
 

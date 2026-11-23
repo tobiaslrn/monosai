@@ -4,6 +4,26 @@ export interface DecodedClip {
 }
 
 /**
+ * What one attempt to decode a clip found.
+ *
+ * `undecodable` is about the clip: these bytes do not decode, and another
+ * clip may. `no-decoder` is about the browser: it has nothing to decode with,
+ * so no clip will decode in this tab, and asking for another would only be
+ * paid for and thrown away.
+ */
+export type DecodeOutcome =
+  | ({ readonly kind: 'decoded' } & DecodedClip)
+  | { readonly kind: 'undecodable' }
+  | { readonly kind: 'no-decoder' };
+
+/**
+ * The issue code of a speech failure caused by a browser that cannot decode
+ * audio at all, shared by the adapter that reports it and the copy that tells
+ * the learner.
+ */
+export const NO_AUDIO_DECODER = 'no-audio-decoder';
+
+/**
  * Proves a clip is playable in this browser, not merely non-empty.
  *
  * A provider can return a well-formed file this browser cannot decode, and so
@@ -14,6 +34,5 @@ export interface DecodedClip {
  * one place that touches Web Audio stays replaceable.
  */
 export interface AudioDecoder {
-  /** The decoded clip, or `null` when this browser cannot decode it. */
-  decode(bytes: ArrayBuffer, mimeType: string): Promise<DecodedClip | null>;
+  decode(bytes: ArrayBuffer, mimeType: string): Promise<DecodeOutcome>;
 }

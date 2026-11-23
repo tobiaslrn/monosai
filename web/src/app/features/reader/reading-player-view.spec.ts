@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { AudioJobProgress } from '../../application/enrichment/audio-job.store';
 import { aiError } from '../../domain/ai/ai-error';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
+import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import { readingId } from '../../domain/shared/ids';
 import {
   announcement,
@@ -277,6 +278,26 @@ describe('auxAction', () => {
     expect(action?.title).not.toMatch(/reload/iu);
     expect(announcement(facts({ progress, ...PARTIAL }))).toContain('Speech could not load.');
     expect(announcement(facts({ progress, ...PARTIAL }))).not.toMatch(/reload/iu);
+  });
+
+  it('offers no retry when the browser has no audio decoder', () => {
+    const progress: AudioJobProgress = {
+      kind: 'failed',
+      readingId: READING,
+      counts: COUNTS,
+      error: {
+        source: 'provider',
+        error: aiError('unknown', 'tts-synthesis', 'This browser has no audio decoder.', {
+          detail: { issueCode: NO_AUDIO_DECODER },
+        }),
+      },
+      canRetry: true,
+    };
+
+    const action = auxAction(facts({ progress, ...PARTIAL }));
+
+    expect(action).toMatchObject({ kind: 'dismiss', label: 'Dismiss' });
+    expect(action?.title).toContain('Audio cannot play in this browser.');
   });
 
   it('retries a cancelled run, which has no reason not to be', () => {

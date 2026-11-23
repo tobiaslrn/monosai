@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALL_AI_ERROR_CODES, aiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
+import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import { storageError } from '../../domain/storage/storage-error';
 import { AI_TASK_COPY, aiErrorAction } from '../../shared-ui/ai-error/ai-error-copy';
 import {
@@ -89,6 +90,17 @@ describe('enrichmentCanRetry', () => {
       source: 'provider',
       error: aiError('unknown', 'tts-synthesis', 'The speech code could not be loaded.', {
         detail: { issueCode: SPEECH_CODE_UNAVAILABLE },
+      }),
+    } as const;
+
+    expect(enrichmentCanRetry(failure)).toBe(false);
+  });
+
+  it('offers no retry where the browser has no audio decoder, which no request changes', () => {
+    const failure = {
+      source: 'provider',
+      error: aiError('unknown', 'tts-synthesis', 'This browser has no audio decoder.', {
+        detail: { issueCode: NO_AUDIO_DECODER },
       }),
     } as const;
 

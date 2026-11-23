@@ -2,6 +2,7 @@ import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
+import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import type { ImportedReadingDraft } from '../../domain/reading/reading-repository';
 import type { TtsSettings } from '../../domain/settings/settings';
 import { fixedClock } from '../../domain/shared/clock';
@@ -448,6 +449,31 @@ describe('AudioJobStore', () => {
     const rows = await bed.db.assetJobs.toArray();
     expect(rows[0]!.state).toBe('failed');
     expect(rows[0]!.failedItems.map((item) => item.errorCode)).toEqual(['audio-invalid']);
+  });
+
+  it('stops the whole run without asking again when the browser has no audio decoder', async () => {
+    bed.provider.synthesizeWith = async () => {
+      await hold();
+      return err(
+        aiError('unknown', 'tts-synthesis', 'This browser has no audio decoder.', {
+          detail: { issueCode: NO_AUDIO_DECODER },
+        }),
+      );
+    };
+
+    await bed.store.start(bed.draft.reading.id);
+
+    // Every clip would be paid for and thrown away, so none is asked for twice.
+    const asked = bed.provider.synthesized.map((request) => request.text);
+    expect(new Set(asked).size).toBe(asked.length);
+    expect(await bed.db.audioAssets.count()).toBe(0);
+    const progress = bed.store.progress();
+    expect(progress.kind).toBe('failed');
+    if (progress.kind !== 'failed' || progress.error.source !== 'provider') {
+      return;
+    }
+    expect(progress.error.error.detail?.issueCode).toBe(NO_AUDIO_DECODER);
+    expect((await bed.db.assetJobs.toArray()).map((row) => row.state)).toEqual(['failed']);
   });
 
   /**

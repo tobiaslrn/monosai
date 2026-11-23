@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALL_AI_ERROR_CODES, aiError } from '../../domain/ai/ai-error';
 import { ALL_AI_TASKS } from '../../domain/ai/ai-task';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
+import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import {
   AI_ERROR_COPY,
   AI_TASK_COPY,
@@ -156,6 +157,23 @@ describe('aiFailureMessage', () => {
       // is one, so the words never send the learner to look for it.
       expect(aiFailureMessage(error, surface)).toBe('Speech could not load.');
       expect(aiFailureMessage(error, surface, 'run')).toBe('Speech could not load.');
+    }
+  });
+
+  it('sends a browser with no audio decoder to another browser, never a retry', () => {
+    for (const task of ['tts-synthesis', 'tts-test'] as const) {
+      const error = aiError('unknown', task, 'This browser has no audio decoder.', {
+        detail: { issueCode: NO_AUDIO_DECODER },
+      });
+      expect(aiErrorCopy(error).heading).toBe('Audio cannot play in this browser');
+      for (const surface of SURFACES) {
+        expect(aiErrorAction(error, surface)).toBe(
+          'Open Monosai in a current browser, such as Chrome.',
+        );
+        expect(aiFailureMessage(error, surface, 'run')).toBe(
+          'Audio cannot play in this browser. Open Monosai in a current browser, such as Chrome.',
+        );
+      }
     }
   });
 

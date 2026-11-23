@@ -3,6 +3,7 @@ import type { AnkiErrorCode } from '../../../domain/anki/anki-error';
 import {
   AI_ERROR_COPY,
   MODERATION_HEADING,
+  NO_AUDIO_DECODER_HEADING,
   SPEECH_CODE_HEADING,
 } from '../../../shared-ui/ai-error/ai-error-copy';
 import {
@@ -115,6 +116,13 @@ const SPEECH_CODE: TroubleshootingEntry = {
   code: 'ai/unknown',
 };
 
+/** The browser itself, not the clip: it has nothing to decode audio with. */
+const NO_AUDIO_DECODER: TroubleshootingEntry = {
+  seen: [NO_AUDIO_DECODER_HEADING],
+  text: "This browser has no way to check new audio, so Monosai can't save any. It stops after the first clip, which OpenRouter still charges for. Open Monosai in a current version of Chrome.",
+  code: 'ai/unknown',
+};
+
 /** Anki failures, most common first. */
 const ANKI_ENTRIES: readonly (readonly [AnkiErrorCode, string])[] = [
   [
@@ -218,6 +226,7 @@ export const TROUBLESHOOTING_GROUPS: readonly TroubleshootingGroup[] = [
       CUT_OFF,
       FLAGGED,
       SPEECH_CODE,
+      NO_AUDIO_DECODER,
     ],
   },
   {

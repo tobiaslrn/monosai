@@ -3,6 +3,7 @@ import type { AudioJobCounts } from '../../application/enrichment/audio-job.stor
 import type { LayerError } from '../../application/enrichment/layer-progress';
 import type { ReaderAudioProgress } from '../../application/reading/reader-audio.store';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
+import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import type { PlaybackRate } from '../../domain/settings/settings';
 import { formatCountOf } from '../../domain/shared/locale';
 import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
@@ -78,8 +79,9 @@ export function stoppedRunLine(
 
 /**
  * Why a retry is gone. A voice or model is only suggested for a failure one could
- * cure: a refused key, an empty account, a lost connection, a failed save and
- * speech code that will not load fail the same way under any voice.
+ * cure: a refused key, an empty account, a lost connection, a failed save,
+ * speech code that will not load and a browser with no audio decoder all fail
+ * the same way under any voice.
  */
 function exhaustedLine(error: LayerError): string {
   const anyVoiceFails =
@@ -87,7 +89,8 @@ function exhaustedLine(error: LayerError): string {
     error.error.code === 'authentication' ||
     error.error.code === 'credit-exhausted' ||
     error.error.code === 'offline' ||
-    error.error.detail?.issueCode === SPEECH_CODE_UNAVAILABLE;
+    error.error.detail?.issueCode === SPEECH_CODE_UNAVAILABLE ||
+    error.error.detail?.issueCode === NO_AUDIO_DECODER;
   return anyVoiceFails
     ? ' Trying again produced nothing, so it is no longer offered.'
     : ' Trying again produced nothing, so it is no longer offered: a different voice or model may read these sentences.';

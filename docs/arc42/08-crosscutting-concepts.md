@@ -109,9 +109,11 @@ Code loaded on demand is tried once more at once when its import fails, and a la
 again after that. Some browsers refuse a module that failed once for the rest of the page's life,
 so speech code that still cannot load is a failure of the run, not of one sentence: it offers no
 retry, and Story options offers a reload beside the Audio row. Under the guard every recovery
-reload has, it waits until no work a reload would destroy is running. Only that load counts: a fault after
-the code loaded keeps its own kind. A clip the provider was already paid for is kept as WAV when its
-encoder cannot load (ADR 0070).
+reload has, it waits until no work a reload would destroy is running. Only that load counts: a
+fault after the code loaded keeps its own kind. A clip the provider was already paid for is kept as
+WAV when its encoder cannot load (ADR 0070). Every clip is decoded before it is kept: a clip that does not decode
+is that sentence's failure, asked for once more, while a browser with nothing to decode with fails
+the run at once, since every further clip would be paid for and thrown away.
 
 State unions are handled exhaustively, with a helper that makes an unhandled case a type error.
 Adding a state breaks the compile rather than falling through a screen.

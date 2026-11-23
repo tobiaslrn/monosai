@@ -2,6 +2,7 @@ import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import type { AudioMimeType } from '../../domain/enrichment/records';
 import { err, ok, type Result } from '../../domain/shared/result';
+import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import type { AudioDecoder } from './audio-decode';
 import type { AudioResponse } from './openrouter-client';
 
@@ -145,7 +146,20 @@ export async function verifyAudio(
     );
   }
   const decoded = await decoder.decode(response.bytes, declaredMimeType);
-  if (decoded === null) {
+  if (decoded.kind === 'no-decoder') {
+    // Not this clip's fault and not the model's: no clip decodes here, so the
+    // run stops rather than paying for more clips it would throw away.
+    return err(
+      aiError('unknown', context.task, 'This browser has no audio decoder.', {
+        detail: {
+          modelId: context.modelId,
+          voiceId: context.voiceId,
+          issueCode: NO_AUDIO_DECODER,
+        },
+      }),
+    );
+  }
+  if (decoded.kind === 'undecodable') {
     const fromEncoder = context.origin === 'encoder';
     return err(
       aiError(
