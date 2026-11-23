@@ -96,8 +96,8 @@ export function classifyTokens(
       continue;
     }
 
-    // A kana spelling that only sounds like a reviewed word is weaker evidence
-    // than grammar the baseline already names.
+    // A word that only reads like a reviewed word is weaker evidence than
+    // grammar the baseline already names.
     const normalized = context.vocabulary.findNormalized(token);
     if (
       normalized !== null &&
