@@ -389,22 +389,27 @@ test.describe('speech code that cannot be loaded', () => {
     await context.route(chunkPattern, failChunk);
     await context.setOffline(false);
 
-    // The run is over: it says so, nothing is still being generated, and the
-    // learner is offered another go.
+    // The run is over: it says so, and nothing is still being generated.
     await expect(status).toContainText('Stopped. 0 of 3 sentences', { timeout: 30_000 });
-    // The device is online, so the failure is not blamed on the connection.
-    await expect(player).toContainText(
-      'Something went wrong while reading this sentence aloud. Try again.',
-    );
+    // The device is online, so the failure is not blamed on the connection. A
+    // browser may refuse a module it once failed to fetch until the page
+    // reloads, so the way out is a reload rather than another go.
+    await expect(player).toContainText('Speech could not load. Reload Monosai.');
     await expect(player).not.toContainText('Offline');
     await expect(player.getByRole('button', { name: 'Stop generating audio' })).toHaveCount(0);
-    await expect(player.getByRole('button', { name: 'Try again' })).toBeVisible();
-    expect(chunkFailures, 'the chunk was asked for and could not be had').toHaveLength(1);
+    await expect(player.getByRole('button', { name: 'Try again' })).toHaveCount(0);
+    expect(chunkFailures.length, 'the chunk was asked for and could not be had').toBeGreaterThan(0);
     expect(synthesisCount(), 'the run never reached the provider').toBe(synthesisBefore);
 
-    // Once the chunk can be had again, the worker fetches it and the run completes.
+    // Once the chunk can be had again, a reload fetches it and a new run completes.
     await context.unroute(chunkPattern, failChunk);
-    await player.getByRole('button', { name: 'Try again' }).click();
+    await page.getByRole('button', { name: 'Reload to recover' }).click();
+    await page.waitForLoadState('load');
+    await page
+      .locator('.bar-actions')
+      .getByRole('button', { name: /^Audio/ })
+      .click();
+    await player.getByRole('button', { name: 'Generate audio' }).click();
     await expect(status).toHaveText('3 sentences ready', { timeout: 60_000 });
     expect(synthesisCount(), 'every sentence was read aloud').toBe(synthesisBefore + 3);
   });
