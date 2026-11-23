@@ -591,6 +591,39 @@ describe('ReaderStore', () => {
       expect(category(reader)).toBe('anki-exact');
       expect(classifier.calls).toBe(settled);
     });
+
+    it('re-derives the mounted window when a far move started after a revision change is abandoned', async () => {
+      const rows = repository.add(buildReading({ id: 'r1', paragraphCount: 40 }));
+      const classifier = TestBed.inject(
+        VocabularyClassificationService,
+      ) as unknown as StubVocabularyClassificationService;
+      classifier.status = classifiedAs(rows, missing, 'a');
+      const reader = store();
+      await reader.open(rows.reading.id);
+      expect(category(reader)).toBe('not-in-snapshot');
+      const far = rows.paragraphs.find((paragraph) => paragraph.position === 30)!;
+      const sentence = rows.sentences.find((candidate) => candidate.paragraphId === far.id)!;
+
+      // The learner adds a word; before the reader reacts, audio asks for a far
+      // sentence, and the learner scrolls away while that part loads.
+      classifier.status = classifiedAs(rows, known, 'a');
+      activeSnapshot.set({ revision: 'rev-2' });
+      let wanted = true;
+      classifier.hold();
+      const moving = reader.moveToSentence(sentence.id, () => wanted);
+      await vi.waitFor(() => {
+        expect(classifier.pending).toBe(1);
+      });
+      TestBed.tick();
+      wanted = false;
+      classifier.release();
+      expect(await moving).toBe(false);
+      TestBed.tick();
+
+      await vi.waitFor(() => {
+        expect(category(reader)).toBe('anki-exact');
+      });
+    });
   });
 
   describe('preparation targets', () => {

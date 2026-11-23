@@ -348,7 +348,7 @@ export class ReaderStore {
       sentenceId: sentence.id,
       tokens: tokensBySentence.get(sentence.id) ?? [],
     }));
-    this.classifiedRevision = this.history.active()?.revision ?? null;
+    const revision = this.history.active()?.revision ?? null;
     const vocabulary = await this.classification.classify(forClassification);
     if (!current()) return false;
     if (vocabulary.ok) {
@@ -362,6 +362,9 @@ export class ReaderStore {
       this.vocabularySignal.set(VOCABULARY_NOT_CONFIGURED);
       this.languageErrorSignal.set(vocabulary.error);
     }
+    // Recorded only once applied: a load abandoned above leaves the mounted
+    // window as it was, still to be classified against the newer revision.
+    this.classifiedRevision = revision;
 
     this.windowSignal.set(window);
     this.paragraphsSignal.set(
