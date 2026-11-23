@@ -427,6 +427,47 @@ describe('ClipSequencer', () => {
   });
 
   /**
+   * One resource holds one configuration and one fallback kind (ADR 0072), so
+   * a voice change never sounds part-way through a resource.
+   */
+  describe('a run across clips from different settings', () => {
+    beforeEach(async () => {
+      await storeClipsAt(bed, [2, 3]);
+      bed.settings.update((settings) => ({ ...settings, voiceId: 'voice-b' }));
+      await storeClipsAt(bed, [0, 1]);
+      await bed.store.prepare(bed.reading);
+      bed.player.sequenceSupported = true;
+    });
+
+    it('ends the first resource where current clips give way to older-settings fallbacks', async () => {
+      const sentences = orderedSentences(bed.draft);
+      expect(bed.clips.clipFor(sentences[2]!.id)?.stale).toBe(true);
+      expect(bed.clips.clipFor(sentences[0]!.id)?.stale).toBe(false);
+
+      await bed.store.play();
+
+      expect(bed.player.sequences[0]).toHaveLength(2);
+    });
+
+    it('seals rather than appending a fallback to a resource of current clips', async () => {
+      await bed.store.play();
+
+      await bed.store.prepare(bed.reading);
+
+      expect(bed.player.appended[0]).toHaveLength(0);
+      expect(bed.player.closes).toBe(1);
+    });
+
+    it('starts the fallbacks as a resource of their own', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await bed.store.playFrom(sentences[2]!.id);
+
+      expect(bed.player.sequences[0]).toHaveLength(2);
+      expect(bed.store.currentSentenceId()).toBe(sentences[2]!.id);
+    });
+  });
+
+  /**
    * A reading started while it is still being generated used to be sentence by
    * sentence for the whole session, and advancing between two sentences is
    * JavaScript — an event handler, a read from storage, a new source — which a

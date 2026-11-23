@@ -14,6 +14,32 @@ export interface PlayableClip {
   readonly cacheKey: string;
   readonly stale: boolean;
   readonly pace: ClipPace;
+  /**
+   * The settings that made the clip: its model, voice and options. Two clips
+   * with the same value can share one continuous resource (ADR 0072).
+   */
+  readonly configuration: string;
+}
+
+/** The settings a stored clip was made with, as one comparable value. */
+function configurationOf(summary: {
+  readonly modelId: string;
+  readonly voiceId: string;
+  readonly optionsFingerprint: string;
+}): string {
+  return JSON.stringify([summary.modelId, summary.voiceId, summary.optionsFingerprint]);
+}
+
+/**
+ * Whether two clips can sit in one continuous resource: one pace, one
+ * configuration and one fallback kind throughout a run (ADR 0072).
+ */
+export function sameRunKind(left: PlayableClip, right: PlayableClip): boolean {
+  return (
+    left.pace === right.pace &&
+    left.stale === right.stale &&
+    left.configuration === right.configuration
+  );
 }
 
 /**
@@ -220,6 +246,7 @@ export class PlaybackClipsStore {
           cacheKey: current.cacheKey,
           stale: false,
           pace: current.pace === 'playback' ? 'playback' : 'baked',
+          configuration: configurationOf(current),
         });
         continue;
       }
@@ -229,6 +256,7 @@ export class PlaybackClipsStore {
           cacheKey: fallback.cacheKey,
           stale: true,
           pace: fallback.pace === 'playback' ? 'playback' : 'baked',
+          configuration: configurationOf(fallback),
         });
       }
     }
@@ -335,7 +363,8 @@ export class PlaybackClipsStore {
 
   /**
    * The sentences from one index on that have a clip, stopping at the first
-   * that does not or whose pace differs from the first one's.
+   * that does not, or whose pace, configuration or fallback kind differs from
+   * the first one's.
    */
   contiguousRunFrom(startIndex: number): readonly SentenceRef[] {
     const refs = this.refsSignal();
@@ -349,7 +378,7 @@ export class PlaybackClipsStore {
     }
     for (const ref of refs.slice(startIndex)) {
       const clip = playable.get(ref.id);
-      if (!available.has(ref.id) || clip?.pace !== first.pace) {
+      if (!available.has(ref.id) || clip === undefined || !sameRunKind(clip, first)) {
         break;
       }
       run.push(ref);

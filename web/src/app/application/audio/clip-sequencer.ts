@@ -4,7 +4,12 @@ import { ENRICHMENT_REPOSITORY } from '../shared/repository-tokens';
 import { AUDIO_PLAYER, type AudioSequenceClip } from './audio-player';
 import { ContinuousTrack } from './continuous-track';
 import { MEDIA_SESSION } from './media-session';
-import { PlaybackClipsStore, type ClipPace } from './playback-clips.store';
+import {
+  PlaybackClipsStore,
+  sameRunKind,
+  type ClipPace,
+  type PlayableClip,
+} from './playback-clips.store';
 import { PlaybackTransportStore, type PlaybackFailure } from './playback-transport.store';
 
 /** Audio containers that can be appended to one native continuous resource. */
@@ -525,10 +530,17 @@ export class ClipSequencer {
       return;
     }
 
+    // The resource keeps the pace, configuration and fallback kind it was
+    // built with (ADR 0072). The keys check above makes its first sentence's
+    // clip the one it was built from.
+    const baseRef = refs[track.baseIndex];
+    const base = baseRef === undefined ? undefined : playable.get(baseRef.id);
+    const joins = (clip: PlayableClip | undefined): clip is PlayableClip =>
+      clip?.pace === track.pace && (base === undefined || sameRunKind(clip, base));
     const pending: { readonly cacheKey: string }[] = [];
     for (const ref of refs.slice(track.lastIndex() + 1)) {
       const clip = playable.get(ref.id);
-      if (clip?.pace !== track.pace || !this.clips.isAvailable(ref.id)) {
+      if (!joins(clip) || !this.clips.isAvailable(ref.id)) {
         break;
       }
       pending.push({ cacheKey: clip.cacheKey });
@@ -536,7 +548,7 @@ export class ClipSequencer {
     if (pending.length === 0) {
       const upcoming = refs[track.lastIndex() + 1];
       const next = upcoming === undefined ? undefined : playable.get(upcoming.id);
-      if (next !== undefined && next.pace !== track.pace) {
+      if (next !== undefined && !joins(next)) {
         this.seal();
       }
       return;

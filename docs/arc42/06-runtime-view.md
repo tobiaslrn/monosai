@@ -435,6 +435,8 @@ The playback store reads the saved reader rate and applies it only to playback-p
 rows, preserving pitch and reporting the actual rate to the media session. It
 seals a continuous resource at a pace boundary and continues with the next
 playable run, so one media element never changes rate partway through a resource.
+A change of configuration or fallback kind ends a run the same way
+([ADR 0072](../decisions/0072-older-clips-play-until-regenerated.md)).
 The rate button changes this preference immediately; changing it never starts an
 AI request. The TTS request carries the selected named pace through one of two
 channels: a description in the `instructions` field, or top-level best-effort
