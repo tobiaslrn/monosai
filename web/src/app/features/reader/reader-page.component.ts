@@ -155,6 +155,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
                   [savedLayers]="actions.savedTextLayers()"
                   [pending]="actions.pending()"
                   [error]="actions.error()"
+                  [reloadWaitingFor]="actions.reloadWaitingFor()"
                   (prepare)="actions.prepare($event)"
                   (opened)="popover.close()"
                   (shown)="actions.menuShown($event)"
@@ -162,6 +163,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
                   (stopRequested)="actions.stop($event)"
                   (deleteAudioRequested)="actions.confirmClearAudio()"
                   (clearAidRequested)="actions.confirmClearTextAid($event)"
+                  (reloadRequested)="actions.reload()"
                 />
               }
             </div>

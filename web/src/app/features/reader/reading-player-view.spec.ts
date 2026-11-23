@@ -272,7 +272,11 @@ describe('auxAction', () => {
     const action = auxAction(facts({ progress, ...PARTIAL }));
 
     expect(action).toMatchObject({ kind: 'dismiss', label: 'Dismiss' });
-    expect(action?.title).toContain('Speech could not load. Reload Monosai.');
+    expect(action?.title).toContain('Speech could not load.');
+    // The card has no reload, so neither its tooltip nor its announcement asks for one.
+    expect(action?.title).not.toMatch(/reload/iu);
+    expect(announcement(facts({ progress, ...PARTIAL }))).toContain('Speech could not load.');
+    expect(announcement(facts({ progress, ...PARTIAL }))).not.toMatch(/reload/iu);
   });
 
   it('retries a cancelled run, which has no reason not to be', () => {

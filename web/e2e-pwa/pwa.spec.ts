@@ -394,7 +394,7 @@ test.describe('speech code that cannot be loaded', () => {
     // The device is online, so the failure is not blamed on the connection. A
     // browser may refuse a module it once failed to fetch until the page
     // reloads, so the way out is a reload rather than another go.
-    await expect(player).toContainText('Speech could not load. Reload Monosai.');
+    await expect(player).toContainText('Speech could not load.');
     await expect(player).not.toContainText('Offline');
     await expect(player.getByRole('button', { name: 'Stop generating audio' })).toHaveCount(0);
     await expect(player.getByRole('button', { name: 'Try again' })).toHaveCount(0);
@@ -403,7 +403,11 @@ test.describe('speech code that cannot be loaded', () => {
 
     // Once the chunk can be had again, a reload fetches it and a new run completes.
     await context.unroute(chunkPattern, failChunk);
-    await page.getByRole('button', { name: 'Reload to recover' }).click();
+    await page.getByRole('button', { name: 'Story options' }).click();
+    await page
+      .getByRole('dialog', { name: 'Story options' })
+      .getByRole('button', { name: 'Reload' })
+      .click();
     await page.waitForLoadState('load');
     await page
       .locator('.bar-actions')

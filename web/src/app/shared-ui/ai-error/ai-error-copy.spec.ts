@@ -144,7 +144,7 @@ describe('aiFailureMessage', () => {
     expect(aiFailureMessage(grammar, 'reader', 'run')).toBe(aiFailureMessage(grammar, 'reader'));
   });
 
-  it('offers a reload, not a retry, for speech code that could not load', () => {
+  it('names no retry or reload for speech code that could not load', () => {
     const error = aiError('unknown', 'tts-synthesis', 'The speech code could not be loaded.', {
       detail: { issueCode: SPEECH_CODE_UNAVAILABLE },
     });
@@ -152,7 +152,10 @@ describe('aiFailureMessage', () => {
     for (const surface of SURFACES) {
       // About the tab, not any sentence: no task clause sends the learner to
       // look for a fault in the text.
-      expect(aiFailureMessage(error, surface)).toBe('Speech could not load. Reload Monosai.');
+      // The one step that works is a reload, offered as a control where there
+      // is one, so the words never send the learner to look for it.
+      expect(aiFailureMessage(error, surface)).toBe('Speech could not load.');
+      expect(aiFailureMessage(error, surface, 'run')).toBe('Speech could not load.');
     }
   });
 

@@ -217,16 +217,18 @@ export function aiErrorCopy(error: AiError): AiErrorCopy {
       retryAction: 'Try again, or choose a different model.',
     };
   }
-  // The key worked and the model exists; its moderation check refused the text.
-  // A different model is still the remedy, so only the title differs.
+  // No step is named: a reload is the one that works, and the surface that
+  // can reload offers it as a control beside the message.
   if (isSpeechCodeUnavailable(error)) {
     return {
       ...AI_ERROR_COPY.unknown,
       heading: SPEECH_CODE_HEADING,
-      primaryAction: 'Reload Monosai.',
-      retryAction: 'Reload Monosai.',
+      primaryAction: '',
+      retryAction: '',
     };
   }
+  // The key worked and the model exists; its moderation check refused the text.
+  // A different model is still the remedy, so only the title differs.
   if (isModerationRefusal(error)) {
     return { ...AI_ERROR_COPY['capability-unsupported'], heading: MODERATION_HEADING };
   }
@@ -269,7 +271,7 @@ export function aiFailureMessage(
   // Nothing the learner was doing caused it, so naming the task would only
   // send them to look for a fault in it.
   if (isSpeechCodeUnavailable(error)) {
-    return `${aiErrorCopy(error).heading}. ${aiErrorAction(error, surface)}`;
+    return `${SPEECH_CODE_HEADING}.`;
   }
   const task =
     (scope === 'run' ? AI_RUN_TASK_COPY[error.task] : undefined) ?? aiTaskCopy(error.task);

@@ -51,6 +51,17 @@ export function enrichmentNeedsSettings(failure: EnrichmentFailure | null): bool
 }
 
 /**
+ * Whether only reloading Monosai can end the failure: its speech code did not
+ * load, and some browsers refuse a module that failed once until the page
+ * reloads.
+ */
+export function enrichmentNeedsReload(failure: EnrichmentFailure | null): boolean {
+  return (
+    failure?.source === 'provider' && failure.error.detail?.issueCode === SPEECH_CODE_UNAVAILABLE
+  );
+}
+
+/**
  * Whether repeating the same request could plausibly succeed.
  *
  * Deliberately not the negation of {@link enrichmentNeedsSettings}: a model that
@@ -64,7 +75,7 @@ export function enrichmentCanRetry(failure: EnrichmentFailure | null): boolean {
   if (failure.source === 'storage') return isRetryable(failure.error);
   // Speech code that could not load is refused again in this tab until it
   // reloads, so a retry would only fail the same way.
-  if (failure.error.detail?.issueCode === SPEECH_CODE_UNAVAILABLE) return false;
+  if (enrichmentNeedsReload(failure)) return false;
   // A reply cut off at the token limit is about the size of one answer, not
   // about the model's input ceiling: the same aid asked for on its own has room
   // the interrupted batch did not, so retrying is a real offer.

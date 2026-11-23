@@ -4,13 +4,17 @@ import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { Reading } from '../../domain/reading/reading';
 import { formatCount } from '../../domain/shared/locale';
 import { aiFailureMessage } from '../../shared-ui/ai-error/ai-error-copy';
-import { enrichmentCanRetry, enrichmentNeedsSettings } from './enrichment-failure-copy';
+import {
+  enrichmentCanRetry,
+  enrichmentNeedsReload,
+  enrichmentNeedsSettings,
+} from './enrichment-failure-copy';
 
 export interface ReaderContentState {
   readonly layer: PreparationLayer;
   readonly name: string;
   readonly status: string;
-  readonly action: 'prepare' | 'cancel' | 'settings' | 'credit' | null;
+  readonly action: 'prepare' | 'cancel' | 'settings' | 'credit' | 'reload' | null;
   readonly label: string;
   readonly disabled: boolean;
   readonly busy: boolean;
@@ -51,7 +55,16 @@ export function readerContentState(
   // retrying and voice setup all live on the card that plays it, and a second
   // copy of them in this list was the same run described twice.
   // What went wrong stays: it is a report, and the transport carries the retry.
-  return layer === 'audio' ? { ...state, action: null, label: '', disabled: false } : state;
+  // The one exception is speech code that could not load: only a reload ends
+  // it, and the transport has no room for one, so it sits beside the report.
+  if (layer !== 'audio') return state;
+  const reload = progress.kind === 'failed' && enrichmentNeedsReload(progress.error);
+  return {
+    ...state,
+    action: reload ? 'reload' : null,
+    label: reload ? 'Reload' : '',
+    disabled: false,
+  };
 }
 
 function layerState(

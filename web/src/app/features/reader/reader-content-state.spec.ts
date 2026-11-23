@@ -3,6 +3,7 @@ import type { Reading } from '../../domain/reading/reading';
 import { readingId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
 import { aiError } from '../../domain/ai/ai-error';
+import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import { readerContentState } from './reader-content-state';
 
 const ID = readingId('018f0000-0000-7000-8000-000000000001');
@@ -286,6 +287,51 @@ describe('reader content state', () => {
       expect(state.error).not.toContain('this sentence');
     },
   );
+
+  it('offers a labelled Reload beside audio whose speech code could not load', () => {
+    const state = readerContentState(
+      READING,
+      'audio',
+      {
+        kind: 'failed',
+        readingId: ID,
+        counts: COUNTS,
+        canRetry: false,
+        error: {
+          source: 'provider',
+          error: aiError('unknown', 'tts-synthesis', 'Module failed', {
+            detail: { issueCode: SPEECH_CODE_UNAVAILABLE },
+          }),
+        },
+      },
+      'ready',
+      true,
+    );
+
+    expect(state).toMatchObject({ action: 'reload', label: 'Reload', disabled: false });
+    expect(state.error).toBe('Speech could not load.');
+  });
+
+  it('offers no action beside any other audio failure', () => {
+    const state = readerContentState(
+      READING,
+      'audio',
+      {
+        kind: 'failed',
+        readingId: ID,
+        counts: COUNTS,
+        canRetry: true,
+        error: {
+          source: 'provider',
+          error: aiError('provider-unavailable', 'tts-synthesis', 'Down'),
+        },
+      },
+      'ready',
+      true,
+    );
+
+    expect(state.action).toBeNull();
+  });
 
   describe('a failed run the provider refused', () => {
     const failed = (code: Parameters<typeof aiError>[0]) =>

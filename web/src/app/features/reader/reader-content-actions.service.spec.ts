@@ -4,11 +4,13 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LayerProgress } from '../../application/enrichment/layer-progress';
 import { ReadingTextAidMaintenanceStore } from '../../application/enrichment/reading-text-aid-maintenance.store';
+import { AppUpdateStore } from '../../application/pwa/app-update.store';
 import { ReaderAudioStore } from '../../application/reading/reader-audio.store';
 import { ReaderPreparationStore } from '../../application/reading/reader-preparation.store';
 import { ReaderStore } from '../../application/reading/reader.store';
 import type { ConfigurationReadiness } from '../../domain/ai/configuration-readiness';
 import { aiError } from '../../domain/ai/ai-error';
+import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { Reading } from '../../domain/reading/reading';
 import { readingId, type ReadingId } from '../../domain/shared/ids';
@@ -39,12 +41,29 @@ function refused(code: 'authentication' | 'credit-exhausted' | 'rate-limited'): 
   };
 }
 
+function speechCodeLost(): LayerProgress {
+  return {
+    kind: 'failed',
+    readingId: ID,
+    counts: COUNTS,
+    canRetry: false,
+    error: {
+      source: 'provider',
+      error: aiError('unknown', 'tts-synthesis', 'Module failed', {
+        detail: { issueCode: SPEECH_CODE_UNAVAILABLE },
+      }),
+    },
+  };
+}
+
 type Progress = Partial<Record<PreparationLayer, LayerProgress>>;
 
 function setup(initial: Progress = {}, shared?: WritableSignal<Progress>) {
   const progress = shared ?? signal<Progress>(initial);
   const current = signal(reading(ID));
   const readiness = signal<ConfigurationReadiness>('ready');
+  const busyReason = signal<string | null>(null);
+  const reloadNow = vi.fn();
   const acknowledge = vi.fn((id: ReadingId, layer: PreparationLayer) => {
     if (id === ID) progress.update((all) => ({ ...all, [layer]: IDLE }));
   });
@@ -69,6 +88,16 @@ function setup(initial: Progress = {}, shared?: WritableSignal<Progress>) {
       },
       { provide: ReaderAudioStore, useValue: {} },
       { provide: Dialog, useValue: {} },
+      {
+        provide: AppUpdateStore,
+        useValue: {
+          busyReason,
+          isBusy: () => busyReason() !== null,
+          reloadNow: () => {
+            if (busyReason() === null) reloadNow();
+          },
+        },
+      },
     ],
   });
   const service = TestBed.inject(ReaderContentActionsService);
@@ -76,7 +105,7 @@ function setup(initial: Progress = {}, shared?: WritableSignal<Progress>) {
   const leave = () => {
     TestBed.resetTestingModule();
   };
-  return { service, progress, current, readiness, acknowledge, leave };
+  return { service, progress, current, readiness, acknowledge, leave, busyReason, reloadNow };
 }
 
 /** The learner opens the panel, which draws every row. */
@@ -287,5 +316,45 @@ describe('refusals the reader forgets', () => {
       expect(bed.acknowledge).toHaveBeenCalledTimes(1);
       expect(bed.acknowledge).toHaveBeenCalledWith(ID, 'grammar');
     });
+  });
+});
+
+describe('reloading for speech code that could not load', () => {
+  it('reloads at once when nothing running would be lost', () => {
+    const bed = setup({ audio: speechCodeLost() });
+    bed.service.reload();
+    TestBed.tick();
+    expect(bed.reloadNow).toHaveBeenCalledTimes(1);
+    expect(bed.service.reloadWaitingFor()).toBeNull();
+  });
+
+  it('waits for running work, says which, and reloads when it ends', () => {
+    const bed = setup({ audio: speechCodeLost() });
+    bed.busyReason.set('a story is being generated');
+    bed.service.reload();
+    TestBed.tick();
+    expect(bed.reloadNow).not.toHaveBeenCalled();
+    expect(bed.service.reloadWaitingFor()).toBe('A story is being generated');
+    bed.busyReason.set(null);
+    TestBed.tick();
+    expect(bed.reloadNow).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops a waiting reload when the reader is left', () => {
+    const bed = setup({ audio: speechCodeLost() });
+    bed.busyReason.set('a story is being generated');
+    bed.service.reload();
+    TestBed.tick();
+    const { busyReason, reloadNow } = bed;
+    bed.leave();
+    busyReason.set(null);
+    expect(reloadNow).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when no row offers a reload', () => {
+    const bed = setup();
+    bed.service.reload();
+    TestBed.tick();
+    expect(bed.reloadNow).not.toHaveBeenCalled();
   });
 });

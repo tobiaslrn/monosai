@@ -2,7 +2,6 @@ import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
-import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
 import type { ImportedReadingDraft } from '../../domain/reading/reading-repository';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import type { TtsSettings } from '../../domain/settings/settings';
@@ -25,7 +24,6 @@ import {
   READING_REPOSITORY,
 } from '../shared/repository-tokens';
 import { TtsStore } from '../settings/tts.store';
-import { UnloadedCodeRegistry } from '../shared/unloaded-code.registry';
 import { AudioConfigurationService } from './audio-configuration.service';
 import { AudioSynthesisService } from './audio-synthesis.service';
 import { EnrichmentKeysService } from './enrichment-keys.service';
@@ -270,43 +268,6 @@ describe('AudioSynthesisService', () => {
     }
     expect(produced.error.code).toBe('rate-limited');
     expect(await bed.db.audioAssets.count()).toBe(0);
-  });
-
-  it('reports speech code that could not load, so the app can offer a reload', async () => {
-    const unloaded = TestBed.inject(UnloadedCodeRegistry);
-    bed.provider.synthesizeWith = () =>
-      err(
-        aiError('unknown', 'tts-synthesis', 'The speech code could not be loaded.', {
-          detail: { issueCode: SPEECH_CODE_UNAVAILABLE },
-        }),
-      );
-    const sentence = firstSentence();
-
-    expect(unloaded.speech()).toBe(false);
-    await bed.service.run(
-      sentence,
-      bed.draft.reading.id,
-      keyFor(sentence),
-      resolved(),
-      new AbortController().signal,
-    );
-
-    expect(unloaded.speech()).toBe(true);
-  });
-
-  it('reports no unloaded code for an ordinary refusal', async () => {
-    bed.provider.synthesizeWith = () => err(aiError('unknown', 'tts-synthesis', 'No.'));
-    const sentence = firstSentence();
-
-    await bed.service.run(
-      sentence,
-      bed.draft.reading.id,
-      keyFor(sentence),
-      resolved(),
-      new AbortController().signal,
-    );
-
-    expect(TestBed.inject(UnloadedCodeRegistry).speech()).toBe(false);
   });
 
   it('lists every sentence as missing before anything is stored', async () => {

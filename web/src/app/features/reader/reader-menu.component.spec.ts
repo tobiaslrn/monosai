@@ -128,6 +128,31 @@ describe('Story options', () => {
     stop.click();
     expect(cancel).toHaveBeenCalledOnce();
   });
+  it('reloads from a labelled row that waits, busy, for running work', () => {
+    const { fixture, element, press } = render({
+      ...ROW,
+      layer: 'audio',
+      name: 'Audio',
+      status: 'Stopped',
+      action: 'reload',
+      label: 'Reload',
+      error: 'Speech could not load.',
+    });
+    const reload = vi.fn();
+    fixture.componentInstance.reloadRequested.subscribe(reload);
+    press('Reload');
+    expect(reload).toHaveBeenCalledOnce();
+    fixture.componentRef.setInput('reloadWaitingFor', 'A story is being generated');
+    fixture.detectChanges();
+    const row = element.querySelector<HTMLButtonElement>('[data-layer="audio"] button')!;
+    expect(row.getAttribute('aria-busy')).toBe('true');
+    expect(row.disabled).toBe(false);
+    expect(element.querySelector('[data-layer="audio"]')?.textContent).toContain(
+      'A story is being generated',
+    );
+    row.click();
+    expect(reload).toHaveBeenCalledOnce();
+  });
   it('leaves deleting the story to the library', () => {
     const { element } = render();
     expect(element.textContent).not.toContain('Delete story');

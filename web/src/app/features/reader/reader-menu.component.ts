@@ -128,6 +128,15 @@ import {
                     (pressed)="pending() === row.layer || stopRequested.emit(row.layer)"
                   />
                 }
+                @case ('reload') {
+                  <mn-settings-row
+                    action="action"
+                    [label]="row.label"
+                    [summary]="reloadWaitingFor()"
+                    [busy]="reloadWaitingFor() !== null"
+                    (pressed)="reloadWaitingFor() !== null || reloadRequested.emit()"
+                  />
+                }
               }
               @if (hasSavedLayer(row.layer)) {
                 <mn-settings-row
@@ -170,6 +179,8 @@ export class ReaderMenuComponent {
   readonly savedLayers = input<readonly PreparationLayer[]>([]);
   readonly pending = input<PreparationLayer | null>(null);
   readonly error = input<string | null>(null);
+  /** The work a pressed Reload waits for, so it would lose nothing, as its summary. */
+  readonly reloadWaitingFor = input<string | null>(null);
   readonly prepare = output<PreparationLayer>();
   readonly opened = output<void>();
   /** Whether the panel is showing, so what it reported can be told from what it never showed. */
@@ -179,6 +190,8 @@ export class ReaderMenuComponent {
   readonly stopRequested = output<PreparationLayer>();
   readonly deleteAudioRequested = output<void>();
   readonly clearAidRequested = output<'english' | 'grammar'>();
+  /** Reload Monosai, to load code this tab could not. */
+  readonly reloadRequested = output<void>();
   private readonly anchor = viewChild.required<ElementRef<HTMLButtonElement>>('anchor');
   private readonly panel = viewChild.required(SheetPopoverComponent);
   private readonly injector = inject(Injector);

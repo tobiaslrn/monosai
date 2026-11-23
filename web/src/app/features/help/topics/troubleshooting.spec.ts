@@ -28,7 +28,7 @@ describe('troubleshooting', () => {
     const entry = group('ai').entries.find((candidate) =>
       candidate.seen.includes(SPEECH_CODE_HEADING),
     );
-    expect(entry?.text).toContain('**Reload to recover**');
+    expect(entry?.text).toContain('**Story options** and select **Reload**');
     expect(entry?.text).not.toMatch(/try again/iu);
   });
 
