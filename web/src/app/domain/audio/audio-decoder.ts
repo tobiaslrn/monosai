@@ -35,9 +35,16 @@ export const NO_AUDIO_DECODER = 'no-audio-decoder';
  */
 export interface AudioDecoder {
   /**
-   * Whether this browser has anything to decode with, asked before a clip is
-   * paid for. Once it has said no, it says no for the rest of the tab's life.
+   * Whether this browser is known to be able to decode, without asking it
+   * anything. Once it has said no, it says no for the rest of the tab's life.
    */
   available(): boolean;
+  /**
+   * Whether this browser can decode at all, asked before a clip is paid for:
+   * it decodes a tiny built-in clip once per tab, so a browser that makes a
+   * context but decodes nothing is found out before a clip is bought, not
+   * after. Afterwards `available` gives the same answer.
+   */
+  canDecode(): Promise<boolean>;
   decode(bytes: ArrayBuffer, mimeType: string): Promise<DecodeOutcome>;
 }

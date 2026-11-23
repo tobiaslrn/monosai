@@ -45,7 +45,7 @@ export async function speechClip(
   ports: SpeechClipPorts,
   attempt: SpeechAttempt,
 ): Promise<Result<SpeechClip, AiError>> {
-  if (!ports.decoder.available()) {
+  if (!(await ports.decoder.canDecode())) {
     return err(noAudioDecoder(contextOf(attempt)));
   }
   let heard = await hear(ports, attempt);

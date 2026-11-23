@@ -14,22 +14,39 @@ type DecodingContextConstructor = new (...args: number[]) => DecodingContext;
  * are what older WebKit has.
  *
  * Asked before anything is paid for whether it can decode at all: a browser
- * with no context constructor answers no at once, and one whose constructors
- * all refused is remembered as having none for as long as this tab lives, so
- * no second clip is bought to find out again.
+ * with no context constructor answers no at once, and otherwise it decodes a
+ * tiny built-in clip once. A browser that makes contexts but decodes nothing
+ * is found out by that clip rather than by one bought from the provider. A
+ * browser found to have nothing to decode with, by that check or by a clip
+ * whose contexts all refused, is remembered as having none for as long as
+ * this tab lives, so no second clip is bought to find out again.
  *
  * `decodeAudioData` detaches the buffer it is given, so it always receives a
  * copy: the verified clip has to survive for the learner to play it.
  */
 export function createAudioDecoder(view: Window): AudioDecoder {
   let missing = false;
+  let checked: Promise<boolean> | null = null;
+  const available = (): boolean => {
+    const { offline, live } = contextConstructors(view);
+    if (offline === null && live === null) {
+      missing = true;
+    }
+    return !missing;
+  };
   return {
-    available: () => {
-      const { offline, live } = contextConstructors(view);
-      if (offline === null && live === null) {
-        missing = true;
+    available,
+    canDecode: () => {
+      if (!available()) {
+        return Promise.resolve(false);
       }
-      return !missing;
+      checked ??= decodesProbe(view).then((decodes) => {
+        if (!decodes) {
+          missing = true;
+        }
+        return decodes;
+      });
+      return checked.then((decodes) => decodes && !missing);
     },
     decode: async (bytes: ArrayBuffer): Promise<DecodeOutcome> => {
       const context = missing ? null : openContext(view);
@@ -47,6 +64,55 @@ export function createAudioDecoder(view: Window): AudioDecoder {
       }
     },
   };
+}
+
+/** Whether a context this browser makes decodes the built-in clip. */
+async function decodesProbe(view: Window): Promise<boolean> {
+  const context = openContext(view);
+  if (context === null) {
+    return false;
+  }
+  try {
+    await decodeWith(context, probeClip());
+    return true;
+  } catch {
+    return false;
+  } finally {
+    await context.close?.();
+  }
+}
+
+/** Frames of silence in the built-in clip: enough that no decoder sees it as empty. */
+const PROBE_FRAMES = 128;
+const PROBE_RATE = 8_000;
+
+/**
+ * A mono 16-bit PCM WAV of silence, the plainest clip every decoder reads.
+ * Built afresh each time, since decoding detaches the buffer it is given.
+ */
+export function probeClip(): ArrayBuffer {
+  const dataBytes = PROBE_FRAMES * 2;
+  const buffer = new ArrayBuffer(44 + dataBytes);
+  const view = new DataView(buffer);
+  const ascii = (offset: number, text: string) => {
+    for (let index = 0; index < text.length; index += 1) {
+      view.setUint8(offset + index, text.charCodeAt(index));
+    }
+  };
+  ascii(0, 'RIFF');
+  view.setUint32(4, 36 + dataBytes, true);
+  ascii(8, 'WAVE');
+  ascii(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, PROBE_RATE, true);
+  view.setUint32(28, PROBE_RATE * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  ascii(36, 'data');
+  view.setUint32(40, dataBytes, true);
+  return buffer;
 }
 
 /**

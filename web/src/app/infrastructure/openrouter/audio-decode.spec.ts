@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createAudioDecoder } from './audio-decode';
+import { createAudioDecoder, probeClip } from './audio-decode';
 
 type Decode = (bytes: ArrayBuffer) => Promise<{ duration: number }>;
 
@@ -137,5 +137,79 @@ describe('createAudioDecoder', () => {
 
     expect(given).not.toBe(bytes);
     expect(bytes.byteLength).toBe(8);
+  });
+  describe('the check before a clip is paid for', () => {
+    // A browser can make a context and still decode nothing: making one is
+    // not proof, so the check decodes a clip it carries.
+    it('finds a browser whose contexts decode nothing to have no decoder', async () => {
+      const decoder = decoderFor({ OfflineAudioContext: contextClass(rejects).FakeContext });
+
+      expect(await decoder.canDecode()).toBe(false);
+      expect(decoder.available()).toBe(false);
+    });
+
+    it('finds a browser whose contexts all refuse to have no decoder', async () => {
+      const decoder = decoderFor({
+        OfflineAudioContext: contextClass('refused').FakeContext,
+        AudioContext: contextClass('refused').FakeContext,
+      });
+
+      expect(await decoder.canDecode()).toBe(false);
+      expect(decoder.available()).toBe(false);
+    });
+
+    it('decodes its own clip once per tab, and closes the context', async () => {
+      const given: ArrayBuffer[] = [];
+      const offline = contextClass((bytes) => {
+        given.push(bytes);
+        return Promise.resolve({ duration: 0.016 });
+      });
+      const decoder = decoderFor({ OfflineAudioContext: offline.FakeContext });
+
+      expect(await decoder.canDecode()).toBe(true);
+      expect(await decoder.canDecode()).toBe(true);
+
+      expect(given).toHaveLength(1);
+      expect(new TextDecoder().decode(given[0]?.slice(0, 4))).toBe('RIFF');
+      expect(offline.closed).toHaveBeenCalledOnce();
+      expect(decoder.available()).toBe(true);
+    });
+
+    it('answers no at once for a browser with no context', async () => {
+      expect(await decoderFor({}).canDecode()).toBe(false);
+    });
+
+    it('stays no once a clip found every context refused', async () => {
+      let refuse = false;
+      class Flaky {
+        constructor() {
+          if (refuse) throw new DOMException('No context', 'NotSupportedError');
+        }
+        decodeAudioData() {
+          return Promise.resolve({ duration: 1 });
+        }
+      }
+      const decoder = decoderFor({ OfflineAudioContext: Flaky });
+      expect(await decoder.canDecode()).toBe(true);
+
+      refuse = true;
+      expect(await decoder.decode(new ArrayBuffer(8), 'audio/wav')).toEqual({ kind: 'no-decoder' });
+
+      expect(await decoder.canDecode()).toBe(false);
+    });
+
+    it('carries a well-formed mono 16-bit WAV', () => {
+      const clip = new DataView(probeClip());
+      const text = (offset: number) =>
+        String.fromCharCode(...new Uint8Array(clip.buffer, offset, 4));
+
+      expect([text(0), text(8), text(12), text(36)]).toEqual(['RIFF', 'WAVE', 'fmt ', 'data']);
+      expect(clip.getUint32(4, true)).toBe(clip.byteLength - 8);
+      expect(clip.getUint16(20, true)).toBe(1);
+      expect(clip.getUint16(22, true)).toBe(1);
+      expect(clip.getUint16(34, true)).toBe(16);
+      expect(clip.getUint32(40, true)).toBe(clip.byteLength - 44);
+      expect(clip.getUint32(40, true)).toBeGreaterThan(0);
+    });
   });
 });

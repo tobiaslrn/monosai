@@ -54,6 +54,20 @@ describe('OpenRouterTtsTester', () => {
     expect(harness.server.callCount).toBe(0);
   });
 
+  // Making an audio context is no proof of decoding: the check decodes a
+  // clip of its own before one is bought.
+  it('sends no paid request from a browser whose check clip does not decode', async () => {
+    const harness = run({ decodable: 'fails-check' });
+
+    const result = await harness.tts.testConfiguration(CONFIG);
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'unknown', task: 'tts-test', detail: { issueCode: NO_AUDIO_DECODER } },
+    });
+    expect(harness.server.callCount).toBe(0);
+  });
+
   it('tries exactly the channels the catalog declared', async () => {
     const harness = run();
     const attempt = declaredSpeechCapabilities(FAKE_OPENROUTER.ttsModel, ['voice']);

@@ -230,17 +230,20 @@ describe('OpenRouterTtsSynthesizer', () => {
     expect(harness.server.callCount).toBe(1);
   });
 
-  it('asks for nothing in a browser with no audio decoder', async () => {
-    const harness = run({ decodable: 'missing' });
+  it.each(['missing', 'fails-check'] as const)(
+    'asks for nothing in a browser with no audio decoder (%s)',
+    async (decodable) => {
+      const harness = run({ decodable });
 
-    const result = await harness.tts.synthesize(REQUEST, new AbortController().signal);
+      const result = await harness.tts.synthesize(REQUEST, new AbortController().signal);
 
-    expect(result).toMatchObject({
-      ok: false,
-      error: { code: 'unknown', task: 'tts-synthesis', detail: { issueCode: NO_AUDIO_DECODER } },
-    });
-    expect(harness.server.callCount).toBe(0);
-  });
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: 'unknown', task: 'tts-synthesis', detail: { issueCode: NO_AUDIO_DECODER } },
+      });
+      expect(harness.server.callCount).toBe(0);
+    },
+  );
 
   it('reports server and voice failures without a capability retry', async () => {
     const serverFailure = await run({ status: 500 }).tts.synthesize(
