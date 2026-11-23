@@ -120,11 +120,11 @@ export class AddTextPageComponent {
       case 'preparing-language':
         return 'Preparing Japanese analysis';
       case 'segmenting':
-        return 'Splitting sentences…';
+        return 'Splitting sentences';
       case 'analyzing':
         return `Analysing ${String(busy.completed)} of ${String(busy.total)}`;
       case 'saving':
-        return 'Saving…';
+        return 'Saving';
     }
   });
 
