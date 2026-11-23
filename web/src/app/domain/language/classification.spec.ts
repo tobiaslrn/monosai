@@ -202,6 +202,67 @@ describe('matches by reading alone', () => {
     const result = await classify('はしを渡る', ['橋'], 'generated');
     expect(result[0]!.validation).toMatchObject({ category: 'anki-normalized', basis: 'reading' });
   });
+
+  it('keeps the particle に structural when a reviewed number is read に', async () => {
+    const result = await classify('学校に行く', ['二'], 'generated');
+    expect(result[1]!.surface).toBe('に');
+    expect(result[1]!.validation.category).toBe('structural-baseline');
+  });
+
+  it.each([
+    ['猫', 'ねこ'],
+    ['猫', 'ネコ'],
+    ['ねこ', '猫'],
+    ['綺麗', 'きれい'],
+    ['美味しい', 'おいしい'],
+    ['本', 'ほん'],
+    ['手伝う', 'てつだう'],
+    ['てつだう', '手伝う'],
+    ['お茶', 'おちゃ'],
+    ['行なう', '行う'],
+  ])('matches %s against the reviewed %s by its reading', async (text, entry) => {
+    const result = await classify(text, [entry], 'generated');
+    expect(result[0]!.surface).toBe(text);
+    expect(result[0]!.validation).toMatchObject({ category: 'anki-normalized', basis: 'reading' });
+  });
+
+  it.each([
+    ['紙', '神'],
+    ['分かる', '解る'],
+  ])('does not match %s against the reviewed %s, written with other kanji', async (text, entry) => {
+    const result = await classify(text, [entry], 'generated');
+    expect(result[0]!.validation.category).toBe('unknown');
+  });
+});
+
+describe('kana spellings of reviewed inflecting words', () => {
+  it.each([
+    ['たべた', '食べる'],
+    ['わかった', '分かる'],
+    ['たかかった', '高い'],
+    ['よかった', '良い'],
+    ['できた', '出来る'],
+  ])('matches %s against the reviewed %s', async (text, entry) => {
+    const result = await classify(text, [entry], 'generated');
+    expect(result[0]!.validation.category).toBe('anki-normalized');
+  });
+
+  it.each([
+    ['ご飯をたべた', '食べる', 2],
+    ['たべます', '食べる', 0],
+    ['もっていく', '持つ', 0],
+    ['手伝った', 'てつだう', 0],
+    ['食べた', 'たべる', 0],
+  ])(
+    'matches the verb of %s against the reviewed %s by its base form',
+    async (text, entry, index) => {
+      const result = await classify(text, [entry], 'generated');
+      expect(result[index]!.validation).toMatchObject({
+        category: 'anki-normalized',
+        basis: 'lemma',
+      });
+    },
+  );
 });
 
 describe('classifyAgainstSnapshot', () => {

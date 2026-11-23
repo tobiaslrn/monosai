@@ -53,12 +53,21 @@ snapshot does not cover falls back to that frozen evidence: a policy exception, 
 the story was written, stays unmarked, while a word the learner has since reviewed stops being
 marked. The types live in `domain/reading/` and `domain/vocabulary/`.
 
-A token matches a reviewed word by its written form or its base form. Its reading alone counts only
-for a content word spelled in kana (はし for 橋), never for a word written in kanji (紙 is not 神)
-or a particle or auxiliary (は is not 歯), and the structural baseline wins over such a match. The
-reader, the word details and the check of a generated story all use this one matcher. Frozen
-evidence from before this rule is held to it when a story is read back: a match by reading that
-the rule refuses no longer counts.
+A token matches a reviewed word when its written form or its base form equals the word's. Failing
+that, it matches by reading: its own reading, or for an inflected word the reading of its dictionary
+form (たべた for 食べる, recorded as a base-form match), equals the word's reading. A reading counts
+only when the two spellings do not contradict each other, and they contradict only when both are
+written with kanji and their kanji, with all kana removed, differ: 紙 is not 神, while 猫 and ねこ,
+行なう and 行う, and お茶 and おちゃ are one word. A function word (particle, auxiliary, prefix,
+suffix or symbol) is never matched by its reading, so は is not 歯 and て is not 手, and the
+structural baseline wins over a match by a token's own reading. Within a phrase, a content word also
+matches by its reading where the phrase spells that word in kana. The reader, the word details and
+the check of a generated story all use this one matcher. Evidence frozen by an earlier validator
+version is held to the rule when a story is read back. It names its words by ids that each
+vocabulary refresh replaces, so the spelling it was matched against is unknown: a function word
+matched by anything but an exact form, or a word written in kanji matched through a kana reading,
+no longer counts. A word the learner still reviews is covered by the current snapshot under the
+rule instead.
 
 ## 8.2 Error handling
 

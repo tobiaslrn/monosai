@@ -9,8 +9,13 @@
  */
 export const ANALYZER_VERSION = 'analyzer/3';
 
-/** Bump when classification precedence or normalization rules change. */
-export const VALIDATOR_VERSION = 'validator/1';
+/**
+ * Bump when classification precedence or normalization rules change. Version 2
+ * matches a reading only where the spellings agree and never for a function
+ * word (arc42 8.1); evidence frozen under version 1 is held to that rule when a
+ * story is read back.
+ */
+export const VALIDATOR_VERSION = 'validator/2';
 
 /**
  * Bump when expression extraction, canonical expression or reading

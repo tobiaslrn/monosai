@@ -1,7 +1,7 @@
 import type { VocabularyItemId } from '../shared/ids';
 import type { PartOfSpeech, Token } from '../reading/token';
 import type { VocabularyItem } from '../vocabulary/snapshot';
-import { isKanaOnly, normalizeLookupKey } from './kana';
+import { containsKanji, isHiragana, isKanaOnly, isKatakana, normalizeLookupKey } from './kana';
 
 /** How a normalized match was justified, shown to the learner as the basis. */
 export type NormalizedMatchBasis = 'normalized-form' | 'lemma' | 'reading';
@@ -84,25 +84,106 @@ const FUNCTION_WORD_CLASSES: ReadonlySet<PartOfSpeech> = new Set<PartOfSpeech>([
   'symbol',
 ]);
 
+/** Whether a token is grammar that only its written form may match (は, て, に). */
+export function isFunctionWord(token: Pick<Token, 'partOfSpeech'>): boolean {
+  return token.partOfSpeech !== undefined && FUNCTION_WORD_CLASSES.has(token.partOfSpeech);
+}
+
+function isKana(character: string): boolean {
+  return isHiragana(character) || isKatakana(character) || character === 'ー';
+}
+
+/** A spelling with all kana removed: 行なう and 行う both give 行. */
+function withoutKana(text: string): string {
+  // eslint-disable-next-line @typescript-eslint/no-misused-spread -- code-point iteration is intended
+  return [...text.normalize('NFKC')].filter((character) => !isKana(character)).join('');
+}
+
 /**
- * Whether a token may be matched by its reading alone.
+ * Whether two spellings of one reading name different words.
  *
- * Only a content word spelled in kana: はし is a spelling of 橋 the learner can
- * read, while 紙 is a different word from 神 although both are read かみ. A
- * token written with kanji is matched by its written form or its base form,
- * never by how it sounds.
+ * Only when both are written with kanji and their kanji differ once the kana is
+ * set aside: 紙 is not 神, though both are read かみ. A spelling in kana alone
+ * never contradicts one in kanji (ねこ and 猫), and okurigana or a kana part
+ * does not either (行なう and 行う, お茶 and おちゃ).
  */
-export function acceptsReadingMatch(token: Pick<Token, 'surface' | 'partOfSpeech'>): boolean {
-  return (
-    isKanaOnly(token.surface.normalize('NFKC')) &&
-    (token.partOfSpeech === undefined || !FUNCTION_WORD_CLASSES.has(token.partOfSpeech))
-  );
+export function spellingsContradict(left: string, right: string): boolean {
+  return containsKanji(left) && containsKanji(right) && withoutKana(left) !== withoutKana(right);
+}
+
+/** The kana a spelling ends in: べる of 食べる, all of たべる. */
+function trailingKana(text: string): string {
+  // eslint-disable-next-line @typescript-eslint/no-misused-spread -- code-point iteration is intended
+  const characters = [...text];
+  let start = characters.length;
+  while (start > 0 && isKana(characters[start - 1] ?? '')) {
+    start -= 1;
+  }
+  return characters.slice(start).join('');
+}
+
+/**
+ * The reading of a token's dictionary form, which the analyzer does not give:
+ * the reading of たべ (from たべた) or 食べ is たべ, of their dictionary form
+ * たべる. The written form and the dictionary form must share everything but
+ * their kana ending, and the reading must end in the written form's ending,
+ * which is then swapped for the dictionary form's. Undefined for a token that
+ * is already in its dictionary form, or whose forms do not line up.
+ */
+function dictionaryFormReading(token: Token): string | undefined {
+  const { surface, lemma } = token;
+  if (lemma === undefined || lemma.length === 0 || lemma === surface) {
+    return undefined;
+  }
+  const reading = tokenReading(token);
+  const surfaceEnding = normalizeLookupKey(trailingKana(surface));
+  const lemmaEnding = normalizeLookupKey(trailingKana(lemma));
+  const sameHead =
+    surface.slice(0, surface.length - trailingKana(surface).length) ===
+    lemma.slice(0, lemma.length - trailingKana(lemma).length);
+  if (reading === undefined || !sameHead || !reading.endsWith(surfaceEnding)) {
+    return undefined;
+  }
+  return reading.slice(0, reading.length - surfaceEnding.length) + lemmaEnding;
+}
+
+/** The token's reading in hiragana; a kana spelling is its own reading. */
+function tokenReading(token: Token): string | undefined {
+  if (token.readingHiragana !== undefined && token.readingHiragana.length > 0) {
+    return normalizeLookupKey(token.readingHiragana);
+  }
+  const surface = token.surface.normalize('NFKC');
+  return isKanaOnly(surface) ? normalizeLookupKey(surface) : undefined;
+}
+
+/**
+ * Readings a token may be matched by, each with the basis it is recorded
+ * under: its own reading, and the reading of its dictionary form, which counts
+ * as a match of its base form. An inflected token is looked up by its
+ * dictionary form first, since a stem such as い (from いた) can read like an
+ * unrelated noun. A function word has none.
+ */
+function readingKeys(
+  token: Token,
+): readonly { readonly key: string; readonly basis: NormalizedMatchBasis }[] {
+  if (isFunctionWord(token)) {
+    return [];
+  }
+  const own = tokenReading(token);
+  const dictionary = dictionaryFormReading(token);
+  const keys: { key: string; basis: NormalizedMatchBasis }[] = [];
+  if (dictionary !== undefined && dictionary !== own) {
+    keys.push({ key: dictionary, basis: 'lemma' });
+  }
+  if (own !== undefined) {
+    keys.push({ key: own, basis: 'reading' });
+  }
+  return keys;
 }
 
 /**
  * Keys a running-text token is compared with item forms under: its written
- * form and its base form. A reading is no key of its own; it only matters for
- * a kana spelling, whose written form already is one.
+ * form and its base form.
  */
 function formKeys(
   token: Token,
@@ -114,6 +195,17 @@ function formKeys(
     keys.push({ key: normalizeLookupKey(token.lemma), basis: 'lemma' });
   }
   return keys;
+}
+
+/**
+ * Keys a token is compared with a phrase's words under: its forms and, for a
+ * content word, its reading, which can only equal a word the phrase spells in
+ * kana (宜しく in text for よろしく in the phrase).
+ */
+function phraseKeys(token: Token): readonly string[] {
+  const keys = formKeys(token).map((candidate) => candidate.key);
+  const reading = isFunctionWord(token) ? undefined : tokenReading(token);
+  return reading === undefined ? keys : [...keys, reading];
 }
 
 /**
@@ -157,16 +249,26 @@ function longestMatch(
  * Four indexes are built: exact canonical surfaces, normalized single-token
  * forms (Unicode form and tokenizer lemma), single-token readings, and a
  * phrase trie for entries of two or more tokens. A token's written and base
- * forms are looked up among the forms; only a kana spelling that
- * `acceptsReadingMatch` allows is looked up among the readings, so neither a
- * homophone nor a particle that sounds like a reviewed word counts as known.
+ * forms are looked up among the forms. Failing that, its reading and its
+ * dictionary form's reading are looked up among the readings, and an entry
+ * found there counts only when the two spellings do not contradict each other
+ * (`spellingsContradict`): ねこ and 猫 are one word, 紙 and 神 are not. A
+ * function word is never matched by its reading, so the particle は is not 歯.
  * Nothing here accepts synonyms, edit distance, or shared kanji as evidence of
  * known vocabulary.
  */
 export function compileVocabularyMatcher(items: readonly VocabularyItem[]): VocabularyMatcher {
   const exact = new Map<string, VocabularyItemId[]>();
   const forms = new Map<string, VocabularyItemId[]>();
-  const readings = new Map<string, VocabularyItemId[]>();
+  const readings = new Map<string, { id: VocabularyItemId; spelling: string }[]>();
+  const addReading = (key: string, item: VocabularyItem): void => {
+    const bucket = readings.get(key);
+    if (bucket === undefined) {
+      readings.set(key, [{ id: item.id, spelling: item.canonicalExpression }]);
+    } else if (!bucket.some((entry) => entry.id === item.id)) {
+      bucket.push({ id: item.id, spelling: item.canonicalExpression });
+    }
+  };
   const exactPhrases = newNode();
   const normalizedPhrases = newNode();
 
@@ -178,6 +280,11 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
     // running text (これで十分です), and its literal form is still exact evidence.
     addToBucket(exact, item.canonicalExpression, item.id);
     addToBucket(forms, normalizeLookupKey(item.canonicalExpression), item.id);
+    // An entry written in kana is its own reading, however it was analyzed
+    // (おちゃ as お + ちゃ still reads おちゃ, like お茶).
+    if (isKanaOnly(item.canonicalExpression.normalize('NFKC'))) {
+      addReading(normalizeLookupKey(item.canonicalExpression), item);
+    }
 
     if (sequence.length >= 2) {
       insert(
@@ -199,7 +306,7 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
         addToBucket(forms, normalizeLookupKey(token.lemma), item.id);
       }
       if (token.readingHiragana !== undefined && token.readingHiragana.length > 0) {
-        addToBucket(readings, normalizeLookupKey(token.readingHiragana), item.id);
+        addReading(normalizeLookupKey(token.readingHiragana), item);
       }
     }
   }
@@ -216,9 +323,7 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
           basis: 'exact',
         };
       }
-      const normalizedHit = longestMatch(normalizedPhrases, tokens, startIndex, (token) =>
-        formKeys(token).map((candidate) => candidate.key),
-      );
+      const normalizedHit = longestMatch(normalizedPhrases, tokens, startIndex, phraseKeys);
       if (normalizedHit !== null) {
         return {
           vocabularyItemId: normalizedHit.itemId,
@@ -239,10 +344,12 @@ export function compileVocabularyMatcher(items: readonly VocabularyItem[]): Voca
           return { vocabularyItemIds: bucket, basis: candidate.basis };
         }
       }
-      if (acceptsReadingMatch(token)) {
-        const bucket = readings.get(normalizeLookupKey(token.surface));
-        if (bucket !== undefined) {
-          return { vocabularyItemIds: bucket, basis: 'reading' };
+      for (const candidate of readingKeys(token)) {
+        const ids = (readings.get(candidate.key) ?? [])
+          .filter((entry) => !spellingsContradict(token.surface, entry.spelling))
+          .map((entry) => entry.id);
+        if (ids.length > 0) {
+          return { vocabularyItemIds: ids, basis: candidate.basis };
         }
       }
       return null;

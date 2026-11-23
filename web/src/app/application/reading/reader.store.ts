@@ -13,7 +13,10 @@ import type { Reading } from '../../domain/reading/reading';
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { Paragraph, Sentence } from '../../domain/reading/text-hierarchy';
 import type { Token } from '../../domain/reading/token';
-import type { TokenStatusAssignment } from '../../domain/reading/validation';
+import type {
+  FrozenSentenceValidation,
+  TokenStatusAssignment,
+} from '../../domain/reading/validation';
 import type { ParagraphId, ReadingId, SentenceId } from '../../domain/shared/ids';
 import type { StorageError } from '../../domain/storage/storage-error';
 import { SnapshotHistoryStore } from '../vocabulary/snapshot-history.store';
@@ -466,18 +469,14 @@ export class ReaderStore {
     if (!frozen.ok) {
       return status;
     }
-    const frozenBySentence = new Map<string, readonly TokenStatusAssignment[]>(
-      frozen.value.map((validation) => [validation.sentenceId, validation.tokenStatuses]),
+    const frozenBySentence = new Map<string, FrozenSentenceValidation>(
+      frozen.value.map((validation) => [validation.sentenceId, validation]),
     );
     const statusesBySentence = new Map<string, readonly TokenStatusAssignment[]>();
     for (const [id, statuses] of status.statusesBySentence) {
       statusesBySentence.set(
         id,
-        withFrozenEvidence(
-          statuses,
-          frozenBySentence.get(id) ?? [],
-          tokensBySentence.get(id) ?? [],
-        ),
+        withFrozenEvidence(statuses, frozenBySentence.get(id), tokensBySentence.get(id) ?? []),
       );
     }
     return { ...status, statusesBySentence };

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { snapshotId, vocabularyItemId } from '../shared/ids';
 import type { Token } from '../reading/token';
 import type { VocabularyItem } from '../vocabulary/snapshot';
-import { compileVocabularyMatcher } from './vocabulary-matcher';
+import { compileVocabularyMatcher, spellingsContradict } from './vocabulary-matcher';
 
 function item(id: string, meaning: string): VocabularyItem {
   return {
@@ -132,5 +132,64 @@ describe('compileVocabularyMatcher', () => {
         ),
       ).toEqual({ vocabularyItemIds: [god.id], basis: 'reading' });
     });
+  });
+
+  describe('a phrase', () => {
+    const regards: VocabularyItem = {
+      id: vocabularyItemId('ffffffff-ffff-4fff-8fff-ffffffffffff'),
+      snapshotId: snapshotId('11111111-1111-4111-8111-111111111111'),
+      visibleExpression: 'よろしくお願いします',
+      canonicalExpression: 'よろしくお願いします',
+      expressionHash: 'hash-よろしくお願いします',
+      analyzedSequence: [
+        { surface: 'よろしく', lemma: 'よろしく', readingHiragana: 'よろしく' },
+        { surface: 'お願い', lemma: 'お願い', readingHiragana: 'おねがい' },
+        { surface: 'し', lemma: 'する', readingHiragana: 'し' },
+        { surface: 'ます', lemma: 'ます', readingHiragana: 'ます' },
+      ],
+    };
+    const matcher = compileVocabularyMatcher([regards]);
+
+    function token(fields: Partial<Token> & Pick<Token, 'surface'>): Token {
+      return {
+        id: `token-${fields.surface}`,
+        startUtf16: 0,
+        endUtf16: fields.surface.length,
+        dictionaryKeys: [],
+        isPunctuation: false,
+        ...fields,
+      };
+    }
+
+    it('matches a word written in kanji where the phrase spells it in kana', () => {
+      const tokens = [
+        token({ surface: '宜しく', readingHiragana: 'よろしく', partOfSpeech: 'adverb' }),
+        token({ surface: 'お願い', readingHiragana: 'おねがい', partOfSpeech: 'noun' }),
+        token({ surface: 'し', lemma: 'する', readingHiragana: 'し', partOfSpeech: 'verb' }),
+        token({ surface: 'ます', readingHiragana: 'ます', partOfSpeech: 'auxiliary' }),
+      ];
+      expect(matcher.findPhraseAt(tokens, 0)).toEqual({
+        vocabularyItemId: regards.id,
+        startTokenIndex: 0,
+        endTokenIndex: 3,
+        basis: 'normalized-form',
+      });
+    });
+  });
+});
+
+describe('spellingsContradict', () => {
+  it.each([
+    ['紙', '神', true],
+    ['分かる', '解る', true],
+    ['猫', 'ねこ', false],
+    ['ねこ', '猫', false],
+    ['行なう', '行う', false],
+    ['美味しい', 'おいしい', false],
+    ['お茶', 'おちゃ', false],
+    ['手伝う', 'てつだう', false],
+    ['橋', '橋', false],
+  ])('%s against %s: %s', (left, right, expected) => {
+    expect(spellingsContradict(left, right)).toBe(expected);
   });
 });
