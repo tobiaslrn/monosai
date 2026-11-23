@@ -107,6 +107,14 @@ describe('setupNeeded', () => {
     expect(setupNeeded(facts())).toBe(false);
     expect(setupNeeded(facts({ modelConfigured: false, sentenceCount: 0 }))).toBe(false);
   });
+
+  // No model would make audio in this browser, so the player says why instead.
+  it('gives way to the report of a browser with no audio decoder', () => {
+    const missing = facts({ modelConfigured: false, decoderMissing: true, decoderNotice: true });
+
+    expect(setupNeeded(missing)).toBe(false);
+    expect(auxAction(missing)).toMatchObject({ kind: 'dismiss', title: NO_AUDIO_DECODER_MESSAGE });
+  });
 });
 
 describe('centreControl', () => {

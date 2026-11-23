@@ -134,14 +134,17 @@ function runState(facts: PlayerFacts): string {
  *
  * Nothing can be generated and nothing can be played without a tested model,
  * so the press that is worth making is the one that gets one. Playing wins:
- * a sound already going is never replaced by a link.
+ * a sound already going is never replaced by a link. Nor is it offered in a
+ * browser with no audio decoder, where no model would make audio: the player
+ * reports that instead.
  */
 export function setupNeeded(facts: PlayerFacts): boolean {
   return (
     facts.status !== 'playing' &&
     facts.sentenceCount > 0 &&
     !facts.modelConfigured &&
-    !facts.hasPlayableAudio
+    !facts.hasPlayableAudio &&
+    !facts.decoderMissing
   );
 }
 

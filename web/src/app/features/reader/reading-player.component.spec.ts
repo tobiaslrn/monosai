@@ -15,6 +15,7 @@ import { aiError } from '../../domain/ai/ai-error';
 import type { PlaybackRate } from '../../domain/settings/settings';
 import { readingId, sentenceId, type SentenceId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
+import { NO_AUDIO_DECODER_MESSAGE } from '../../shared-ui/ai-error/ai-error-copy';
 import { ReadingPlayerComponent } from './reading-player.component';
 
 /** The reading every progress under test belongs to. */
@@ -122,6 +123,8 @@ class StubPlaybackStore {
     [selectedSentenceId]="selected()"
     [modelConfigured]="modelConfigured()"
     [online]="online()"
+    [decoderMissing]="decoderMissing()"
+    [decoderNotice]="decoderMissing()"
     (generate)="emitted.push('generate')"
     (retryGeneration)="emitted.push('retry')"
     (cancelGeneration)="emitted.push('cancel')"
@@ -133,6 +136,7 @@ class HostComponent {
   readonly selected = signal<SentenceId | null>(null);
   readonly modelConfigured = signal(true);
   readonly online = signal(true);
+  readonly decoderMissing = signal(false);
   readonly emitted: string[] = [];
 }
 
@@ -228,6 +232,21 @@ describe('ReadingPlayerComponent', () => {
       expect(control(element, 'Play')).toBeNull();
       // One screen offers the same link once: the aux slot no longer repeats it.
       expect(element.querySelectorAll('a[aria-label="Set up audio"]')).toHaveLength(1);
+    });
+
+    // Setting up a voice would make no audio in this browser, so the player
+    // reports that rather than sending the learner to Settings.
+    it('reports a browser with no audio decoder rather than offering setup', () => {
+      store.total.set(2);
+      const fixture = render();
+      fixture.componentInstance.modelConfigured.set(false);
+      fixture.componentInstance.decoderMissing.set(true);
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(element.querySelector('a[aria-label="Set up audio"]')).toBeNull();
+      expect(control(element, 'Dismiss')?.title).toBe(NO_AUDIO_DECODER_MESSAGE);
+      expect(said(element)).toContain(NO_AUDIO_DECODER_MESSAGE);
     });
 
     /**
