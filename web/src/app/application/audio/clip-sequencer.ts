@@ -79,6 +79,11 @@ export class ClipSequencer {
    */
   private extending: Promise<void> | null = null;
 
+  /** Whether a load is reading its clip, so a newer load owns the session. */
+  isLoading(): boolean {
+    return this.loading;
+  }
+
   /** Whether a continuous track is loaded. */
   hasTrack(): boolean {
     return this.track !== null;

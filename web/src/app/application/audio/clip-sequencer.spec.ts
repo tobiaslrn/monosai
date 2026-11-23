@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   configurePlaybackBed,
+  holdClipReads,
   orderedSentences,
   SENTENCE_COUNT,
   settle,
@@ -175,31 +176,9 @@ describe('ClipSequencer', () => {
       expect(bed.player.startedPaused.at(-1)).toBe(true);
     });
 
-    /** Holds every clip read until `release` is called. */
-    function holdClipReads(): { release: () => Promise<void> } {
-      const read = bed.enrichment.getAudioByCacheKey.bind(bed.enrichment);
-      let open!: () => void;
-      const gate = new Promise<void>((resolve) => {
-        open = resolve;
-      });
-      const reads: Promise<unknown>[] = [];
-      bed.enrichment.getAudioByCacheKey = (cacheKey: string) => {
-        const pending = gate.then(() => read(cacheKey));
-        reads.push(pending);
-        return pending;
-      };
-      return {
-        release: async () => {
-          open();
-          await Promise.all(reads);
-          await settle();
-        },
-      };
-    }
-
     it('plays the arriving clip when Play follows Pause within the read', async () => {
       await bed.store.play();
-      const reads = holdClipReads();
+      const reads = holdClipReads(bed);
 
       bed.player.finishClip();
       bed.store.pause();
@@ -214,7 +193,7 @@ describe('ClipSequencer', () => {
 
     it('silences the sentence still sounding when the lock screen pauses a jump', async () => {
       await bed.store.play();
-      const reads = holdClipReads();
+      const reads = holdClipReads(bed);
 
       const jump = bed.store.next();
       expect(bed.store.status()).toBe('loading');

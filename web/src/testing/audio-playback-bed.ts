@@ -452,6 +452,31 @@ export async function settle(): Promise<void> {
   }
 }
 
+/**
+ * Holds every clip read until `release` is called, to land presses and
+ * events inside the window in which a clip is being read from storage.
+ */
+export function holdClipReads(bed: PlaybackBed): { release: () => Promise<void> } {
+  const read = bed.enrichment.getAudioByCacheKey.bind(bed.enrichment);
+  let open!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  const reads: Promise<unknown>[] = [];
+  bed.enrichment.getAudioByCacheKey = (cacheKey: string) => {
+    const pending = gate.then(() => read(cacheKey));
+    reads.push(pending);
+    return pending;
+  };
+  return {
+    release: async () => {
+      open();
+      await Promise.all(reads);
+      await settle();
+    },
+  };
+}
+
 /** The sentences in reading order, which is playback order. */
 export function orderedSentences(draft: ImportedReadingDraft) {
   return [...draft.sentences].sort(

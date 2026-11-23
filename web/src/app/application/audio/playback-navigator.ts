@@ -222,6 +222,12 @@ export class PlaybackNavigator {
     if (current === null) {
       return;
     }
+    if (this.sequencer.isLoading()) {
+      // The old clip ran out while a sentence the learner asked for is being
+      // read. The cursor has not moved yet, so advancing from it would replace
+      // their Back or Next with the sentence after the one that ended.
+      return;
+    }
     if (this.sequencer.hasTrack()) {
       // A sealed resource can end at a pace boundary. Continue with the next
       // playable run rather than making the learner press Play again.

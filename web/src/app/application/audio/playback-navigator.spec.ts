@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   configurePlaybackBed,
+  holdClipReads,
   orderedSentences,
   SENTENCE_COUNT,
   settle,
@@ -260,6 +261,26 @@ describe('PlaybackNavigator', () => {
       expect(bed.store.status()).toBe('playing');
       expect(bed.store.currentPosition()).toBe(1);
       expect(bed.store.failure()).toEqual({ kind: 'missing-clip', position: 3 });
+    });
+  });
+
+  describe('the clip that ends while a jump is being read', () => {
+    it('keeps the sentence Back asked for when the old clip ends during the read', async () => {
+      const sentences = orderedSentences(bed.draft);
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      await bed.store.playFrom(sentences[1]!.id);
+      expect(bed.store.currentSentenceId()).toBe(sentences[1]!.id);
+      const reads = holdClipReads(bed);
+
+      const back = bed.store.previous();
+      // The sentence still sounding reaches its end while sentence one is read.
+      bed.player.finishClip();
+      await reads.release();
+      await back;
+
+      expect(bed.store.currentSentenceId()).toBe(sentences[0]!.id);
+      expect(bed.player.played).toHaveLength(2);
     });
   });
 
