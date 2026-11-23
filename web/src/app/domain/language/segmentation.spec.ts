@@ -120,6 +120,15 @@ describe('splitIntoParagraphs', () => {
     expect(paragraphs.map((paragraph) => paragraph.text).join('')).toBe(text);
   });
 
+  it('gives the indent after a blank line to the paragraph it starts', () => {
+    const text = '一行目。\n\n\u3000二段落目。\n \n  三段落目。';
+    expect(splitIntoParagraphs(text).map((paragraph) => paragraph.text)).toEqual([
+      '一行目。\n\n',
+      '\u3000二段落目。\n \n',
+      '  三段落目。',
+    ]);
+  });
+
   it('returns one paragraph when there is no blank line', () => {
     expect(splitIntoParagraphs('一行だけ。').map((paragraph) => paragraph.text)).toEqual([
       '一行だけ。',

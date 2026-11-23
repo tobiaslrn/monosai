@@ -143,11 +143,12 @@ export function segmentParagraph(text: string): readonly SentenceSegment[] {
 
 /**
  * Splits a document into paragraphs on blank lines, preserving every character.
- * Trailing newlines belong to the paragraph they close.
+ * The blank lines belong to the paragraph they close, and the indent that
+ * follows them, full-width or not, belongs to the paragraph it starts.
  */
 export function splitIntoParagraphs(text: string): readonly ParagraphSegment[] {
   const paragraphs: ParagraphSegment[] = [];
-  const boundary = /\n[ \t\u3000]*\n[\s]*/g;
+  const boundary = /\n[ \t\u3000]*\n(?:[ \t\u3000]*\n)*/g;
   let start = 0;
   let match = boundary.exec(text);
   while (match !== null) {

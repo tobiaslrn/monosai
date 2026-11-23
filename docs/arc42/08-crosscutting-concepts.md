@@ -9,6 +9,11 @@ The reading model is one hierarchy. A **reading** holds **paragraphs**, a paragr
 **sentences**, and a sentence holds **tokens**. A reading is immutable after it is saved. It is
 either **imported** or **generated**.
 
+Import takes paragraphs from the learner's blank lines. The blank lines close the paragraph before
+them, and an indent after them, full-width or not, opens the next one, so a paragraph's first
+sentence is never stored under the paragraph before it. These rules shape a reading only when it is
+imported: a saved reading keeps the structure it was saved with.
+
 A **vocabulary snapshot** is the one current, deduplicated set of expressions the learner has
 reviewed and not suspended. Its stored items are identified by canonical expression plus the
 optional visible meaning from the learner's Anki note: identical pairs merge, while two meanings

@@ -77,3 +77,41 @@ describe('buildImportDraft', () => {
     expect(draft.paragraphs[0]!.sentences.map((s) => s.text)).toEqual(['終わりのない文']);
   });
 });
+
+describe('buildImportDraft with indented paragraphs', () => {
+  function expectSentencesInsideTheirParagraph(text: string): void {
+    const draft = build(text);
+    for (const paragraph of draft.paragraphs) {
+      for (const sentence of paragraph.sentences) {
+        expect(paragraph.sourceText).toContain(sentence.text);
+      }
+    }
+  }
+
+  it('keeps the first sentence of a full-width indented paragraph in that paragraph', () => {
+    const text = '一行目。\n\n　二段落目です。三文目です。';
+    const draft = build(text);
+    expect(draft.paragraphs.map((p) => p.sentences.map((s) => s.text))).toEqual([
+      ['一行目。'],
+      ['二段落目です。', '三文目です。'],
+    ]);
+    expect(draft.paragraphs.map((p) => p.sourceText).join('')).toBe(text);
+    expectSentencesInsideTheirParagraph(text);
+  });
+
+  it('keeps a one-sentence indented paragraph', () => {
+    const draft = build('雨が降った。\n\n　傘を持っていた。');
+    expect(draft.paragraphs.map((p) => p.sentences.map((s) => s.text))).toEqual([
+      ['雨が降った。'],
+      ['傘を持っていた。'],
+    ]);
+  });
+
+  it('keeps the first sentence of an ASCII-indented paragraph in that paragraph', () => {
+    const draft = build('一行目。\n\n  二段落目です。三文目です。');
+    expect(draft.paragraphs.map((p) => p.sentences.map((s) => s.text))).toEqual([
+      ['一行目。'],
+      ['二段落目です。', '三文目です。'],
+    ]);
+  });
+});
