@@ -13,6 +13,8 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
  * role, with no tablist and no tab anywhere on the page: a screen reader
  * announced "tab panel" over a plain form field and offered a tab to move to
  * that did not exist. Add text is one form, and this is one field group in it.
+ * Both fields are locked while a save runs, since it stores what they held
+ * when it started.
  */
 @Component({
   selector: 'mn-text-input-step',
@@ -29,6 +31,7 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
         [attr.aria-invalid]="store.rejection() !== null || isOverLimit() ? 'true' : null"
         [attr.aria-describedby]="descriptionIds()"
         [value]="store.rawText()"
+        [disabled]="store.isSaving()"
         (input)="onPaste($event)"
       ></textarea>
       @if (isOverLimit()) {
@@ -63,6 +66,7 @@ import { NoticeComponent } from '../../shared-ui/notice/notice.component';
         [attr.maxlength]="maximumTitleLength"
         [value]="store.titleInput()"
         [attr.placeholder]="store.derivedTitle()"
+        [disabled]="store.isSaving()"
         (input)="onTitle($event)"
       />
     </div>

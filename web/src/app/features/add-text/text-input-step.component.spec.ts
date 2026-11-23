@@ -7,6 +7,11 @@ import { TextInputStepComponent } from './text-input-step.component';
 /** Only the surface this field group reads from the import store. */
 class FakeImportStore {
   private text = '';
+  saving = false;
+
+  isSaving(): boolean {
+    return this.saving;
+  }
 
   rawText(): string {
     return this.text;
@@ -118,5 +123,15 @@ describe('TextInputStepComponent', () => {
     expect(count).toHaveLength(1);
     expect(count[0]?.getAttribute('role')).toBe('alert');
     expect(count[0]?.textContent).toContain('Remove 2 characters to continue.');
+  });
+
+  it('locks the text and the title while a save runs', () => {
+    store.setPastedText('猫が寝た。');
+    expect(render().querySelector('textarea')?.disabled).toBe(false);
+
+    store.saving = true;
+    const element = render();
+    expect(element.querySelector('textarea')?.disabled).toBe(true);
+    expect(element.querySelector<HTMLInputElement>('#mn-import-title')?.disabled).toBe(true);
   });
 });

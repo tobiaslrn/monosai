@@ -30,6 +30,13 @@ export type ImportBusy =
 
 const IDLE: ImportBusy = { kind: 'idle' };
 
+/** What one save stores, taken once when it starts so later edits cannot mix in. */
+interface SaveInput {
+  readonly text: string;
+  readonly title: string;
+  readonly importSource: ImportSource;
+}
+
 /**
  * State of the Add text workflow.
  *
@@ -54,6 +61,7 @@ export class ImportStore {
   private readonly announcementSignal = signal('');
   private readonly savedIdSignal = signal<ReadingId | null>(null);
   private readonly duplicatesSignal = signal<readonly ImportedReading[]>([]);
+  private readonly savingSignal = signal(false);
   /** Set when the page is left: an abandoned import must not reach storage. */
   private readonly discarded = signal(false);
 
@@ -72,6 +80,12 @@ export class ImportStore {
   readonly characterCount = computed(() => countCharacters(this.rawTextSignal()));
   readonly advisories = computed(() => importAdvisories(this.rawTextSignal()));
   readonly isBusy = computed(() => this.busySignal().kind !== 'idle');
+  /**
+   * Whether a save is running, from its duplicate check to its last write. The
+   * text and title are locked meanwhile, because the save stores what they held
+   * when it started.
+   */
+  readonly isSaving = this.savingSignal.asReadonly();
 
   /** What the title field is prefilled with when the learner has not typed one. */
   readonly derivedTitle = computed(() => {
@@ -125,7 +139,7 @@ export class ImportStore {
 
   /** Validates, analyzes, and saves the pasted text as one reading. */
   async save(): Promise<ReadingId | null> {
-    if (this.isBusy()) {
+    if (this.isBusy() || this.savingSignal()) {
       return null;
     }
 
@@ -134,12 +148,25 @@ export class ImportStore {
       this.rejectionSignal.set(validated.error);
       return null;
     }
+    this.savingSignal.set(true);
+    try {
+      return await this.saveText({
+        text: validated.value.text,
+        title: this.titleForSave(),
+        importSource: this.sourceSignal(),
+      });
+    } finally {
+      this.savingSignal.set(false);
+    }
+  }
+
+  private async saveText(input: SaveInput): Promise<ReadingId | null> {
     this.rejectionSignal.set(null);
     this.languageFailureSignal.set(null);
     this.storageFailureSignal.set(null);
 
     if (this.duplicatesSignal().length === 0) {
-      const duplicates = await this.imports.findDuplicates(validated.value.text);
+      const duplicates = await this.imports.findDuplicates(input.text);
       if (this.discarded()) {
         return null;
       }
@@ -167,7 +194,7 @@ export class ImportStore {
     }
 
     this.busySignal.set({ kind: 'segmenting' });
-    const segmented = await this.imports.segment(validated.value.text);
+    const segmented = await this.imports.segment(input.text);
     if (this.discarded()) {
       return null;
     }
@@ -184,10 +211,10 @@ export class ImportStore {
       return null;
     }
 
-    return this.persistDraft();
+    return this.persistDraft(input);
   }
 
-  private async persistDraft(): Promise<ReadingId | null> {
+  private async persistDraft(input: SaveInput): Promise<ReadingId | null> {
     const draft = this.draftSignal();
     if (draft === null || this.hasPendingAnalysis() || this.discarded()) {
       return null;
@@ -197,9 +224,9 @@ export class ImportStore {
     this.busySignal.set({ kind: 'saving' });
     const saved = await this.imports.save({
       draft,
-      title: this.titleForSave(),
-      sourceText: this.rawTextSignal(),
-      importSource: this.sourceSignal(),
+      title: input.title,
+      sourceText: input.text,
+      importSource: input.importSource,
     });
     this.busySignal.set(IDLE);
 

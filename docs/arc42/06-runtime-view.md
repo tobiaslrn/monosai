@@ -90,9 +90,11 @@ sequenceDiagram
     Page->>Learner: open the reader
 ```
 
-Two properties matter here. Analysis runs in bounded batches, so a very long import reports progress
-and stays cancellable. The whole graph is written in one transaction, so a reading is never visible
-without its text and its tokens.
+Three properties matter here. The save works on the text and title as they were when the learner
+confirmed, and both fields stay locked until it ends, so the stored sentences, source text, hash and
+title always come from one text. Analysis runs in bounded batches, so a very long import reports
+progress and stays cancellable. The whole graph is written in one transaction, so a reading is never
+visible without its text and its tokens.
 
 ## 6.3 Generate a story
 

@@ -314,3 +314,36 @@ describe('ImportStore', () => {
     expect(store.isDirty()).toBe(false);
   });
 });
+
+describe('ImportStore when the text is edited while a save runs', () => {
+  it('stores the text it segmented, with the title derived from that text', async () => {
+    const imports = new FakeTextImportService();
+    TestBed.configureTestingModule({
+      providers: [ImportStore, { provide: TextImportService, useValue: imports }],
+    });
+    const store = TestBed.inject(ImportStore);
+    let release!: () => void;
+    imports.gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    store.setPastedText('猫が窓の外を見ていた。');
+
+    const saving = store.save();
+    await vi.waitFor(() => {
+      expect(store.isBusy()).toBe(true);
+    });
+    // The text changes while the language step runs.
+    store.setPastedText('犬が庭で遊んでいた。');
+    expect(store.isSaving()).toBe(true);
+    release();
+    await saving;
+    expect(store.isSaving()).toBe(false);
+
+    const sentences = imports.saved!.draft.paragraphs.flatMap((p) =>
+      p.sentences.map((s) => s.text),
+    );
+    expect(sentences).toEqual(['猫が窓の外を見ていた。']);
+    expect(imports.saved!.sourceText).toBe('猫が窓の外を見ていた。');
+    expect(imports.saved!.title.startsWith('猫')).toBe(true);
+  });
+});
