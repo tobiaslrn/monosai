@@ -50,7 +50,7 @@ describe('AddTextPageComponent', () => {
     expect(button.disabled).toBe(false);
     // The wait names its stage, with no trailing ellipsis.
     expect(
-      (fixture.nativeElement as HTMLElement).querySelector('[role="status"]')?.textContent?.trim(),
+      (fixture.nativeElement as HTMLElement).querySelector('[role="status"]')?.textContent.trim(),
     ).toBe('Preparing Japanese analysis');
 
     imports.release();
