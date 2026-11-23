@@ -11,8 +11,10 @@ either **imported** or **generated**.
 
 Import takes paragraphs from the learner's blank lines. The blank lines close the paragraph before
 them, and an indent after them, full-width or not, opens the next one, so a paragraph's first
-sentence is never stored under the paragraph before it. These rules shape a reading only when it is
-imported: a saved reading keeps the structure it was saved with.
+sentence is never stored under the paragraph before it. A line break always ends a sentence and
+closes any bracket still open, so a stray 「 cannot pull the lines after it into one sentence. These
+rules shape a reading only when it is imported: a saved reading keeps the structure it was saved
+with.
 
 A **vocabulary snapshot** is the one current, deduplicated set of expressions the learner has
 reviewed and not suspended. Its stored items are identified by canonical expression plus the

@@ -19,8 +19,11 @@ export const VALIDATOR_VERSION = 'validator/1';
  */
 export const NORMALIZATION_VERSION = 'normalization/2';
 
-/** Bump when sentence segmentation rules change. */
-export const SEGMENTATION_RULES_VERSION = 'segmentation/1';
+/**
+ * Bump when sentence segmentation rules change. Version 2 ends a sentence at
+ * every line break, even inside a bracket that is never closed.
+ */
+export const SEGMENTATION_RULES_VERSION = 'segmentation/2';
 
 /** Analyzer versions whose stored output the current code can still interpret. */
 export const SUPPORTED_ANALYZER_VERSIONS: readonly string[] = [ANALYZER_VERSION];

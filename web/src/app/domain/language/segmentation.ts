@@ -74,7 +74,8 @@ function skipWhile(
  * such as `\u300c\u305d\u3046\u304b\u3002\u300d\u3068\u8a00\u3063\u305f\u3002` stays whole. Runs of terminators,
  * trailing closing brackets, and trailing inline spaces are absorbed into the
  * sentence they end. A newline is always a boundary, which keeps dialogue lines
- * separate.
+ * separate, and it resets the bracket depth, so a bracket that is never closed
+ * cannot hold the following lines in one sentence.
  */
 export function segmentParagraph(text: string): readonly SentenceSegment[] {
   const segments: SentenceSegment[] = [];
@@ -119,7 +120,9 @@ export function segmentParagraph(text: string): readonly SentenceSegment[] {
       emit(index);
       continue;
     }
-    if (depth === 0 && character === '\n') {
+    if (character === '\n') {
+      // A bracket left open does not continue onto the next line.
+      depth = 0;
       const end = skipWhile(text, index, (source, at) => characterAt(source, at) === '\n');
       emit(end);
       index = end;

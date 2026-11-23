@@ -139,3 +139,22 @@ describe('splitIntoParagraphs', () => {
     expect(splitIntoParagraphs('')).toEqual([]);
   });
 });
+
+describe('an opening bracket that is never closed', () => {
+  it('still ends the sentence at a blank line and at a line break', () => {
+    const text = '「始まりだ。\n\n次の段落です。\nさらに続く。';
+    const sentences = texts(text);
+    expect(sentences.every((sentence) => !sentence.trimEnd().includes('\n'))).toBe(true);
+    // A line break after a full stop is a whitespace-only segment, which import drops.
+    const words = sentences
+      .map((sentence) => sentence.trim())
+      .filter((sentence) => sentence !== '');
+    expect(words).toEqual(['「始まりだ。', '次の段落です。', 'さらに続く。']);
+  });
+
+  it('ends sentences on full stops again after the line break', () => {
+    const text = '「待って\nもう遅い。次へ進む。';
+    expect(texts(text)).toEqual(['「待って\n', 'もう遅い。', '次へ進む。']);
+    expectExactTiling(text);
+  });
+});
