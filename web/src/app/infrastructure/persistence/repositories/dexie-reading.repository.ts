@@ -247,18 +247,21 @@ export class DexieReadingRepository implements ReadingRepository {
             .toArray()
         : await this.db.paragraphs.where('readingId').equals(id).sortBy('position');
 
-      const paragraphIds = new Set(paragraphs.map((paragraph) => paragraph.id));
-      const sentences = await this.db.sentences
-        .where('[readingId+positionInReading]')
-        .between([id, Dexie.minKey], [id, Dexie.maxKey])
-        .toArray();
+      // A window reads only its own paragraphs' sentences, through the
+      // paragraph index, so moving it costs the window and not the reading.
+      const sentences = window
+        ? (
+            await this.db.sentences
+              .where('paragraphId')
+              .anyOf(paragraphs.map((paragraph) => paragraph.id))
+              .toArray()
+          ).sort((left, right) => left.positionInReading - right.positionInReading)
+        : await this.db.sentences
+            .where('[readingId+positionInReading]')
+            .between([id, Dexie.minKey], [id, Dexie.maxKey])
+            .toArray();
 
-      return {
-        paragraphs,
-        sentences: window
-          ? sentences.filter((sentence) => paragraphIds.has(sentence.paragraphId))
-          : sentences,
-      };
+      return { paragraphs, sentences };
     });
     if (!loaded.ok) {
       return loaded;

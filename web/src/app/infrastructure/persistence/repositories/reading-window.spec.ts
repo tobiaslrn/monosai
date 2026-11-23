@@ -148,4 +148,29 @@ describe('reading window and cascade', () => {
     expect(second.items.map((reading) => reading.title)).toEqual(['Reading 1', 'Reading 0']);
     expect(second.hasMore).toBe(false);
   });
+
+  it('reads only the sentence rows of the requested window', async () => {
+    const draft = await seed();
+    let sentenceRowsRead = 0;
+    const count = (row: unknown): unknown => {
+      sentenceRowsRead += 1;
+      return row;
+    };
+    db.sentences.hook('reading', count);
+
+    const window = unwrap(
+      await repository.loadGraph(draft.reading.id, {
+        firstParagraphPosition: 4,
+        paragraphCount: 3,
+      }),
+    );
+    db.sentences.hook('reading').unsubscribe(count);
+
+    // Three paragraphs of two sentences; the other nine paragraphs stay on disk.
+    expect(sentenceRowsRead).toBe(6);
+    // Still in reading order, as the whole-reading load returns them.
+    const positions = window.sentences.map((sentence) => sentence.positionInReading);
+    expect(positions).toEqual([...positions].sort((left, right) => left - right));
+    expect(window.sentences[0]?.paragraphId).toBe(window.paragraphs[0]?.id);
+  });
 });
