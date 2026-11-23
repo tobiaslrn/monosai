@@ -19,6 +19,7 @@ import { retryOnRejection, untilAborted } from './lazy-load';
  * One worker for the session. Unlike the package worker, whose termination is
  * the only way a SQLite heap is returned, an idle encoder holds nothing worth
  * reclaiming, and restarting it per sentence would cost more than it saves.
+ * A worker that fails is replaced on the next clip (`restartingSpeechEncoder`).
  */
 export function provideAudioEncoding(): Provider[] {
   return [
@@ -30,7 +31,7 @@ export function provideAudioEncoding(): Provider[] {
       provide: SPEECH_ENCODER,
       useFactory: (): SpeechEncoder => {
         const logger = inject<Logger>(LOGGER);
-        const load = retryOnRejection(async (): Promise<SpeechEncoder> => {
+        return restartingSpeechEncoder(async () => {
           const { SpeechEncoderClient, speechEncoderChannel } =
             await import('./speech-encoder.client');
           const worker = new Worker(
@@ -44,21 +45,52 @@ export function provideAudioEncoding(): Provider[] {
             logger,
           );
         });
-        return {
-          encode: async (input, signal) => {
-            let client: SpeechEncoder;
-            try {
-              client = await untilAborted(load(), signal);
-            } catch (error: unknown) {
-              if (signal?.aborted === true) {
-                return err(speechEncodeError('cancelled', 'The encode was cancelled.'));
-              }
-              throw error;
-            }
-            return client.encode(input, signal);
-          },
-        };
       },
     },
   ];
+}
+
+/** A speech encoder that can tell its stand-in it will never answer again. */
+export interface StoppableSpeechEncoder extends SpeechEncoder {
+  readonly stopped: boolean;
+}
+
+/**
+ * The stand-in the speech encoder port is bound to.
+ *
+ * It starts the real encoder on the first clip and keeps it for the session,
+ * forgets a start that failed so the next clip asks again, and replaces an
+ * encoder whose worker has stopped: the encodes it was running have already
+ * failed, and the next clip gets a new worker instead of one that is gone.
+ */
+export function restartingSpeechEncoder(
+  start: () => Promise<StoppableSpeechEncoder>,
+): SpeechEncoder {
+  let load = retryOnRejection(start);
+  const current = async (): Promise<StoppableSpeechEncoder> => {
+    const used = load;
+    const encoder = await used();
+    if (!encoder.stopped) {
+      return encoder;
+    }
+    // Two clips can find the same stopped encoder; only the first replaces it.
+    if (load === used) {
+      load = retryOnRejection(start);
+    }
+    return load();
+  };
+  return {
+    encode: async (input, signal) => {
+      let encoder: SpeechEncoder;
+      try {
+        encoder = await untilAborted(current(), signal);
+      } catch (error: unknown) {
+        if (signal?.aborted === true) {
+          return err(speechEncodeError('cancelled', 'The encode was cancelled.'));
+        }
+        throw error;
+      }
+      return encoder.encode(input, signal);
+    },
+  };
 }

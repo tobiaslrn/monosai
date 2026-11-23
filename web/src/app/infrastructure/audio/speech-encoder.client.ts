@@ -19,7 +19,14 @@ import { speechEncoderResponseEnvelopeSchema } from './speech-encoder-protocol.s
  */
 export interface SpeechEncoderChannel {
   post(message: SpeechEncoderRequestMessage, transfer?: readonly Transferable[]): void;
-  subscribe(listener: (data: unknown) => void): () => void;
+  /**
+   * Delivers every message, and reports a worker that can no longer answer.
+   *
+   * `onFailure` is how a worker that failed to load, threw outside a request,
+   * was killed for memory, or sent a message that could not be read says so:
+   * no response will ever arrive for what is pending.
+   */
+  subscribe(listener: (data: unknown) => void, onFailure?: () => void): () => void;
   terminate(): void;
 }
 
@@ -49,18 +56,42 @@ export class SpeechEncoderClient implements SpeechEncoder {
     private readonly channel: SpeechEncoderChannel,
     private readonly logger?: Logger,
   ) {
-    this.unsubscribe = channel.subscribe((data) => {
-      this.receive(data);
-    });
+    this.unsubscribe = channel.subscribe(
+      (data) => {
+        this.receive(data);
+      },
+      () => {
+        this.stop('The speech encoder worker stopped unexpectedly.');
+      },
+    );
+  }
+
+  /**
+   * Whether this client can no longer encode: it was disposed, or its worker
+   * failed. The stand-in that hands it out starts a new one instead.
+   */
+  get stopped(): boolean {
+    return this.disposed;
   }
 
   dispose(): void {
+    this.stop('The speech encoder was stopped.');
+  }
+
+  /**
+   * Settles everything pending and stops the worker.
+   *
+   * Also how a worker that can no longer answer is handled: nothing else would
+   * settle the encodes waiting on it, and each would hold its sentence's
+   * preparation permit until the learner pressed Stop.
+   */
+  private stop(reason: string): void {
     if (this.disposed) {
       return;
     }
     this.disposed = true;
     this.unsubscribe();
-    const stopped = speechEncodeError('worker-unavailable', 'The speech encoder was stopped.');
+    const stopped = speechEncodeError('worker-unavailable', reason);
     for (const [, settle] of this.pending) {
       settle(err(stopped));
     }
@@ -163,13 +194,20 @@ export function speechEncoderChannel(worker: Worker, onError?: () => void): Spee
     post: (message, transfer) => {
       worker.postMessage(message, transfer === undefined ? [] : [...transfer]);
     },
-    subscribe: (listener) => {
+    subscribe: (listener, onFailure) => {
       const handler = (event: MessageEvent<unknown>): void => {
         listener(event.data);
       };
+      const failure = (): void => {
+        onFailure?.();
+      };
       worker.addEventListener('message', handler);
+      worker.addEventListener('error', failure);
+      worker.addEventListener('messageerror', failure);
       return () => {
         worker.removeEventListener('message', handler);
+        worker.removeEventListener('error', failure);
+        worker.removeEventListener('messageerror', failure);
       };
     },
     terminate: () => {

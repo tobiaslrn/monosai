@@ -102,7 +102,8 @@ A worker that stops answering (it failed to load, crashed, ran out of memory, or
 could not be read) fails everything pending with a typed error instead of leaving it waiting. The
 package worker is then gone for good, since each package gets its own. The language worker is
 replaced on the next request; the runtime reports that it lost its state, so the language store
-prepares the fresh worker again and the classifier compiles its matcher again.
+prepares the fresh worker again and the classifier compiles its matcher again. The speech encoder
+worker is replaced on the next clip; it keeps no state, so nothing has to be prepared again.
 
 State unions are handled exhaustively, with a helper that makes an unhandled case a type error.
 Adding a state breaks the compile rather than falling through a screen.
