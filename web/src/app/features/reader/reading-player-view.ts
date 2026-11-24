@@ -262,12 +262,7 @@ export function auxAction(facts: PlayerFacts): AuxAction | null {
     };
   }
   if (rail === 'stopped') {
-    const title = [
-      stoppedRunLine(facts.progress, facts.availableCount, facts.sentenceCount),
-      stoppedRunFailure(facts.progress) ?? '',
-    ]
-      .filter((part) => part !== '')
-      .join(' ');
+    const title = stoppedRunReport(facts).join(' ');
     // A retry that has been shown not to work is not offered. What is left to
     // do with the report is put it away, so that is what the button says: the
     // card cannot leave a settled failure on its own, and a control that
@@ -326,6 +321,27 @@ export function coveragePercent(count: number, sentenceCount: number): number {
 }
 
 /**
+ * What a stopped run has to say, and why it stopped.
+ *
+ * With no audio decoder that is the reason, whatever the run met: no retry
+ * could make audio here, so a failure that asks to try again, or a line
+ * suggesting another voice, would point to a way out that is not one.
+ */
+function stoppedRunReport(facts: PlayerFacts): readonly string[] {
+  const line = stoppedRunLine(
+    facts.progress,
+    facts.availableCount,
+    facts.sentenceCount,
+    !facts.decoderMissing,
+  );
+  if (line === '') return [];
+  const reason = facts.decoderMissing
+    ? NO_AUDIO_DECODER_MESSAGE
+    : stoppedRunFailure(facts.progress);
+  return reason === null ? [line] : [line, reason];
+}
+
+/**
  * Everything the card used to print, in one announcement.
  *
  * The position first, because it is what changes and what a learner listening
@@ -347,14 +363,7 @@ export function announcement(facts: PlayerFacts): string {
   if (failure !== null) {
     parts.push(failure);
   }
-  const job = stoppedRunLine(facts.progress, facts.availableCount, facts.sentenceCount);
-  if (job !== '') {
-    parts.push(job);
-  }
-  const jobFailure = stoppedRunFailure(facts.progress);
-  if (jobFailure !== null) {
-    parts.push(jobFailure);
-  }
+  parts.push(...stoppedRunReport(facts));
   if (facts.hasStaleAudio) {
     parts.push(STALE_AUDIO_ANNOUNCEMENT);
   }

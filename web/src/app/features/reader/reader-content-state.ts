@@ -6,7 +6,6 @@ import { formatCount } from '../../domain/shared/locale';
 import {
   aiFailureMessage,
   NO_AUDIO_DECODER_ACTION,
-  NO_AUDIO_DECODER_MESSAGE,
   NO_AUDIO_DECODER_STATUS,
 } from '../../shared-ui/ai-error/ai-error-copy';
 import {
@@ -81,17 +80,18 @@ export function readerContentState(
   // A browser with nothing to check new audio with is reported here too,
   // before any run meets it: no run is started there, so none would say it.
   // It is the whole summary, kept within a secondary line's budget, and its
-  // fix is the card's status line unless another failure already holds it.
+  // fix is the card's status line unless another row's failure holds it.
+  // It wins over what an earlier run met: no retry or reload can make audio
+  // here, so a failure that asks for one would offer a way out that is not.
   if (layer !== 'audio') return state;
-  const reload = progress.kind === 'failed' && enrichmentNeedsReload(progress.error);
   const undecodable = decoderMissing && state.status !== 'Ready' && state.status !== 'No sentences';
-  const decoderReport =
-    undecodable && (state.error === null || state.error === NO_AUDIO_DECODER_MESSAGE);
+  const reload =
+    !undecodable && progress.kind === 'failed' && enrichmentNeedsReload(progress.error);
   return {
     ...state,
     status: undecodable ? NO_AUDIO_DECODER_STATUS : state.status,
-    error: decoderReport ? null : state.error,
-    fix: decoderReport ? NO_AUDIO_DECODER_ACTION : null,
+    error: undecodable ? null : state.error,
+    fix: undecodable ? NO_AUDIO_DECODER_ACTION : null,
     action: reload ? 'reload' : null,
     label: reload ? 'Reload' : '',
     disabled: false,

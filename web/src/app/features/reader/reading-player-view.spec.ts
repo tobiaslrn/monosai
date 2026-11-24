@@ -369,6 +369,25 @@ describe('auxAction', () => {
     expect(announcement(facts({ decoderMissing: true }))).toBe('Not playing');
   });
 
+  /**
+   * A run stopped by something else asks to be tried again, but with no
+   * decoder no run can make audio: the decoder is the reason given, and
+   * nothing suggests a retry or another voice beside a Dismiss.
+   */
+  it('gives the missing decoder as the reason a run stopped, whatever it met', () => {
+    for (const progress of [failed(true), failed(false), CANCELLED]) {
+      const stopped = facts({ ...PARTIAL, progress, decoderMissing: true, decoderNotice: true });
+      const action = auxAction(stopped);
+
+      expect(action).toMatchObject({ kind: 'dismiss' });
+      expect(action?.title).toMatch(/^Stopped\. /);
+      expect(action?.title).toContain(NO_AUDIO_DECODER_MESSAGE);
+      expect(action?.title).not.toMatch(/try again|trying again|different voice/i);
+      expect(announcement(stopped)).toContain(NO_AUDIO_DECODER_MESSAGE);
+      expect(announcement(stopped)).not.toMatch(/try again|trying again|different voice/i);
+    }
+  });
+
   it('is empty when the centre control already is that action, or the model is missing', () => {
     expect(auxAction(facts())).toBeNull();
     expect(auxAction(facts({ ...PARTIAL, modelConfigured: false }))).toBeNull();

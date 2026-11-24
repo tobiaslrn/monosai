@@ -371,6 +371,49 @@ describe('reader content state', () => {
     });
   });
 
+  /**
+   * A run stopped by something else, say an outage, asks to be tried again,
+   * but with no decoder no run can make audio: the decoder is the report on
+   * the row and on the card, and nothing offers a way out that is not one.
+   */
+  it('lets a missing decoder win over the other failure a stopped run met', () => {
+    const stopped = (error: ReturnType<typeof aiError>) =>
+      readerContentState(
+        READING,
+        'audio',
+        {
+          kind: 'failed',
+          readingId: ID,
+          counts: COUNTS,
+          canRetry: true,
+          error: { source: 'provider', error },
+        },
+        'ready',
+        true,
+        true,
+      );
+
+    expect(stopped(aiError('provider-unavailable', 'tts-synthesis', 'Down'))).toMatchObject({
+      status: NO_AUDIO_DECODER_STATUS,
+      error: null,
+      fix: NO_AUDIO_DECODER_ACTION,
+      action: null,
+    });
+    expect(
+      stopped(
+        aiError('unknown', 'tts-synthesis', 'Module failed', {
+          detail: { issueCode: SPEECH_CODE_UNAVAILABLE },
+        }),
+      ),
+    ).toMatchObject({
+      status: NO_AUDIO_DECODER_STATUS,
+      error: null,
+      fix: NO_AUDIO_DECODER_ACTION,
+      action: null,
+      label: '',
+    });
+  });
+
   it('says nothing of a missing decoder where audio is complete', () => {
     const complete = { ...READING, audioSummary: { total: 4, completed: 4, failed: 0 } };
 

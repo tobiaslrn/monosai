@@ -134,7 +134,8 @@ a clip whose contexts all refused, is remembered as having none for the tab's li
 is requested, the player offers no Generate, Story options sums up audio that is not
 complete as why, in place of any voice setup on both, and the background compression pass does
 not start. Story options gives the way out as its status line only when it has no other, so the
-card keeps one. Every
+card keeps one. It is also the reason both give for a stopped run, whatever the run met, since no
+retry could make audio there. Every
 decode, the check's and each clip's, gives up after ten seconds, so a decoder that never answers
 cannot stall a run or a voice test. Giving up proves nothing about the browser: a clip that timed
 out is that sentence's failure like any undecodable clip, and a check that timed out fails that
