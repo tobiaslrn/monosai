@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ImportStore } from '../../application/reading/import.store';
+import { AppBusyRegistry } from '../../application/shared/app-busy.registry';
 import { TextImportService } from '../../application/reading/text-import.service';
 import { languageError } from '../../domain/language/language-error';
 import { err, ok } from '../../domain/shared/result';
@@ -32,6 +33,24 @@ describe('AddTextPageComponent', () => {
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: TextImportService, useValue: imports }],
     });
+  });
+
+  // The browser's leave-site prompt guards a draft, except after a reload the
+  // learner already confirmed in Monosai: one question, never two.
+  it('guards an unsaved draft on unload, unless the learner already agreed to lose it', () => {
+    const fixture = TestBed.createComponent(AddTextPageComponent);
+    const store = fixture.debugElement.injector.get(ImportStore);
+    store.setPastedText('今日は天気がいいです。');
+    fixture.detectChanges();
+    const unload = () => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    expect(unload()).toBe(true);
+    TestBed.inject(AppBusyRegistry).acceptUnload();
+    expect(unload()).toBe(false);
+    fixture.destroy();
   });
 
   it('marks the commit button busy while a story is being added, then clears it', async () => {

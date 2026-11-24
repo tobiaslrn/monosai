@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { Router } from '@angular/router';
+import { AppBusyRegistry } from '../../application/shared/app-busy.registry';
 import { ImportStore } from '../../application/reading/import.store';
 import { NavigationHistoryService } from '../../core/routing/navigation-history.service';
 import { openConfirmDialog } from '../../shared-ui/confirm-dialog/confirm-dialog.component';
@@ -130,8 +131,11 @@ export class AddTextPageComponent {
 
   constructor() {
     // Reloading or closing the tab bypasses the router, so the browser's own
-    // prompt is the only guard available for it.
+    // prompt is the only guard available for it. A reload the learner already
+    // confirmed in Monosai is not asked about again.
+    const busy = inject(AppBusyRegistry);
     const warnOnUnload = (event: BeforeUnloadEvent): void => {
+      if (busy.unloadAccepted()) return;
       if (this.store.isDirty()) {
         event.preventDefault();
       }

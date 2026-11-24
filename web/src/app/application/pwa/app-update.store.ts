@@ -151,9 +151,11 @@ export class AppUpdateStore {
 
   /**
    * Reloads a tab whose database is gone. Saving can never succeed here, so waiting for busy work
-   * to finish is pointless; the caller confirms with the learner what the reload discards.
+   * to finish is pointless; the caller confirms with the learner what the reload discards, and the
+   * browser's own unload prompt does not ask the same question again.
    */
   reloadSuperseded(): void {
+    this.busy.acceptUnload();
     this.reload();
   }
 

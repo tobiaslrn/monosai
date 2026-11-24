@@ -211,6 +211,8 @@ describe('AppUpdateStore', () => {
       instance.reloadSuperseded();
 
       expect(reloadCalls).toBe(1);
+      // The learner confirmed in Monosai; the browser does not ask again.
+      expect(busy.unloadAccepted()).toBe(true);
     });
 
     it('keeps the first cause', () => {
