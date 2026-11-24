@@ -80,10 +80,10 @@ export class ClipSequencer {
   private extending: Promise<void> | null = null;
 
   /**
-   * Whether a refresh arrived while an append was in flight. That append only
+   * Refreshes that arrived while an append was in flight. That append only
    * takes the clips stored when it began, so it appends again when it ends.
    */
-  private extendAgain = false;
+  private refreshes = 0;
 
   /** Whether a load is reading its clip, so a newer load owns the session. */
   isLoading(): boolean {
@@ -396,11 +396,11 @@ export class ClipSequencer {
    */
   async extend(): Promise<void> {
     const track = this.track;
-    if (track === null || !track.open) {
+    if (!track?.open) {
       return;
     }
     if (this.extending !== null) {
-      this.extendAgain = true;
+      this.refreshes += 1;
       return;
     }
     this.extending = this.appendWhileWanted(track);
@@ -408,7 +408,6 @@ export class ClipSequencer {
       await this.extending;
     } finally {
       this.extending = null;
-      this.extendAgain = false;
     }
   }
 
@@ -416,9 +415,9 @@ export class ClipSequencer {
   private async appendWhileWanted(first: ContinuousTrack): Promise<void> {
     let track: ContinuousTrack | null = first;
     while (track?.open === true) {
-      this.extendAgain = false;
+      const refreshes = this.refreshes;
       await this.appendStoredClips(track);
-      track = this.extendAgain ? this.track : null;
+      track = this.refreshes === refreshes ? null : this.track;
     }
   }
 
