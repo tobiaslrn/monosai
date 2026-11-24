@@ -471,7 +471,10 @@ one top bar, its page header
 ([ADR 0069](../decisions/0069-one-top-bar-per-screen.md)).
 The one-time alpha disclosure is the explicit release-stage exception: it is
 shown after any completed initial route, including a reader deep link, and does
-not alter the reader's chrome.
+not alter the reader's chrome. Only an answer closes it, and the answer is saved,
+so a tab that lost its database never offers it and closes an open one at the loss:
+it would otherwise cover the lost-database notice and its Reload with a question that
+can no longer be saved. Nothing was saved, so it is offered again after the reload.
 
 The reader's own not-found state keeps the reader's bar rather than a page header: it
 is reached only after a reading has begun loading, and swapping the chrome in when a

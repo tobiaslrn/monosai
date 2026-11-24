@@ -510,10 +510,16 @@ test.describe('a tab that lost its database, under a live worker', () => {
     page,
     context,
   }) => {
+    // The alpha notice is answered here, before the database is lost: a handler that answered
+    // it whenever it happened to open could not save once the other tab had upgraded.
+    const alpha = page.getByRole('alertdialog', { name: 'Monosai is in alpha' });
+    await page.removeLocatorHandler(alpha);
     await page.goto('./');
     await waitForServiceWorkerControl(page);
     await page.reload();
     await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+    await alpha.getByRole('button', { name: 'Continue' }).click();
+    await expect(alpha).toBeHidden();
     await expect(page.getByRole('heading', { name: 'Library', level: 1 })).toBeVisible();
 
     const other = await context.newPage();
