@@ -2,9 +2,9 @@ import { Injectable, computed, signal, type Signal } from '@angular/core';
 import type { BusyWork } from '../../domain/shared/busy-work';
 
 /**
- * Tracks work in progress that a controlled reload must never interrupt: an
- * unsaved import draft, a live generation run, or a running translation or
- * audio job.
+ * Tracks work in progress that a controlled reload must never lose without
+ * asking: stories being written or written but unsaved, an Anki package being
+ * imported, and text typed on the Paste page.
  *
  * A signal-backed set of reasons rather than a boolean, so unrelated features
  * can hold their own busy state independently without one clearing a reason
@@ -26,9 +26,6 @@ export class AppBusyRegistry {
 
   /** Every piece of work in progress, in the order it was registered. */
   readonly work = this.reasonsSignal;
-
-  /** The first registered work, for a surface that can only name one. */
-  readonly busyWork = computed(() => this.reasonsSignal()[0] ?? null);
 
   /**
    * The learner confirmed a reload that loses this tab's work. A guard that

@@ -130,12 +130,12 @@ describe('GenerationJobsStore', () => {
     const first = jobs.start(5, PREMISE);
     jobs.start(5, PREMISE);
     TestBed.tick();
-    expect(busy.busyWork()).toEqual({ kind: 'story-generation', count: 2 });
+    expect(busy.work()).toEqual([{ kind: 'story-generation', count: 2 }]);
 
     // Ending one must not clear a reason the other is still holding.
     jobs.dismiss(first!);
     TestBed.tick();
-    expect(busy.busyWork()).toEqual({ kind: 'story-generation', count: 1 });
+    expect(busy.work()).toEqual([{ kind: 'story-generation', count: 1 }]);
 
     await settle();
     expect(busy.isBusy()).toBe(false);
@@ -152,7 +152,7 @@ describe('GenerationJobsStore', () => {
     // The written story is in this tab's memory only: nothing is running, but
     // a reload or a closed tab would lose it.
     expect(jobs.runningCount()).toBe(0);
-    expect(busy.busyWork()).toEqual({ kind: 'unsaved-story', count: 1 });
+    expect(busy.work()).toEqual([{ kind: 'unsaved-story', count: 1 }]);
     const unload = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(true);

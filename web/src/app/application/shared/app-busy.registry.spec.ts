@@ -11,7 +11,7 @@ describe('AppBusyRegistry', () => {
     const registry = new AppBusyRegistry();
 
     expect(registry.isBusy()).toBe(false);
-    expect(registry.busyWork()).toBeNull();
+    expect(registry.work()).toEqual([]);
   });
 
   it('follows a tracked signal, and reports its work', () => {
@@ -23,7 +23,7 @@ describe('AppBusyRegistry', () => {
 
     reason.set(ONE_STORY);
     expect(registry.isBusy()).toBe(true);
-    expect(registry.busyWork()).toEqual(ONE_STORY);
+    expect(registry.work()).toEqual([ONE_STORY]);
   });
 
   it('keeps one reason when another clears', () => {
@@ -36,12 +36,12 @@ describe('AppBusyRegistry', () => {
     generation.set(null);
 
     expect(registry.isBusy()).toBe(true);
-    expect(registry.busyWork()).toEqual(DRAFT);
+    expect(registry.work()).toEqual([DRAFT]);
 
     draft.set(null);
 
     expect(registry.isBusy()).toBe(false);
-    expect(registry.busyWork()).toBeNull();
+    expect(registry.work()).toEqual([]);
   });
 
   it('stops following a released signal', () => {
@@ -60,6 +60,6 @@ describe('AppBusyRegistry', () => {
     registry.track('import-draft', signal<BusyWork | null>(DRAFT));
     stale();
 
-    expect(registry.busyWork()).toEqual(DRAFT);
+    expect(registry.work()).toEqual([DRAFT]);
   });
 });
