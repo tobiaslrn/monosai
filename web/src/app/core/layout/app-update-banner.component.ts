@@ -64,12 +64,13 @@ export class AppUpdateBannerComponent {
    * told what a reload discards and decides.
    */
   protected async reloadSuperseded(): Promise<void> {
-    const work = this.store.busyWork();
-    if (work !== null) {
+    // Agreeing also silences the browser's own leave prompt, so every piece of work is named.
+    const work = this.store.work();
+    if (work.length > 0) {
       const confirmed = await confirmLater(this.injector, {
         title: 'Reload and lose unsaved work?',
         message: 'Reloading discards:',
-        details: [busyWorkLine(work)],
+        details: work.map(busyWorkLine),
         confirmLabel: 'Reload',
         cancelLabel: 'Cancel',
         tone: 'danger',

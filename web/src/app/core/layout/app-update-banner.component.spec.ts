@@ -171,6 +171,35 @@ describe('AppUpdateBannerComponent', () => {
       expect(view.reload).not.toHaveBeenCalled();
     });
 
+    // Agreeing silences the browser's own leave prompt, so the question names
+    // every piece of work the reload discards, not only the first.
+    it('names every piece of unsaved work before discarding it', async () => {
+      const view = render(true);
+      view.busy.track(
+        'generation',
+        signal<BusyWork | null>({ kind: 'story-generation', count: 1 }),
+      );
+      view.busy.track('unsaved', signal<BusyWork | null>({ kind: 'unsaved-story', count: 2 }));
+      view.busy.track('import-draft', signal<BusyWork | null>({ kind: 'import-draft' }));
+      lose(view);
+
+      reloadButton(view.element).click();
+
+      await vi.waitFor(() => {
+        expect(view.reload).toHaveBeenCalledTimes(1);
+      });
+      expect(view.dialogOpen).toHaveBeenCalledOnce();
+      const [, config] = view.dialogOpen.mock.calls[0] as unknown as [
+        unknown,
+        { data: { details: readonly string[] } },
+      ];
+      expect(config.data.details).toEqual([
+        'A story is being generated',
+        '2 written stories are unsaved',
+        'An import draft is unsaved',
+      ]);
+    });
+
     it('reloads once the learner confirms discarding the work', async () => {
       const view = render(true);
       view.busy.track('import-draft', signal<BusyWork | null>({ kind: 'import-draft' }));

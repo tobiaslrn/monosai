@@ -23,7 +23,8 @@ reopens by itself. When another tab upgrades or deletes it while this one is run
 closes the connection, this tab stops using it and shows a notice with a Reload action that no
 update check or worker event replaces; only a reload ends it. The notice also shows on
 the reader, as the one piece of chrome it carries. Saving can no longer succeed there, so Reload
-does not wait for busy work: it asks first, naming what is unsaved, and never reloads by itself.
+does not wait for busy work: it asks first, naming every piece of work it discards, and never
+reloads by itself.
 That one question is the only one: the browser's own leave-site prompt does not follow it.
 An in-memory generated story that is not yet saved is lost by that reload; there is no separate
 way to copy it out.

@@ -44,7 +44,8 @@ export class AppUpdateStore {
 
   readonly status = this.statusSignal.asReadonly();
   readonly isBusy = this.busy.isBusy;
-  readonly busyWork = this.busy.busyWork;
+  /** Every piece of work in progress, which a reload of a lost database discards. */
+  readonly work = this.busy.work;
 
   /**
    * The written stories a reload would lose, which never finish by themselves:
