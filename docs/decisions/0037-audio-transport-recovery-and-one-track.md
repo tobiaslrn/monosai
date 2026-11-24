@@ -5,8 +5,9 @@ Status: Accepted
 
 Amended for the sentence mark: the highlight holds at the end of a reading only while the player
 shows it. Behind a closed player the reader marks the cursor only while the reading is playing,
-loading, or waiting for a clip a running generation is making; reopening the player marks it
-again (`ReaderAudioStore.playingSentenceId`).
+loading, or waiting for a clip a running generation is making; once the run stops, a wait stays
+marked until its clips are read again. Reopening the player marks it again
+(`ReaderAudioStore.playingSentenceId`).
 
 Supersedes the **Toggle semantics** and **Controls** subsections of
 [ADR 0028](0028-floating-audio-player.md), and refines the transport and
