@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { isAutomaticallyRetryable, type AiError } from '../../domain/ai/ai-error';
+import { AUDIO_CHECK_TIMED_OUT } from '../../domain/audio/audio-decoder';
 import { remainingSentenceIds, type AssetJob, type JobState } from '../../domain/enrichment/jobs';
 import type { Sentence } from '../../domain/reading/text-hierarchy';
 import { jobId, type ReadingId, type SentenceId } from '../../domain/shared/ids';
@@ -660,11 +661,13 @@ export class AudioJobStore {
     // a request was refused is never reported as one the learner stopped.
     const failure = outcome.failure;
     if (failure !== null) {
-      const canRetry = this.noteRunOutcome(
-        context.readingId,
-        context.config.configFingerprint,
-        added,
-      );
+      // A decoder check that did not answer stops the run before anything is
+      // asked for, so it is no evidence about the voice: it leaves the streak
+      // as it was and keeps the retry its copy promises.
+      const canRetry =
+        isUnansweredDecoderCheck(failure) && added === 0
+          ? true
+          : this.noteRunOutcome(context.readingId, context.config.configFingerprint, added);
       if (failure.source === 'storage') {
         this.lifecycle.fail(context.readingId, failure.error, counts, { canRetry });
         return;
@@ -733,6 +736,11 @@ export class AudioJobStore {
     this.fruitlessRuns.set(readingId, { runs, configFingerprint });
     return runs < AUDIO_FRUITLESS_RUN_LIMIT;
   }
+}
+
+/** Whether a run ended because the browser's decoder check did not answer in time. */
+function isUnansweredDecoderCheck(failure: TerminalFailure): boolean {
+  return failure.source === 'provider' && failure.error.detail?.issueCode === AUDIO_CHECK_TIMED_OUT;
 }
 
 /**

@@ -2,7 +2,7 @@ import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { aiError } from '../../domain/ai/ai-error';
-import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
+import { AUDIO_CHECK_TIMED_OUT, NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import type { ImportedReadingDraft } from '../../domain/reading/reading-repository';
 import type { TtsSettings } from '../../domain/settings/settings';
 import { fixedClock } from '../../domain/shared/clock';
@@ -681,6 +681,58 @@ describe('AudioJobStore', () => {
 
     const underNewVoice = bed.store.progress();
     expect(underNewVoice.kind === 'failed' && underNewVoice.canRetry).toBe(true);
+  });
+
+  /**
+   * A decoder check that does not answer stops the run before any request, so
+   * it is not a run that paid for nothing, and the retry its copy offers stays.
+   */
+  describe('a decoder check that does not answer in time', () => {
+    const timedOut = () =>
+      err(
+        aiError('unknown', 'tts-synthesis', 'The audio check did not answer.', {
+          detail: { issueCode: AUDIO_CHECK_TIMED_OUT },
+        }),
+      );
+
+    it('keeps offering the retry after two such runs in a row', async () => {
+      bed.provider.synthesizeWith = async () => {
+        await hold();
+        return timedOut();
+      };
+      await bed.store.start(bed.draft.reading.id);
+      await bed.store.retry(bed.draft.reading.id);
+
+      const afterSecond = bed.store.progress();
+      expect(afterSecond.kind === 'failed' && afterSecond.canRetry).toBe(true);
+
+      bed.provider.synthesizeWith = () => ok(audioPayload());
+      await bed.store.retry(bed.draft.reading.id);
+
+      expect(bed.store.progress().kind).toBe('complete');
+      expect(await bed.db.audioAssets.count()).toBe(SENTENCE_COUNT);
+    });
+
+    it('does not use up the attempts a run that paid for nothing gets', async () => {
+      bed.provider.synthesizeWith = async () => {
+        await hold();
+        return timedOut();
+      };
+      await bed.store.start(bed.draft.reading.id);
+
+      bed.provider.synthesizeWith = async () => {
+        await hold();
+        return err(aiError('provider-unavailable', 'tts-synthesis', 'Unavailable.'));
+      };
+      await bed.store.retry(bed.draft.reading.id);
+
+      const afterOnePaid = bed.store.progress();
+      expect(afterOnePaid.kind === 'failed' && afterOnePaid.canRetry).toBe(true);
+
+      await bed.store.retry(bed.draft.reading.id);
+      const afterTwoPaid = bed.store.progress();
+      expect(afterTwoPaid.kind === 'failed' && afterTwoPaid.canRetry).toBe(false);
+    });
   });
 
   it('keeps completed clips when the run is cancelled', async () => {

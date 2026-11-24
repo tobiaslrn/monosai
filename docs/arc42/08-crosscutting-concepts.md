@@ -139,7 +139,8 @@ decode, the check's and each clip's, gives up after ten seconds, so a decoder th
 cannot stall a run or a voice test. Giving up proves nothing about the browser: a clip that timed
 out is that sentence's failure like any undecodable clip, and a check that timed out fails that
 request with a failure of its own that offers to try again, and is not remembered, so the next one
-checks again.
+checks again. Since it asked for nothing, a run it ended is not one of the runs that saved nothing,
+after which Try again is withdrawn.
 
 State unions are handled exhaustively, with a helper that makes an unhandled case a type error.
 Adding a state breaks the compile rather than falling through a screen.
