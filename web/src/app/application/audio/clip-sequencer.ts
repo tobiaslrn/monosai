@@ -79,6 +79,12 @@ export class ClipSequencer {
    */
   private extending: Promise<void> | null = null;
 
+  /**
+   * Whether a refresh arrived while an append was in flight. That append only
+   * takes the clips stored when it began, so it appends again when it ends.
+   */
+  private extendAgain = false;
+
   /** Whether a load is reading its clip, so a newer load owns the session. */
   isLoading(): boolean {
     return this.loading;
@@ -385,17 +391,34 @@ export class ClipSequencer {
    * Called from `prepare`, which the reader already re-runs on each completed
    * sentence of a generation run. Playback therefore learns of a clip from its
    * own read of what is stored, and still does not watch the job (ADR 0037).
+   * A refresh during an append is not dropped: once the append ends it runs
+   * again onto the open track, until no refresh is left.
    */
   async extend(): Promise<void> {
     const track = this.track;
-    if (track === null || !track.open || this.extending !== null) {
+    if (track === null || !track.open) {
       return;
     }
-    this.extending = this.appendStoredClips(track);
+    if (this.extending !== null) {
+      this.extendAgain = true;
+      return;
+    }
+    this.extending = this.appendWhileWanted(track);
     try {
       await this.extending;
     } finally {
       this.extending = null;
+      this.extendAgain = false;
+    }
+  }
+
+  /** Appends onto the open track until no refresh arrived during an append. */
+  private async appendWhileWanted(first: ContinuousTrack): Promise<void> {
+    let track: ContinuousTrack | null = first;
+    while (track?.open === true) {
+      this.extendAgain = false;
+      await this.appendStoredClips(track);
+      track = this.extendAgain ? this.track : null;
     }
   }
 

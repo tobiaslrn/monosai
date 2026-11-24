@@ -484,6 +484,38 @@ describe('ClipSequencer', () => {
       expect(bed.player.sequenceOpen()).toBe(true);
     });
 
+    /**
+     * A refresh that lands while an append is reading its clips used to be
+     * dropped, and that append only takes what was stored when it began. A
+     * run's last clips arriving in that window left the reading waiting for
+     * a clip that was already stored.
+     */
+    it('appends a clip stored while an earlier append was reading', async () => {
+      await bed.store.play();
+      await storeClips(bed, 3);
+      const reads = holdClipReads(bed);
+      const held = bed.enrichment.getAudioByCacheKey.bind(bed.enrichment);
+      let asked = 0;
+      bed.enrichment.getAudioByCacheKey = (cacheKey: string) => {
+        asked += 1;
+        return held(cacheKey);
+      };
+      const first = bed.store.prepare(bed.reading);
+      await vi.waitFor(() => {
+        expect(asked).toBe(1);
+      });
+
+      await storeClips(bed);
+      await bed.store.prepare(bed.reading);
+      await reads.release();
+      await first;
+      await settle();
+
+      expect(bed.player.sequences[0]).toHaveLength(SENTENCE_COUNT);
+      expect(bed.player.sequenceOpen()).toBe(false);
+      expect(bed.sequencer.nextToAppend()).toBeNull();
+    });
+
     it('seals the resource once the last sentence has been appended', async () => {
       await bed.store.play();
 
