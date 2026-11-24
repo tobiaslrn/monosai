@@ -131,4 +131,33 @@ describe('AppInitializerService', () => {
     await service.run();
     expect(service.state().status).toBe('ready');
   });
+
+  it('runs the ready work once, on the first run that succeeds', async () => {
+    let attempts = 0;
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: INITIALIZATION_STEP,
+          useValue: [
+            step('flaky', () => {
+              attempts += 1;
+              return attempts === 1 ? Promise.reject(new Error('transient')) : Promise.resolve();
+            }),
+          ],
+        },
+      ],
+    });
+    const service = TestBed.inject(AppInitializerService);
+    const work: string[] = [];
+    service.whenReady(() => work.push('registered early'));
+
+    await service.run();
+    expect(work).toEqual([]);
+
+    await service.run();
+    await service.run();
+    service.whenReady(() => work.push('registered late'));
+
+    expect(work).toEqual(['registered early', 'registered late']);
+  });
 });

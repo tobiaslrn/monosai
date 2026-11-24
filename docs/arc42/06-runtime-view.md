@@ -55,7 +55,9 @@ sequenceDiagram
 ```
 
 The step list is data rather than control flow, so the order is stated in one place and a step can
-be added without touching the runner. Model configuration is loaded before routes render, so a
+be added without touching the runner. The work that follows startup (preparing the tokenizer,
+automatic Anki reads, and the background audio compression pass) starts once, from whichever run
+succeeds first, so a Try again on the recovery screen leaves the same app as a clean start. Model configuration is loaded before routes render, so a
 route cannot overwrite a selection that was written while the learner was navigating.
 
 ## 6.2 Import a text

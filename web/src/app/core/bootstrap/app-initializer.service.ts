@@ -36,6 +36,22 @@ export class AppInitializerService {
 
   readonly state = this.stateSignal.asReadonly();
 
+  private readonly readyWork: (() => void)[] = [];
+  private reachedReady = false;
+
+  /**
+   * Runs `work` once, the first time startup is ready, whichever run gets
+   * there: the first one or a Try again after a failure. Work registered after
+   * that runs at once.
+   */
+  whenReady(work: () => void): void {
+    if (this.reachedReady) {
+      work();
+      return;
+    }
+    this.readyWork.push(work);
+  }
+
   async run(): Promise<void> {
     this.logger.info('app.initialization.started', { count: this.steps.length });
     this.stateSignal.set({ status: 'initializing' });
@@ -61,5 +77,11 @@ export class AppInitializerService {
     }
     this.stateSignal.set({ status: 'ready' });
     this.logger.info('app.initialization.succeeded', { count: this.steps.length });
+    if (!this.reachedReady) {
+      this.reachedReady = true;
+      for (const work of this.readyWork.splice(0)) {
+        work();
+      }
+    }
   }
 }

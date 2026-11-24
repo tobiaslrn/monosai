@@ -72,33 +72,34 @@ export const appConfig: ApplicationConfig = {
       const automaticAnkiSync = inject(AutomaticAnkiSyncCoordinator);
       const injector = inject(EnvironmentInjector);
       const logger = inject<Logger>(LOGGER);
-      void initializer.run().then(() => {
+      // Registered before the first run, so it starts once whichever run is
+      // the first to succeed: this one or a Try again on the recovery screen.
+      initializer.whenReady(() => {
         // Every reading path needs the tokenizer, so preparation starts on its
         // own once startup succeeds. It is deliberately not awaited and not a
         // startup step: navigation, the library, and settings must render while
         // the language bundle is still downloading.
-        if (initializer.state().status === 'ready') {
-          void language.initialize();
-          automaticAnkiSync.start();
-          // Clips stored before Monosai compressed speech are re-encoded in
-          // the background. Not a startup step and not awaited: it touches
-          // nothing any screen is waiting for, and it stands aside the moment
-          // the learner plays something. Imported here rather than at the top,
-          // so none of the compression code is in the bundle every learner
-          // downloads to read their first sentence.
-          void import('./application/settings/audio-compression.store')
-            .then(({ AudioCompressionStore }) => injector.get(AudioCompressionStore).run())
-            .catch((thrown: unknown) => {
-              // Background work nothing is waiting on, so it must not take the
-              // application down with it — but a pass that never ran is not
-              // allowed to look like a pass that found nothing to do.
-              logger.error('worker.operation.failed', {
-                worker: 'audio-compression',
-                errorType: String(thrown),
-              });
+        void language.initialize();
+        automaticAnkiSync.start();
+        // Clips stored before Monosai compressed speech are re-encoded in
+        // the background. Not a startup step and not awaited: it touches
+        // nothing any screen is waiting for, and it stands aside the moment
+        // the learner plays something. Imported here rather than at the top,
+        // so none of the compression code is in the bundle every learner
+        // downloads to read their first sentence.
+        void import('./application/settings/audio-compression.store')
+          .then(({ AudioCompressionStore }) => injector.get(AudioCompressionStore).run())
+          .catch((thrown: unknown) => {
+            // Background work nothing is waiting on, so it must not take the
+            // application down with it — but a pass that never ran is not
+            // allowed to look like a pass that found nothing to do.
+            logger.error('worker.operation.failed', {
+              worker: 'audio-compression',
+              errorType: String(thrown),
             });
-        }
+          });
       });
+      void initializer.run();
     }),
     // Monosai's own worker, which handles the Android share target and then
     // hands everything else to Angular's `ngsw-worker.js` unchanged.
