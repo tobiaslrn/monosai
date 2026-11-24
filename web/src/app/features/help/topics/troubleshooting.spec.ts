@@ -6,6 +6,7 @@ import {
   AI_ERROR_COPY,
   AUDIO_CHECK_TIMED_OUT_HEADING,
   NO_AUDIO_DECODER_HEADING,
+  NO_AUDIO_DECODER_STATUS,
   SPEECH_CODE_HEADING,
 } from '../../../shared-ui/ai-error/ai-error-copy';
 import { ANKI_ERROR_COPY } from '../../vocabulary/anki-error-copy';
@@ -43,6 +44,8 @@ describe('troubleshooting', () => {
     );
     expect(entry?.text).toContain('Chrome');
     expect(entry?.text).not.toMatch(/try again/iu);
+    // Story options says it shorter, and is looked up by what it says.
+    expect(entry?.seen).toContain(NO_AUDIO_DECODER_STATUS);
   });
 
   it('sends a decoder check that did not answer to a retry, not another browser', () => {

@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReaderMenuComponent } from './reader-menu.component';
 import { configureVocabularyTestBed } from '../../../testing/vocabulary-fakes';
 import type { ReaderContentState } from './reader-content-state';
+import {
+  NO_AUDIO_DECODER_ACTION,
+  NO_AUDIO_DECODER_STATUS,
+} from '../../shared-ui/ai-error/ai-error-copy';
 
 const ROW: ReaderContentState = {
   layer: 'english',
@@ -14,8 +18,21 @@ const ROW: ReaderContentState = {
   busy: false,
   disabled: false,
   error: null,
+  fix: null,
   setup: false,
   settingsLink: '/settings/text-models',
+};
+
+/** Audio in a browser with no decoder, as the content state reports it. */
+const NO_DECODER: ReaderContentState = {
+  ...ROW,
+  layer: 'audio',
+  name: 'Audio',
+  status: NO_AUDIO_DECODER_STATUS,
+  action: null,
+  label: '',
+  fix: NO_AUDIO_DECODER_ACTION,
+  settingsLink: '/settings/voice',
 };
 
 /** A layer waiting on the same missing key as the others. */
@@ -98,6 +115,33 @@ describe('Story options', () => {
     expect(element.querySelector('[data-layer] .mn-settings-row__details')?.textContent).toContain(
       'Add an OpenRouter key',
     );
+  });
+
+  it('leads the audio summary with a missing decoder and gives its fix the one status line', () => {
+    const { element } = render([ROW, NO_DECODER]);
+
+    const audio = element.querySelector('[data-layer="audio"] .mn-settings-row__details');
+    expect(audio?.textContent.trim()).toBe(NO_AUDIO_DECODER_STATUS);
+    const lines = [...element.querySelectorAll('mn-status-line')];
+    expect(lines.map((line) => line.textContent.trim())).toEqual([NO_AUDIO_DECODER_ACTION]);
+  });
+
+  it('leaves a missing decoder to the audio summary when shared setup holds the status line', () => {
+    const { element } = render([waitingOnKey('english'), waitingOnKey('grammar'), NO_DECODER]);
+
+    const audio = element.querySelector('[data-layer="audio"] .mn-settings-row__details');
+    expect(audio?.textContent.trim()).toBe(NO_AUDIO_DECODER_STATUS);
+    const lines = [...element.querySelectorAll('mn-status-line')];
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.getAttribute('data-testid')).toBe('shared-setup');
+  });
+
+  it('leaves a missing decoder to the audio summary beside another failure', () => {
+    const { element } = render([{ ...ROW, error: 'Could not save: disk full' }, NO_DECODER]);
+
+    expect(
+      [...element.querySelectorAll('mn-status-line')].map((line) => line.textContent.trim()),
+    ).toEqual(['Could not save: disk full']);
   });
 
   it('starts a layer without closing its progress surface', () => {

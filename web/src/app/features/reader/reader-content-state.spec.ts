@@ -4,7 +4,12 @@ import { readingId } from '../../domain/shared/ids';
 import { storageError } from '../../domain/storage/storage-error';
 import { aiError } from '../../domain/ai/ai-error';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
-import { NO_AUDIO_DECODER_MESSAGE } from '../../shared-ui/ai-error/ai-error-copy';
+import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
+import {
+  NO_AUDIO_DECODER_ACTION,
+  NO_AUDIO_DECODER_HEADING,
+  NO_AUDIO_DECODER_STATUS,
+} from '../../shared-ui/ai-error/ai-error-copy';
 import { readerContentState } from './reader-content-state';
 
 const ID = readingId('018f0000-0000-7000-8000-000000000001');
@@ -313,17 +318,67 @@ describe('reader content state', () => {
     expect(state.error).toBe('Speech could not load.');
   });
 
-  it('reports a browser with no audio decoder beside missing audio before any run', () => {
+  it('leads the audio summary with a missing decoder before any run, and keeps the cause out of its fix', () => {
     const state = readerContentState(READING, 'audio', IDLE, 'ready', true, true);
 
-    expect(state).toMatchObject({ action: null, error: NO_AUDIO_DECODER_MESSAGE });
-    expect(readerContentState(READING, 'audio', IDLE, 'ready', true).error).toBeNull();
+    expect(state).toMatchObject({
+      action: null,
+      status: NO_AUDIO_DECODER_STATUS,
+      error: null,
+      fix: NO_AUDIO_DECODER_ACTION,
+    });
+    expect(state.fix).not.toContain(NO_AUDIO_DECODER_HEADING);
+    expect(readerContentState(READING, 'audio', IDLE, 'ready', true)).toMatchObject({
+      status: 'Not added',
+      error: null,
+      fix: null,
+    });
+  });
+
+  it('keeps the saved count after a missing decoder', () => {
+    const partial = { ...READING, audioSummary: { total: 4, completed: 1, failed: 0 } };
+
+    expect(readerContentState(partial, 'audio', IDLE, 'ready', true, true).status).toBe(
+      `${NO_AUDIO_DECODER_STATUS} · 1 of 4 sentences saved`,
+    );
+  });
+
+  it('reports a run that met no decoder once, as the same summary and fix', () => {
+    const state = readerContentState(
+      READING,
+      'audio',
+      {
+        kind: 'failed',
+        readingId: ID,
+        counts: { total: 4, requested: 4, completed: 0, failed: 4 },
+        canRetry: false,
+        error: {
+          source: 'provider',
+          error: aiError('unknown', 'tts-synthesis', 'No decoder', {
+            detail: { issueCode: NO_AUDIO_DECODER },
+          }),
+        },
+      },
+      'ready',
+      true,
+      true,
+    );
+
+    expect(state).toMatchObject({
+      status: NO_AUDIO_DECODER_STATUS,
+      error: null,
+      fix: NO_AUDIO_DECODER_ACTION,
+    });
   });
 
   it('says nothing of a missing decoder where audio is complete', () => {
     const complete = { ...READING, audioSummary: { total: 4, completed: 4, failed: 0 } };
 
-    expect(readerContentState(complete, 'audio', IDLE, 'ready', true, true).error).toBeNull();
+    expect(readerContentState(complete, 'audio', IDLE, 'ready', true, true)).toMatchObject({
+      status: 'Ready',
+      error: null,
+      fix: null,
+    });
   });
 
   it('reports a missing decoder instead of voice setup, since no voice would make audio', () => {
@@ -332,9 +387,10 @@ describe('reader content state', () => {
 
       expect(state).toMatchObject({
         setup: false,
-        status: 'Not added',
+        status: NO_AUDIO_DECODER_STATUS,
         action: null,
-        error: NO_AUDIO_DECODER_MESSAGE,
+        error: null,
+        fix: NO_AUDIO_DECODER_ACTION,
       });
     }
     expect(readerContentState(READING, 'english', IDLE, 'incomplete', true, true).setup).toBe(true);

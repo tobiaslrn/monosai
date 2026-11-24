@@ -3,7 +3,12 @@ import type { ConfigurationReadiness } from '../../domain/ai/configuration-readi
 import type { PreparationLayer } from '../../domain/enrichment/preparation';
 import type { Reading } from '../../domain/reading/reading';
 import { formatCount } from '../../domain/shared/locale';
-import { aiFailureMessage, NO_AUDIO_DECODER_MESSAGE } from '../../shared-ui/ai-error/ai-error-copy';
+import {
+  aiFailureMessage,
+  NO_AUDIO_DECODER_ACTION,
+  NO_AUDIO_DECODER_MESSAGE,
+  NO_AUDIO_DECODER_STATUS,
+} from '../../shared-ui/ai-error/ai-error-copy';
 import {
   enrichmentCanRetry,
   enrichmentNeedsReload,
@@ -19,6 +24,12 @@ export interface ReaderContentState {
   readonly disabled: boolean;
   readonly busy: boolean;
   readonly error: string | null;
+  /**
+   * The step that ends what the status leads with, which already names the
+   * cause. It is the card's status line only when the card has no other, so a
+   * card never carries two (R29) and never says the cause twice.
+   */
+  readonly fix: string | null;
   /** The status is a setup step in Settings, which rows may share. */
   readonly setup: boolean;
   /** The page of Settings that fixes it: the key, the voice, or the text models. */
@@ -53,7 +64,7 @@ export function readerContentState(
 ): ReaderContentState {
   // With no decoder, no voice would make audio, so setting one up is not the
   // next step for audio: the row reads as it would once set up, and the
-  // missing decoder is its report, as on the player.
+  // missing decoder leads its summary, as it is the player's report.
   const state = layerState(
     reading,
     layer,
@@ -69,16 +80,23 @@ export function readerContentState(
   // it, and the transport has no room for one, so it sits beside the report.
   // A browser with nothing to check new audio with is reported here too,
   // before any run meets it: no run is started there, so none would say it.
+  // It leads the summary, with what audio is saved after it, and its fix is
+  // the card's status line unless another failure already holds it.
   if (layer !== 'audio') return state;
   const reload = progress.kind === 'failed' && enrichmentNeedsReload(progress.error);
-  const undecodable =
-    decoderMissing &&
-    state.error === null &&
-    state.status !== 'Ready' &&
-    state.status !== 'No sentences';
+  const undecodable = decoderMissing && state.status !== 'Ready' && state.status !== 'No sentences';
+  const { completed, description } = completion(reading, layer, progress);
+  const decoderReport =
+    undecodable && (state.error === null || state.error === NO_AUDIO_DECODER_MESSAGE);
   return {
     ...state,
-    error: undecodable ? NO_AUDIO_DECODER_MESSAGE : state.error,
+    status: undecodable
+      ? completed > 0
+        ? `${NO_AUDIO_DECODER_STATUS} · ${description}`
+        : NO_AUDIO_DECODER_STATUS
+      : state.status,
+    error: decoderReport ? null : state.error,
+    fix: decoderReport ? NO_AUDIO_DECODER_ACTION : null,
     action: reload ? 'reload' : null,
     label: reload ? 'Reload' : '',
     disabled: false,
@@ -94,29 +112,14 @@ function layerState(
 ): ReaderContentState {
   const grammar = reading.grammarSummary;
   const summary = layer === 'english' ? reading.translationSummary : reading.audioSummary;
-  let completed =
-    layer === 'grammar'
-      ? grammar.state === 'complete'
-        ? reading.sentenceCount
-        : grammar.state === 'partial'
-          ? grammar.analyzedSentenceCount
-          : 0
-      : summary.completed;
-  if ('counts' in progress) {
-    completed = Math.max(
-      completed,
-      progress.counts.total - progress.counts.requested + progress.counts.completed,
-    );
-  }
-  completed = Math.min(completed, reading.sentenceCount);
-  const completionNoun = layer === 'grammar' ? 'sentences analysed' : 'sentences saved';
-  const completedDescription = `${formatCount(completed)} of ${formatCount(reading.sentenceCount)} ${completionNoun}`;
+  const { completed, description: completedDescription } = completion(reading, layer, progress);
   const base = {
     layer,
     name: NAMES[layer],
     disabled: false,
     busy: false,
     error: null,
+    fix: null,
     setup: false,
     settingsLink: settingsPageFor(layer, readiness),
   };
@@ -235,4 +238,32 @@ function layerState(
     label: failed ? 'Retry remaining' : completed > 0 ? 'Continue' : ACTIONS[layer],
     disabled: !online,
   };
+}
+
+/** How many sentences a layer has, counting what a run in progress added. */
+function completion(
+  reading: Reading,
+  layer: PreparationLayer,
+  progress: LayerProgress,
+): { readonly completed: number; readonly description: string } {
+  const grammar = reading.grammarSummary;
+  const summary = layer === 'english' ? reading.translationSummary : reading.audioSummary;
+  let completed =
+    layer === 'grammar'
+      ? grammar.state === 'complete'
+        ? reading.sentenceCount
+        : grammar.state === 'partial'
+          ? grammar.analyzedSentenceCount
+          : 0
+      : summary.completed;
+  if ('counts' in progress) {
+    completed = Math.max(
+      completed,
+      progress.counts.total - progress.counts.requested + progress.counts.completed,
+    );
+  }
+  completed = Math.min(completed, reading.sentenceCount);
+  const completionNoun = layer === 'grammar' ? 'sentences analysed' : 'sentences saved';
+  const description = `${formatCount(completed)} of ${formatCount(reading.sentenceCount)} ${completionNoun}`;
+  return { completed, description };
 }

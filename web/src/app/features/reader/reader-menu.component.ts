@@ -166,6 +166,8 @@ import {
               }}</mn-status-line>
             } @else if (row.error) {
               <mn-status-line tone="danger">{{ row.error }}</mn-status-line>
+            } @else if (row.fix && !otherStatus()) {
+              <mn-status-line tone="danger" data-testid="row-fix">{{ row.fix }}</mn-status-line>
             }
           }
           @if (error()) {
@@ -275,6 +277,20 @@ export class ReaderMenuComponent {
     const text = waiting.find((row) => row.layer !== 'audio') ?? first;
     return { status: first.status, label: text.label, link: text.settingsLink };
   });
+
+  /**
+   * The card already has a status line. A row's fix then waits: its summary
+   * already leads with the cause, and the card keeps one status line (R29).
+   */
+  protected readonly otherStatus = computed(
+    () =>
+      this.sharedSetup() !== null ||
+      Boolean(this.error()) ||
+      this.rows().some(
+        (row) =>
+          Boolean(row.error) || (row.action === 'reload' && this.reloadWaitingFor() !== null),
+      ),
+  );
 
   open(): void {
     this.panel().show();

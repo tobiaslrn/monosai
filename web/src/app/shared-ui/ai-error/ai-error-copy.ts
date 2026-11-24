@@ -214,6 +214,12 @@ export const NO_AUDIO_DECODER_HEADING = 'This browser cannot make new audio';
 /** A browser with no audio decoder, said the same wherever it is met. */
 export const NO_AUDIO_DECODER_MESSAGE = `${NO_AUDIO_DECODER_HEADING}. ${OPEN_ANOTHER_BROWSER}`;
 
+/** The same, as the short status a row's secondary line leads with. */
+export const NO_AUDIO_DECODER_STATUS = 'Browser cannot make new audio';
+
+/** The one step that ends it, for where the status already names the cause. */
+export const NO_AUDIO_DECODER_ACTION = OPEN_ANOTHER_BROWSER;
+
 /**
  * This browser has nothing to decode audio with, so no clip can be checked
  * and none is kept. No voice, model or retry changes that; another browser
