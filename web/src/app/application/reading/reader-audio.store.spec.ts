@@ -80,7 +80,7 @@ describe('ReaderAudioStore', () => {
           // Through the variable, so a test can swap the browser it stands for.
           useValue: {
             available: () => decoder.available(),
-            canDecode: () => decoder.canDecode(),
+            checkDecoding: () => decoder.checkDecoding(),
             decode: (bytes: ArrayBuffer, mimeType: string) => decoder.decode(bytes, mimeType),
           },
         },

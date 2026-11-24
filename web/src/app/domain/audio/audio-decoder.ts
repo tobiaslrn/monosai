@@ -24,6 +24,19 @@ export type DecodeOutcome =
 export const NO_AUDIO_DECODER = 'no-audio-decoder';
 
 /**
+ * The issue code of a speech failure caused by a decoder check that did not
+ * answer in time. Unlike a missing decoder it proves nothing about the
+ * browser, so asking again can succeed.
+ */
+export const AUDIO_CHECK_TIMED_OUT = 'audio-check-timed-out';
+
+/**
+ * What asking the browser to decode found: it decodes, it has nothing to
+ * decode with, or its decoder did not answer in time.
+ */
+export type DecoderCheck = 'decodes' | 'no-decoder' | 'timed-out';
+
+/**
  * Proves a clip is playable in this browser, not merely non-empty.
  *
  * A provider can return a well-formed file this browser cannot decode, and so
@@ -44,9 +57,9 @@ export interface AudioDecoder {
    * it decodes a tiny built-in clip once per tab, so a browser that makes a
    * context but decodes nothing is found out before a clip is bought, not
    * after. Afterwards `available` gives the same answer. A check whose decode
-   * never answered says no without being remembered, and the next one asks
-   * again.
+   * never answered says `timed-out` without being remembered, and the next one
+   * asks again.
    */
-  canDecode(): Promise<boolean>;
+  checkDecoding(): Promise<DecoderCheck>;
   decode(bytes: ArrayBuffer, mimeType: string): Promise<DecodeOutcome>;
 }

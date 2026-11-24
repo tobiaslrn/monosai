@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
-import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
+import { AUDIO_CHECK_TIMED_OUT, NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import { FAKE_OPENROUTER } from '../../../testing/openrouter-server';
 import { openRouterHarness, type HarnessOptions } from '../../../testing/ai-fakes';
 
@@ -244,6 +244,26 @@ describe('OpenRouterTtsSynthesizer', () => {
       expect(harness.server.callCount).toBe(0);
     },
   );
+
+  // A check that did not answer proves nothing about the browser: nothing is
+  // paid for, the failure says so apart from a missing decoder, and the next
+  // sentence asks again.
+  it('asks for nothing, and reports a retryable failure, when the decoder check times out', async () => {
+    const harness = run({ decodable: 'check-times-out' });
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const result = await harness.tts.synthesize(REQUEST, new AbortController().signal);
+      expect(result).toMatchObject({
+        ok: false,
+        error: {
+          code: 'unknown',
+          task: 'tts-synthesis',
+          detail: { issueCode: AUDIO_CHECK_TIMED_OUT },
+        },
+      });
+    }
+    expect(harness.server.callCount).toBe(0);
+  });
 
   it('reports server and voice failures without a capability retry', async () => {
     const serverFailure = await run({ status: 500 }).tts.synthesize(

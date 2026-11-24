@@ -6,7 +6,7 @@ import {
 } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
-import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
+import { AUDIO_CHECK_TIMED_OUT, NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 
 /**
  * Provider-failure copy, shared by every screen that can see one.
@@ -223,6 +223,17 @@ function isNoAudioDecoder(error: AiError): boolean {
   return error.detail?.issueCode === NO_AUDIO_DECODER;
 }
 
+/** The title of a decoder check that did not answer in time. */
+export const AUDIO_CHECK_TIMED_OUT_HEADING = 'This browser did not answer';
+
+/**
+ * The browser's decoder did not answer the check in time. Unlike a missing
+ * decoder this proves nothing about the browser, so trying again is the step.
+ */
+function isAudioCheckTimedOut(error: AiError): boolean {
+  return error.detail?.issueCode === AUDIO_CHECK_TIMED_OUT;
+}
+
 export function aiErrorCopy(error: AiError): AiErrorCopy {
   // The output ran out of room, not the input. The shared row's "the request
   // was too large" would send the learner to shorten something that was fine.
@@ -251,6 +262,9 @@ export function aiErrorCopy(error: AiError): AiErrorCopy {
       primaryAction: OPEN_ANOTHER_BROWSER,
       retryAction: OPEN_ANOTHER_BROWSER,
     };
+  }
+  if (isAudioCheckTimedOut(error)) {
+    return { ...AI_ERROR_COPY.unknown, heading: AUDIO_CHECK_TIMED_OUT_HEADING };
   }
   // The key worked and the model exists; its moderation check refused the text.
   // A different model is still the remedy, so only the title differs.

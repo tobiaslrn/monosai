@@ -140,10 +140,12 @@ export function fakeAudioDecoder(
  * Whether a fake decoder decodes, finds the clip undecodable, or has nothing to
  * decode with: `no-decoder` is a browser whose contexts all refuse, found out
  * on the first decode, `missing` one with no context at all, known before
- * anything is asked for, and `fails-check` one that makes contexts but decodes
- * nothing, found out by the check before a clip is asked for.
+ * anything is asked for, `fails-check` one that makes contexts but decodes
+ * nothing, found out by the check before a clip is asked for, and
+ * `check-times-out` one whose check never answers in time, remembered by
+ * nothing.
  */
-export type FakeDecodable = boolean | 'no-decoder' | 'missing' | 'fails-check';
+export type FakeDecodable = boolean | 'no-decoder' | 'missing' | 'fails-check' | 'check-times-out';
 
 function fakeOutcome(decodable: FakeDecodable, durationSeconds: number): DecodeOutcome {
   if (decodable === 'no-decoder' || decodable === 'missing') return { kind: 'no-decoder' };
@@ -160,9 +162,10 @@ function sequencedAudioDecoder(
   return {
     available: () => !missing,
     // A browser whose contexts refuse only later passes the check, as one can.
-    canDecode: () => {
+    checkDecoding: () => {
       if (decodable === 'fails-check') missing = true;
-      return Promise.resolve(!missing);
+      if (missing) return Promise.resolve('no-decoder');
+      return Promise.resolve(decodable === 'check-times-out' ? 'timed-out' : 'decodes');
     },
     decode: () => {
       const durationSeconds = clipSeconds[Math.min(decoded, clipSeconds.length - 1)] ?? 1.5;

@@ -1,4 +1,4 @@
-import type { AudioDecoder, DecodeOutcome } from '../../domain/audio/audio-decoder';
+import type { AudioDecoder, DecodeOutcome, DecoderCheck } from '../../domain/audio/audio-decoder';
 
 export type { AudioDecoder, DecodeOutcome };
 
@@ -27,12 +27,12 @@ type DecodingContextConstructor = new (...args: number[]) => DecodingContext;
  * A decode that never answers would stall a run or a voice test for good, so
  * each one gives up after `DECODE_TIMEOUT_MS`. Giving up proves nothing about
  * the browser: a clip that timed out is undecodable, like any clip that did
- * not decode, and a check that timed out answers no without being remembered,
- * so the next check asks again.
+ * not decode, and a check that timed out says so without being remembered, so
+ * the next check asks again.
  */
 export function createAudioDecoder(view: Window): AudioDecoder {
   let missing = false;
-  let checked: Promise<boolean> | null = null;
+  let checked: Promise<DecoderCheck> | null = null;
   const available = (): boolean => {
     const { offline, live } = contextConstructors(view);
     if (offline === null && live === null) {
@@ -42,20 +42,20 @@ export function createAudioDecoder(view: Window): AudioDecoder {
   };
   return {
     available,
-    canDecode: () => {
+    checkDecoding: () => {
       if (!available()) {
-        return Promise.resolve(false);
+        return Promise.resolve('no-decoder');
       }
       checked ??= decodesProbe(view).then((found) => {
-        if (found === 'fails') {
+        if (found === 'no-decoder') {
           missing = true;
         }
         if (found === 'timed-out') {
           checked = null;
         }
-        return found === 'decodes';
+        return found;
       });
-      return checked.then((decodes) => decodes && !missing);
+      return checked.then((found) => (found === 'decodes' && missing ? 'no-decoder' : found));
     },
     decode: async (bytes: ArrayBuffer): Promise<DecodeOutcome> => {
       const context = missing ? null : openContext(view);
@@ -77,14 +77,11 @@ export function createAudioDecoder(view: Window): AudioDecoder {
   };
 }
 
-/** What decoding the built-in clip found. */
-type ProbeOutcome = 'decodes' | 'fails' | 'timed-out';
-
-/** Whether a context this browser makes decodes the built-in clip. */
-async function decodesProbe(view: Window): Promise<ProbeOutcome> {
+/** What a context this browser makes does with the built-in clip. */
+async function decodesProbe(view: Window): Promise<DecoderCheck> {
   const context = openContext(view);
   if (context === null) {
-    return 'fails';
+    return 'no-decoder';
   }
   let answered = true;
   try {
@@ -92,7 +89,7 @@ async function decodesProbe(view: Window): Promise<ProbeOutcome> {
     return 'decodes';
   } catch (error) {
     answered = !(error instanceof DecodeTimeout);
-    return answered ? 'fails' : 'timed-out';
+    return answered ? 'no-decoder' : 'timed-out';
   } finally {
     await release(context, answered);
   }

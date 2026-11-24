@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { ALL_AI_ERROR_CODES, aiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
-import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
+import { AUDIO_CHECK_TIMED_OUT, NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import { storageError } from '../../domain/storage/storage-error';
 import { AI_TASK_COPY, aiErrorAction } from '../../shared-ui/ai-error/ai-error-copy';
 import {
   describeEnrichmentFailure,
   enrichmentCanRetry,
+  enrichmentFailedInBrowser,
   enrichmentNeedsSettings,
 } from './enrichment-failure-copy';
 
@@ -105,6 +106,18 @@ describe('enrichmentCanRetry', () => {
     } as const;
 
     expect(enrichmentCanRetry(failure)).toBe(false);
+  });
+
+  it('offers a retry where the decoder check did not answer, which proves nothing', () => {
+    const failure = {
+      source: 'provider',
+      error: aiError('unknown', 'tts-synthesis', 'The audio decoder did not answer.', {
+        detail: { issueCode: AUDIO_CHECK_TIMED_OUT },
+      }),
+    } as const;
+
+    expect(enrichmentFailedInBrowser(failure)).toBe(false);
+    expect(enrichmentCanRetry(failure)).toBe(true);
   });
 
   it('offers another attempt when a model answered in the wrong shape', () => {

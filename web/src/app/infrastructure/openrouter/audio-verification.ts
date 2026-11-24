@@ -2,7 +2,7 @@ import { aiError, type AiError } from '../../domain/ai/ai-error';
 import type { AiTask } from '../../domain/ai/ai-task';
 import type { AudioMimeType } from '../../domain/enrichment/records';
 import { err, ok, type Result } from '../../domain/shared/result';
-import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
+import { AUDIO_CHECK_TIMED_OUT, NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import type { AudioDecoder } from './audio-decode';
 import type { AudioResponse } from './openrouter-client';
 
@@ -130,6 +130,20 @@ export function noAudioDecoder(context: AudioContext): AiError {
       modelId: context.modelId,
       voiceId: context.voiceId,
       issueCode: NO_AUDIO_DECODER,
+    },
+  });
+}
+
+/**
+ * The failure of a decoder check that did not answer in time. It proves
+ * nothing about the browser, so asking again can succeed.
+ */
+export function audioCheckTimedOut(context: AudioContext): AiError {
+  return aiError('unknown', context.task, 'The audio decoder did not answer.', {
+    detail: {
+      modelId: context.modelId,
+      voiceId: context.voiceId,
+      issueCode: AUDIO_CHECK_TIMED_OUT,
     },
   });
 }

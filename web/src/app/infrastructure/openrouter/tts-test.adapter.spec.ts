@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { declaredSpeechCapabilities } from '../../domain/ai/speech-capabilities';
-import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
+import { AUDIO_CHECK_TIMED_OUT, NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import { FAKE_OPENROUTER } from '../../../testing/openrouter-server';
 import { openRouterHarness, type HarnessOptions } from '../../../testing/ai-fakes';
 import { TTS_TEST_CONTEXT, TTS_TEST_PHRASE } from './tts-test.adapter';
@@ -64,6 +64,18 @@ describe('OpenRouterTtsTester', () => {
     expect(result).toMatchObject({
       ok: false,
       error: { code: 'unknown', task: 'tts-test', detail: { issueCode: NO_AUDIO_DECODER } },
+    });
+    expect(harness.server.callCount).toBe(0);
+  });
+
+  it('sends no paid request when the decoder check does not answer in time', async () => {
+    const harness = run({ decodable: 'check-times-out' });
+
+    const result = await harness.tts.testConfiguration(CONFIG);
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'unknown', task: 'tts-test', detail: { issueCode: AUDIO_CHECK_TIMED_OUT } },
     });
     expect(harness.server.callCount).toBe(0);
   });

@@ -2,6 +2,7 @@ import type { AiErrorCode } from '../../../domain/ai/ai-error';
 import type { AnkiErrorCode } from '../../../domain/anki/anki-error';
 import {
   AI_ERROR_COPY,
+  AUDIO_CHECK_TIMED_OUT_HEADING,
   MODERATION_HEADING,
   NO_AUDIO_DECODER_HEADING,
   SPEECH_CODE_HEADING,
@@ -123,6 +124,13 @@ const NO_AUDIO_DECODER: TroubleshootingEntry = {
   code: 'ai/unknown',
 };
 
+/** The browser's decoder was too slow to answer, which proves nothing about it. */
+const AUDIO_CHECK_TIMED_OUT: TroubleshootingEntry = {
+  seen: [AUDIO_CHECK_TIMED_OUT_HEADING],
+  text: "This browser took too long to check that it can play new audio, so Monosai didn't ask OpenRouter for a clip. Try again. If it keeps happening, restart the browser.",
+  code: 'ai/unknown',
+};
+
 /** Anki failures, most common first. */
 const ANKI_ENTRIES: readonly (readonly [AnkiErrorCode, string])[] = [
   [
@@ -227,6 +235,7 @@ export const TROUBLESHOOTING_GROUPS: readonly TroubleshootingGroup[] = [
       FLAGGED,
       SPEECH_CODE,
       NO_AUDIO_DECODER,
+      AUDIO_CHECK_TIMED_OUT,
     ],
   },
   {

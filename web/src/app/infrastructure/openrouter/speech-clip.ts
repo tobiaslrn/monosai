@@ -3,6 +3,7 @@ import type { SpeechEncoder } from '../../domain/audio/speech-encoder';
 import { err, ok, type Result } from '../../domain/shared/result';
 import type { AudioDecoder } from './audio-decode';
 import {
+  audioCheckTimedOut,
   checkSpokenLength,
   longestPlausibleSpeechSeconds,
   noAudioDecoder,
@@ -39,14 +40,19 @@ export interface SpeechClip {
  * long is refused rather than stored.
  *
  * A browser with nothing to decode with could keep no clip, so it is asked
- * first and nothing is requested, or paid for, when it has none.
+ * first and nothing is requested, or paid for, when it has none, or when its
+ * decoder did not answer in time.
  */
 export async function speechClip(
   ports: SpeechClipPorts,
   attempt: SpeechAttempt,
 ): Promise<Result<SpeechClip, AiError>> {
-  if (!(await ports.decoder.canDecode())) {
+  const check = await ports.decoder.checkDecoding();
+  if (check === 'no-decoder') {
     return err(noAudioDecoder(contextOf(attempt)));
+  }
+  if (check === 'timed-out') {
+    return err(audioCheckTimedOut(contextOf(attempt)));
   }
   let heard = await hear(ports, attempt);
   if (

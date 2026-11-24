@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALL_AI_ERROR_CODES, aiError } from '../../domain/ai/ai-error';
 import { ALL_AI_TASKS } from '../../domain/ai/ai-task';
 import { SPEECH_CODE_UNAVAILABLE } from '../../domain/ai/text-to-speech-provider';
-import { NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
+import { AUDIO_CHECK_TIMED_OUT, NO_AUDIO_DECODER } from '../../domain/audio/audio-decoder';
 import {
   AI_ERROR_COPY,
   AI_TASK_COPY,
@@ -175,6 +175,21 @@ describe('aiFailureMessage', () => {
         );
       }
     }
+  });
+
+  // Unlike a missing decoder, a check that did not answer proves nothing about
+  // the browser, so it is told apart and trying again is the step.
+  it('offers a retry when the decoder check did not answer, never another browser', () => {
+    const error = aiError('unknown', 'tts-synthesis', 'The audio decoder did not answer.', {
+      detail: { issueCode: AUDIO_CHECK_TIMED_OUT },
+    });
+    expect(aiErrorCopy(error).heading).toBe('This browser did not answer');
+    for (const surface of SURFACES) {
+      expect(aiErrorAction(error, surface)).toBe('Try again.');
+    }
+    expect(aiFailureMessage(error, 'reader', 'run')).toBe(
+      'This browser did not answer while making audio for this story. Try again.',
+    );
   });
 
   it('does not report a cancellation in the reader as a cancelled test', () => {

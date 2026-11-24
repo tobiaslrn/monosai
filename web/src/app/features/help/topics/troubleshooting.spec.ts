@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { ALL_ANKI_ERROR_CODES } from '../../../domain/anki/anki-error';
 import {
   AI_ERROR_COPY,
+  AUDIO_CHECK_TIMED_OUT_HEADING,
   NO_AUDIO_DECODER_HEADING,
   SPEECH_CODE_HEADING,
 } from '../../../shared-ui/ai-error/ai-error-copy';
@@ -42,6 +43,14 @@ describe('troubleshooting', () => {
     );
     expect(entry?.text).toContain('Chrome');
     expect(entry?.text).not.toMatch(/try again/iu);
+  });
+
+  it('sends a decoder check that did not answer to a retry, not another browser', () => {
+    const entry = group('ai').entries.find((candidate) =>
+      candidate.seen.includes(AUDIO_CHECK_TIMED_OUT_HEADING),
+    );
+    expect(entry?.text).toMatch(/try again/iu);
+    expect(entry?.text).not.toContain('Chrome');
   });
 
   it('lists every Anki failure under the heading the screen shows', () => {

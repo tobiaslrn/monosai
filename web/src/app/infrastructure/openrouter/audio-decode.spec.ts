@@ -165,19 +165,19 @@ describe('createAudioDecoder', () => {
       expect(decoder.available()).toBe(true);
     });
 
-    it('answers no to the check without remembering it, so the next check asks again', async () => {
+    it('reports a check that timed out without remembering it, so the next check asks again', async () => {
       vi.useFakeTimers();
       let decode: Decode = hangs;
       const offline = contextClass((bytes) => decode(bytes));
       const decoder = decoderFor({ OfflineAudioContext: offline.FakeContext });
 
-      const first = decoder.canDecode();
+      const first = decoder.checkDecoding();
       await vi.advanceTimersByTimeAsync(DECODE_TIMEOUT_MS);
-      expect(await first).toBe(false);
+      expect(await first).toBe('timed-out');
       expect(decoder.available()).toBe(true);
 
       decode = decodes;
-      expect(await decoder.canDecode()).toBe(true);
+      expect(await decoder.checkDecoding()).toBe('decodes');
       expect(offline.constructed).toHaveBeenCalledTimes(2);
     });
   });
@@ -188,7 +188,7 @@ describe('createAudioDecoder', () => {
     it('finds a browser whose contexts decode nothing to have no decoder', async () => {
       const decoder = decoderFor({ OfflineAudioContext: contextClass(rejects).FakeContext });
 
-      expect(await decoder.canDecode()).toBe(false);
+      expect(await decoder.checkDecoding()).toBe('no-decoder');
       expect(decoder.available()).toBe(false);
     });
 
@@ -198,7 +198,7 @@ describe('createAudioDecoder', () => {
         AudioContext: contextClass('refused').FakeContext,
       });
 
-      expect(await decoder.canDecode()).toBe(false);
+      expect(await decoder.checkDecoding()).toBe('no-decoder');
       expect(decoder.available()).toBe(false);
     });
 
@@ -210,8 +210,8 @@ describe('createAudioDecoder', () => {
       });
       const decoder = decoderFor({ OfflineAudioContext: offline.FakeContext });
 
-      expect(await decoder.canDecode()).toBe(true);
-      expect(await decoder.canDecode()).toBe(true);
+      expect(await decoder.checkDecoding()).toBe('decodes');
+      expect(await decoder.checkDecoding()).toBe('decodes');
 
       expect(given).toHaveLength(1);
       expect(new TextDecoder().decode(given[0]?.slice(0, 4))).toBe('RIFF');
@@ -220,7 +220,7 @@ describe('createAudioDecoder', () => {
     });
 
     it('answers no at once for a browser with no context', async () => {
-      expect(await decoderFor({}).canDecode()).toBe(false);
+      expect(await decoderFor({}).checkDecoding()).toBe('no-decoder');
     });
 
     it('stays no once a clip found every context refused', async () => {
@@ -234,12 +234,12 @@ describe('createAudioDecoder', () => {
         }
       }
       const decoder = decoderFor({ OfflineAudioContext: Flaky });
-      expect(await decoder.canDecode()).toBe(true);
+      expect(await decoder.checkDecoding()).toBe('decodes');
 
       refuse = true;
       expect(await decoder.decode(new ArrayBuffer(8), 'audio/wav')).toEqual({ kind: 'no-decoder' });
 
-      expect(await decoder.canDecode()).toBe(false);
+      expect(await decoder.checkDecoding()).toBe('no-decoder');
     });
 
     it('carries a well-formed mono 16-bit WAV', () => {
