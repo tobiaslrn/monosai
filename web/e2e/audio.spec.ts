@@ -836,6 +836,8 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await audioButton(page).click();
     await expect(audioPlayer(page)).toHaveCount(0);
     await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, paused');
+    // Nothing is being read, so the closed player leaves no sentence marked.
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
 
     await openAudioPlayer(page);
     await expect(audioPlayer(page).getByRole('button', { name: 'Resume' })).toBeVisible();
@@ -889,6 +891,49 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(
       audioPlayer(page).getByRole('slider', { name: 'Position in this story' }),
     ).toHaveValue(String(SENTENCE_COUNT));
+  });
+
+  /**
+   * One sentence with audio and none being made: the reading plays it and then
+   * waits for a clip nobody is making. Closing the player leaves a silent page,
+   * so it must not go on marking the sentence.
+   */
+  test('marks no sentence once a silent session is put away @smoke', async ({ page }) => {
+    await prepareReading(page);
+    await openSentence(page);
+    await sentenceAudioAction(page, 'Audio').click();
+    await expect(sentenceAudioAction(page, 'Play')).toBeVisible({ timeout: 15_000 });
+    await dismissPopover(page);
+
+    await openAudioPlayer(page);
+    await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
+    await expect(playerStatus(page)).toContainText('Waiting for sentence 2', { timeout: 30_000 });
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1);
+
+    await audioButton(page).click();
+    await expect(audioPlayer(page)).toHaveCount(0);
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
+
+    // Reopening shows the session where it stands.
+    await openAudioPlayer(page);
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1);
+  });
+
+  test('marks no sentence once a reading finishes behind a closed player', async ({ page }) => {
+    await prepareReading(page);
+    await openAudioPlayer(page);
+    await page.getByRole('button', { name: 'Generate audio' }).click();
+    await expectAudioComplete(page);
+
+    await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
+    await audioButton(page).click();
+    await expect(audioPlayer(page)).toHaveCount(0);
+
+    await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, finished', {
+      timeout: 30_000,
+    });
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
   });
 
   /**

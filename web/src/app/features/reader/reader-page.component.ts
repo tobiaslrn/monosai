@@ -265,7 +265,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
                   [sentencePerLine]="preferences().sentencePerLine"
                   [markers]="preferences().warningMarkers"
                   [selectedSentenceId]="selection.sentenceId()"
-                  [playingSentenceId]="audio.playback.currentSentenceId()"
+                  [playingSentenceId]="audio.playingSentenceId()"
                   [selectedWord]="selection.inspectedWord()"
                   [previewedWord]="wordPreview.word()"
                   (activated)="surfaces.inspect($event)"

@@ -114,6 +114,29 @@ export class ReaderAudioStore {
    */
   readonly running = computed(() => isReaderAudioInProgress(this.progress()));
 
+  /**
+   * The sentence the reader tints as the one read aloud.
+   *
+   * While the player shows, the session's cursor, whatever state it is in.
+   * Behind a closed player, only while the reading is being heard or will go
+   * on by itself: a paused, held or finished session, or a wait for a clip no
+   * run is making, keeps its cursor for the player alone, and a tint on a
+   * silent page marks nothing.
+   */
+  readonly playingSentenceId = computed(() => {
+    const sentenceId = this.playback.currentSentenceId();
+    if (this.playerOpenSignal()) return sentenceId;
+    switch (this.playback.status()) {
+      case 'playing':
+      case 'loading':
+        return sentenceId;
+      case 'waiting':
+        return this.running() ? sentenceId : null;
+      default:
+        return null;
+    }
+  });
+
   /** Whether a waiting run is waiting for the connection rather than its turn. */
   readonly online = computed(() => this.network.isOnline());
 

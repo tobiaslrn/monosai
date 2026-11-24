@@ -77,6 +77,7 @@ function render() {
         maintenanceError: none,
         setReading: noop,
         endPlayback: noop,
+        playingSentenceId: none,
         playback: { isActive: off, currentSentenceId: none, stop: noop },
       },
     },

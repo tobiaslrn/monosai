@@ -2,7 +2,7 @@ import { ApplicationRef, signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Reading } from '../../domain/reading/reading';
-import { readingId } from '../../domain/shared/ids';
+import { readingId, sentenceId, type SentenceId } from '../../domain/shared/ids';
 import { NETWORK_STATUS } from '../../domain/platform/network-status.port';
 import { AudioPlaybackStore } from '../audio/audio-playback.store';
 import { AudioConfigurationService } from '../enrichment/audio-configuration.service';
@@ -23,6 +23,7 @@ describe('ReaderAudioStore', () => {
   let progress: WritableSignal<{ kind: string; step?: number }>;
   let voice: WritableSignal<{ modelId: string; voiceId: string }>;
   let status: WritableSignal<string>;
+  let current: WritableSignal<SentenceId | null>;
   let prepare: ReturnType<typeof vi.fn>;
   let stopExpectingClips: ReturnType<typeof vi.fn>;
   let startLayer: ReturnType<typeof vi.fn>;
@@ -39,6 +40,7 @@ describe('ReaderAudioStore', () => {
     progress = signal({ kind: 'idle' });
     voice = signal({ modelId: 'm', voiceId: 'v' });
     status = signal('idle');
+    current = signal(null);
     prepare = vi.fn(() => Promise.resolve());
     stopExpectingClips = vi.fn();
     startLayer = vi.fn(() => Promise.resolve());
@@ -51,7 +53,14 @@ describe('ReaderAudioStore', () => {
     TestBed.configureTestingModule({
       providers: [
         ReaderAudioStore,
-        { provide: ReaderStore, useValue: { reading } },
+        {
+          provide: ReaderStore,
+          useValue: {
+            reading,
+            status: () => 'ready',
+            paragraphs: () => [{ sentences: [{}] }],
+          },
+        },
         {
           provide: AudioJobStore,
           useValue: {
@@ -72,7 +81,13 @@ describe('ReaderAudioStore', () => {
         { provide: AudioConfigurationService, useValue: {} },
         {
           provide: AudioPlaybackStore,
-          useValue: { prepare, stopExpectingClips, status, availableCount },
+          useValue: {
+            prepare,
+            stopExpectingClips,
+            status,
+            availableCount,
+            currentSentenceId: current,
+          },
         },
         { provide: TtsStore, useValue: { settings: voice } },
         {
@@ -187,6 +202,78 @@ describe('ReaderAudioStore', () => {
       reading.set(withSaved(3));
 
       expect(store.hasSavedAudio()).toBe(true);
+    });
+  });
+
+  describe('the sentence marked as read aloud', () => {
+    const SENTENCE = sentenceId('s1');
+    const store = () => TestBed.inject(ReaderAudioStore);
+
+    beforeEach(() => {
+      current.set(SENTENCE);
+    });
+
+    it.each(['playing', 'loading', 'paused', 'waiting', 'stepped', 'ended', 'idle'])(
+      'marks the cursor of a %s session while the player shows',
+      (state) => {
+        status.set(state);
+        store().openPlayer(null);
+
+        expect(store().playingSentenceId()).toBe(SENTENCE);
+      },
+    );
+
+    it.each(['playing', 'loading'])(
+      'goes on marking a %s session behind a closed player',
+      (state) => {
+        status.set(state);
+        store().openPlayer(null);
+
+        store().closePlayer();
+
+        expect(store().playingSentenceId()).toBe(SENTENCE);
+      },
+    );
+
+    it('goes on marking a wait for a clip a run is making', () => {
+      status.set('waiting');
+      progress.set({ kind: 'running' });
+      store().openPlayer(null);
+
+      store().closePlayer();
+
+      expect(store().playingSentenceId()).toBe(SENTENCE);
+    });
+
+    it.each(['paused', 'stepped', 'ended', 'idle'])(
+      'marks nothing once a %s session is put away',
+      (state) => {
+        status.set(state);
+        store().openPlayer(null);
+
+        store().closePlayer();
+
+        expect(store().playingSentenceId()).toBeNull();
+      },
+    );
+
+    it('marks nothing once a wait for a clip no run is making is put away', () => {
+      status.set('waiting');
+      store().openPlayer(null);
+
+      store().closePlayer();
+
+      expect(store().playingSentenceId()).toBeNull();
+    });
+
+    it('marks the sentence again when the player is reopened', () => {
+      status.set('paused');
+      store().openPlayer(null);
+      store().closePlayer();
+
+      store().openPlayer(null);
+
+      expect(store().playingSentenceId()).toBe(SENTENCE);
     });
   });
 
