@@ -15,7 +15,9 @@ interface BeforeInstallPromptEvent extends Event {
  *
  * Captures rather than lets the browser show its own mini-infobar
  * (`preventDefault()`), so the affordance lives in exactly one predictable
- * place: the App section of Settings.
+ * place: the App section of Settings. The browser offers installation once,
+ * early, on whatever page is open, so the app creates this at startup rather
+ * than when Settings first asks for it.
  */
 @Injectable({ providedIn: 'root' })
 export class InstallPromptService {
@@ -37,15 +39,25 @@ export class InstallPromptService {
     });
   }
 
-  /** Shows the captured browser install prompt. A no-op if none was captured. */
+  /**
+   * Shows the captured browser install prompt. A no-op if none was captured.
+   *
+   * A prompt shows once, so it is let go whatever happens; one the browser
+   * refuses to show is `unavailable`, and the Install row goes with it.
+   */
   async install(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
     const deferred = this.deferredPromptSignal();
     if (deferred === null) {
       return 'unavailable';
     }
-    await deferred.prompt();
-    const choice = await deferred.userChoice;
-    this.deferredPromptSignal.set(null);
-    return choice.outcome;
+    try {
+      await deferred.prompt();
+      const choice = await deferred.userChoice;
+      return choice.outcome;
+    } catch {
+      return 'unavailable';
+    } finally {
+      this.deferredPromptSignal.set(null);
+    }
   }
 }

@@ -53,4 +53,18 @@ describe('InstallPromptService', () => {
 
     expect(service.canInstall()).toBe(false);
   });
+
+  it('lets go of a prompt the browser refuses to show', async () => {
+    TestBed.configureTestingModule({});
+    const service = TestBed.inject(InstallPromptService);
+    const offer = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+      prompt: () => Promise.reject(new DOMException('Already shown', 'InvalidStateError')),
+      userChoice: new Promise<never>(() => undefined),
+    });
+    window.dispatchEvent(offer);
+    expect(service.canInstall()).toBe(true);
+
+    expect(await service.install()).toBe('unavailable');
+    expect(service.canInstall()).toBe(false);
+  });
 });

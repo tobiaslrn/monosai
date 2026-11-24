@@ -7,6 +7,7 @@ import { AudioCompressionStore } from './application/settings/audio-compression.
 import { AutomaticAnkiSyncCoordinator } from './application/vocabulary/automatic-anki-sync.coordinator';
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
 import { INITIALIZATION_STEP } from './core/bootstrap/initialization-step';
+import { InstallPromptService } from './core/platform/install-prompt.service';
 import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
 
 describe('appConfig startup', () => {
@@ -82,5 +83,33 @@ describe('appConfig startup', () => {
     expect(start).toHaveBeenCalledTimes(1);
     expect(initialize).toHaveBeenCalledTimes(1);
     expect(compress).toHaveBeenCalledTimes(1);
+  });
+
+  it('captures an install offer the browser makes before Settings is ever opened', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        ...appConfig.providers,
+        { provide: INITIALIZATION_STEP, useValue: [] },
+        { provide: ThemeSynchronizer, useValue: {} },
+        { provide: AutomaticAnkiSyncCoordinator, useValue: { start: vi.fn() } },
+        { provide: LanguageStore, useValue: { initialize: vi.fn(() => Promise.resolve()) } },
+        { provide: AudioCompressionStore, useValue: { run: vi.fn(() => Promise.resolve()) } },
+      ],
+    });
+    const initializer = TestBed.inject(AppInitializerService);
+    await vi.waitFor(() => {
+      expect(initializer.state().status).toBe('ready');
+    });
+
+    // Chromium offers installation once, early, while the learner is elsewhere.
+    const offer = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+      prompt: () => Promise.resolve(),
+      userChoice: Promise.resolve({ outcome: 'dismissed' as const }),
+    });
+    window.dispatchEvent(offer);
+
+    // Settings, opened later, finds it.
+    expect(offer.defaultPrevented).toBe(true);
+    expect(TestBed.inject(InstallPromptService).canInstall()).toBe(true);
   });
 });

@@ -13,6 +13,7 @@ import { LanguageStore } from './application/language/language.store';
 import { AutomaticAnkiSyncCoordinator } from './application/vocabulary/automatic-anki-sync.coordinator';
 import { AppInitializerService } from './core/bootstrap/app-initializer.service';
 import { provideInitializationSteps } from './core/bootstrap/initialization-steps';
+import { InstallPromptService } from './core/platform/install-prompt.service';
 import { NetworkStatusService } from './core/platform/network-status.service';
 import { LOGGER, type Logger } from './application/shared/diagnostics';
 import { ThemeSynchronizer } from './core/platform/theme-synchronizer.service';
@@ -67,6 +68,9 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       // Keeps the document theme attribute in sync with persisted settings.
       inject(ThemeSynchronizer);
+      // Chromium offers installation once, early, whichever page is open; only
+      // a listener that exists by then can keep it for Settings' Install row.
+      inject(InstallPromptService);
       const initializer = inject(AppInitializerService);
       const language = inject(LanguageStore);
       const automaticAnkiSync = inject(AutomaticAnkiSyncCoordinator);
