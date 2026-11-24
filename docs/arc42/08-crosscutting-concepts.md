@@ -131,8 +131,8 @@ before any request, the voice test's included, whether it can decode at all: a b
 audio context answers no at once, and otherwise it decodes a tiny built-in WAV once per tab, since
 a browser can make a context and still decode nothing. One found to have none, by that check or by
 a clip whose contexts all refused, is remembered as having none for the tab's life, and then nothing
-is requested, the player offers no Generate, Story options leads the summary of audio that is not
-complete with why, in place of any voice setup on both, and the background compression pass does
+is requested, the player offers no Generate, Story options sums up audio that is not
+complete as why, in place of any voice setup on both, and the background compression pass does
 not start. Story options gives the way out as its status line only when it has no other, so the
 card keeps one. Every
 decode, the check's and each clip's, gives up after ten seconds, so a decoder that never answers

@@ -335,11 +335,11 @@ describe('reader content state', () => {
     });
   });
 
-  it('keeps the saved count after a missing decoder', () => {
+  it('names only the missing decoder where some audio is saved', () => {
     const partial = { ...READING, audioSummary: { total: 4, completed: 1, failed: 0 } };
 
     expect(readerContentState(partial, 'audio', IDLE, 'ready', true, true).status).toBe(
-      `${NO_AUDIO_DECODER_STATUS} · 1 of 4 sentences saved`,
+      NO_AUDIO_DECODER_STATUS,
     );
   });
 

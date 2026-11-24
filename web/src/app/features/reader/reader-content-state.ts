@@ -80,21 +80,16 @@ export function readerContentState(
   // it, and the transport has no room for one, so it sits beside the report.
   // A browser with nothing to check new audio with is reported here too,
   // before any run meets it: no run is started there, so none would say it.
-  // It leads the summary, with what audio is saved after it, and its fix is
-  // the card's status line unless another failure already holds it.
+  // It is the whole summary, kept within a secondary line's budget, and its
+  // fix is the card's status line unless another failure already holds it.
   if (layer !== 'audio') return state;
   const reload = progress.kind === 'failed' && enrichmentNeedsReload(progress.error);
   const undecodable = decoderMissing && state.status !== 'Ready' && state.status !== 'No sentences';
-  const { completed, description } = completion(reading, layer, progress);
   const decoderReport =
     undecodable && (state.error === null || state.error === NO_AUDIO_DECODER_MESSAGE);
   return {
     ...state,
-    status: undecodable
-      ? completed > 0
-        ? `${NO_AUDIO_DECODER_STATUS} · ${description}`
-        : NO_AUDIO_DECODER_STATUS
-      : state.status,
+    status: undecodable ? NO_AUDIO_DECODER_STATUS : state.status,
     error: decoderReport ? null : state.error,
     fix: decoderReport ? NO_AUDIO_DECODER_ACTION : null,
     action: reload ? 'reload' : null,
