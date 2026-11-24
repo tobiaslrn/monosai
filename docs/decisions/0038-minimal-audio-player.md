@@ -3,6 +3,11 @@
 Date: 2026-08-28
 Status: Accepted
 
+Amended for the sentence mark: a paused session keeps its cursor and its place on the track, and
+its highlight while the player shows it. Behind a closed player the reader marks the cursor only
+while the reading is playing, loading, or waiting for a clip a running generation is making;
+reopening the player marks it again (`ReaderAudioStore.playingSentenceId`).
+
 Supersedes the **One track** subsection of
 [ADR 0037](0037-audio-transport-recovery-and-one-track.md) in its presentation,
 and the transport **Stop** that ADR added under *The session never dead-ends*.
