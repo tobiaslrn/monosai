@@ -106,6 +106,7 @@ describe('AppUpdateBannerComponent', () => {
       });
       const asked = JSON.stringify(dialogOpen.mock.calls);
       expect(asked).toContain('Reload and lose the new story?');
+      expect(asked).toContain('Keep story');
       await vi.waitFor(() => {
         expect(reload).toHaveBeenCalledTimes(reloads);
       });

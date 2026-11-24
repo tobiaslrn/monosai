@@ -18,13 +18,17 @@ describe('busy work copy', () => {
     );
   });
 
-  it('asks before a reload loses a story whose save failed, naming it', () => {
+  it('asks before a reload loses a story whose save failed, naming it, and keeps it safely', () => {
     expect(unsavedStoryReload(1)).toMatchObject({
       title: 'Reload and lose the new story?',
       confirmLabel: 'Reload',
+      cancelLabel: 'Keep story',
       tone: 'danger',
     });
-    expect(unsavedStoryReload(1200).title).toBe('Reload and lose 1,200 new stories?');
+    expect(unsavedStoryReload(1200)).toMatchObject({
+      title: 'Reload and lose 1,200 new stories?',
+      cancelLabel: 'Keep stories',
+    });
   });
 
   it.each<[BusyWork, string]>([

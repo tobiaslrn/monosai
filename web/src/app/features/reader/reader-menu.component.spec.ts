@@ -164,9 +164,9 @@ describe('Story options', () => {
     row.click();
     expect(reload).toHaveBeenCalledOnce();
   });
-  // A confirmation opens with the panel closed, as Delete audio's does. A wait
-  // that follows it is shown where Reload was pressed, so the panel opens again.
-  it('closes before a Reload that asks, and opens again to show its wait', () => {
+  // The question opens with the panel closed, as Delete audio's does, and only
+  // once the reload is about to happen: after a wait, not before it.
+  it('closes when Reload asks, then asks, and never opens again by itself', () => {
     const { fixture, element, press, hide } = render({
       ...ROW,
       layer: 'audio',
@@ -179,18 +179,31 @@ describe('Story options', () => {
     const panel = element.querySelector<HTMLElement>('mn-sheet-popover')!;
     const shown = vi.fn();
     Object.defineProperty(panel, 'showPopover', { value: shown });
+    const matches = vi.spyOn(panel, 'matches').mockReturnValue(true);
+    panel.dispatchEvent(new Event('toggle'));
+    fixture.detectChanges();
     const order: string[] = [];
     hide.mockImplementation(() => order.push('closed'));
-    fixture.componentInstance.reloadRequested.subscribe(() => order.push('requested'));
-    fixture.componentRef.setInput('reloadConfirms', true);
-    fixture.detectChanges();
+    fixture.componentInstance.reloadQuestionDue.subscribe(() => order.push('asked'));
 
     press('Reload');
-    expect(order).toEqual(['closed', 'requested']);
-
     fixture.componentRef.setInput('reloadWaitingFor', 'Waiting for Anki import');
     fixture.detectChanges();
-    expect(shown).toHaveBeenCalledOnce();
+    expect(order).toEqual([]);
+
+    fixture.componentRef.setInput('reloadWaitingFor', null);
+    fixture.componentRef.setInput('reloadAsks', true);
+    fixture.detectChanges();
+    expect(order).toEqual(['closed', 'asked']);
+
+    matches.mockReturnValue(false);
+    panel.dispatchEvent(new Event('toggle'));
+    fixture.componentRef.setInput('reloadAsks', false);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('reloadWaitingFor', 'Waiting for Anki import');
+    fixture.detectChanges();
+    expect(shown).not.toHaveBeenCalled();
+    expect(order).toEqual(['closed', 'asked']);
   });
   it('leaves deleting the story to the library', () => {
     const { element } = render();

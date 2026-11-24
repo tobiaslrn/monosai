@@ -21,7 +21,8 @@ export function waitingForWork(work: HoldingWork): string {
 
 /**
  * The question a Reload asks before it loses written stories whose save
- * failed. They never finish by themselves, so a reload does not wait for them.
+ * failed. They never finish by themselves, so a reload does not wait for them:
+ * it asks once nothing else holds it, and the safe answer keeps them.
  */
 export function unsavedStoryReload(count: number): ConfirmDialogData {
   const one = count === 1;
@@ -33,7 +34,7 @@ export function unsavedStoryReload(count: number): ConfirmDialogData {
       ? 'Saving it failed, so only this tab has it.'
       : 'Saving them failed, so only this tab has them.',
     confirmLabel: 'Reload',
-    cancelLabel: 'Cancel',
+    cancelLabel: one ? 'Keep story' : 'Keep stories',
     tone: 'danger',
   };
 }

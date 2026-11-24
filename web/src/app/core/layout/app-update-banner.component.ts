@@ -18,8 +18,8 @@ import { busyWorkLine, unsavedStoryReload } from '../../shared-ui/busy-work/busy
  *
  * Deliberately never a dialog: it must not steal focus from a form the learner is in the middle
  * of. While busy work is in progress a broken worker's reload says so and is disabled rather
- * than hidden. A story whose save failed never finishes, so it does not hold the reload: the
- * learner is asked first whether to lose it.
+ * than hidden. A story whose save failed never finishes, so it does not hold the reload: once
+ * nothing else does, the reload asks first whether to lose it, as Story options' Reload does.
  */
 @Component({
   selector: 'mn-app-update-banner',

@@ -10,7 +10,6 @@ import {
   input,
   output,
   signal,
-  untracked,
   viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -134,7 +133,7 @@ import {
                     action="action"
                     [label]="row.label"
                     [busy]="reloadWaitingFor() !== null"
-                    (pressed)="reloadWaitingFor() !== null || requestReload()"
+                    (pressed)="reloadWaitingFor() !== null || reloadRequested.emit()"
                   />
                 }
               }
@@ -196,10 +195,11 @@ export class ReaderMenuComponent {
    */
   readonly reloadWaitingFor = input<string | null>(null);
   /**
-   * Whether Reload asks before it goes on, because it would lose a story. The
-   * confirmation opens with the panel closed, as Delete audio's does.
+   * Whether a pressed Reload is about to reload and would lose a story, so it
+   * asks first. The question opens with the panel closed, as Delete audio's
+   * does, and the panel stays closed afterwards.
    */
-  readonly reloadConfirms = input(false);
+  readonly reloadAsks = input(false);
   readonly prepare = output<PreparationLayer>();
   readonly opened = output<void>();
   /** Whether the panel is showing, so what it reported can be told from what it never showed. */
@@ -211,6 +211,8 @@ export class ReaderMenuComponent {
   readonly clearAidRequested = output<'english' | 'grammar'>();
   /** Reload Monosai, to load code this tab could not. */
   readonly reloadRequested = output<void>();
+  /** The panel is closed for Reload's question: ask it now. */
+  readonly reloadQuestionDue = output<void>();
   private readonly anchor = viewChild.required<ElementRef<HTMLButtonElement>>('anchor');
   private readonly panel = viewChild.required(SheetPopoverComponent);
   private readonly injector = inject(Injector);
@@ -220,14 +222,18 @@ export class ReaderMenuComponent {
   private creditFocus: PreparationLayer | null = null;
 
   constructor() {
-    // A Reload confirmed with the panel closed can still wait for other work.
-    // The wait is shown where it was pressed, so the panel opens again with it;
-    // closing the panel drops the wait, so this never reopens a panel itself.
+    // Reload asks once nothing else holds it, which may be at the end of a
+    // wait. The panel closes first, after the render that ended the wait, so
+    // the question opens over the page and focus returns to the panel's button.
     effect(() => {
-      if (this.reloadWaitingFor() === null || this.menuOpen()) return;
-      untracked(() => {
-        this.open();
-      });
+      if (!this.reloadAsks()) return;
+      afterNextRender(
+        () => {
+          if (this.panel().isOpen()) this.close();
+          this.reloadQuestionDue.emit();
+        },
+        { injector: this.injector },
+      );
     });
     // Returning from the credit page removes the link that was focused, and
     // focus would fall to the page behind a panel that traps it. It goes to
@@ -295,10 +301,6 @@ export class ReaderMenuComponent {
       event.preventDefault();
       this.close();
     }
-  }
-  protected requestReload(): void {
-    if (this.reloadConfirms()) this.close();
-    this.reloadRequested.emit();
   }
   protected deleteAudio(): void {
     this.close();

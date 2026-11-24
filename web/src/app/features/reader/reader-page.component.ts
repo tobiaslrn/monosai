@@ -158,7 +158,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
                   [pending]="actions.pending()"
                   [error]="actions.error()"
                   [reloadWaitingFor]="actions.reloadWaitingFor()"
-                  [reloadConfirms]="actions.reloadConfirms()"
+                  [reloadAsks]="actions.reloadAsks()"
                   (prepare)="actions.prepare($event)"
                   (opened)="popover.close()"
                   (shown)="actions.menuShown($event)"
@@ -167,6 +167,7 @@ import { ReaderWordPreviewService } from './reader-word-preview.service';
                   (deleteAudioRequested)="actions.confirmClearAudio()"
                   (clearAidRequested)="actions.confirmClearTextAid($event)"
                   (reloadRequested)="actions.reload()"
+                  (reloadQuestionDue)="actions.confirmReload()"
                 />
               }
             </div>

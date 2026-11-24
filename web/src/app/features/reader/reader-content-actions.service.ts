@@ -65,15 +65,20 @@ export class ReaderContentActionsService {
   /**
    * What a pressed Reload is waiting for, in the learner's words, or null when
    * it is not waiting. A reload would destroy that work, so it waits, as every
-   * recovery reload does, and happens as soon as the work ends.
+   * recovery reload does, and goes on as soon as the work ends.
    */
   readonly reloadWaitingFor = computed(() => {
     const work = this.deferredReload.waitingFor();
     return work === null ? null : waitingForWork(work);
   });
 
-  /** Whether Reload would lose an unsaved story, so it asks first. */
-  readonly reloadConfirms = computed(() => this.deferredReload.unsavedStories() > 0);
+  /**
+   * Whether a pressed Reload is about to reload and would lose an unsaved
+   * story, so the learner is asked first: the panel closes, then
+   * `confirmReload` asks.
+   */
+  readonly reloadAsks = computed(() => this.deferredReload.asking() !== null);
+  private reloadAsked = false;
 
   constructor() {
     const document = inject(DOCUMENT);
@@ -206,16 +211,28 @@ export class ReaderContentActionsService {
   /**
    * Reloads Monosai to load code this tab could not, once no running work
    * would be lost. A written story whose save failed never finishes, so it is
-   * not waited for: the learner is asked first whether to lose it.
+   * not waited for: `reloadAsks` turns on when the reload is about to happen.
    */
-  async reload(): Promise<void> {
-    const row = this.rows().find((entry) => entry.action === 'reload');
-    if (row === undefined || this.deferredReload.waitingFor() !== null) return;
-    const unsaved = this.deferredReload.unsavedStories();
-    if (unsaved > 0 && !(await openConfirmDialog(this.dialog, unsavedStoryReload(unsaved)))) {
-      return;
+  reload(): void {
+    if (!this.rows().some((entry) => entry.action === 'reload')) return;
+    this.deferredReload.request();
+  }
+
+  /**
+   * Asks whether to lose the unsaved stories a Reload about to happen would
+   * lose, and reloads only if the learner agrees. The safe answer is first.
+   */
+  async confirmReload(): Promise<void> {
+    const unsaved = this.deferredReload.asking();
+    if (unsaved === null || this.reloadAsked) return;
+    this.reloadAsked = true;
+    let reload = false;
+    try {
+      reload = await openConfirmDialog(this.dialog, unsavedStoryReload(unsaved));
+    } finally {
+      this.reloadAsked = false;
+      this.deferredReload.answer(reload);
     }
-    this.deferredReload.request(unsaved);
   }
 
   async stop(layer: PreparationLayer): Promise<void> {

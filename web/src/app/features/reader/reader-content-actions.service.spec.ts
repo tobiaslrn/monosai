@@ -344,18 +344,19 @@ describe('refusals the reader forgets', () => {
 });
 
 describe('reloading for speech code that could not load', () => {
-  it('reloads at once when nothing running would be lost', async () => {
+  it('reloads at once when nothing running would be lost', () => {
     const bed = setup({ audio: speechCodeLost() });
-    await bed.service.reload();
+    bed.service.reload();
     TestBed.tick();
     expect(bed.reloadNow).toHaveBeenCalledTimes(1);
     expect(bed.service.reloadWaitingFor()).toBeNull();
+    expect(bed.service.reloadAsks()).toBe(false);
   });
 
-  it('waits for running work, says which, and reloads when it ends', async () => {
+  it('waits for running work, says which, and reloads when it ends', () => {
     const bed = setup({ audio: speechCodeLost() });
     bed.busyWork.set({ kind: 'story-generation', count: 2 });
-    await bed.service.reload();
+    bed.service.reload();
     TestBed.tick();
     expect(bed.reloadNow).not.toHaveBeenCalled();
     expect(bed.service.reloadWaitingFor()).toBe('Waiting for 2 stories');
@@ -367,11 +368,11 @@ describe('reloading for speech code that could not load', () => {
     expect(bed.reloadNow).toHaveBeenCalledTimes(1);
   });
 
-  it('drops a waiting reload when Story options closes', async () => {
+  it('drops a waiting reload when Story options closes', () => {
     const bed = setup({ audio: speechCodeLost() });
     bed.service.menuShown(true);
     bed.busyWork.set({ kind: 'story-generation', count: 1 });
-    await bed.service.reload();
+    bed.service.reload();
     TestBed.tick();
     expect(bed.service.reloadWaitingFor()).toBe('Waiting for the story');
     bed.service.menuShown(false);
@@ -382,10 +383,10 @@ describe('reloading for speech code that could not load', () => {
     expect(bed.reloadNow).not.toHaveBeenCalled();
   });
 
-  it('drops a waiting reload when the reader is left', async () => {
+  it('drops a waiting reload when the reader is left', () => {
     const bed = setup({ audio: speechCodeLost() });
     bed.busyWork.set({ kind: 'story-generation', count: 1 });
-    await bed.service.reload();
+    bed.service.reload();
     TestBed.tick();
     const { busyWork, reloadNow } = bed;
     bed.leave();
@@ -393,58 +394,127 @@ describe('reloading for speech code that could not load', () => {
     expect(reloadNow).not.toHaveBeenCalled();
   });
 
-  it('does nothing when no row offers a reload', async () => {
+  it('does nothing when no row offers a reload', () => {
     const bed = setup();
-    await bed.service.reload();
+    bed.service.reload();
     TestBed.tick();
     expect(bed.reloadNow).not.toHaveBeenCalled();
   });
+
   describe('when a story whose save failed would be lost', () => {
-    it('asks first, then reloads at once', async () => {
+    it('asks at once when nothing else is busy, then reloads', async () => {
       const bed = setup({ audio: speechCodeLost() });
       bed.unsaved.set(1);
-      expect(bed.service.reloadConfirms()).toBe(true);
-      await bed.service.reload();
+      bed.service.reload();
       TestBed.tick();
+      expect(bed.service.reloadWaitingFor()).toBeNull();
+      expect(bed.service.reloadAsks()).toBe(true);
+      expect(bed.reloadNow).not.toHaveBeenCalled();
+      await bed.service.confirmReload();
+      expect(bed.confirm).toHaveBeenCalledOnce();
+      const asked = JSON.stringify(bed.confirm.mock.calls);
+      expect(asked).toContain('"title":"Reload and lose the new story?"');
+      expect(asked).toContain('"confirmLabel":"Reload"');
+      expect(asked).toContain('"cancelLabel":"Keep story"');
+      expect(bed.reloadNow).toHaveBeenCalledExactlyOnceWith(1);
+      expect(bed.service.reloadAsks()).toBe(false);
+    });
+
+    it('reloads nothing when the learner keeps it, and forgets the press', async () => {
+      const bed = setup({ audio: speechCodeLost() });
+      bed.unsaved.set(1);
+      bed.answer.confirmed = false;
+      bed.service.reload();
+      TestBed.tick();
+      await bed.service.confirmReload();
+      TestBed.tick();
+      expect(bed.reloadNow).not.toHaveBeenCalled();
+      expect(bed.service.reloadAsks()).toBe(false);
+      bed.unsaved.set(0);
+      TestBed.tick();
+      expect(bed.reloadNow).not.toHaveBeenCalled();
+    });
+
+    it('waits for other work first, and asks only when the wait ends', async () => {
+      const bed = setup({ audio: speechCodeLost() });
+      bed.unsaved.set(1);
+      bed.busyWork.set({ kind: 'package-import' });
+      bed.service.reload();
+      TestBed.tick();
+      expect(bed.service.reloadWaitingFor()).toBe('Waiting for Anki import');
+      expect(bed.service.reloadAsks()).toBe(false);
+      await bed.service.confirmReload();
+      expect(bed.confirm).not.toHaveBeenCalled();
+      bed.busyWork.set(null);
+      TestBed.tick();
+      expect(bed.service.reloadWaitingFor()).toBeNull();
+      expect(bed.service.reloadAsks()).toBe(true);
+      expect(bed.reloadNow).not.toHaveBeenCalled();
+      await bed.service.confirmReload();
+      expect(bed.confirm).toHaveBeenCalledOnce();
+      expect(bed.reloadNow).toHaveBeenCalledExactlyOnceWith(1);
+    });
+
+    it('keeps waiting when a story is left unsaved, then asks and reloads once agreed', async () => {
+      const bed = setup({ audio: speechCodeLost() });
+      bed.busyWork.set({ kind: 'story-generation', count: 2 });
+      bed.service.reload();
+      TestBed.tick();
+      // One story's save fails while the other is still being written.
+      bed.busyWork.set({ kind: 'story-generation', count: 1 });
+      bed.unsaved.set(1);
+      TestBed.tick();
+      expect(bed.service.reloadWaitingFor()).toBe('Waiting for the story');
+      expect(bed.service.reloadAsks()).toBe(false);
+      bed.busyWork.set(null);
+      TestBed.tick();
+      expect(bed.reloadNow).not.toHaveBeenCalled();
+      expect(bed.service.reloadAsks()).toBe(true);
+      await bed.service.confirmReload();
       expect(JSON.stringify(bed.confirm.mock.calls)).toContain('Reload and lose the new story?');
       expect(bed.reloadNow).toHaveBeenCalledExactlyOnceWith(1);
     });
 
-    it('reloads nothing when the learner keeps it', async () => {
+    it('reloads nothing when a story left unsaved during the wait is kept', async () => {
       const bed = setup({ audio: speechCodeLost() });
-      bed.unsaved.set(1);
+      bed.busyWork.set({ kind: 'story-generation', count: 1 });
       bed.answer.confirmed = false;
-      await bed.service.reload();
+      bed.service.reload();
+      TestBed.tick();
+      // The run ends in a failed save: the wait ends and the story is unsaved at once.
+      bed.busyWork.set(null);
+      bed.unsaved.set(1);
       TestBed.tick();
       expect(bed.reloadNow).not.toHaveBeenCalled();
-      expect(bed.service.reloadWaitingFor()).toBeNull();
+      await bed.service.confirmReload();
+      expect(bed.confirm).toHaveBeenCalledOnce();
+      bed.unsaved.set(0);
+      TestBed.tick();
+      expect(bed.reloadNow).not.toHaveBeenCalled();
     });
 
-    it('still waits for other work once the learner agreed', async () => {
+    // The panel closes for the question; that close drops a wait, not the question.
+    it('still asks after Story options closes for the question', async () => {
       const bed = setup({ audio: speechCodeLost() });
+      bed.service.menuShown(true);
       bed.unsaved.set(1);
-      bed.busyWork.set({ kind: 'package-import' });
-      await bed.service.reload();
+      bed.service.reload();
       TestBed.tick();
-      expect(bed.service.reloadWaitingFor()).toBe('Waiting for Anki import');
-      expect(bed.reloadNow).not.toHaveBeenCalled();
-      bed.busyWork.set(null);
+      bed.service.menuShown(false);
       TestBed.tick();
+      expect(bed.service.reloadAsks()).toBe(true);
+      await bed.service.confirmReload();
       expect(bed.reloadNow).toHaveBeenCalledExactlyOnceWith(1);
     });
 
-    // A story that became unsaved during the wait was never asked about.
-    it('drops a wait when another story is left unsaved', async () => {
+    it('asks once, however often the question is requested', async () => {
       const bed = setup({ audio: speechCodeLost() });
-      bed.busyWork.set({ kind: 'story-generation', count: 1 });
-      await bed.service.reload();
-      TestBed.tick();
-      expect(bed.confirm).not.toHaveBeenCalled();
-      bed.busyWork.set(null);
       bed.unsaved.set(1);
+      bed.service.reload();
       TestBed.tick();
-      expect(bed.service.reloadWaitingFor()).toBeNull();
-      expect(bed.reloadNow).not.toHaveBeenCalled();
+      await Promise.all([bed.service.confirmReload(), bed.service.confirmReload()]);
+      expect(bed.confirm).toHaveBeenCalledOnce();
+      expect(bed.reloadNow).toHaveBeenCalledOnce();
     });
   });
 });
