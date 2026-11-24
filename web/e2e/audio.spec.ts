@@ -794,7 +794,7 @@ test.describe('scenario 13 — audio preparation and playback', () => {
   /**
    * Hiding the card to read the text underneath is not "stop reading to me".
    * Closing used to be the only stop there was, so it silenced the reading;
-   * the transport now has a Stop of its own, and that is the one that stops.
+   * now a session ends by being paused in the player, or by leaving the reader.
    */
   test('plays the reading on request and keeps playing behind a closed player', async ({
     page,
@@ -906,7 +906,15 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await dismissPopover(page);
 
     await openAudioPlayer(page);
+    // One clip, and no run making the others.
+    await expect(playerStatus(page)).toContainText(
+      `1 of ${String(SENTENCE_COUNT)} sentences have audio`,
+    );
+    await expect(
+      audioPlayer(page).getByRole('button', { name: 'Stop generating audio' }),
+    ).toHaveCount(0);
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
+    // The clip has finished, and the reading waits for one nobody is making.
     await expect(playerStatus(page)).toContainText('Waiting for sentence 2', { timeout: 30_000 });
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1);
 
@@ -919,16 +927,43 @@ test.describe('scenario 13 — audio preparation and playback', () => {
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1);
   });
 
-  test('marks no sentence once a reading finishes behind a closed player', async ({ page }) => {
+  test('marks no sentence after the sentence Play, with the player opened and closed', async ({
+    page,
+  }) => {
     await prepareReading(page);
+    await openSentence(page);
+    await sentenceAudioAction(page, 'Audio').click();
+    await expect(sentenceAudioAction(page, 'Play')).toBeVisible({ timeout: 15_000 });
+
+    await sentenceAudioAction(page, 'Play').click();
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
+    await dismissPopover(page);
+    await openAudioPlayer(page);
+
+    // That sentence and no more: the session ends with its clip.
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(0, { timeout: 15_000 });
+    await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, ready');
+
+    await audioButton(page).click();
+    await expect(audioPlayer(page)).toHaveCount(0);
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(0);
+  });
+
+  test('marks no sentence once a reading finishes behind a closed player', async ({ page }) => {
+    // Long enough to be heard for a while after the player is closed.
+    await prepareReading(page, LONG_TEXT);
     await openAudioPlayer(page);
     await page.getByRole('button', { name: 'Generate audio' }).click();
-    await expectAudioComplete(page);
+    await expectAudioComplete(page, LONG_SENTENCE_COUNT);
 
     await audioPlayer(page).getByRole('button', { name: 'Play' }).click();
     await expect(page.locator('.sentence.is-playing')).toHaveCount(1, { timeout: 15_000 });
     await audioButton(page).click();
     await expect(audioPlayer(page)).toHaveCount(0);
+
+    // Heard behind the closed player, the sentence being read stays marked.
+    await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, playing');
+    await expect(page.locator('.sentence.is-playing')).toHaveCount(1);
 
     await expect(audioButton(page)).toHaveAttribute('aria-label', 'Audio, finished', {
       timeout: 30_000,

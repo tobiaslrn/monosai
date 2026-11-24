@@ -122,6 +122,11 @@ export class ReaderAudioStore {
    * on by itself: a paused, held or finished session, or a wait for a clip no
    * run is making, keeps its cursor for the player alone, and a tint on a
    * silent page marks nothing.
+   *
+   * A wait counts as live until the clips are re-read after its run stopped,
+   * and while the clip it waits for is stored but not yet playing: the run's
+   * last clip may be the one it waits for, and dropping the mark there only
+   * for it to come back as that clip plays is a blink.
    */
   readonly playingSentenceId = computed(() => {
     const sentenceId = this.playback.currentSentenceId();
@@ -131,7 +136,11 @@ export class ReaderAudioStore {
       case 'loading':
         return sentenceId;
       case 'waiting':
-        return this.running() ? sentenceId : null;
+        return this.running() ||
+          !this.listedSinceProgress() ||
+          this.playback.isAvailable(this.playback.pendingSentenceId())
+          ? sentenceId
+          : null;
       default:
         return null;
     }
@@ -206,6 +215,11 @@ export class ReaderAudioStore {
    */
   private readonly listedAt = signal<ReaderAudioProgress | null>(null);
 
+  /** Whether the clip list has been read in full since the run last moved. */
+  private readonly listedSinceProgress = computed(
+    () => this.reader.reading() === null || this.listedAt() === this.progress(),
+  );
+
   constructor() {
     // Which clips exist, re-read whenever the reading changes and whenever the
     // audio job has written more. Two local reads: the player appears because
@@ -255,8 +269,7 @@ export class ReaderAudioStore {
       const progress = this.progress();
       const kind = progress.kind;
       this.playback.status();
-      const listed = this.reader.reading() === null || this.listedAt() === progress;
-      if ((kind === 'failed' || kind === 'cancelled') && listed) {
+      if ((kind === 'failed' || kind === 'cancelled') && this.listedSinceProgress()) {
         untracked(() => {
           this.playback.stopExpectingClips();
         });

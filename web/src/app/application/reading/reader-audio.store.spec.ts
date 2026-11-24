@@ -24,6 +24,8 @@ describe('ReaderAudioStore', () => {
   let voice: WritableSignal<{ modelId: string; voiceId: string }>;
   let status: WritableSignal<string>;
   let current: WritableSignal<SentenceId | null>;
+  let pending: WritableSignal<SentenceId | null>;
+  let stored: WritableSignal<boolean>;
   let prepare: ReturnType<typeof vi.fn>;
   let stopExpectingClips: ReturnType<typeof vi.fn>;
   let startLayer: ReturnType<typeof vi.fn>;
@@ -41,6 +43,8 @@ describe('ReaderAudioStore', () => {
     voice = signal({ modelId: 'm', voiceId: 'v' });
     status = signal('idle');
     current = signal(null);
+    pending = signal(null);
+    stored = signal(false);
     prepare = vi.fn(() => Promise.resolve());
     stopExpectingClips = vi.fn();
     startLayer = vi.fn(() => Promise.resolve());
@@ -87,6 +91,8 @@ describe('ReaderAudioStore', () => {
             status,
             availableCount,
             currentSentenceId: current,
+            pendingSentenceId: pending,
+            isAvailable: () => stored(),
           },
         },
         { provide: TtsStore, useValue: { settings: voice } },
@@ -214,7 +220,7 @@ describe('ReaderAudioStore', () => {
     });
 
     it.each(['playing', 'loading', 'paused', 'waiting', 'stepped', 'ended', 'idle'])(
-      'marks the cursor of a %s session while the player shows',
+      'marks the cursor while the player shows a session that is %s',
       (state) => {
         status.set(state);
         store().openPlayer(null);
@@ -224,7 +230,7 @@ describe('ReaderAudioStore', () => {
     );
 
     it.each(['playing', 'loading'])(
-      'goes on marking a %s session behind a closed player',
+      'goes on marking a session that is %s behind a closed player',
       (state) => {
         status.set(state);
         store().openPlayer(null);
@@ -246,7 +252,7 @@ describe('ReaderAudioStore', () => {
     });
 
     it.each(['paused', 'stepped', 'ended', 'idle'])(
-      'marks nothing once a %s session is put away',
+      'marks nothing once a session that is %s is put away',
       (state) => {
         status.set(state);
         store().openPlayer(null);
@@ -263,6 +269,35 @@ describe('ReaderAudioStore', () => {
 
       store().closePlayer();
 
+      expect(store().playingSentenceId()).toBeNull();
+    });
+
+    it('goes on marking a wait until the clips are read after its run stops', async () => {
+      reading.set(row());
+      status.set('waiting');
+      pending.set(sentenceId('s2'));
+      progress.set({ kind: 'running' });
+      await settled();
+      let listed: () => void = () => undefined;
+      prepare.mockReturnValue(
+        new Promise<void>((resolve) => {
+          listed = resolve;
+        }),
+      );
+
+      // The run finished, possibly with the clip being waited for.
+      progress.set({ kind: 'complete' });
+      TestBed.tick();
+      expect(store().playingSentenceId()).toBe(SENTENCE);
+
+      // Read, and the clip is there: it is about to play.
+      stored.set(true);
+      listed();
+      await settled();
+      expect(store().playingSentenceId()).toBe(SENTENCE);
+
+      // Read, and the clip is not there: nothing is coming.
+      stored.set(false);
       expect(store().playingSentenceId()).toBeNull();
     });
 
