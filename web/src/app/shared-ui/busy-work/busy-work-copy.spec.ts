@@ -36,7 +36,7 @@ describe('busy work copy', () => {
     [{ kind: 'story-generation', count: 3 }, '3 stories are being generated'],
     [{ kind: 'unsaved-story', count: 1 }, 'A written story is unsaved'],
     [{ kind: 'package-import' }, 'An Anki package is being imported'],
-    [{ kind: 'import-draft' }, 'An import draft is unsaved'],
+    [{ kind: 'import-draft' }, 'Pasted text is unsaved'],
   ])('says what a reload would discard as a line of its own', (work, line) => {
     expect(busyWorkLine(work)).toBe(line);
   });

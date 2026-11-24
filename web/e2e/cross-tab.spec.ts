@@ -196,7 +196,7 @@ test.describe('a tab that lost its database', () => {
 
     await notice.getByRole('button', { name: 'Reload' }).click();
     const confirm = first.getByRole('alertdialog', { name: 'Reload and lose unsaved work?' });
-    await expect(confirm).toContainText('An import draft is unsaved');
+    await expect(confirm).toContainText('Pasted text is unsaved');
     await confirm.getByRole('button', { name: 'Cancel' }).click();
     await expect(confirm).toHaveCount(0);
     await expect(first.getByRole('textbox', { name: 'Japanese text' })).toHaveValue(SAMPLE_TEXT);

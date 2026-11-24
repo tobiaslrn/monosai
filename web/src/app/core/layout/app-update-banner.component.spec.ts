@@ -167,7 +167,7 @@ describe('AppUpdateBannerComponent', () => {
       await vi.waitFor(() => {
         expect(view.dialogOpen).toHaveBeenCalledTimes(1);
       });
-      expect(JSON.stringify(view.dialogOpen.mock.calls)).toContain('An import draft is unsaved');
+      expect(JSON.stringify(view.dialogOpen.mock.calls)).toContain('Pasted text is unsaved');
       expect(view.reload).not.toHaveBeenCalled();
     });
 
@@ -196,7 +196,7 @@ describe('AppUpdateBannerComponent', () => {
       expect(config.data.details).toEqual([
         'A story is being generated',
         '2 written stories are unsaved',
-        'An import draft is unsaved',
+        'Pasted text is unsaved',
       ]);
     });
 

@@ -53,6 +53,6 @@ export function busyWorkLine(work: BusyWork): string {
     case 'package-import':
       return 'An Anki package is being imported';
     case 'import-draft':
-      return 'An import draft is unsaved';
+      return 'Pasted text is unsaved';
   }
 }
