@@ -165,13 +165,13 @@ describe('aiFailureMessage', () => {
       const error = aiError('unknown', task, 'This browser has no audio decoder.', {
         detail: { issueCode: NO_AUDIO_DECODER },
       });
-      expect(aiErrorCopy(error).heading).toBe('New audio cannot be made in this browser');
+      expect(aiErrorCopy(error).heading).toBe('This browser cannot make new audio');
       for (const surface of SURFACES) {
         expect(aiErrorAction(error, surface)).toBe(
           'Open Monosai in a current browser, such as Chrome.',
         );
         expect(aiFailureMessage(error, surface, 'run')).toBe(
-          'New audio cannot be made in this browser. Open Monosai in a current browser, such as Chrome.',
+          'This browser cannot make new audio. Open Monosai in a current browser, such as Chrome.',
         );
       }
     }

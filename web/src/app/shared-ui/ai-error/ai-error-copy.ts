@@ -209,7 +209,7 @@ function isSpeechCodeUnavailable(error: AiError): boolean {
 }
 
 /** The title of a browser with no audio decoder, shared with the troubleshooting guide. */
-export const NO_AUDIO_DECODER_HEADING = 'New audio cannot be made in this browser';
+export const NO_AUDIO_DECODER_HEADING = 'This browser cannot make new audio';
 
 /** A browser with no audio decoder, said the same wherever it is met. */
 export const NO_AUDIO_DECODER_MESSAGE = `${NO_AUDIO_DECODER_HEADING}. ${OPEN_ANOTHER_BROWSER}`;
