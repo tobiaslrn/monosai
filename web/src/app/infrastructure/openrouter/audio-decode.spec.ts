@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { createAudioDecoder, probeClip } from './audio-decode';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createAudioDecoder, DECODE_TIMEOUT_MS, probeClip } from './audio-decode';
 
 type Decode = (bytes: ArrayBuffer) => Promise<{ duration: number }>;
 
@@ -23,6 +23,8 @@ function contextClass(decode: Decode | 'refused') {
 }
 
 const decodes: Decode = () => Promise.resolve({ duration: 2.5 });
+/** A decoder that never answers. */
+const hangs: Decode = () => new Promise(() => undefined);
 const rejects: Decode = () => Promise.reject(new DOMException('Bad data', 'EncodingError'));
 
 function decoderFor(globals: Record<string, unknown>) {
@@ -138,6 +140,48 @@ describe('createAudioDecoder', () => {
     expect(given).not.toBe(bytes);
     expect(bytes.byteLength).toBe(8);
   });
+  // A decoder that never answers would stall a run, or a voice test, for good.
+  describe('a decode that never answers', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('gives a clip up as undecodable, without waiting on the context to close', async () => {
+      vi.useFakeTimers();
+      const live = contextClass(hangs);
+      live.closed.mockImplementation(() => new Promise(() => undefined));
+      const decoder = decoderFor({ AudioContext: live.FakeContext });
+
+      const outcome = decoder.decode(new ArrayBuffer(8), 'audio/wav');
+      await vi.advanceTimersByTimeAsync(DECODE_TIMEOUT_MS - 1);
+      let settled = false;
+      void outcome.then(() => (settled = true));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(await outcome).toEqual({ kind: 'undecodable' });
+      expect(live.closed).toHaveBeenCalledOnce();
+      expect(decoder.available()).toBe(true);
+    });
+
+    it('answers no to the check without remembering it, so the next check asks again', async () => {
+      vi.useFakeTimers();
+      let decode: Decode = hangs;
+      const offline = contextClass((bytes) => decode(bytes));
+      const decoder = decoderFor({ OfflineAudioContext: offline.FakeContext });
+
+      const first = decoder.canDecode();
+      await vi.advanceTimersByTimeAsync(DECODE_TIMEOUT_MS);
+      expect(await first).toBe(false);
+      expect(decoder.available()).toBe(true);
+
+      decode = decodes;
+      expect(await decoder.canDecode()).toBe(true);
+      expect(offline.constructed).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('the check before a clip is paid for', () => {
     // A browser can make a context and still decode nothing: making one is
     // not proof, so the check decodes a clip it carries.

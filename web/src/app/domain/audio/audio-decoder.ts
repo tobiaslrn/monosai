@@ -43,7 +43,9 @@ export interface AudioDecoder {
    * Whether this browser can decode at all, asked before a clip is paid for:
    * it decodes a tiny built-in clip once per tab, so a browser that makes a
    * context but decodes nothing is found out before a clip is bought, not
-   * after. Afterwards `available` gives the same answer.
+   * after. Afterwards `available` gives the same answer. A check whose decode
+   * never answered says no without being remembered, and the next one asks
+   * again.
    */
   canDecode(): Promise<boolean>;
   decode(bytes: ArrayBuffer, mimeType: string): Promise<DecodeOutcome>;

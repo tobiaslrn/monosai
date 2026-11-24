@@ -23,6 +23,12 @@ type DecodingContextConstructor = new (...args: number[]) => DecodingContext;
  *
  * `decodeAudioData` detaches the buffer it is given, so it always receives a
  * copy: the verified clip has to survive for the learner to play it.
+ *
+ * A decode that never answers would stall a run or a voice test for good, so
+ * each one gives up after `DECODE_TIMEOUT_MS`. Giving up proves nothing about
+ * the browser: a clip that timed out is undecodable, like any clip that did
+ * not decode, and a check that timed out answers no without being remembered,
+ * so the next check asks again.
  */
 export function createAudioDecoder(view: Window): AudioDecoder {
   let missing = false;
@@ -40,11 +46,14 @@ export function createAudioDecoder(view: Window): AudioDecoder {
       if (!available()) {
         return Promise.resolve(false);
       }
-      checked ??= decodesProbe(view).then((decodes) => {
-        if (!decodes) {
+      checked ??= decodesProbe(view).then((found) => {
+        if (found === 'fails') {
           missing = true;
         }
-        return decodes;
+        if (found === 'timed-out') {
+          checked = null;
+        }
+        return found === 'decodes';
       });
       return checked.then((decodes) => decodes && !missing);
     },
@@ -54,31 +63,51 @@ export function createAudioDecoder(view: Window): AudioDecoder {
         missing = true;
         return { kind: 'no-decoder' };
       }
+      let answered = true;
       try {
         const buffer = await decodeWith(context, bytes.slice(0));
         return { kind: 'decoded', durationSeconds: buffer.duration };
-      } catch {
+      } catch (error) {
+        answered = !(error instanceof DecodeTimeout);
         return { kind: 'undecodable' };
       } finally {
-        await context.close?.();
+        await release(context, answered);
       }
     },
   };
 }
 
+/** What decoding the built-in clip found. */
+type ProbeOutcome = 'decodes' | 'fails' | 'timed-out';
+
 /** Whether a context this browser makes decodes the built-in clip. */
-async function decodesProbe(view: Window): Promise<boolean> {
+async function decodesProbe(view: Window): Promise<ProbeOutcome> {
   const context = openContext(view);
   if (context === null) {
-    return false;
+    return 'fails';
   }
+  let answered = true;
   try {
     await decodeWith(context, probeClip());
-    return true;
-  } catch {
-    return false;
+    return 'decodes';
+  } catch (error) {
+    answered = !(error instanceof DecodeTimeout);
+    return answered ? 'fails' : 'timed-out';
   } finally {
-    await context.close?.();
+    await release(context, answered);
+  }
+}
+
+/**
+ * Closes a context. One whose decode never answered is not waited on, since
+ * it may not answer this either.
+ */
+async function release(context: DecodingContext, answered: boolean): Promise<void> {
+  const closing = context.close?.();
+  if (answered) {
+    await closing;
+  } else {
+    closing?.catch(() => undefined);
   }
 }
 
@@ -116,14 +145,41 @@ export function probeClip(): ArrayBuffer {
 }
 
 /**
+ * How long one decode may take before it is given up. A sentence's clip
+ * decodes in well under a second even on a slow phone, and the longest clip
+ * Monosai keeps, a long sentence read slowly, in a few; ten seconds leaves room
+ * for a busy device without letting a decoder that never answers stall a run.
+ */
+export const DECODE_TIMEOUT_MS = 10_000;
+
+/** A decode that did not answer within `DECODE_TIMEOUT_MS`. */
+class DecodeTimeout extends Error {}
+
+/**
  * Decodes through either calling convention: older WebKit answers only through
- * callbacks and returns nothing, current browsers return a promise.
+ * callbacks and returns nothing, current browsers return a promise. Gives up
+ * with `DecodeTimeout` after `DECODE_TIMEOUT_MS`.
  */
 function decodeWith(context: DecodingContext, bytes: ArrayBuffer): Promise<AudioBuffer> {
   return new Promise<AudioBuffer>((resolve, reject) => {
-    const returned: unknown = context.decodeAudioData(bytes, resolve, reject);
-    if (returned instanceof Promise) {
-      (returned as Promise<AudioBuffer>).then(resolve, reject);
+    const timer = setTimeout(() => {
+      reject(new DecodeTimeout('The decoder did not answer.'));
+    }, DECODE_TIMEOUT_MS);
+    const done = (buffer: AudioBuffer) => {
+      clearTimeout(timer);
+      resolve(buffer);
+    };
+    const failed = (error: unknown) => {
+      clearTimeout(timer);
+      reject(error instanceof Error ? error : new Error(String(error)));
+    };
+    try {
+      const returned: unknown = context.decodeAudioData(bytes, done, failed);
+      if (returned instanceof Promise) {
+        (returned as Promise<AudioBuffer>).then(done, failed);
+      }
+    } catch (error) {
+      failed(error);
     }
   });
 }
