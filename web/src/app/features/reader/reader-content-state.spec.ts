@@ -320,11 +320,24 @@ describe('reader content state', () => {
     expect(readerContentState(READING, 'audio', IDLE, 'ready', true).error).toBeNull();
   });
 
-  it('says nothing of a missing decoder where audio is complete or setup comes first', () => {
+  it('says nothing of a missing decoder where audio is complete', () => {
     const complete = { ...READING, audioSummary: { total: 4, completed: 4, failed: 0 } };
 
     expect(readerContentState(complete, 'audio', IDLE, 'ready', true, true).error).toBeNull();
-    expect(readerContentState(READING, 'audio', IDLE, 'incomplete', true, true).error).toBeNull();
+  });
+
+  it('reports a missing decoder instead of voice setup, since no voice would make audio', () => {
+    for (const readiness of ['no-credential', 'incomplete', 'untested'] as const) {
+      const state = readerContentState(READING, 'audio', IDLE, readiness, true, true);
+
+      expect(state).toMatchObject({
+        setup: false,
+        status: 'Not added',
+        action: null,
+        error: NO_AUDIO_DECODER_MESSAGE,
+      });
+    }
+    expect(readerContentState(READING, 'english', IDLE, 'incomplete', true, true).setup).toBe(true);
   });
 
   it('offers no action beside any other audio failure', () => {

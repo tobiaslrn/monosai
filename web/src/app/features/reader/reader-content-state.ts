@@ -51,7 +51,16 @@ export function readerContentState(
   online: boolean,
   decoderMissing = false,
 ): ReaderContentState {
-  const state = layerState(reading, layer, progress, readiness, online);
+  // With no decoder, no voice would make audio, so setting one up is not the
+  // next step for audio: the row reads as it would once set up, and the
+  // missing decoder is its report, as on the player.
+  const state = layerState(
+    reading,
+    layer,
+    progress,
+    layer === 'audio' && decoderMissing ? 'ready' : readiness,
+    online,
+  );
   // Audio reports here and is run from the transport: generating, stopping,
   // retrying and voice setup all live on the card that plays it, and a second
   // copy of them in this list was the same run described twice.
@@ -65,7 +74,6 @@ export function readerContentState(
   const undecodable =
     decoderMissing &&
     state.error === null &&
-    !state.setup &&
     state.status !== 'Ready' &&
     state.status !== 'No sentences';
   return {

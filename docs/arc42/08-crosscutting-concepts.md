@@ -132,7 +132,7 @@ audio context answers no at once, and otherwise it decodes a tiny built-in WAV o
 a browser can make a context and still decode nothing. One found to have none, by that check or by
 a clip whose contexts all refused, is remembered as having none for the tab's life, and then nothing
 is requested, the player offers no Generate, Story options says why
-beside audio that is not complete, and the background compression pass does not start. Every
+beside audio that is not complete, in place of any voice setup on both, and the background compression pass does not start. Every
 decode, the check's and each clip's, gives up after ten seconds, so a decoder that never answers
 cannot stall a run or a voice test. Giving up proves nothing about the browser: a clip that timed
 out is that sentence's failure like any undecodable clip, and a check that timed out answers no
