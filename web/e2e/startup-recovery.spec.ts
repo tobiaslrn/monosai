@@ -215,13 +215,13 @@ test.describe('startup recovery', () => {
     await page.evaluate(() => {
       (window as unknown as { loadedBefore: boolean }).loadedBefore = true;
     });
+    // Waited for as an event rather than polled: an evaluation the reload interrupts fails.
+    const reloaded = page.waitForEvent('load', { timeout: 15_000 });
     await panel.getByRole('button', { name: 'Reload' }).click();
-    await expect
-      .poll(
-        () => page.evaluate(() => (window as unknown as { loadedBefore?: boolean }).loadedBefore),
-        { timeout: 15_000 },
-      )
-      .toBeUndefined();
+    await reloaded;
+    expect(
+      await page.evaluate(() => (window as unknown as { loadedBefore?: boolean }).loadedBefore),
+    ).toBeUndefined();
     await expect(recoveryPanel(page)).toBeVisible();
     expect(await nativeState(page)).toEqual(seeded);
   });

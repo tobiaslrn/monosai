@@ -205,12 +205,12 @@ test.describe('a tab that lost its database', () => {
       (window as unknown as { loadedBefore: boolean }).loadedBefore = true;
     });
     await notice.getByRole('button', { name: 'Reload' }).click();
+    // Waited for as an event rather than polled: an evaluation the reload interrupts fails.
+    const reloaded = first.waitForEvent('load', { timeout: 15_000 });
     await confirm.getByRole('button', { name: 'Reload' }).click();
-    await expect
-      .poll(
-        () => first.evaluate(() => (window as unknown as { loadedBefore?: boolean }).loadedBefore),
-        { timeout: 15_000 },
-      )
-      .toBeUndefined();
+    await reloaded;
+    expect(
+      await first.evaluate(() => (window as unknown as { loadedBefore?: boolean }).loadedBefore),
+    ).toBeUndefined();
   });
 });
