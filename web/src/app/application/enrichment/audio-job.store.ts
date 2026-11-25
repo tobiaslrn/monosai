@@ -663,9 +663,12 @@ export class AudioJobStore {
     if (failure !== null) {
       // A decoder check that did not answer stops the run before anything is
       // asked for, so it is no evidence about the voice: it leaves the streak
-      // as it was and keeps the retry its copy promises.
+      // as it was and keeps the retry its copy promises. Only where the run
+      // stored nothing and no sentence failed, though: a sentence failure
+      // means a request was sent, so the run paid for something however it
+      // ended, and counts like any other.
       const canRetry =
-        isUnansweredDecoderCheck(failure) && added === 0
+        isUnansweredDecoderCheck(failure) && added === 0 && outcome.firstSentenceFailure === null
           ? true
           : this.noteRunOutcome(context.readingId, context.config.configFingerprint, added);
       if (failure.source === 'storage') {

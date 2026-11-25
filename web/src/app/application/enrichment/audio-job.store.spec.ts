@@ -733,6 +733,30 @@ describe('AudioJobStore', () => {
       const afterTwoPaid = bed.store.progress();
       expect(afterTwoPaid.kind === 'failed' && afterTwoPaid.canRetry).toBe(false);
     });
+
+    /**
+     * A run in which a sentence failed after its request was sent did pay for
+     * something, however it ended, so it counts like any run that saved nothing.
+     */
+    it('still counts a run that paid for a failed sentence before one timed out', async () => {
+      const [paidText] = japaneseInOrder(bed.draft);
+      bed.provider.synthesizeWith = async (request) => {
+        if (request.text === paidText) {
+          return err(aiError('malformed-response', 'tts-synthesis', 'Not audio.'));
+        }
+        await hold(20);
+        return timedOut();
+      };
+      await bed.store.start(bed.draft.reading.id);
+
+      expect(bed.provider.synthesized.map((request) => request.text)).toContain(paidText);
+      const afterFirst = bed.store.progress();
+      expect(afterFirst.kind === 'failed' && afterFirst.canRetry).toBe(true);
+
+      await bed.store.retry(bed.draft.reading.id);
+      const afterSecond = bed.store.progress();
+      expect(afterSecond.kind === 'failed' && afterSecond.canRetry).toBe(false);
+    });
   });
 
   it('keeps completed clips when the run is cancelled', async () => {

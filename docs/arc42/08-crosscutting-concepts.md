@@ -135,13 +135,14 @@ is requested, the player offers no Generate, Story options sums up audio that is
 complete as why, in place of any voice setup on both, and the background compression pass does
 not start. Story options gives the way out as its status line only when it has no other, so the
 card keeps one. It is also the reason both give for a stopped run, whatever the run met, since no
-retry could make audio there. Every
+retry could make audio there; the player then reports nothing else, in the words it uses where no
+run stopped. Every
 decode, the check's and each clip's, gives up after ten seconds, so a decoder that never answers
 cannot stall a run or a voice test. Giving up proves nothing about the browser: a clip that timed
 out is that sentence's failure like any undecodable clip, and a check that timed out fails that
 request with a failure of its own that offers to try again, and is not remembered, so the next one
-checks again. Since it asked for nothing, a run it ended is not one of the runs that saved nothing,
-after which Try again is withdrawn.
+checks again. A run it ended that stored nothing and had no sentence fail asked for nothing, so it
+is not one of the runs that saved nothing, after which Try again is withdrawn.
 
 State unions are handled exhaustively, with a helper that makes an unhandled case a type error.
 Adding a state breaks the compile rather than falling through a screen.

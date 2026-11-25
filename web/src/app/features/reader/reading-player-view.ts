@@ -323,21 +323,16 @@ export function coveragePercent(count: number, sentenceCount: number): number {
 /**
  * What a stopped run has to say, and why it stopped.
  *
- * With no audio decoder that is the reason, whatever the run met: no retry
- * could make audio here, so a failure that asks to try again, or a line
- * suggesting another voice, would point to a way out that is not one.
+ * With no audio decoder that is all it says, whatever the run met, in the
+ * words the player uses where no run stopped: no retry could make audio here,
+ * so a failure that asks to try again, a line suggesting another voice, or a
+ * count of what a retry would ask for points to a way out that is not one.
  */
 function stoppedRunReport(facts: PlayerFacts): readonly string[] {
-  const line = stoppedRunLine(
-    facts.progress,
-    facts.availableCount,
-    facts.sentenceCount,
-    !facts.decoderMissing,
-  );
+  const line = stoppedRunLine(facts.progress, facts.availableCount, facts.sentenceCount);
   if (line === '') return [];
-  const reason = facts.decoderMissing
-    ? NO_AUDIO_DECODER_MESSAGE
-    : stoppedRunFailure(facts.progress);
+  if (facts.decoderMissing) return [NO_AUDIO_DECODER_MESSAGE];
+  const reason = stoppedRunFailure(facts.progress);
   return reason === null ? [line] : [line, reason];
 }
 

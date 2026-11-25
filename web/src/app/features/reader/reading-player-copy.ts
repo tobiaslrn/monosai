@@ -44,14 +44,11 @@ export function playbackFailureMessage(failure: PlaybackFailure | null): string 
  *
  * Only a stopped run has anything to say. A run in progress is reported by the
  * track and the ring alone; a count in words repeated what they showed.
- * `explainWithdrawnRetry` is false where something else already says why no
- * retry is offered, such as a browser with no audio decoder.
  */
 export function stoppedRunLine(
   progress: ReaderAudioProgress,
   availableCount: number,
   sentenceCount: number,
-  explainWithdrawnRetry = true,
 ): string {
   switch (progress.kind) {
     // A paused run is still going as far as the learner is concerned: it
@@ -74,8 +71,7 @@ export function stoppedRunLine(
       if (progress.counts.requested === 0) {
         return 'Audio could not be prepared';
       }
-      const exhausted =
-        progress.canRetry || !explainWithdrawnRetry ? '' : exhaustedLine(progress.error);
+      const exhausted = progress.canRetry ? '' : exhaustedLine(progress.error);
       return `${readyLine(availableCount, sentenceCount)} ${attemptLine(progress.counts)}${exhausted}`;
     }
   }

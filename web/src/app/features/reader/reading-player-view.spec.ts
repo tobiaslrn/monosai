@@ -371,20 +371,20 @@ describe('auxAction', () => {
 
   /**
    * A run stopped by something else asks to be tried again, but with no
-   * decoder no run can make audio: the decoder is the reason given, and
-   * nothing suggests a retry or another voice beside a Dismiss.
+   * decoder no run can make audio: the decoder is all the report says, in the
+   * words the player uses where no run stopped, beside a Dismiss.
    */
-  it('gives the missing decoder as the reason a run stopped, whatever it met', () => {
+  it('gives only the missing decoder for a stopped run, whatever it met', () => {
+    const unstopped = auxAction(facts({ ...PARTIAL, decoderMissing: true, decoderNotice: true }));
     for (const progress of [failed(true), failed(false), CANCELLED]) {
       const stopped = facts({ ...PARTIAL, progress, decoderMissing: true, decoderNotice: true });
-      const action = auxAction(stopped);
 
-      expect(action).toMatchObject({ kind: 'dismiss' });
-      expect(action?.title).toMatch(/^Stopped\. /);
-      expect(action?.title).toContain(NO_AUDIO_DECODER_MESSAGE);
-      expect(action?.title).not.toMatch(/try again|trying again|different voice/i);
-      expect(announcement(stopped)).toContain(NO_AUDIO_DECODER_MESSAGE);
-      expect(announcement(stopped)).not.toMatch(/try again|trying again|different voice/i);
+      expect(auxAction(stopped)).toEqual(unstopped);
+      expect(auxAction(stopped)).toMatchObject({
+        kind: 'dismiss',
+        title: NO_AUDIO_DECODER_MESSAGE,
+      });
+      expect(announcement(stopped)).toBe(`Not playing ${NO_AUDIO_DECODER_MESSAGE}`);
     }
   });
 
